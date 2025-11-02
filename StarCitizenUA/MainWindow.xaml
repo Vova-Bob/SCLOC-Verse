@@ -1,0 +1,1160 @@
+﻿<Window x:Class="StarCitizenUA.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:controls="clr-namespace:StarCitizenUA.Controls"
+        Title="Star Citizen"
+        Height="700" Width="1100"
+        WindowStyle="None" AllowsTransparency="True" Background="Transparent">
+
+    <Grid x:Name="MainGrid">
+        <!-- Фон -->
+        <Image Source="Images/background.png" Stretch="UniformToFill" x:Name="bgImage"/>
+
+        <!-- Панель заголовка -->
+        <Border Background="#0F2C3E" Height="40" VerticalAlignment="Top" MouseDown="TitleBar_MouseDown">
+            <Grid>
+                <TextBlock Text="STAR CITIZEN LOCALIZER"
+                           Foreground="White"
+                           FontWeight="Bold"
+                           FontSize="15"
+                           FontFamily="Arial"
+                           VerticalAlignment="Center"
+                           HorizontalAlignment="Center"/>
+
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,5,0">
+                    <Button Width="40" Height="30" Click="Minimize_Click" Background="Transparent" BorderBrush="Transparent" ToolTip="Minimize" Cursor="Hand" Margin="0,0,5,0">
+                        <TextBlock FontFamily="Segoe MDL2 Assets" FontSize="16" Text="&#xE921;" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Button>
+
+                    <Button Width="40" Height="30" Click="Close_Click" Background="Transparent" BorderBrush="Transparent" ToolTip="Close" Cursor="Hand">
+                        <TextBlock FontFamily="Segoe MDL2 Assets" FontSize="16" Text="&#xE8BB;" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Button>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Нижня панель -->
+        <Grid VerticalAlignment="Bottom" HorizontalAlignment="Right" Width="700" Height="30">
+            <Path Fill="#0F2C3E" Stroke="Transparent" StrokeThickness="0">
+                <Path.Data>
+                    <PathGeometry>
+                        <PathFigure StartPoint="40,0">
+                            <LineSegment Point="700,0" />
+                            <LineSegment Point="700,30" />
+                            <LineSegment Point="0,30" />
+                            <LineSegment Point="35,0" />
+                        </PathFigure>
+                    </PathGeometry>
+                </Path.Data>
+            </Path>
+
+            <Path Fill="Transparent" Stroke="#6DB9F8" StrokeThickness="1">
+                <Path.Data>
+                    <PathGeometry>
+                        <PathFigure StartPoint="0,30">
+                            <LineSegment Point="35,0" />
+                        </PathFigure>
+                    </PathGeometry>
+                </Path.Data>
+            </Path>
+
+            <Path Fill="Transparent" Stroke="#6DB9F8" StrokeThickness="1">
+                <Path.Data>
+                    <PathGeometry>
+                        <PathFigure StartPoint="35,0">
+                            <LineSegment Point="700,0" />
+                        </PathFigure>
+                    </PathGeometry>
+                </Path.Data>
+            </Path>
+
+            <TextBlock VerticalAlignment="Center"
+                       HorizontalAlignment="Center"
+                       FontFamily="Arial"
+                       FontWeight="Bold">
+                <Hyperlink NavigateUri="https://robertsspaceindustries.com/en/orgs/UKR"
+                           RequestNavigate="Hyperlink_RequestNavigate"
+                           Foreground="White">
+                    Ukrainian Space Fleet
+                </Hyperlink>
+            </TextBlock>
+        </Grid>
+
+        <!-- Логотип у правому куті -->
+        <Image Source="/Images/MadeByTheCommunity_Black 1.png"
+               Width="70" Height="70"
+               HorizontalAlignment="Right" VerticalAlignment="Bottom"
+               Margin="5,0,15,8"
+               Opacity="0.9"
+               RenderOptions.BitmapScalingMode="HighQuality">
+            <Image.Effect>
+                <DropShadowEffect Color="#6DB9F8" BlurRadius="15" ShadowDepth="0" Opacity="0.8"/>
+            </Image.Effect>
+        </Image>
+
+        <!-- ========== Ліва декоративна панель ==========-->
+        <Grid VerticalAlignment="Top" HorizontalAlignment="Left" Width="150" Height="385" Margin="0,40,0,0">
+            <Path Fill="#0A1D29" StrokeThickness="0" Stretch="Fill" Margin="0,0,56,0">
+                <Path.Data>
+                    <PathGeometry>
+                        <PathFigure StartPoint="0,0">
+                            <LineSegment Point="150,0" />
+                            <LineSegment Point="150,200" />
+                            <ArcSegment Point="140,215" Size="20,20" SweepDirection="Clockwise" />
+                            <LineSegment Point="0,300" />
+                            <LineSegment Point="0,0" />
+                        </PathFigure>
+                    </PathGeometry>
+                </Path.Data>
+            </Path>
+        </Grid>
+
+        <!-- ========== Центральна область ========== -->
+        <Grid HorizontalAlignment="Center" VerticalAlignment="Center" Width="950" Height="550" Margin="90,0,0,50">
+            <Border Background="#30000000" CornerRadius="10" BorderBrush="#6DB9F8" BorderThickness="1"/>
+
+            <!-- ========== Canvas головної вкладки ========== -->
+            <Canvas x:Name="CanvasHome" Background="Transparent" Visibility="Collapsed">
+                <TextBlock Canvas.Left="30" Canvas.Top="30" Foreground="White" FontSize="22" FontWeight="Bold">
+                    Ласкаво просимо до Star Citizen Localizer!
+                </TextBlock>
+                <TextBlock Canvas.Left="30" Canvas.Top="70" Foreground="White" FontSize="16" Opacity="0.8">
+                    Тут ви можете встановити українську локалізацію, скористатися голосовим асистентом або переглянути Settings.
+                </TextBlock>
+            </Canvas>
+            <!-- ========== Canvas вкладки локалізації ========== -->
+            <Canvas x:Name="CanvasLocalization" Background="Transparent" Visibility="Visible">
+                <Grid Width="{Binding ActualWidth, RelativeSource={RelativeSource AncestorType=Canvas}}">
+                    <TextBlock 
+                        Text="Встановлення локалізації"
+                        FontFamily="Arial"
+                        Foreground="White"
+                        FontSize="20"
+                        FontWeight="Bold"
+                        HorizontalAlignment="Center"
+                        Margin="0,20,0,0"/>
+                </Grid>
+
+                <controls:EnvironmentSelector
+                    x:Name="EnvSelector"
+                    Canvas.Left="475"
+                    Canvas.Top="60"/>
+
+                <!-- Кнопка повернення на головну -->
+                <Button Canvas.Top="240" Canvas.Right="910" Width="40" Height="100"
+                        Click="ReturnToHome_Click"
+                        Background="Transparent"
+                        Cursor="Hand" HorizontalAlignment="Left" Canvas.Left="0" VerticalAlignment="Center">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Grid>
+
+                                <!-- Прозорий фон — розширює "зону натискання" -->
+                                <Rectangle Fill="Transparent" Width="50" Height="100"/>
+
+                                <!-- Напівпрозоре коло -->
+                                <Ellipse x:Name="BgCircle"
+                                         Width="50" Height="100"
+                                         Fill="Transparent"
+                                         HorizontalAlignment="Center"
+                                         VerticalAlignment="Center"
+                                         Opacity="1">
+                                    <Ellipse.Effect>
+                                        <DropShadowEffect Color="Black" BlurRadius="10" ShadowDepth="0" Opacity="0.6"/>
+                                    </Ellipse.Effect>
+                                </Ellipse>
+
+                                <!-- Стрілка -->
+                                <Path x:Name="ArrowPath2"
+                                      Data="M22,5 L12,22 L22,39"
+                                      Stroke="#6DB9F8"
+                                      StrokeThickness="5"
+                                      StrokeStartLineCap="Round"
+                                      StrokeEndLineCap="Round"
+                                      StrokeLineJoin="Round"
+                                      HorizontalAlignment="Center"
+                                      VerticalAlignment="Center"
+                                      Opacity="1"/>
+                            </Grid>
+
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="BgCircle" Property="Opacity" Value="0.9"/>
+                                    <Setter TargetName="ArrowPath2" Property="Opacity" Value="0.85"/>
+                                </Trigger>
+
+                                <Trigger Property="IsPressed" Value="True">
+                                    <Setter TargetName="BgCircle" Property="Opacity" Value="0.8"/>
+                                    <Setter TargetName="ArrowPath2" Property="Opacity" Value="0.6"/>
+                                    <Setter TargetName="BgCircle" Property="RenderTransform">
+                                        <Setter.Value>
+                                            <ScaleTransform ScaleX="0.95" ScaleY="0.95"/>
+                                        </Setter.Value>
+                                    </Setter>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Button.Template>
+                </Button>
+
+                <!-- Кнопка "Встановити" -->
+                <Button x:Name="BtnInstall"
+                        Width="150" Height="40"
+                        Canvas.Left="770" Canvas.Top="88"
+                        Cursor="Hand"
+                        Click="BtnInstall_Click" HorizontalAlignment="Left" VerticalAlignment="Center">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Grid>
+                                <Grid.Effect>
+                                    <DropShadowEffect
+                                        Color="Black"
+                                        BlurRadius="10"
+                                        ShadowDepth="4"
+                                        Opacity="0.6" />
+                                </Grid.Effect>
+                                <Path x:Name="BgPath" Fill="#30546E" Stretch="None">
+                                    <Path.Data>
+                                        <PathGeometry>
+                                            <PathFigure StartPoint="15,0">
+                                                <!-- верхній лівий скіс -->
+                                                <LineSegment Point="120,0" />
+                                                <!-- верх -->
+                                                <ArcSegment Point="150,5" Size="20,20" SweepDirection="Clockwise"/>
+                                                <!-- верхній правий округлений -->
+                                                <LineSegment Point="150,25"/>
+                                                <!-- права сторона -->
+                                                <LineSegment Point="135,40"/>
+                                                <!-- нижній правий скіс -->
+                                                <LineSegment Point="25,40"/>
+                                                <!-- низ -->
+                                                <ArcSegment Point="0,25" Size="15,15" SweepDirection="Clockwise"/>
+                                                <!-- нижній лівий округлений -->
+                                                <LineSegment Point="0,15"/>
+                                                <!-- ліва сторона -->
+                                                <LineSegment Point="15,0"/>
+                                                <!-- замикання -->
+                                            </PathFigure>
+                                        </PathGeometry>
+                                    </Path.Data>
+                                </Path>
+
+                                <ContentPresenter HorizontalAlignment="Center"
+                                                  VerticalAlignment="Center"
+                                                  RecognizesAccessKey="True"/>
+                            </Grid>
+
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="BgPath" Property="Opacity" Value="0.7"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Button.Template>
+
+                    <TextBlock Text="Встановити"
+                               FontWeight="Bold"
+                               FontSize="14"
+                               Foreground="White"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center"/>
+                </Button>
+
+                <!-- кнопка Delete -->
+                <Button x:Name="BtnLocalisationDelete" Width="150" Height="40" Background="#30546E" Foreground="White" Click="LocalisationDelete_Click" Cursor="Hand" Canvas.Left="770" Canvas.Top="150">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Grid>
+                                <Grid.Effect>
+                                    <DropShadowEffect
+                                        Color="Black"
+                                        BlurRadius="10"
+                                        ShadowDepth="4"
+                                        Opacity="0.6" />
+                                </Grid.Effect>
+                                <Path x:Name="BgPath" Fill="#30546E" Stretch="None">
+                                    <Path.Data>
+                                        <PathGeometry>
+                                            <PathFigure StartPoint="15,0">
+                                                <!-- верхній лівий скіс -->
+                                                <LineSegment Point="120,0" />
+                                                <!-- верх -->
+                                                <ArcSegment Point="150,5" Size="20,20" SweepDirection="Clockwise"/>
+                                                <!-- верхній правий округлений -->
+                                                <LineSegment Point="150,25"/>
+                                                <!-- права сторона -->
+                                                <LineSegment Point="135,40"/>
+                                                <!-- нижній правий скіс -->
+                                                <LineSegment Point="25,40"/>
+                                                <!-- низ -->
+                                                <ArcSegment Point="0,25" Size="15,15" SweepDirection="Clockwise"/>
+                                                <!-- нижній лівий округлений -->
+                                                <LineSegment Point="0,15"/>
+                                                <!-- ліва сторона -->
+                                                <LineSegment Point="15,0"/>
+                                                <!-- замикання -->
+                                            </PathFigure>
+                                        </PathGeometry>
+                                    </Path.Data>
+                                </Path>
+
+                                <ContentPresenter HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                RecognizesAccessKey="True"/>
+                            </Grid>
+
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="BgPath" Property="Opacity" Value="0.7"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Button.Template>
+
+                    <TextBlock Text="Видалити"
+                               FontWeight="Bold"
+                               FontSize="14"
+                               Foreground="White"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center"/>
+                </Button>
+
+            </Canvas>
+
+            <!-- ========== Canvas вкладки Л.І.А ========== -->
+            <Canvas x:Name="CanvasAssistant" Background="Transparent" Visibility="Collapsed">
+                <Grid Width="{Binding ActualWidth, RelativeSource={RelativeSource AncestorType=Canvas}}">
+                    <TextBlock 
+                        Text="Голосовий асистент"
+                        FontFamily="Arial"
+                        Foreground="White"
+                        FontSize="20"
+                        FontWeight="Bold"
+                        HorizontalAlignment="Center"
+                        Margin="0,20,0,0"/>
+                </Grid>
+
+                <!-- Кнопка повернення на головну -->
+                <Button Canvas.Top="240" Canvas.Right="910" Width="40" Height="100"
+                        Click="ReturnToHome_Click"
+                        Background="Transparent"
+                        Cursor="Hand" HorizontalAlignment="Left" Canvas.Left="0" VerticalAlignment="Center">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Grid>
+
+                                <!-- Прозорий фон — розширює "зону натискання" -->
+                                <Rectangle Fill="Transparent" Width="50" Height="100"/>
+
+                                <!-- Напівпрозоре коло -->
+                                <Ellipse x:Name="BgCircle"
+                                         Width="50" Height="100"
+                                         Fill="Transparent"
+                                         HorizontalAlignment="Center"
+                                         VerticalAlignment="Center"
+                                         Opacity="1">
+                                    <Ellipse.Effect>
+                                        <DropShadowEffect Color="Black" BlurRadius="10" ShadowDepth="0" Opacity="0.6"/>
+                                    </Ellipse.Effect>
+                                </Ellipse>
+
+                                <!-- Стрілка -->
+                                <Path x:Name="ArrowPath2"
+                                      Data="M22,5 L12,22 L22,39"
+                                      Stroke="#6DB9F8"
+                                      StrokeThickness="5"
+                                      StrokeStartLineCap="Round"
+                                      StrokeEndLineCap="Round"
+                                      StrokeLineJoin="Round"
+                                      HorizontalAlignment="Center"
+                                      VerticalAlignment="Center"
+                                      Opacity="1"/>
+                            </Grid>
+
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="BgCircle" Property="Opacity" Value="0.9"/>
+                                    <Setter TargetName="ArrowPath2" Property="Opacity" Value="0.85"/>
+                                </Trigger>
+
+                                <Trigger Property="IsPressed" Value="True">
+                                    <Setter TargetName="BgCircle" Property="Opacity" Value="0.8"/>
+                                    <Setter TargetName="ArrowPath2" Property="Opacity" Value="0.6"/>
+                                    <Setter TargetName="BgCircle" Property="RenderTransform">
+                                        <Setter.Value>
+                                            <ScaleTransform ScaleX="0.95" ScaleY="0.95"/>
+                                        </Setter.Value>
+                                    </Setter>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Button.Template>
+                </Button>
+                <!-- Кнопка "Встановити ЛІА" -->
+                <Button x:Name="BtnLiaInstall" Width="150" Height="40" Canvas.Left="770" Canvas.Top="88" Cursor="Hand" Click="BtnLiaInstall_Click" HorizontalAlignment="Left" VerticalAlignment="Center">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Grid>
+                                <Grid.Effect>
+                                    <DropShadowEffect
+                                        Color="Black"
+                                        BlurRadius="10"
+                                        ShadowDepth="4"
+                                        Opacity="0.6" />
+                                </Grid.Effect>
+                                <Path x:Name="BgPath" Fill="#30546E" Stretch="None">
+                                    <Path.Data>
+                                        <PathGeometry>
+                                            <PathFigure StartPoint="15,0">
+                                                <!-- верхній лівий скіс -->
+                                                <LineSegment Point="120,0" />
+                                                <!-- верх -->
+                                                <ArcSegment Point="150,5" Size="20,20" SweepDirection="Clockwise"/>
+                                                <!-- верхній правий округлений -->
+                                                <LineSegment Point="150,25"/>
+                                                <!-- права сторона -->
+                                                <LineSegment Point="135,40"/>
+                                                <!-- нижній правий скіс -->
+                                                <LineSegment Point="25,40"/>
+                                                <!-- низ -->
+                                                <ArcSegment Point="0,25" Size="15,15" SweepDirection="Clockwise"/>
+                                                <!-- нижній лівий округлений -->
+                                                <LineSegment Point="0,15"/>
+                                                <!-- ліва сторона -->
+                                                <LineSegment Point="15,0"/>
+                                                <!-- замикання -->
+                                            </PathFigure>
+                                        </PathGeometry>
+                                    </Path.Data>
+                                </Path>
+
+                                <ContentPresenter HorizontalAlignment="Center"
+                                      VerticalAlignment="Center"
+                                      RecognizesAccessKey="True"/>
+                            </Grid>
+
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="BgPath" Property="Opacity" Value="0.7"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Button.Template>
+
+                    <TextBlock Text="Встановити"
+                   FontWeight="Bold"
+                   FontSize="14"
+                   Foreground="White"
+                   HorizontalAlignment="Center"
+                   VerticalAlignment="Center"/>
+                </Button>
+
+                <!-- кнопка LiaSettings -->
+                <Button x:Name="BtnLiaSettings" Width="150" Height="40" Background="#30546E" Foreground="White" Click="LiaSettings_Click" Cursor="Hand" Canvas.Left="770" Canvas.Top="150">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Grid>
+                                <Grid.Effect>
+                                    <DropShadowEffect
+                                        Color="Black"
+                                        BlurRadius="10"
+                                        ShadowDepth="4"
+                                        Opacity="0.6" />
+                                </Grid.Effect>
+                                <Path x:Name="BgPath" Fill="#30546E" Stretch="None">
+                                    <Path.Data>
+                                        <PathGeometry>
+                                            <PathFigure StartPoint="15,0">
+                                                <!-- верхній лівий скіс -->
+                                                <LineSegment Point="120,0" />
+                                                <!-- верх -->
+                                                <ArcSegment Point="150,5" Size="20,20" SweepDirection="Clockwise"/>
+                                                <!-- верхній правий округлений -->
+                                                <LineSegment Point="150,25"/>
+                                                <!-- права сторона -->
+                                                <LineSegment Point="135,40"/>
+                                                <!-- нижній правий скіс -->
+                                                <LineSegment Point="25,40"/>
+                                                <!-- низ -->
+                                                <ArcSegment Point="0,25" Size="15,15" SweepDirection="Clockwise"/>
+                                                <!-- нижній лівий округлений -->
+                                                <LineSegment Point="0,15"/>
+                                                <!-- ліва сторона -->
+                                                <LineSegment Point="15,0"/>
+                                                <!-- замикання -->
+                                            </PathFigure>
+                                        </PathGeometry>
+                                    </Path.Data>
+                                </Path>
+
+                                <ContentPresenter HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    RecognizesAccessKey="True"/>
+                            </Grid>
+
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="BgPath" Property="Opacity" Value="0.7"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Button.Template>
+
+                    <Image Source="Images/settings.png" Width="30" Height="30" HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <Image.Effect>
+                            <DropShadowEffect Color="Black" BlurRadius="8" ShadowDepth="2" Opacity="0.8"/>
+                        </Image.Effect>
+                    </Image>
+
+                </Button>
+            </Canvas>
+
+            <!-- ========== Canvas вкладки Settings ========== -->
+            <Canvas x:Name="CanvasSettings" Background="Transparent" Visibility="Collapsed">
+                <Grid Width="{Binding ActualWidth, RelativeSource={RelativeSource AncestorType=Canvas}}">
+                    <TextBlock 
+                        Text="Налаштування"
+                        FontFamily="Arial"
+                        Foreground="White"
+                        FontSize="20"
+                        FontWeight="Bold"
+                        HorizontalAlignment="Center"
+                        Margin="0,20,0,0"/>
+                </Grid>
+
+                <!-- Кнопка повернення на головну -->
+                <Button Canvas.Top="240" Canvas.Right="910" Width="40" Height="100"
+                        Click="ReturnToLocalization_Click"
+                        Background="Transparent"
+                        Cursor="Hand" HorizontalAlignment="Left" Canvas.Left="0" VerticalAlignment="Center">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Grid>
+
+                                <!-- Прозорий фон — розширює "зону натискання" -->
+                                <Rectangle Fill="Transparent" Width="50" Height="100"/>
+
+                                <!-- Напівпрозоре коло -->
+                                <Ellipse x:Name="BgCircle"
+                                         Width="50" Height="100"
+                                         Fill="Transparent"
+                                         HorizontalAlignment="Center"
+                                         VerticalAlignment="Center"
+                                         Opacity="1">
+                                    <Ellipse.Effect>
+                                        <DropShadowEffect Color="Black" BlurRadius="10" ShadowDepth="0" Opacity="0.6"/>
+                                    </Ellipse.Effect>
+                                </Ellipse>
+
+                                <!-- Стрілка -->
+                                <Path x:Name="ArrowPath2"
+                                      Data="M22,5 L12,22 L22,39"
+                                      Stroke="#6DB9F8"
+                                      StrokeThickness="5"
+                                      StrokeStartLineCap="Round"
+                                      StrokeEndLineCap="Round"
+                                      StrokeLineJoin="Round"
+                                      HorizontalAlignment="Center"
+                                      VerticalAlignment="Center"
+                                      Opacity="1"/>
+                            </Grid>
+
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="BgCircle" Property="Opacity" Value="0.9"/>
+                                    <Setter TargetName="ArrowPath2" Property="Opacity" Value="0.85"/>
+                                </Trigger>
+
+                                <Trigger Property="IsPressed" Value="True">
+                                    <Setter TargetName="BgCircle" Property="Opacity" Value="0.8"/>
+                                    <Setter TargetName="ArrowPath2" Property="Opacity" Value="0.6"/>
+                                    <Setter TargetName="BgCircle" Property="RenderTransform">
+                                        <Setter.Value>
+                                            <ScaleTransform ScaleX="0.95" ScaleY="0.95"/>
+                                        </Setter.Value>
+                                    </Setter>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Button.Template>
+                </Button>
+
+                <!-- Кнопка "Обрати папку" -->
+                <Button x:Name="BtnSelectFolder"
+                       Width="100" Height="40"
+                       Canvas.Left="70" Canvas.Top="87"
+                       Cursor="Hand"
+                       Click="BtnSelectFolder_Click" HorizontalAlignment="Center" VerticalAlignment="Top">
+
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Grid>
+                                <Grid.Effect>
+                                    <DropShadowEffect
+                                        Color="Black"
+                                        BlurRadius="10"
+                                        ShadowDepth="4"
+                                        Opacity="0.6" />
+                                </Grid.Effect>
+                                <Path x:Name="BgPath" Fill="#30546E" Stretch="None">
+                                    <Path.Data>
+                                        <PathGeometry>
+                                            <PathFigure StartPoint="15,0">
+                                                <!-- верхній лівий скіс -->
+                                                <LineSegment Point="120,0" />
+                                                <!-- верх -->
+                                                <ArcSegment Point="150,5" Size="20,20" SweepDirection="Clockwise"/>
+                                                <!-- верхній правий округлений -->
+                                                <LineSegment Point="150,25"/>
+                                                <!-- права сторона -->
+                                                <LineSegment Point="135,40"/>
+                                                <!-- нижній правий скіс -->
+                                                <LineSegment Point="25,40"/>
+                                                <!-- низ -->
+                                                <ArcSegment Point="0,25" Size="15,15" SweepDirection="Clockwise"/>
+                                                <!-- нижній лівий округлений -->
+                                                <LineSegment Point="0,15"/>
+                                                <!-- ліва сторона -->
+                                                <LineSegment Point="15,0"/>
+                                                <!-- замикання -->
+                                            </PathFigure>
+                                        </PathGeometry>
+                                    </Path.Data>
+                                </Path>
+
+                                <ContentPresenter HorizontalAlignment="Center"
+                                 VerticalAlignment="Center"
+                                 RecognizesAccessKey="True"/>
+                            </Grid>
+
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="BgPath" Property="Opacity" Value="0.7"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Button.Template>
+
+                    <TextBlock Text="Провідник"
+                               FontFamily="Arial"
+                               FontWeight="Bold"
+                               FontSize="14"
+                               Foreground="White"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center"/>
+                </Button>
+
+                <!-- Кнопка "Автопошук / Скинути шлях" -->
+                <Button x:Name="BtnAutoSearch"
+                        Width="100" Height="40"
+                        Canvas.Left="175" Canvas.Top="87"
+                        Cursor="Hand"
+                        Click="BtnAutoSearch_Click"
+                        HorizontalAlignment="Center" VerticalAlignment="Top">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Grid RenderTransformOrigin="0.5,0.5">
+                                <Grid.RenderTransform>
+                                    <ScaleTransform ScaleX="-1"/>
+                                </Grid.RenderTransform>
+
+                                <Grid.Effect>
+                                    <DropShadowEffect Color="Black" BlurRadius="10" ShadowDepth="4" Opacity="0.6" />
+                                </Grid.Effect>
+
+                                <!-- Фон кнопки -->
+                                <Path x:Name="BgPath" Fill="#30546E" Stretch="None">
+                                    <Path.Data>
+                                        <PathGeometry>
+                                            <PathFigure StartPoint="15,0">
+                                                <LineSegment Point="120,0" />
+                                                <ArcSegment Point="150,5" Size="20,20" SweepDirection="Clockwise"/>
+                                                <LineSegment Point="150,25"/>
+                                                <LineSegment Point="135,40"/>
+                                                <LineSegment Point="25,40"/>
+                                                <ArcSegment Point="0,25" Size="15,15" SweepDirection="Clockwise"/>
+                                                <LineSegment Point="0,15"/>
+                                                <LineSegment Point="15,0"/>
+                                            </PathFigure>
+                                        </PathGeometry>
+                                    </Path.Data>
+                                </Path>
+
+                                <!-- Текст кнопки -->
+                                <TextBlock x:Name="BtnText"
+                                           Text="Автопошук" 
+                                           FontWeight="Bold" 
+                                           FontFamily="Arial" 
+                                           FontSize="14" 
+                                           Foreground="White"                             
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"
+                                           RenderTransformOrigin="0.5,0.5">
+                                    <TextBlock.RenderTransform>
+                                        <ScaleTransform ScaleX="-1"/>
+                                    </TextBlock.RenderTransform>
+                                </TextBlock>
+
+                            </Grid>
+
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="BgPath" Property="Opacity" Value="0.7"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Button.Template>
+                </Button>
+
+                <!-- Кнопка "Очистити кеш" -->
+                <Button x:Name="BtnResetCash"
+                        Width="205" Height="40"
+                        Canvas.Left="70" Canvas.Top="153"
+                        Cursor="Hand"
+                        Click="BtnReset_Cash"
+                        HorizontalAlignment="Center" VerticalAlignment="Top">
+
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Grid>
+                                <Grid.Effect>
+                                    <DropShadowEffect
+                                        Color="Black"
+                                        BlurRadius="10"
+                                        ShadowDepth="4"
+                                        Opacity="0.6" />
+                                </Grid.Effect>
+                                <Path x:Name="BgPath" Fill="#30546E" Stretch="None">
+                                    <Path.Data>
+                                        <PathGeometry>
+                                            <PathFigure StartPoint="15,0">
+                                                <LineSegment Point="175,0"/>
+                                                <ArcSegment Point="205,5" Size="20,20" SweepDirection="Clockwise"/>
+                                                <LineSegment Point="205,25"/>
+                                                <LineSegment Point="190,40"/>
+                                                <LineSegment Point="25,40"/>
+                                                <ArcSegment Point="0,25" Size="15,15" SweepDirection="Clockwise"/>
+                                                <LineSegment Point="0,15"/>
+                                                <LineSegment Point="15,0"/>
+                                            </PathFigure>
+                                        </PathGeometry>
+                                    </Path.Data>
+                                </Path>
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" RecognizesAccessKey="True"/>
+                            </Grid>
+
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="BgPath" Property="Opacity" Value="0.7"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Button.Template>
+
+                    <TextBlock Text="Очистити кеш"
+               FontWeight="Bold"
+               FontSize="14"
+               Foreground="White"
+               HorizontalAlignment="Center"
+               VerticalAlignment="Center"/>
+                </Button>
+
+
+                <!-- TextBox для відображення вибраного шляху -->
+                <Border Canvas.Left="285" Canvas.Top="88"
+                        Width="600" Height="38"
+                        CornerRadius="5"
+                        BorderBrush="#6DB9F8"
+                        BorderThickness="1"
+                        Background="#20000000">
+                    <TextBox x:Name="TxtSelectedPath"
+                             FontFamily="Arial"
+                             FontSize="14"
+                             Foreground="LightSlateGray"
+                             Background="Transparent"
+                             BorderThickness="0"
+                             Padding="8,4"
+                             IsReadOnly="True"
+                             HorizontalContentAlignment="Center"
+                             VerticalContentAlignment="Center"/>
+                </Border>
+                <!-- TextBox для відображення Readme -->
+                <Border Canvas.Left="70" Canvas.Top="220"
+                        Width="820" Height="270"
+                        CornerRadius="5"
+                        BorderBrush="#6DB9F8"
+                        BorderThickness="1"
+                        Background="#CC0A1D29">
+                    <TextBox x:Name="TxtReadme"
+               FontFamily="Arial"
+               FontSize="14"
+               Foreground="LightSlateGray"
+               Background="Transparent"
+               BorderThickness="0"
+               Padding="8,4"
+               IsReadOnly="True"            
+               HorizontalContentAlignment="Center"
+               VerticalContentAlignment="Center"/>
+                </Border>
+            </Canvas>
+
+            <!-- ========== Canvas вкладки LIA Settings ========== -->
+            <Canvas x:Name="CanvasLiaSettings" Background="Transparent" Visibility="Collapsed">
+                <Grid Width="{Binding ActualWidth, RelativeSource={RelativeSource AncestorType=Canvas}}">
+                    <TextBlock 
+                        Text="Налаштування Л.І.А"
+                        FontFamily="Arial"
+                        Foreground="White"
+                        FontSize="20"
+                        FontWeight="Bold"
+                        HorizontalAlignment="Center"
+                        Margin="0,20,0,0"/>
+                </Grid>
+
+                <!-- Кнопка повернення на головну -->
+                <Button Canvas.Top="240" Canvas.Right="910" Width="40" Height="100"
+                        Click="ReturnToAssistant_Click"
+                        Background="Transparent"
+                        Cursor="Hand" HorizontalAlignment="Left" Canvas.Left="0" VerticalAlignment="Center">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Grid>
+
+                                <!-- Прозорий фон — розширює "зону натискання" -->
+                                <Rectangle Fill="Transparent" Width="50" Height="100"/>
+
+                                <!-- Напівпрозоре коло -->
+                                <Ellipse x:Name="BgCircle"
+                                         Width="50" Height="100"
+                                         Fill="Transparent"
+                                         HorizontalAlignment="Center"
+                                         VerticalAlignment="Center"
+                                         Opacity="1">
+                                    <Ellipse.Effect>
+                                        <DropShadowEffect Color="Black" BlurRadius="10" ShadowDepth="0" Opacity="0.6"/>
+                                    </Ellipse.Effect>
+                                </Ellipse>
+
+                                <!-- Стрілка -->
+                                <Path x:Name="ArrowPath2"
+                                      Data="M22,5 L12,22 L22,39"
+                                      Stroke="#6DB9F8"
+                                      StrokeThickness="5"
+                                      StrokeStartLineCap="Round"
+                                      StrokeEndLineCap="Round"
+                                      StrokeLineJoin="Round"
+                                      HorizontalAlignment="Center"
+                                      VerticalAlignment="Center"
+                                      Opacity="1"/>
+                            </Grid>
+
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="BgCircle" Property="Opacity" Value="0.9"/>
+                                    <Setter TargetName="ArrowPath2" Property="Opacity" Value="0.85"/>
+                                </Trigger>
+
+                                <Trigger Property="IsPressed" Value="True">
+                                    <Setter TargetName="BgCircle" Property="Opacity" Value="0.8"/>
+                                    <Setter TargetName="ArrowPath2" Property="Opacity" Value="0.6"/>
+                                    <Setter TargetName="BgCircle" Property="RenderTransform">
+                                        <Setter.Value>
+                                            <ScaleTransform ScaleX="0.95" ScaleY="0.95"/>
+                                        </Setter.Value>
+                                    </Setter>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Button.Template>
+                </Button>
+
+                <!-- Кнопка "Обрати папку" -->
+                <Button x:Name="BtnSelectLiaFolder"
+                       Width="100" Height="40"
+                       Canvas.Left="70" Canvas.Top="87"
+                       Cursor="Hand"
+                       Click="BtnSelectLiaFolder_Click" HorizontalAlignment="Center" VerticalAlignment="Top">
+
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Grid>
+                                <Grid.Effect>
+                                    <DropShadowEffect
+                                        Color="Black"
+                                        BlurRadius="10"
+                                        ShadowDepth="4"
+                                        Opacity="0.6" />
+                                </Grid.Effect>
+                                <Path x:Name="BgPath" Fill="#30546E" Stretch="None">
+                                    <Path.Data>
+                                        <PathGeometry>
+                                            <PathFigure StartPoint="15,0">
+                                                <!-- верхній лівий скіс -->
+                                                <LineSegment Point="120,0" />
+                                                <!-- верх -->
+                                                <ArcSegment Point="150,5" Size="20,20" SweepDirection="Clockwise"/>
+                                                <!-- верхній правий округлений -->
+                                                <LineSegment Point="150,25"/>
+                                                <!-- права сторона -->
+                                                <LineSegment Point="135,40"/>
+                                                <!-- нижній правий скіс -->
+                                                <LineSegment Point="25,40"/>
+                                                <!-- низ -->
+                                                <ArcSegment Point="0,25" Size="15,15" SweepDirection="Clockwise"/>
+                                                <!-- нижній лівий округлений -->
+                                                <LineSegment Point="0,15"/>
+                                                <!-- ліва сторона -->
+                                                <LineSegment Point="15,0"/>
+                                                <!-- замикання -->
+                                            </PathFigure>
+                                        </PathGeometry>
+                                    </Path.Data>
+                                </Path>
+
+                                <ContentPresenter HorizontalAlignment="Center"
+                                 VerticalAlignment="Center"
+                                 RecognizesAccessKey="True"/>
+                            </Grid>
+
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="BgPath" Property="Opacity" Value="0.7"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Button.Template>
+
+                    <TextBlock Text="Провідник"
+                               FontFamily="Arial"
+                               FontWeight="Bold"
+                               FontSize="14"
+                               Foreground="White"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center"/>
+                </Button>
+
+                <!-- Кнопка "Автопошук / Скинути шлях" -->
+                <Button x:Name="BtnLiaAutoSearch"
+                        Width="100" Height="40"
+                        Canvas.Left="175" Canvas.Top="87"
+                        Cursor="Hand"
+                        Click="BtnLiaAutoSearch_Click"
+                        HorizontalAlignment="Center" VerticalAlignment="Top">
+                    <Button.Template>
+                        <ControlTemplate TargetType="Button">
+                            <Grid RenderTransformOrigin="0.5,0.5">
+                                <Grid.RenderTransform>
+                                    <ScaleTransform ScaleX="-1"/>
+                                </Grid.RenderTransform>
+
+                                <Grid.Effect>
+                                    <DropShadowEffect Color="Black" BlurRadius="10" ShadowDepth="4" Opacity="0.6" />
+                                </Grid.Effect>
+
+                                <!-- Фон кнопки -->
+                                <Path x:Name="BgPath" Fill="#30546E" Stretch="None">
+                                    <Path.Data>
+                                        <PathGeometry>
+                                            <PathFigure StartPoint="15,0">
+                                                <LineSegment Point="120,0" />
+                                                <ArcSegment Point="150,5" Size="20,20" SweepDirection="Clockwise"/>
+                                                <LineSegment Point="150,25"/>
+                                                <LineSegment Point="135,40"/>
+                                                <LineSegment Point="25,40"/>
+                                                <ArcSegment Point="0,25" Size="15,15" SweepDirection="Clockwise"/>
+                                                <LineSegment Point="0,15"/>
+                                                <LineSegment Point="15,0"/>
+                                            </PathFigure>
+                                        </PathGeometry>
+                                    </Path.Data>
+                                </Path>
+
+                                <!-- Текст кнопки -->
+                                <TextBlock x:Name="BtnText"
+                                           Text="Автопошук" 
+                                           FontWeight="Bold" 
+                                           FontFamily="Arial" 
+                                           FontSize="14" 
+                                           Foreground="White"                             
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"
+                                           RenderTransformOrigin="0.5,0.5">
+                                    <TextBlock.RenderTransform>
+                                        <ScaleTransform ScaleX="-1"/>
+                                    </TextBlock.RenderTransform>
+                                </TextBlock>
+
+                            </Grid>
+
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="BgPath" Property="Opacity" Value="0.7"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Button.Template>
+                </Button>            
+
+                <!-- TextBox для відображення вибраного шляху -->
+                <Border Canvas.Left="285" Canvas.Top="88"
+                        Width="600" Height="38"
+                        CornerRadius="5"
+                        BorderBrush="#6DB9F8"
+                        BorderThickness="1"
+                        Background="#20000000">
+                    <TextBox x:Name="TxtLiaSelectedPath"
+                             FontFamily="Arial"
+                             FontSize="14"
+                             Foreground="LightSlateGray"
+                             Background="Transparent"
+                             BorderThickness="0"
+                             Padding="8,4"
+                             IsReadOnly="True"
+                             HorizontalContentAlignment="Center"
+                             VerticalContentAlignment="Center"/>
+                </Border>
+                <!-- TextBox для відображення Readme -->
+                <Border Canvas.Left="70" Canvas.Top="220"
+                        Width="820" Height="270"
+                        CornerRadius="5"
+                        BorderBrush="#6DB9F8"
+                        BorderThickness="1"
+                        Background="#CC0A1D29">
+                    <TextBox x:Name="TxtLiaReadme"
+               FontFamily="Arial"
+               FontSize="14"
+               Foreground="LightSlateGray"
+               Background="Transparent"
+               BorderThickness="0"
+               Padding="8,4"
+               IsReadOnly="True"            
+               HorizontalContentAlignment="Center"
+               VerticalContentAlignment="Center"/>
+                </Border>
+            </Canvas>
+        </Grid>
+
+        <!-- ========== Кнопки меню ліворуч ========== -->
+        <StackPanel Orientation="Vertical" Margin="6,40,0,0" HorizontalAlignment="Left">
+
+            <!-- Локалізація -->
+            <Button x:Name="BtnLocalization" Width="80" Height="80" Background="#30546E" Foreground="White" Click="Localization_Click" Cursor="Hand" Margin="0,8,0,0">
+                <Button.Template>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border" Background="{TemplateBinding Background}" CornerRadius="5" Opacity="1">
+                            <Border.Effect>
+                                <DropShadowEffect
+                                    Color="Black"
+                                    BlurRadius="10"
+                                    ShadowDepth="4"
+                                    Opacity="0.6" />
+                            </Border.Effect>
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Opacity" Value="0.7"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Button.Template>
+                <TextBlock FontSize="13" FontFamily="Arial" TextAlignment="Center">Встановити<LineBreak/> Локалізацію</TextBlock>
+            </Button>
+
+            <!-- Асистент -->
+            <Button x:Name="BtnAssistant" Width="80" Height="80" Background="#30546E" Foreground="White" Click="Assistant_Click" Cursor="Hand" Margin="0,8,0,0">
+                <Button.Template>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border" Background="{TemplateBinding Background}" CornerRadius="5" Opacity="1">
+                            <Border.Effect>
+                                <DropShadowEffect
+                                    Color="Black"
+                                    BlurRadius="10"
+                                    ShadowDepth="4"
+                                    Opacity="0.6" />
+                            </Border.Effect>
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Opacity" Value="0.7"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Button.Template>
+                <StackPanel Orientation="Vertical" VerticalAlignment="Center" HorizontalAlignment="Center">
+                    <Image Source="Images/LIA.png" Width="50" Height="50" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,5,0,0">
+                    <Image.Effect>
+                        <DropShadowEffect Color="Black" BlurRadius="8" ShadowDepth="2" Opacity="0.8"/>
+                    </Image.Effect>
+                </Image>
+                    <TextBlock Text="Л.І.А"
+                               FontSize="15"
+                               Foreground="White"
+                               HorizontalAlignment="Center"
+                               Margin="0,5,0,4"/>
+                </StackPanel>
+            </Button>
+
+            <!-- Settings Global -->
+            <Button x:Name="BtnSettings" Width="80" Height="80" Background="#30546E" Foreground="White" Click="Settings_Click" Cursor="Hand" Margin="0,8,0,0">
+                <Button.Template>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="border" Background="{TemplateBinding Background}" CornerRadius="5" Opacity="1">
+                            <Border.Effect>
+                                <DropShadowEffect
+                                    Color="Black"
+                                    BlurRadius="10"
+                                    ShadowDepth="4"
+                                    Opacity="0.6" />
+                            </Border.Effect>
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="border" Property="Opacity" Value="0.7"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Button.Template>
+                <Image Source="Images/settings.png" Width="40" Height="40" HorizontalAlignment="Center" VerticalAlignment="Center">
+                    <Image.Effect>
+                        <DropShadowEffect Color="Black" BlurRadius="8" ShadowDepth="2" Opacity="0.8"/>
+                    </Image.Effect>
+                </Image>
+            </Button>
+
+        </StackPanel>
+
+        <!-- ========== Тост-повідомлення ========== -->
+        <Border x:Name="ToastMessage"
+                Width="300"
+                Background="#661F4260"
+                CornerRadius="5"
+                Padding="12,8"
+                Opacity="0"
+                HorizontalAlignment="Left"
+                VerticalAlignment="Bottom"
+                Margin="40,0,0,20"
+                RenderTransformOrigin="0.5,0.5"
+                Visibility="Collapsed">
+            <Border.RenderTransform>
+                <TranslateTransform Y="30"/>
+            </Border.RenderTransform>
+
+            <Border.Effect>
+                <DropShadowEffect Color="Black"
+                          BlurRadius="12"
+                          ShadowDepth="3"
+                          Opacity="0.7"/>
+            </Border.Effect>
+
+            <TextBlock x:Name="ToastText"
+                       Foreground="White"
+                       FontSize="14"
+                       FontFamily="Arial"
+                       TextWrapping="Wrap"/>
+        </Border>
+
+    </Grid>
+</Window>
