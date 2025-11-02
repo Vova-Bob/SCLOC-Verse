@@ -1,4 +1,5 @@
 ﻿using Newtonsoft.Json;
+using StarCitizenUA.Models;
 using System.IO;
 
 namespace StarCitizenUA.Services

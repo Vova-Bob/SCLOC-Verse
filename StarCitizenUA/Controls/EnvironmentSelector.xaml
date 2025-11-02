@@ -7,15 +7,13 @@
     <!--
         Цей елемент керування реалізує стилізований випадаючий список для
         вибору серед декількох папок (наприклад "LIVE" та "PTU").
-        Дизайн був відтворений за зразком інтерфейсу з гри Star Citizen.
-
+        Дизайн був відтворений за зразком інтерфейсу з гри Star Citizen.
         Основні особливості:
         - Верхній заголовок із назвою групи ("Вміст папки").
         - Комбобокс з двома рядками: назва оточення та версія.
         - Кнопка-шестерня для виклику налаштувань поруч зі стрілкою випадаючого списку.
         - Розворот стрілки при відкритті/закритті списку.
         - Підсвічування вибраного пункту зі значком галочки.
-
         Коментарі українською допомагають краще розуміти логіку елемента.
     -->
     <UserControl.Resources>
@@ -165,6 +163,7 @@
                   Width="250" Height="50"
                   Style="{StaticResource EnvironmentComboBoxStyle}"
                   ItemsSource="{Binding Environments, RelativeSource={RelativeSource AncestorType=UserControl}}"
-                  SelectedIndex="0"/>
+                  SelectedIndex="0"
+                  SelectionChanged="EnvironmentComboBox_SelectionChanged"/>
     </StackPanel>
 </UserControl>

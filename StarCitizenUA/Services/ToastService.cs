@@ -10,7 +10,7 @@ namespace StarCitizenUA.Services
     {
         private readonly Border _toastBorder;
         private readonly TextBlock _toastText;
-        private CancellationTokenSource _cts;
+        private CancellationTokenSource? _cts;
 
         public ToastService(Border toastBorder, TextBlock toastText)
         {

@@ -1,11 +1,12 @@
 ﻿using StarCitizenUA.Interfaces;
 using StarCitizenUA.Services;
+using StarCitizenUA.Services.LiaServices;
+using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Navigation;
-using System.Windows.Shapes;
 
 namespace StarCitizenUA
 {
@@ -21,6 +22,7 @@ namespace StarCitizenUA
         private bool isPathSet = false;
         private bool isLiaPathSet = false;
         private bool isSettingButtonClicked = false;
+        private ILocalizationInstaller _localizationInstaller;
 
         private void Localization_Click(object sender, RoutedEventArgs e)
         {
@@ -49,17 +51,23 @@ namespace StarCitizenUA
             _searchFolder = new SearchFolder(_toastService);
             _windowHelper = new WindowHelper();
             _linkService = new LinkService();
+            _localizationInstaller = new LocalizationInstaller();
             _voiceAttackFolderHelper = new VoiceAttackFolderHelper(_toastService);
 
             BtnAutoSearch.Loaded += (s, e) => SetAutoSearchButtonState(isPathSet);
             BtnLiaAutoSearch.Loaded += (s, e) => SetLiaAutoSearchButtonState(isLiaPathSet);
             Loaded += MainWindow_Loaded;
             EnvSelector.GearClicked += EnvSelector_GearClicked;
+            EnvSelector.SelectedEnvironmentChanged += (s, e) => UpdateInstallButtonText();
         }
 
         private void EnvSelector_GearClicked(object? sender, EventArgs e)
         {
             ShowCanvas("settings");
+        }
+        private void EnvSelector_SelectionChanged(object? sender, EventArgs e)
+        {
+            UpdateInstallButtonText();
         }
 
         public void Read()
@@ -96,6 +104,7 @@ namespace StarCitizenUA
                 // ► підвантажуємо реальні папки/версії у селектор
                 if (EnvSelector != null)
                     await EnvSelector.UpdateFromGameFolderAsync(localFolder);
+                UpdateInstallButtonText();
             }
             else
             {
@@ -260,7 +269,7 @@ namespace StarCitizenUA
             isPathSet = pathSet;
 
             var btnText = (TextBlock)BtnAutoSearch.Template.FindName("BtnText", BtnAutoSearch);
-            var bgPath = (Path)BtnAutoSearch.Template.FindName("BgPath", BtnAutoSearch);
+            var bgPath = (System.Windows.Shapes.Path)BtnAutoSearch.Template.FindName("BgPath", BtnAutoSearch);
 
             if (btnText == null || bgPath == null) return;
 
@@ -281,7 +290,7 @@ namespace StarCitizenUA
             isLiaPathSet = liaPathSet;
 
             var btnText = (TextBlock)BtnLiaAutoSearch.Template.FindName("BtnText", BtnLiaAutoSearch);
-            var bgPath = (Path)BtnLiaAutoSearch.Template.FindName("BgPath", BtnLiaAutoSearch);
+            var bgPath = (System.Windows.Shapes.Path)BtnLiaAutoSearch.Template.FindName("BgPath", BtnLiaAutoSearch);
 
             if (btnText == null || bgPath == null) return;
 
@@ -297,39 +306,158 @@ namespace StarCitizenUA
             }
         }
 
-        // Обробник кнопки вибору папки вручну
+        // Обробник кнопки вибору папки локалізації вручну
         private async void BtnSelectFolder_Click(object sender, RoutedEventArgs e)
         {
             var dialog = new System.Windows.Forms.FolderBrowserDialog();
             if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
             {
-                localFolder = dialog.SelectedPath;
-                TxtSelectedPath.Text = localFolder;
+                localLiaFolder = dialog.SelectedPath;
+                TxtSelectedPath.Text = localLiaFolder;
 
-                Settings.Default.StarCitizenUA = localFolder;
+                Settings.Default.StarCitizenUA = localLiaFolder;
                 Settings.Default.Save();
 
-                _toastService.ShowToast($"Вибрано папку: {localFolder}");
+                _toastService.ShowToast($"Вибрано папку: {localLiaFolder}");
 
                 SetAutoSearchButtonState(true);
 
                 // ► оновити список папок/версій
                 if (EnvSelector != null)
-                    await EnvSelector.UpdateFromGameFolderAsync(localFolder);
+                    await EnvSelector.UpdateFromGameFolderAsync(localLiaFolder);
             }
         }
 
-        private void BtnInstall_Click(object sender, RoutedEventArgs e)
+        //Встановлення локалізації
+        private async void BtnInstall_Click(object sender, RoutedEventArgs e)
         {
-            string path = TxtLiaSelectedPath.Text;
-            if (string.IsNullOrWhiteSpace(path) || path == DefaultPathText)
+            if (!TryGetSelectedEnvironmentFolder(out var environmentFolder, out var environmentName, "встановлення локалізації"))
             {
-                _toastService.ShowToast("Будь ласка, оберіть папку перед встановленням.");
                 return;
             }
 
-            _toastService.ShowToast($"Встановлення локалізації у: {path}");
+            BtnInstall.IsEnabled = false;
 
+            var env = EnvSelector.SelectedEnvironment;
+
+            if (env == null || string.IsNullOrWhiteSpace(env.FolderPath))
+            {
+                _toastService.ShowToast("Будь ласка, оберіть середовище перед встановленням.");
+                return;
+            }
+
+            try
+            {
+                var result = await _localizationInstaller.InstallAsync(env.FolderPath, env.Name);
+
+                _toastService.ShowToast(result.Message);
+            }
+            catch (Exception ex)
+            {
+                _toastService.ShowToast($"Помилка: {ex.Message}");
+            }
+            finally
+            {
+                BtnInstall.IsEnabled = true;
+                UpdateInstallButtonText();
+            }
+        }
+
+
+        //Видалення локалізації
+        private async void LocalisationDelete_Click(object sender, RoutedEventArgs e)
+        {
+            var env = EnvSelector.SelectedEnvironment;
+
+            if (env == null || string.IsNullOrWhiteSpace(env.FolderPath))
+            {
+                _toastService.ShowToast("Будь ласка, оберіть середовище для видалення локалізації.");
+                return;
+            }
+
+            try
+            {
+                var result = await _localizationInstaller.DeleteAsync(env.FolderPath, env.Name);
+                
+                 UpdateInstallButtonText();
+                _toastService.ShowToast(result.Message);
+            }
+            catch (Exception ex)
+            {
+                _toastService.ShowToast($"Помилка при видаленні локалізації: {ex.Message}");
+            }
+        }
+
+        private void UpdateInstallButtonText()
+        {
+            if (BtnInstall == null)
+            {
+                return;
+            }
+
+            var selectedEnvironment = EnvSelector?.SelectedEnvironment;
+            if (selectedEnvironment == null)
+            {
+                BtnInstall.Content = "Встановити";
+                return;
+            }
+
+            string? environmentFolder = null;
+
+            if (!string.IsNullOrWhiteSpace(selectedEnvironment.FolderPath))
+            {
+                environmentFolder = selectedEnvironment.FolderPath;
+            }
+            else if (!string.IsNullOrWhiteSpace(localFolder))
+            {
+                environmentFolder = System.IO.Path.Combine(localFolder, selectedEnvironment.Name);
+            }
+
+            if (string.IsNullOrWhiteSpace(environmentFolder) || !Directory.Exists(environmentFolder))
+            {
+                BtnInstall.Content = "Встановити";
+                return;
+            }
+
+            string userCfgPath = System.IO.Path.Combine(environmentFolder, "user.cfg");
+            BtnInstall.Content = File.Exists(userCfgPath) ? "Оновити" : "Встановити";
+        }
+
+        private bool TryGetSelectedEnvironmentFolder(out string environmentFolder, out string environmentName, string operationDescription)
+        {
+            environmentFolder = string.Empty;
+            environmentName = string.Empty;
+
+            var selectedEnvironment = EnvSelector?.SelectedEnvironment;
+            if (selectedEnvironment is null)
+            {
+                _toastService.ShowToast($"Оберіть середовище (LIVE, PTU тощо) для {operationDescription}.");
+                return false;
+            }
+
+            environmentName = selectedEnvironment.Name;
+
+            if (!string.IsNullOrWhiteSpace(selectedEnvironment.FolderPath))
+            {
+                environmentFolder = selectedEnvironment.FolderPath;
+            }
+            else if (!string.IsNullOrWhiteSpace(localFolder))
+            {
+                environmentFolder = System.IO.Path.Combine(localFolder, selectedEnvironment.Name);
+            }
+            else
+            {
+                _toastService.ShowToast($"Будь ласка, оберіть папку StarCitizen перед {operationDescription}.");
+                return false;
+            }
+
+            if (!Directory.Exists(environmentFolder))
+            {
+                _toastService.ShowToast("Обрану папку середовища не знайдено. Оновіть список середовищ.");
+                return false;
+            }
+
+            return true;
         }
 
         private void ReturnToHome_Click(object sender, RoutedEventArgs e)
@@ -407,7 +535,7 @@ namespace StarCitizenUA
 
                 if (!string.IsNullOrEmpty(foundFolder))
                 {
-                    localFolder = foundFolder;
+                    localLiaFolder = foundFolder;
                     TxtLiaSelectedPath.Text = foundFolder;
 
                     Settings.Default.StarCitizenLIA = foundFolder;
@@ -425,7 +553,7 @@ namespace StarCitizenUA
             }
             else
             {
-                localFolder = string.Empty;
+                localLiaFolder = string.Empty;
                 TxtLiaSelectedPath.Text = DefaultPathText;
 
                 Settings.Default.StarCitizenLIA = string.Empty;
@@ -444,15 +572,10 @@ namespace StarCitizenUA
             SetActiveButton("assistant");
         }
 
-        private void BtnLiaInstall_Click(object sender, RoutedEventArgs e)
+        //Встановлення LIA
+        private async void BtnLiaInstall_Click(object sender, RoutedEventArgs e)
         {
 
-        }
-
-        // Кнопка видалення локалізації (заглушка).
-        private void LocalisationDelete_Click(object sender, RoutedEventArgs e) 
-        {
-            _toastService.ShowToast("Локалізацію видалено!.");
         }
     }
 }

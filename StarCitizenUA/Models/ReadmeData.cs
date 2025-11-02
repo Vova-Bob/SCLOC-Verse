@@ -1,4 +1,4 @@
-﻿namespace StarCitizenUA.Services
+﻿namespace StarCitizenUA.Models
 {
     public class ReadmeData
     {
