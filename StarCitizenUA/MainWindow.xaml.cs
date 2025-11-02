@@ -62,7 +62,7 @@ namespace StarCitizenUA
             ShowCanvas("settings");
         }
 
-        public void Reed()
+        public void Read()
         {
             string jsonPath = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "PathText.json");
             var jsonService = new JsonService(jsonPath);
@@ -78,7 +78,7 @@ namespace StarCitizenUA
             _windowHelper.ApplyWindowRoundCorners(this);
             MainGrid.MouseMove += (s, e2) => _windowHelper.HandleMouseMove(this, bgImage, e2.GetPosition(MainGrid), MainGrid);
             MainGrid.MouseLeave += (s, e2) => _windowHelper.HandleMouseLeave(this, bgImage, MainGrid);
-            Reed();
+            Read();
             BtnAutoSearch.ApplyTemplate();
             BtnLiaAutoSearch.ApplyTemplate();
             string savedPath = Settings.Default.StarCitizenUA;
