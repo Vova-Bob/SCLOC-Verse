@@ -3,6 +3,7 @@ using StarCitizenUA.Interfaces;
 using StarCitizenUA.Services;
 using StarCitizenUA.Services.LiaServices;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Navigation;
 
@@ -31,7 +32,7 @@ namespace StarCitizenUA.Views
         public MainWindow()
         {
             InitializeComponent();
-            _toastService = new ToastService(ToastMessage, ToastText);
+            _toastService = new ToastService(AppToast.ToastBorder, AppToast.ToastText);
             _searchFolder = new SearchFolder(_toastService);
             _windowHelper = new WindowHelper();
             _linkService = new LinkService(_toastService);
