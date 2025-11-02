@@ -3,6 +3,7 @@ using System.IO;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
+using StarCitizenUA.Models;
 
 namespace StarCitizenUA.Controls
 {
@@ -105,12 +106,5 @@ namespace StarCitizenUA.Controls
             }
             catch { return "версія невідома"; }
         }
-    }
-
-    public class EnvironmentOption
-    {
-        public string Name { get; set; } = string.Empty;
-        public string Version { get; set; } = string.Empty;
-        public string FolderPath { get; set; } = string.Empty;
     }
 }
