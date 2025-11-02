@@ -106,5 +106,26 @@ namespace StarCitizenUA.Controls
             }
             catch { return "версія невідома"; }
         }
+
+        //Перевірка вибраного середовища
+        public bool TryGetSelectedEnvironment(out EnvironmentOption? env, out string? folderPath, out string? envName, string operationDescription)
+        {
+            env = SelectedEnvironment;
+            folderPath = null;
+            envName = null;
+
+            if (env == null)
+            {
+                return false;
+            }
+
+            envName = env.Name;
+            folderPath = !string.IsNullOrWhiteSpace(env.FolderPath) ? env.FolderPath : null;
+
+            if (folderPath == null || !Directory.Exists(folderPath))
+                return false;
+
+            return true;
+        }
     }
 }
