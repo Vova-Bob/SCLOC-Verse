@@ -49,8 +49,6 @@ namespace StarCitizenUA.Views
         private string? localFolder = string.Empty;
         private string? localLiaFolder = string.Empty;
         public string DefaultPathText = string.Empty;
-        private bool isPathSet;
-        private bool isLiaPathSet;
         private bool isSettingButtonClicked;
 
         public MainWindow(MainWindowViewModel viewModel, IWindowHelper windowHelper, ILocalizationInstaller localizationInstaller, IReadmeService readmeService)
@@ -362,7 +360,6 @@ namespace StarCitizenUA.Views
             if (!string.IsNullOrWhiteSpace(folder))
             {
                 localFolder = folder;
-                isPathSet = true;
                 TxtSelectedPath.Text = folder;
 
                 _buttonHelper.SetButtonState(BtnAutoSearch, true);
@@ -376,7 +373,6 @@ namespace StarCitizenUA.Views
             else
             {
                 localFolder = string.Empty;
-                isPathSet = false;
                 TxtSelectedPath.Text = DefaultPathText;
 
                 _buttonHelper.SetButtonState(BtnAutoSearch, false);
@@ -392,7 +388,6 @@ namespace StarCitizenUA.Views
             if (!string.IsNullOrWhiteSpace(folder))
             {
                 localLiaFolder = folder;
-                isLiaPathSet = true;
                 TxtLiaSelectedPath.Text = folder;
 
                 _buttonHelper.SetButtonState(BtnLiaAutoSearch, true);
@@ -401,7 +396,6 @@ namespace StarCitizenUA.Views
             else
             {
                 localLiaFolder = string.Empty;
-                isLiaPathSet = false;
                 TxtLiaSelectedPath.Text = DefaultPathText;
 
                 _buttonHelper.SetButtonState(BtnLiaAutoSearch, false);

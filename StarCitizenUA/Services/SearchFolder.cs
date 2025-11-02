@@ -16,16 +16,18 @@ namespace StarCitizenUA
             _settingsService = settingsService;
         }
 
-        public async Task<string?> GetOrPromptGameFolderAsync(TextBox folderDisplayControl, CancellationToken cancellationToken)
+        public Task<string?> GetOrPromptGameFolderAsync(TextBox folderDisplayControl, CancellationToken cancellationToken)
         {
-            var savedFolder = _settingsService.GetGameFolder();
+            cancellationToken.ThrowIfCancellationRequested();
 
+            var savedFolder = _settingsService.GetGameFolder();
             if (!string.IsNullOrEmpty(savedFolder))
             {
                 folderDisplayControl.Text = savedFolder;
-                return savedFolder;
+                return Task.FromResult<string?>(savedFolder);
             }
-            return null;
+
+            return Task.FromResult<string?>(null);
         }
 
         public async Task<string?> FindGameFolderAsync(int maxDepth, CancellationToken cancellationToken)
