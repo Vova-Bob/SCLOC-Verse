@@ -9,7 +9,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Remove="PathText.json" />
+    <None Remove="Images\background_general.png" />
+    <None Remove="Images\community_logo.png" />
+    <None Remove="Images\logo_Lia.png" />
   </ItemGroup>
 
   <ItemGroup>
@@ -21,6 +23,12 @@
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
     <PackageReference Include="WindowsAPICodePack.Shell.CommonFileDialogs" Version="1.1.5" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="Images\background_general.png" />
+    <Resource Include="Images\community_logo.png" />
+    <Resource Include="Images\logo_Lia.png" />
   </ItemGroup>
 
   <ItemGroup>
@@ -36,10 +44,6 @@
       <Generator>SettingsSingleFileGenerator</Generator>
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>
     </None>
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="Images\" />
   </ItemGroup>
 
 </Project>
