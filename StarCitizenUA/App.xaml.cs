@@ -14,6 +14,7 @@ namespace StarCitizenUA
 
             var compositionRoot = new AppCompositionRoot();
             var window = compositionRoot.CreateMainWindow();
+            MainWindow = window;
             window.Show();
         }
     }
