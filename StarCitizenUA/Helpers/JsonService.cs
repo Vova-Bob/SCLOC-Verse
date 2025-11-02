@@ -2,7 +2,7 @@
 using StarCitizenUA.Models;
 using System.IO;
 
-namespace StarCitizenUA.Services
+namespace StarCitizenUA.Helpers
 {
     public class JsonService
     {
@@ -17,7 +17,7 @@ namespace StarCitizenUA.Services
         {
             if (!File.Exists(_filePath))
             {
-                return new ReadmeData { ReadmeText = "Файл readme.json не знайдено." };
+                return new ReadmeData { ReadmeText = "Файл PathText.json не знайдено." };
             }
 
             string json = File.ReadAllText(_filePath);

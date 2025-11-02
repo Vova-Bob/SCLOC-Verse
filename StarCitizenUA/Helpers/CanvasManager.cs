@@ -27,7 +27,6 @@ namespace StarCitizenUA.Helpers
             if (_window.CanvasLiaSettings.Visibility == Visibility.Visible) return _window.CanvasLiaSettings;
             return null;
         }
-
         public void SwitchCanvas(Canvas showCanvas, double durationSeconds = 0.3)
         {
             if (showCanvas == null) return;
@@ -66,48 +65,31 @@ namespace StarCitizenUA.Helpers
             _window.CanvasSettings.Visibility = Visibility.Collapsed;
             _window.CanvasLiaSettings.Visibility = Visibility.Collapsed;
 
-            switch (which)
+            switch (which.ToLower())
             {
                 case "home":
                     _window.CanvasHome.Visibility = Visibility.Visible;
+                    _currentCanvas = _window.CanvasHome;
                     break;
                 case "localization":
                     _window.CanvasLocalization.Visibility = Visibility.Visible;
+                    _currentCanvas = _window.CanvasLocalization;
                     break;
                 case "assistant":
                     _window.CanvasAssistant.Visibility = Visibility.Visible;
+                    _currentCanvas = _window.CanvasAssistant;
                     break;
                 case "settings":
                     _window.CanvasSettings.Visibility = Visibility.Visible;
+                    _currentCanvas = _window.CanvasSettings;
                     break;
                 case "liasettings":
                     _window.CanvasLiaSettings.Visibility = Visibility.Visible;
+                    _currentCanvas = _window.CanvasLiaSettings;
                     break;
-            }
-
-            SetActiveButton(which);
-        }
-
-        public void SetActiveButton(string active)
-        {
-            // Скидаємо колір усіх
-            var inactive = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#143A52"));
-            var activeBrush = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#5190C3"));
-
-            _window.BtnLocalization.Background = inactive;
-            _window.BtnAssistant.Background = inactive;
-            _window.BtnSettings.Background = inactive;
-
-            switch (active)
-            {
-                case "localization":
-                    _window.BtnLocalization.Background = activeBrush;
-                    break;
-                case "assistant":
-                    _window.BtnAssistant.Background = activeBrush;
-                    break;
-                case "settings":
-                    _window.BtnSettings.Background = activeBrush;
+                default:
+                    _window.CanvasHome.Visibility = Visibility.Visible;
+                    _currentCanvas = _window.CanvasHome;
                     break;
             }
         }
