@@ -4,12 +4,12 @@ using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
 
-namespace StarCitizenUA.Services
+namespace StarCitizenUA.Helpers
 {
     public class WindowHelper : IWindowHelper
     {
         [DllImport("dwmapi.dll")]
-        private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int attrValue, int attrSize);
+        private static extern int DwmSetWindowAttribute(nint hwnd, int attr, ref int attrValue, int attrSize);
 
         public void ApplyWindowRoundCorners(Window window)
         {

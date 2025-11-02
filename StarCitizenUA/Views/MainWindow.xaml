@@ -1,4 +1,4 @@
-﻿<Window x:Class="StarCitizenUA.MainWindow"
+﻿<Window x:Class="StarCitizenUA.Views.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:controls="clr-namespace:StarCitizenUA.Controls"
@@ -246,7 +246,7 @@
                                                   TextElement.FontWeight="Bold"
                                                   TextElement.FontSize="14"/>
                             </Grid>
-                            
+
                             <ControlTemplate.Triggers>
                                 <Trigger Property="IsMouseOver" Value="True">
                                     <Setter TargetName="BgPath" Property="Opacity" Value="0.7"/>
@@ -996,7 +996,7 @@
                             </ControlTemplate.Triggers>
                         </ControlTemplate>
                     </Button.Template>
-                </Button>            
+                </Button>
 
                 <!-- TextBox для відображення вибраного шляху -->
                 <Border Canvas.Left="285" Canvas.Top="88"
@@ -1087,10 +1087,10 @@
                 </Button.Template>
                 <StackPanel Orientation="Vertical" VerticalAlignment="Center" HorizontalAlignment="Center">
                     <Image Source="Images/LIA.png" Width="50" Height="50" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,5,0,0">
-                    <Image.Effect>
-                        <DropShadowEffect Color="Black" BlurRadius="8" ShadowDepth="2" Opacity="0.8"/>
-                    </Image.Effect>
-                </Image>
+                        <Image.Effect>
+                            <DropShadowEffect Color="Black" BlurRadius="8" ShadowDepth="2" Opacity="0.8"/>
+                        </Image.Effect>
+                    </Image>
                     <TextBlock Text="Л.І.А"
                                FontSize="15"
                                Foreground="White"

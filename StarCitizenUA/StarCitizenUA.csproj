@@ -9,10 +9,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Remove="Images\background.png" />
-    <None Remove="Images\LIA.png" />
-    <None Remove="Images\MadeByTheCommunity_Black 1.png" />
-    <None Remove="Images\Settings.png" />
     <None Remove="PathText.json" />
   </ItemGroup>
 
@@ -28,13 +24,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Resource Include="Images\background.png" />
-    <Resource Include="Images\LIA.png" />
-    <Resource Include="Images\MadeByTheCommunity_Black 1.png" />
-    <Resource Include="Images\Settings.png" />
-  </ItemGroup>
-
-  <ItemGroup>
     <Compile Update="Settings.Designer.cs">
       <DesignTimeSharedInput>True</DesignTimeSharedInput>
       <AutoGen>True</AutoGen>
@@ -47,6 +36,10 @@
       <Generator>SettingsSingleFileGenerator</Generator>
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>
     </None>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Images\" />
   </ItemGroup>
 
 </Project>

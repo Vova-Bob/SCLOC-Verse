@@ -1,4 +1,5 @@
-﻿using StarCitizenUA.Interfaces;
+﻿using StarCitizenUA.Helpers;
+using StarCitizenUA.Interfaces;
 using StarCitizenUA.Services;
 using StarCitizenUA.Services.LiaServices;
 using System.IO;
@@ -8,7 +9,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Navigation;
 
-namespace StarCitizenUA
+namespace StarCitizenUA.Views
 {
     public partial class MainWindow : Window
     {
@@ -17,32 +18,15 @@ namespace StarCitizenUA
         private IToastService _toastService;
         private ISearchFolder _searchFolder;
         private IVoiceAttackFolderHelper _voiceAttackFolderHelper;
+        private ICanvasManager _canvasManager;
+        private ILocalizationInstaller _localizationInstaller;
         private string? localFolder = "";
         private string? localLiaFolder = "";
         private bool isPathSet = false;
         private bool isLiaPathSet = false;
         private bool isSettingButtonClicked = false;
-        private ILocalizationInstaller _localizationInstaller;
 
-        private void Localization_Click(object sender, RoutedEventArgs e)
-        {
-            ShowCanvas("localization");
-            isSettingButtonClicked = false;
-        }
-        private void Assistant_Click(object sender, RoutedEventArgs e)
-        {
-            ShowCanvas("assistant");
-            isSettingButtonClicked = false;
-        }
-        private void Settings_Click(object sender, RoutedEventArgs e)
-        {
-            ShowCanvas("settings");
-            isSettingButtonClicked = true;
-        }
-        private void LocalisationSettings_Click(object sender, RoutedEventArgs e) => ShowCanvas("settings");
-        private void Minimize_Click(object sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;
-        private void Close_Click(object sender, RoutedEventArgs e) => Close();
-        private string DefaultPathText ="";
+        private string DefaultPathText = "";
 
         public MainWindow()
         {
@@ -53,6 +37,7 @@ namespace StarCitizenUA
             _linkService = new LinkService();
             _localizationInstaller = new LocalizationInstaller();
             _voiceAttackFolderHelper = new VoiceAttackFolderHelper(_toastService);
+            _canvasManager = new CanvasManager(this);
 
             BtnAutoSearch.Loaded += (s, e) => SetAutoSearchButtonState(isPathSet);
             BtnLiaAutoSearch.Loaded += (s, e) => SetLiaAutoSearchButtonState(isLiaPathSet);
@@ -61,10 +46,6 @@ namespace StarCitizenUA
             EnvSelector.SelectedEnvironmentChanged += (s, e) => UpdateInstallButtonText();
         }
 
-        private void EnvSelector_GearClicked(object? sender, EventArgs e)
-        {
-            ShowCanvas("settings");
-        }
         private void EnvSelector_SelectionChanged(object? sender, EventArgs e)
         {
             UpdateInstallButtonText();
@@ -134,7 +115,7 @@ namespace StarCitizenUA
                 UpdateLiaSelectButtonState(true);
             }
 
-            ShowCanvas("home");
+            _canvasManager.ShowCanvas("home");
         }
 
         private void TitleBar_MouseDown(object sender, MouseButtonEventArgs e)
@@ -156,35 +137,35 @@ namespace StarCitizenUA
             e.Handled = true;
         }
 
-        private void ShowCanvas(string which)
-        {
-            CanvasHome.Visibility = Visibility.Collapsed;
-            CanvasLocalization.Visibility = Visibility.Collapsed;
-            CanvasAssistant.Visibility = Visibility.Collapsed;
-            CanvasSettings.Visibility = Visibility.Collapsed;
-            CanvasLiaSettings.Visibility = Visibility.Collapsed;
+        //private void ShowCanvas(string which)
+        //{
+        //    CanvasHome.Visibility = Visibility.Collapsed;
+        //    CanvasLocalization.Visibility = Visibility.Collapsed;
+        //    CanvasAssistant.Visibility = Visibility.Collapsed;
+        //    CanvasSettings.Visibility = Visibility.Collapsed;
+        //    CanvasLiaSettings.Visibility = Visibility.Collapsed;
 
-            switch (which)
-            {
-                case "home":
-                    CanvasHome.Visibility = Visibility.Visible;
-                    break;
-                case "localization":
-                    CanvasLocalization.Visibility = Visibility.Visible;
-                    break;
-                case "assistant":
-                    CanvasAssistant.Visibility = Visibility.Visible;
-                    break;
-                case "settings":
-                    CanvasSettings.Visibility = Visibility.Visible;
-                    break;
-                case "liasettings":
-                    CanvasLiaSettings.Visibility = Visibility.Visible;
-                    break;
-            }
+        //    switch (which)
+        //    {
+        //        case "home":
+        //            CanvasHome.Visibility = Visibility.Visible;
+        //            break;
+        //        case "localization":
+        //            CanvasLocalization.Visibility = Visibility.Visible;
+        //            break;
+        //        case "assistant":
+        //            CanvasAssistant.Visibility = Visibility.Visible;
+        //            break;
+        //        case "settings":
+        //            CanvasSettings.Visibility = Visibility.Visible;
+        //            break;
+        //        case "liasettings":
+        //            CanvasLiaSettings.Visibility = Visibility.Visible;
+        //            break;
+        //    }
 
-            SetActiveButton(which);
-        }
+        //    SetActiveButton(which);
+        //}
 
         private void SetActiveButton(string active)
         {
@@ -306,88 +287,6 @@ namespace StarCitizenUA
             }
         }
 
-        // Обробник кнопки вибору папки локалізації вручну
-        private async void BtnSelectFolder_Click(object sender, RoutedEventArgs e)
-        {
-            var dialog = new System.Windows.Forms.FolderBrowserDialog();
-            if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
-            {
-                localLiaFolder = dialog.SelectedPath;
-                TxtSelectedPath.Text = localLiaFolder;
-
-                Settings.Default.StarCitizenUA = localLiaFolder;
-                Settings.Default.Save();
-
-                _toastService.ShowToast($"Вибрано папку: {localLiaFolder}");
-
-                SetAutoSearchButtonState(true);
-
-                // ► оновити список папок/версій
-                if (EnvSelector != null)
-                    await EnvSelector.UpdateFromGameFolderAsync(localLiaFolder);
-            }
-        }
-
-        //Встановлення локалізації
-        private async void BtnInstall_Click(object sender, RoutedEventArgs e)
-        {
-            if (!TryGetSelectedEnvironmentFolder(out var environmentFolder, out var environmentName, "встановлення локалізації"))
-            {
-                return;
-            }
-
-            BtnInstall.IsEnabled = false;
-
-            var env = EnvSelector.SelectedEnvironment;
-
-            if (env == null || string.IsNullOrWhiteSpace(env.FolderPath))
-            {
-                _toastService.ShowToast("Будь ласка, оберіть середовище перед встановленням.");
-                return;
-            }
-
-            try
-            {
-                var result = await _localizationInstaller.InstallAsync(env.FolderPath, env.Name);
-
-                _toastService.ShowToast(result.Message);
-            }
-            catch (Exception ex)
-            {
-                _toastService.ShowToast($"Помилка: {ex.Message}");
-            }
-            finally
-            {
-                BtnInstall.IsEnabled = true;
-                UpdateInstallButtonText();
-            }
-        }
-
-
-        //Видалення локалізації
-        private async void LocalisationDelete_Click(object sender, RoutedEventArgs e)
-        {
-            var env = EnvSelector.SelectedEnvironment;
-
-            if (env == null || string.IsNullOrWhiteSpace(env.FolderPath))
-            {
-                _toastService.ShowToast("Будь ласка, оберіть середовище для видалення локалізації.");
-                return;
-            }
-
-            try
-            {
-                var result = await _localizationInstaller.DeleteAsync(env.FolderPath, env.Name);
-                
-                 UpdateInstallButtonText();
-                _toastService.ShowToast(result.Message);
-            }
-            catch (Exception ex)
-            {
-                _toastService.ShowToast($"Помилка при видаленні локалізації: {ex.Message}");
-            }
-        }
-
         private void UpdateInstallButtonText()
         {
             if (BtnInstall == null)
@@ -460,49 +359,15 @@ namespace StarCitizenUA
             return true;
         }
 
-        private void ReturnToHome_Click(object sender, RoutedEventArgs e)
-        {
-            CanvasHome.Visibility = Visibility.Visible;
-            CanvasLocalization.Visibility = Visibility.Collapsed;
-            CanvasAssistant.Visibility = Visibility.Collapsed;
-            CanvasSettings.Visibility = Visibility.Collapsed;
-
-            SetActiveButton("home");
-        }
-
-        private void ReturnToLocalization_Click(object sender, RoutedEventArgs e)
-        {
-            if (isSettingButtonClicked)
-            {
-                CanvasHome.Visibility = Visibility.Visible;
-                CanvasLocalization.Visibility = Visibility.Collapsed;
-                CanvasAssistant.Visibility = Visibility.Collapsed;
-                CanvasSettings.Visibility = Visibility.Collapsed;
-                SetActiveButton("home");
-                isSettingButtonClicked = false;
-            }
-            else
-            {
-                CanvasHome.Visibility = Visibility.Collapsed;
-                CanvasLocalization.Visibility = Visibility.Visible;
-                CanvasAssistant.Visibility = Visibility.Collapsed;
-                CanvasSettings.Visibility = Visibility.Collapsed;
-
-                SetActiveButton("localization");
-            }
-        }
-
-        private void ReturnToAssistant_Click(object sender, RoutedEventArgs e)
-        {
-            CanvasHome.Visibility = Visibility.Collapsed;
-            CanvasLocalization.Visibility = Visibility.Collapsed;
-            CanvasAssistant.Visibility = Visibility.Visible;
-            CanvasSettings.Visibility = Visibility.Collapsed;
-            CanvasLiaSettings.Visibility = Visibility.Collapsed;
-
-            SetActiveButton("assistant");
-
-        }
+        //private Canvas? GetCurrentVisibleCanvas()
+        //{
+        //    if (CanvasHome.Visibility == Visibility.Visible) return CanvasHome;
+        //    if (CanvasLocalization.Visibility == Visibility.Visible) return CanvasLocalization;
+        //    if (CanvasAssistant.Visibility == Visibility.Visible) return CanvasAssistant;
+        //    if (CanvasSettings.Visibility == Visibility.Visible) return CanvasSettings;
+        //    if (CanvasLiaSettings.Visibility == Visibility.Visible) return CanvasLiaSettings;
+        //    return null;
+        //}
 
         private void BtnReset_Cash(object sender, RoutedEventArgs e)
         {
@@ -510,6 +375,193 @@ namespace StarCitizenUA
             _toastService.ShowToast("Кеш очищено.");
         }
 
+        //public void SwitchCanvas(Canvas showCanvas, Canvas? hideCanvas, double durationSeconds = 0.3)
+        //{
+        //    if (showCanvas == null) return;
+
+        //    // Якщо є Canvas для сховання
+        //    if (hideCanvas != null)
+        //    {
+        //        DoubleAnimation fadeOut = new DoubleAnimation(0, TimeSpan.FromSeconds(durationSeconds));
+        //        fadeOut.Completed += (s, e) =>
+        //        {
+        //            hideCanvas.Visibility = Visibility.Collapsed;
+
+        //            // Після того, як сховали старий, показуємо новий
+        //            showCanvas.Opacity = 0;
+        //            showCanvas.Visibility = Visibility.Visible;
+        //            DoubleAnimation fadeIn = new DoubleAnimation(1, TimeSpan.FromSeconds(durationSeconds));
+        //            showCanvas.BeginAnimation(UIElement.OpacityProperty, fadeIn);
+        //        };
+        //        hideCanvas.BeginAnimation(UIElement.OpacityProperty, fadeOut);
+        //    }
+        //    else
+        //    {
+        //        // Якщо нічого сховати, просто плавно показати
+        //        showCanvas.Opacity = 0;
+        //        showCanvas.Visibility = Visibility.Visible;
+        //        DoubleAnimation fadeIn = new DoubleAnimation(1, TimeSpan.FromSeconds(durationSeconds));
+        //        showCanvas.BeginAnimation(UIElement.OpacityProperty, fadeIn);
+        //    }
+        //}
+
+        //================================ Button_Clicked Logic ================================
+
+        //-------------------------------- кнопки панелі ---------------------------------------
+        private void Minimize_Click(object sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;
+        private void Close_Click(object sender, RoutedEventArgs e) => Close();
+
+        //---------------------------------кнопки меню навігації програми------------------------
+        private void Localization_Click(object sender, RoutedEventArgs e)
+        {
+            _canvasManager.SwitchCanvas(CanvasLocalization);
+            SetActiveButton("localization");
+            isSettingButtonClicked = false;
+        }
+        private void Assistant_Click(object sender, RoutedEventArgs e)
+        {
+            _canvasManager.SwitchCanvas(CanvasAssistant);
+            SetActiveButton("assistant");
+            isSettingButtonClicked = false;
+        }
+        private void Settings_Click(object sender, RoutedEventArgs e)
+        {
+            _canvasManager.SwitchCanvas(CanvasSettings);
+            SetActiveButton("settings");
+            isSettingButtonClicked = true;
+        }
+
+        private void LocalisationSettings_Click(object sender, RoutedEventArgs e)
+        {
+            _canvasManager.SwitchCanvas(CanvasSettings);
+            SetActiveButton("settings");
+        }
+
+        private void ReturnToHome_Click(object sender, RoutedEventArgs e)
+        {
+            _canvasManager.SwitchCanvas(CanvasHome);
+            SetActiveButton("home");
+            isSettingButtonClicked = false;
+        }
+
+        private void ReturnToLocalization_Click(object sender, RoutedEventArgs e)
+        {
+            if (isSettingButtonClicked)
+            {
+                _canvasManager.SwitchCanvas(CanvasHome);
+                SetActiveButton("home");
+                isSettingButtonClicked = false;
+            }
+            else
+            {
+                _canvasManager.SwitchCanvas(CanvasLocalization);
+                SetActiveButton("localization");
+            }
+        }
+
+        private void ReturnToAssistant_Click(object sender, RoutedEventArgs e)
+        {
+            _canvasManager.SwitchCanvas(CanvasAssistant);
+            SetActiveButton("assistant");
+        }
+
+        private void EnvSelector_GearClicked(object? sender, EventArgs e)
+        {
+            _canvasManager.SwitchCanvas(CanvasSettings);
+        }
+
+        private void LiaSettings_Click(object sender, RoutedEventArgs e)
+        {
+            _canvasManager.SwitchCanvas(CanvasLiaSettings);
+            SetActiveButton("assistant");
+        }
+
+        //-------------------------------- кнопки встановлення локалізації ------------------------------
+
+        // Обробник кнопки вибору папки локалізації вручну
+        private async void BtnSelectFolder_Click(object sender, RoutedEventArgs e)
+        {
+            var dialog = new System.Windows.Forms.FolderBrowserDialog();
+            if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+            {
+                localLiaFolder = dialog.SelectedPath;
+                TxtSelectedPath.Text = localLiaFolder;
+
+                Settings.Default.StarCitizenUA = localLiaFolder;
+                Settings.Default.Save();
+
+                _toastService.ShowToast($"Вибрано папку: {localLiaFolder}");
+
+                SetAutoSearchButtonState(true);
+
+                // ► оновити список папок/версій
+                if (EnvSelector != null)
+                    await EnvSelector.UpdateFromGameFolderAsync(localLiaFolder);
+            }
+        }
+
+        //Встановлення локалізації
+        private async void BtnInstall_Click(object sender, RoutedEventArgs e)
+        {
+            if (!TryGetSelectedEnvironmentFolder(out var environmentFolder, out var environmentName, "встановлення локалізації"))
+            {
+                return;
+            }
+
+            BtnInstall.IsEnabled = false;
+
+            var env = EnvSelector.SelectedEnvironment;
+
+            if (env == null || string.IsNullOrWhiteSpace(env.FolderPath))
+            {
+                _toastService.ShowToast("Будь ласка, оберіть середовище перед встановленням.");
+                return;
+            }
+
+            try
+            {
+                var result = await _localizationInstaller.InstallAsync(env.FolderPath, env.Name);
+
+                _toastService.ShowToast(result.Message);
+            }
+            catch (Exception ex)
+            {
+                _toastService.ShowToast($"Помилка: {ex.Message}");
+            }
+            finally
+            {
+                BtnInstall.IsEnabled = true;
+                UpdateInstallButtonText();
+            }
+        }
+
+        //Видалення локалізації
+        private async void LocalisationDelete_Click(object sender, RoutedEventArgs e)
+        {
+            var env = EnvSelector.SelectedEnvironment;
+
+            if (env == null || string.IsNullOrWhiteSpace(env.FolderPath))
+            {
+                _toastService.ShowToast("Будь ласка, оберіть середовище для видалення локалізації.");
+                return;
+            }
+
+            try
+            {
+                var result = await _localizationInstaller.DeleteAsync(env.FolderPath, env.Name);
+
+                UpdateInstallButtonText();
+                _toastService.ShowToast(result.Message);
+            }
+            catch (Exception ex)
+            {
+                _toastService.ShowToast($"Помилка при видаленні локалізації: {ex.Message}");
+            }
+        }
+
+        //-----------------------------кнопки встановлення LIA ------------------------------
+
+        // ручний вибір папки для інсталяції LIA
         private void BtnSelectLiaFolder_Click(object sender, RoutedEventArgs e)
         {
             var dialog = new System.Windows.Forms.FolderBrowserDialog();
@@ -527,6 +579,7 @@ namespace StarCitizenUA
             }
         }
 
+        //автопошук папки для інсталяції LIA
         private async void BtnLiaAutoSearch_Click(object sender, RoutedEventArgs e)
         {
             if (!isLiaPathSet)
@@ -566,16 +619,13 @@ namespace StarCitizenUA
             }
         }
 
-        private void LiaSettings_Click(object sender, RoutedEventArgs e)
-        {
-            ShowCanvas("liasettings");
-            SetActiveButton("assistant");
-        }
-
         //Встановлення LIA
         private void BtnLiaInstall_Click(object sender, RoutedEventArgs e)
         {
             _toastService.ShowToast("Функція встановлення LIA ще не реалізована.");
         }
+
+
+        //======================================================================================
     }
 }
