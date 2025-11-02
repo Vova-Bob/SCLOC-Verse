@@ -500,11 +500,17 @@
                         </ControlTemplate>
                     </Button.Template>
 
-                    <Image Source="Images/settings.png" Width="30" Height="30" HorizontalAlignment="Center" VerticalAlignment="Center">
-                        <Image.Effect>
-                            <DropShadowEffect Color="Black" BlurRadius="8" ShadowDepth="2" Opacity="0.8"/>
-                        </Image.Effect>
-                    </Image>
+                    <TextBlock Text="&#xE713;"
+                               FontFamily="Segoe MDL2 Assets"
+                               FontSize="27"
+                               Foreground="#6DB9F8"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center">
+                        <TextBlock.Effect>
+                            <!-- Додаємо невелику розмиту тінь, щоб позначка краще виділялася на темному фоні -->
+                            <DropShadowEffect Color="Black" BlurRadius="4" ShadowDepth="0" Opacity="0.6"/>
+                        </TextBlock.Effect>
+                    </TextBlock>
 
                 </Button>
             </Canvas>
@@ -1117,11 +1123,17 @@
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Button.Template>
-                <Image Source="Images/settings.png" Width="40" Height="40" HorizontalAlignment="Center" VerticalAlignment="Center">
-                    <Image.Effect>
-                        <DropShadowEffect Color="Black" BlurRadius="8" ShadowDepth="2" Opacity="0.8"/>
-                    </Image.Effect>
-                </Image>
+                <TextBlock Text="&#xE713;"
+           FontFamily="Segoe MDL2 Assets"
+           FontSize="45"
+           Foreground="#6DB9F8"
+           HorizontalAlignment="Center"
+           VerticalAlignment="Center">
+                    <TextBlock.Effect>
+                        <!-- Додаємо невелику розмиту тінь, щоб позначка краще виділялася на темному фоні -->
+                        <DropShadowEffect Color="Black" BlurRadius="4" ShadowDepth="0" Opacity="0.6"/>
+                    </TextBlock.Effect>
+                </TextBlock>
             </Button>
 
         </StackPanel>

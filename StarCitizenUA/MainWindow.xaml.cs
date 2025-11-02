@@ -297,13 +297,14 @@ namespace StarCitizenUA
             }
         }
 
+        // Обробник кнопки вибору папки вручну
         private async void BtnSelectFolder_Click(object sender, RoutedEventArgs e)
         {
             var dialog = new System.Windows.Forms.FolderBrowserDialog();
             if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
             {
-                localLiaFolder = dialog.SelectedPath;
-                TxtLiaSelectedPath.Text = localLiaFolder;
+                localFolder = dialog.SelectedPath;
+                TxtSelectedPath.Text = localFolder;
 
                 Settings.Default.StarCitizenUA = localFolder;
                 Settings.Default.Save();
@@ -386,13 +387,13 @@ namespace StarCitizenUA
             var dialog = new System.Windows.Forms.FolderBrowserDialog();
             if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
             {
-                localFolder = dialog.SelectedPath;
-                TxtLiaSelectedPath.Text = localFolder;
+                localLiaFolder = dialog.SelectedPath;
+                TxtLiaSelectedPath.Text = localLiaFolder;
 
-                Settings.Default.StarCitizenLIA = localFolder;
+                Settings.Default.StarCitizenLIA = localLiaFolder;
                 Settings.Default.Save();
 
-                _toastService.ShowToast($"Вибрано папку: {localFolder}");
+                _toastService.ShowToast($"Вибрано папку: {localLiaFolder}");
 
                 SetLiaAutoSearchButtonState(true);
             }
