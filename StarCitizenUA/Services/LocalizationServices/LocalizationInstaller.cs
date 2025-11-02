@@ -34,7 +34,7 @@ namespace StarCitizenUA.Services
 
             // Завантажуємо global.ini одразу в папку локалізації
             var globalIniPath = Path.Combine(localizationDir, GlobalIniFileName);
-            await DownloadAssetAsync(asset.DownloadUrl, globalIniPath, cancellationToken);
+            await DownloadAssetAsync(asset.DownloadUrl!, globalIniPath, cancellationToken);
 
             cancellationToken.ThrowIfCancellationRequested();
 

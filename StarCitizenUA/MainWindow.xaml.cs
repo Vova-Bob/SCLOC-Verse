@@ -42,7 +42,7 @@ namespace StarCitizenUA
         private void LocalisationSettings_Click(object sender, RoutedEventArgs e) => ShowCanvas("settings");
         private void Minimize_Click(object sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;
         private void Close_Click(object sender, RoutedEventArgs e) => Close();
-        private string DefaultPathText;
+        private string DefaultPathText ="";
 
         public MainWindow()
         {
@@ -281,7 +281,7 @@ namespace StarCitizenUA
             else
             {
                 btnText.Text = "Автопошук";
-                bgPath.Fill = (SolidColorBrush)(new BrushConverter().ConvertFromString("#30546E"));
+                bgPath.Fill = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#30546E")!);
             }
         }
 
@@ -302,7 +302,7 @@ namespace StarCitizenUA
             else
             {
                 btnText.Text = "Автопошук";
-                bgPath.Fill = (SolidColorBrush)(new BrushConverter().ConvertFromString("#30546E"));
+                bgPath.Fill = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#30546E")!);
             }
         }
 
@@ -573,9 +573,9 @@ namespace StarCitizenUA
         }
 
         //Встановлення LIA
-        private async void BtnLiaInstall_Click(object sender, RoutedEventArgs e)
+        private void BtnLiaInstall_Click(object sender, RoutedEventArgs e)
         {
-
+            _toastService.ShowToast("Функція встановлення LIA ще не реалізована.");
         }
     }
 }
