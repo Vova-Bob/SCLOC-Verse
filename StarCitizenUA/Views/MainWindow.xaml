@@ -45,15 +45,15 @@
                                     CornerRadius="12"
                                     Background="{TemplateBinding Background}"
                                     BorderBrush="{StaticResource MenuBorder}"
-                                    BorderThickness="2">
+                                    BorderThickness="1">
                                 <Grid>
                                     <!-- верхній блік -->
-                                    <Border CornerRadius="10" Margin="2"
+                                    <Border CornerRadius="10" Margin="1"
                                             VerticalAlignment="Top" Height="20" Opacity="0.16">
                                         <Border.Background>
                                             <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
                                                 <GradientStop Color="#FFFFFF" Offset="0"/>
-                                                <GradientStop Color="#00FFFFFF" Offset="1"/>
+                                                <GradientStop Color="#00FFFFFF" Offset="0.5"/>
                                             </LinearGradientBrush>
                                         </Border.Background>
                                     </Border>
@@ -316,8 +316,8 @@
         <Grid HorizontalAlignment="Center" VerticalAlignment="Center"
               Width="950" Height="550" Margin="90,0,0,50">
             <Border Background="#30000000" CornerRadius="10" BorderBrush="#6DB9F8" BorderThickness="1"/>
-            <controls:HomeCanvas x:Name="CanvasHome" Visibility="Collapsed"/>
-            <controls:LocalizationCanvas x:Name="CanvasLocalization" Visibility="Visible"/>
+            <controls:HomeCanvas x:Name="CanvasHome" Visibility="Visible"/>
+            <controls:LocalizationCanvas x:Name="CanvasLocalization" Visibility="Collapsed"/>
             <controls:AssistantCanvas x:Name="CanvasAssistant" Visibility="Collapsed"/>
             <controls:SettingsCanvas x:Name="CanvasSettings" Visibility="Collapsed"/>
             <controls:LiaSettingsCanvas x:Name="CanvasLiaSettings" Visibility="Collapsed"/>
