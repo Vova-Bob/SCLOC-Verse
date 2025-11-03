@@ -1,6 +1,5 @@
 ﻿using StarCitizenUA.Interfaces;
 using System.Windows.Controls;
-using System.Windows.Media;
 
 namespace StarCitizenUA.Helpers
 {
@@ -25,18 +24,16 @@ namespace StarCitizenUA.Helpers
 
         public void SetActive(string active)
         {
-            var inactive = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#143A52"));
-            var activeBrush = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#5190C3"));
 
-            btnLocalization.Background = inactive;
-            btnAssistant.Background = inactive;
-            btnSettings.Background = inactive;
+            btnLocalization.Tag = null;
+            btnAssistant.Tag = null;
+            btnSettings.Tag = null;
 
             switch (active)
             {
-                case "localization": btnLocalization.Background = activeBrush; break;
-                case "assistant": btnAssistant.Background = activeBrush; break;
-                case "settings": btnSettings.Background = activeBrush; break;
+                case "localization": btnLocalization.Tag = "Active"; break;
+                case "assistant": btnAssistant.Tag = "Active"; break;
+                case "settings": btnSettings.Tag = "Active"; break;
             }
         }
 
