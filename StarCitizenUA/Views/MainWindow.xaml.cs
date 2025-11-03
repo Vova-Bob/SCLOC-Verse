@@ -384,7 +384,7 @@ namespace StarCitizenUA.Views
             }
         }
 
-        private async Task UpdateLiaFolderUiAsync(string? folder)
+        private Task UpdateLiaFolderUiAsync(string? folder)
         {
             if (!string.IsNullOrWhiteSpace(folder))
             {
@@ -402,6 +402,8 @@ namespace StarCitizenUA.Views
                 _buttonHelper.SetButtonState(BtnLiaAutoSearch, false);
                 _buttonStateManager.SetButtonEnabled(BtnSelectLiaFolder, true);
             }
+
+            return Task.CompletedTask;
         }
 
         private async Task ShowStartupToastsAsync()
