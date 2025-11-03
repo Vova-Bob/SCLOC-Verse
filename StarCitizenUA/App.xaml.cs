@@ -1,5 +1,4 @@
-﻿using System.Configuration;
-using System.Data;
+using StarCitizenUA.Composition;
 using System.Windows;
 
 namespace StarCitizenUA
@@ -9,6 +8,15 @@ namespace StarCitizenUA
     /// </summary>
     public partial class App : Application
     {
+        protected override void OnStartup(StartupEventArgs e)
+        {
+            base.OnStartup(e);
+
+            var compositionRoot = new AppCompositionRoot();
+            var window = compositionRoot.CreateMainWindow();
+            MainWindow = window;
+            window.Show();
+        }
     }
 
 }

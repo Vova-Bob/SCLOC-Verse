@@ -1,8 +1,9 @@
-﻿
+using System.Threading.Tasks;
+
 namespace StarCitizenUA.Interfaces
 {
     public interface IToastService
     {
-        void ShowToast(string message, int durationMs = 5000);
+        Task ShowToastAsync(string message, int durationMs = 5000);
     }
 }
