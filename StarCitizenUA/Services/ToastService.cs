@@ -1,4 +1,6 @@
 ﻿using StarCitizenUA.Interfaces;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -21,7 +23,7 @@ namespace StarCitizenUA.Services
                 _toastBorder.RenderTransform = new TranslateTransform();
         }
 
-        public async void ShowToast(string message, int durationMs = 5000)
+        public async Task ShowToastAsync(string message, int durationMs = 5000)
         {
             _cts?.Cancel();
             _cts = new CancellationTokenSource();
@@ -38,7 +40,7 @@ namespace StarCitizenUA.Services
 
             try
             {
-                await Task.Delay(durationMs, token);
+                await Task.Delay(durationMs, token).ConfigureAwait(true);
             }
             catch (TaskCanceledException)
             {

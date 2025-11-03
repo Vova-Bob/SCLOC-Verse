@@ -1,0 +1,11 @@
+<Canvas x:Class="StarCitizenUA.Controls.HomeCanvas"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Background="Transparent">
+    <TextBlock Canvas.Left="30" Canvas.Top="30" Foreground="White" FontSize="22" FontWeight="Bold">
+        Ласкаво просимо до Star Citizen Localizer!
+    </TextBlock>
+    <TextBlock Canvas.Left="30" Canvas.Top="70" Foreground="White" FontSize="16" Opacity="0.8">
+        Тут ви можете встановити українську локалізацію, скористатися голосовим асистентом або переглянути Settings.
+    </TextBlock>
+</Canvas>
