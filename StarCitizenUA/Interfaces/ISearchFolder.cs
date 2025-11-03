@@ -1,9 +1,12 @@
-﻿namespace StarCitizenUA
+using System.Threading;
+using System.Threading.Tasks;
+using System.Windows.Controls;
+
+namespace StarCitizenUA
 {
     public interface ISearchFolder
     {
-        Task<string?> GetOrPromptGameFolderAsync(System.Windows.Controls.TextBox folderDisplayControl);
-        Task<string?> FindGameFolder(int maxDepth);
-        string? SearchDirectory(string root, string targetFolder, int maxDepth, int currentDepth = 0);
+        Task<string?> GetOrPromptGameFolderAsync(TextBox folderDisplayControl, CancellationToken cancellationToken);
+        Task<string?> FindGameFolderAsync(int maxDepth, CancellationToken cancellationToken);
     }
 }

@@ -1,8 +1,13 @@
-﻿namespace StarCitizenUA.Interfaces
+using System.Threading;
+using System.Threading.Tasks;
+using System.Windows.Controls;
+
+namespace StarCitizenUA.Interfaces
 {
     public interface IVoiceAttackFolderHelper
     {
-        Task<string?> FindVoiceAttackImportFolderAsync();
-        Task<string?> GetOrPromptVoiceAttackFolderAsync(System.Windows.Controls.TextBox folderDisplayControl);
+        Task<string?> FindVoiceAttackImportFolderAsync(CancellationToken cancellationToken);
+        Task<string?> GetOrPromptVoiceAttackFolderAsync(TextBox folderDisplayControl, CancellationToken cancellationToken);
+        void CancelActiveSearch();
     }
 }
