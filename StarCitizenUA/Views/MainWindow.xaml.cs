@@ -227,7 +227,7 @@ namespace StarCitizenUA.Views
                 var foundFolder = await _viewModel.DetectGameFolderAsync(4, CancellationToken.None);
                 if (!string.IsNullOrEmpty(foundFolder))
                 {
-                    await UpdateGameFolderUiAsync(foundFolder, false).ConfigureAwait(true);
+                    await UpdateGameFolderUiAsync(_viewModel.GameFolder, false).ConfigureAwait(true);
                     await _toastService.ShowToastAsync($"Знайдено папку: {foundFolder}").ConfigureAwait(true);
                 }
                 else
@@ -377,6 +377,9 @@ namespace StarCitizenUA.Views
 
                 _buttonHelper.SetButtonState(BtnAutoSearch, false);
                 _buttonStateManager.SetButtonEnabled(BtnSelectFolder, true);
+
+                if (EnvSelector != null)
+                    await EnvSelector.UpdateFromGameFolderAsync(null).ConfigureAwait(true);
 
                 if (showToastIfMissing)
                     await _toastService.ShowToastAsync("Натисніть кнопку автопошук або оберіть шлях вручну.", 4000).ConfigureAwait(true);
