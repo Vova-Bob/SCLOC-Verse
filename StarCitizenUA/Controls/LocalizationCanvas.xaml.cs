@@ -2,9 +2,6 @@ using System.Windows.Controls;
 
 namespace StarCitizenUA.Controls
 {
-    /// <summary>
-    /// Канва з елементами встановлення локалізації.
-    /// </summary>
     public partial class LocalizationCanvas : Canvas
     {
         public LocalizationCanvas()

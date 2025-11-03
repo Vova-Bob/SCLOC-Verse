@@ -2,9 +2,6 @@ using System.Windows.Controls;
 
 namespace StarCitizenUA.Controls
 {
-    /// <summary>
-    /// Канва налаштувань голосового асистента.
-    /// </summary>
     public partial class LiaSettingsCanvas : Canvas
     {
         public LiaSettingsCanvas()
