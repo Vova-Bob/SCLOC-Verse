@@ -1,5 +1,7 @@
 {
   "ReadmeText": "Якась шляпа тест тест тест тест тест тест тест тест",
   "TxtSelectedPath": "Натисніть кнопку &quot;Автопошук&quot;, або оберіть шлях до папки &quot;StarCitizen&quot; самостійно",
-  "DefaultPathText": "Натисніть кнопку \"Автопошук\", або оберіть шлях до папки \"StarCitizen\" самостійно"
+  "DefaultPathText": "Натисніть кнопку \"Автопошук\", або оберіть шлях до папки \"StarCitizen\" самостійно",
+  "MissingGameFolderToast": "Натисніть кнопку автопошук або оберіть шлях вручну.",
+  "MissingVoiceAttackFolderToast": "Не знайдено папку VoiceAttack. Використайте автопошук або виберіть вручну."
 }
