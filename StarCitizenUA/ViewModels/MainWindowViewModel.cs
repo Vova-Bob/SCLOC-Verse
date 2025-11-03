@@ -65,12 +65,19 @@ namespace StarCitizenUA.ViewModels
         public async Task<string?> DetectGameFolderAsync(int maxDepth, CancellationToken cancellationToken)
         {
             var found = await _searchFolder.FindGameFolderAsync(maxDepth, cancellationToken);
-            if (!string.IsNullOrEmpty(found))
+            if (string.IsNullOrEmpty(found))
             {
-                GameFolder = found;
+                return null;
             }
 
-            return found;
+            if (_settingsService.TrySetGameFolder(found))
+            {
+                GameFolder = _settingsService.GetGameFolder();
+                return GameFolder;
+            }
+
+            GameFolder = null;
+            return null;
         }
 
         public async Task<string?> DetectVoiceAttackFolderAsync(CancellationToken cancellationToken)
