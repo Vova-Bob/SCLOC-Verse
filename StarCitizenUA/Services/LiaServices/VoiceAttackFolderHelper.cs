@@ -1,149 +1,176 @@
-﻿using StarCitizenUA.Interfaces;
+using StarCitizenUA.Interfaces;
+using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
+using System.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Windows.Controls;
 
 namespace StarCitizenUA.Services.LiaServices
 {
     class VoiceAttackFolderHelper : IVoiceAttackFolderHelper
     {
-        private readonly IToastService _toastService;
+        private readonly IFolderSearchService _folderSearchService;
+        private readonly ISettingsService _settingsService;
+        private readonly SemaphoreSlim _throttle = new(4);
+        private CancellationTokenSource? _searchCts;
+        private int _activeEnumerations;
 
-        public VoiceAttackFolderHelper(IToastService toastService)
+        public VoiceAttackFolderHelper(IFolderSearchService folderSearchService, ISettingsService settingsService)
         {
-            _toastService = toastService;
+            _folderSearchService = folderSearchService;
+            _settingsService = settingsService;
         }
 
-        private static readonly HashSet<string> IgnoredDirs = new(StringComparer.OrdinalIgnoreCase)
+        public void CancelActiveSearch()
         {
-            "$Recycle.Bin",
-            "System Volume Information",
-            "Config.Msi",
-            "Windows",
-            "ProgramData",
-            "Recovery",
-            "MSOCache"
-        };
+            _searchCts?.Cancel();
+        }
 
-        public async Task<string?> FindVoiceAttackImportFolderAsync()
+        public async Task<string?> FindVoiceAttackImportFolderAsync(CancellationToken cancellationToken)
         {
-            // 1️⃣ Спочатку перевіряємо типові місця
-            var possiblePaths = new List<string>
+            var knownLocations = new List<string>
             {
                 Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), "VoiceAttack 2", "Apps", "Import"),
-                @"C:\Program Files (x86)\VoiceAttack\Apps\Import",
-                @"C:\Program Files\VoiceAttack\Apps\Import",
-                @"C:\Program Files (x86)\SteamLibrary\steamapps\common\VoiceAttack 2\Apps\Import"
+                @"C:\\Program Files (x86)\\VoiceAttack\\Apps\\Import",
+                @"C:\\Program Files\\VoiceAttack\\Apps\\Import",
+                @"C:\\Program Files (x86)\\SteamLibrary\\steamapps\\common\\VoiceAttack 2\\Apps\\Import"
             };
 
-            foreach (var path in possiblePaths)
+            foreach (var location in knownLocations)
             {
-                if (Directory.Exists(path))
-                    return path;
+                cancellationToken.ThrowIfCancellationRequested();
+                if (Directory.Exists(location))
+                    return location;
             }
 
-            // 2️⃣ Якщо не знайдено — шукаємо на дисках
-            var drives = DriveInfo.GetDrives()
-                .Where(d => d.IsReady && d.DriveType == DriveType.Fixed)
+            var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            _searchCts = linkedCts;
+            var token = linkedCts.Token;
+
+            var drives = DriveInfo.GetDrives().Where(d => d.IsReady && d.DriveType == DriveType.Fixed).ToArray();
+            var queue = new ConcurrentQueue<(string Path, int Depth)>();
+            foreach (var drive in drives)
+            {
+                queue.Enqueue((drive.RootDirectory.FullName, 0));
+            }
+
+            var workers = Enumerable.Range(0, Environment.ProcessorCount)
+                .Select(_ => Task.Run(() => SearchWorkerAsync(queue, token), token))
                 .ToArray();
 
-            using var cts = new CancellationTokenSource();
-            var tasks = drives.Select(d =>
-                Task.Run(() => SearchVoiceAttackParallel(d.RootDirectory.FullName, "VoiceAttack 2", 5, cts.Token))
-            ).ToArray();
-
-            var completed = await Task.WhenAny(tasks);
-            var result = completed.Result;
-
-            // Відміняємо решту пошуків
-            cts.Cancel();
-
-            if (!string.IsNullOrEmpty(result))
+            try
             {
-                var importPath = Path.Combine(result, "Apps", "Import");
-                return Directory.Exists(importPath) ? importPath : null;
+                var completed = await Task.WhenAny(workers).ConfigureAwait(false);
+                var result = await completed.ConfigureAwait(false);
+
+                if (!string.IsNullOrEmpty(result))
+                {
+                    linkedCts.Cancel();
+                    var importPath = Path.Combine(result, "Apps", "Import");
+                    return Directory.Exists(importPath) ? importPath : null;
+                }
+
+                await Task.WhenAll(workers).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException)
+            {
+                Debug.WriteLine("[VoiceAttackFolderHelper] Пошук перервано.");
+            }
+            finally
+            {
+                linkedCts.Dispose();
+                if (ReferenceEquals(_searchCts, linkedCts))
+                {
+                    _searchCts = null;
+                }
             }
 
             return null;
         }
 
-        private string? SearchVoiceAttackParallel(string rootDir, string targetFolder, int maxDepth, CancellationToken token)
+        private async Task<string?> SearchWorkerAsync(ConcurrentQueue<(string Path, int Depth)> queue, CancellationToken token)
         {
-            var queue = new ConcurrentQueue<(string dir, int depth)>();
-            queue.Enqueue((rootDir, 0));
-            string? foundPath = null;
-
-            Parallel.ForEach(
-                Partitioner.Create(Enumerable.Range(0, Environment.ProcessorCount)), // баланс потоків
-                new ParallelOptions { MaxDegreeOfParallelism = 8, CancellationToken = token },
-                _ =>
+            while (!token.IsCancellationRequested)
+            {
+                if (!queue.TryDequeue(out var current))
                 {
-                    while (!queue.IsEmpty && !token.IsCancellationRequested)
+                    if (Volatile.Read(ref _activeEnumerations) == 0 && queue.IsEmpty)
                     {
-                        if (!queue.TryDequeue(out var item)) continue;
-                        if (item.depth > maxDepth) continue;
+                        return null;
+                    }
 
-                        string[] subdirs;
-                        try
+                    await Task.Delay(50, token).ConfigureAwait(false);
+                    continue;
+                }
+
+                if (current.Depth > 5)
+                    continue;
+
+                string[] subdirs;
+                await _throttle.WaitAsync(token).ConfigureAwait(false);
+                try
+                {
+                    Interlocked.Increment(ref _activeEnumerations);
+                    subdirs = _folderSearchService
+                        .EnumerateAccessibleDirectories(current.Path)
+                        .ToArray();
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"[VoiceAttackFolderHelper] Помилка читання каталогу {current.Path}: {ex.Message}");
+                    subdirs = Array.Empty<string>();
+                }
+                finally
+                {
+                    Interlocked.Decrement(ref _activeEnumerations);
+                    _throttle.Release();
+                }
+
+                foreach (var dir in subdirs)
+                {
+                    if (token.IsCancellationRequested)
+                        return null;
+
+                    var dirName = Path.GetFileName(dir);
+                    if (dirName.Equals("VoiceAttack 2", StringComparison.OrdinalIgnoreCase))
+                    {
+                        var importPath = Path.Combine(dir, "Apps", "Import");
+                        if (Directory.Exists(importPath))
                         {
-                            subdirs = Directory.GetDirectories(item.dir);
-                        }
-                        catch
-                        {
-                            continue;
-                        }
-
-                        foreach (var dir in subdirs)
-                        {
-                            var dirName = Path.GetFileName(dir);
-                            if (IgnoredDirs.Contains(dirName)) continue;
-
-                            // Якщо знайдено "VoiceAttack 2"
-                            if (dirName.Equals(targetFolder, StringComparison.OrdinalIgnoreCase))
-                            {
-                                var importPath = Path.Combine(dir, "Apps", "Import");
-                                if (Directory.Exists(importPath))
-                                {
-                                    foundPath = dir;
-                                    token.ThrowIfCancellationRequested();
-                                    return;
-                                }
-                            }
-
-                            queue.Enqueue((dir, item.depth + 1));
+                            return dir;
                         }
                     }
-                });
 
-            return foundPath;
+                    queue.Enqueue((dir, current.Depth + 1));
+                }
+            }
+
+            return null;
         }
 
-        // Основний метод — отримати або знайти папку VoiceAttack і показати користувачу.
-        public async Task<string?> GetOrPromptVoiceAttackFolderAsync(TextBox folderDisplayControl)
+        public async Task<string?> GetOrPromptVoiceAttackFolderAsync(TextBox folderDisplayControl, CancellationToken cancellationToken)
         {
-            string? savedFolder = Settings.Default.StarCitizenLIA;
-
-            // 1️⃣ Якщо збережена і валідна
-            if (!string.IsNullOrEmpty(savedFolder) && Directory.Exists(savedFolder))
+            var savedFolder = _settingsService.GetVoiceAttackFolder();
+            if (!string.IsNullOrEmpty(savedFolder))
             {
                 folderDisplayControl.Text = savedFolder;
                 return savedFolder;
             }
 
-            // 2️⃣ Якщо ні — шукаємо автоматично
-            var foundFolder = await FindVoiceAttackImportFolderAsync();
-
+            var foundFolder = await FindVoiceAttackImportFolderAsync(cancellationToken).ConfigureAwait(false);
             if (!string.IsNullOrEmpty(foundFolder))
             {
-                Settings.Default.StarCitizenLIA = foundFolder;
-                Settings.Default.Save();
-
-                folderDisplayControl.Text = foundFolder;
-                return foundFolder;
+                if (_settingsService.TrySetVoiceAttackFolder(foundFolder))
+                {
+                    folderDisplayControl.Text = foundFolder;
+                    return foundFolder;
+                }
             }
 
-            // 3️⃣ Якщо не знайдено — повідомлення користувачу
-            _toastService.ShowToast("Не вдалося знайти папку VoiceAttack. Будь ласка, оберіть вручну.");
             return null;
         }
     }

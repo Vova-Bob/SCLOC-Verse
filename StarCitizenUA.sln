@@ -5,6 +5,8 @@ VisualStudioVersion = 17.14.36623.8 d17.14
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StarCitizenUA", "StarCitizenUA\StarCitizenUA.csproj", "{2A84ED7C-370D-4889-80E1-B8D302D36073}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StarCitizenUA.Tests", "StarCitizenUA.Tests\StarCitizenUA.Tests.csproj", "{C5CA667F-6428-4EAC-ADC8-83C0C6DC7AFE}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -13,8 +15,12 @@ Global
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{2A84ED7C-370D-4889-80E1-B8D302D36073}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{2A84ED7C-370D-4889-80E1-B8D302D36073}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{2A84ED7C-370D-4889-80E1-B8D302D36073}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{2A84ED7C-370D-4889-80E1-B8D302D36073}.Release|Any CPU.Build.0 = Release|Any CPU
+                {2A84ED7C-370D-4889-80E1-B8D302D36073}.Release|Any CPU.ActiveCfg = Release|Any CPU
+                {2A84ED7C-370D-4889-80E1-B8D302D36073}.Release|Any CPU.Build.0 = Release|Any CPU
+                {C5CA667F-6428-4EAC-ADC8-83C0C6DC7AFE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+                {C5CA667F-6428-4EAC-ADC8-83C0C6DC7AFE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+                {C5CA667F-6428-4EAC-ADC8-83C0C6DC7AFE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+                {C5CA667F-6428-4EAC-ADC8-83C0C6DC7AFE}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
