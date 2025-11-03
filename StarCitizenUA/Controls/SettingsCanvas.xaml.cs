@@ -2,9 +2,6 @@ using System.Windows.Controls;
 
 namespace StarCitizenUA.Controls
 {
-    /// <summary>
-    /// Канва загальних налаштувань застосунку.
-    /// </summary>
     public partial class SettingsCanvas : Canvas
     {
         public SettingsCanvas()

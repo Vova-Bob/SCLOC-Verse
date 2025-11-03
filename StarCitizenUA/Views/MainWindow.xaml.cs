@@ -3,9 +3,6 @@ using StarCitizenUA.Helpers;
 using StarCitizenUA.Interfaces;
 using StarCitizenUA.Services;
 using StarCitizenUA.ViewModels;
-using System;
-using System.Threading;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -411,12 +408,12 @@ namespace StarCitizenUA.Views
         {
             if (!_viewModel.IsGameFolderSet && !string.IsNullOrWhiteSpace(MissingGameFolderToastText))
             {
-                await _toastService.ShowToastAsync(MissingGameFolderToastText, 4000).ConfigureAwait(true);
+                await _toastService.ShowToastAsync(MissingGameFolderToastText, 7000).ConfigureAwait(true);
             }
 
             if (!_viewModel.IsVoiceAttackFolderSet && !string.IsNullOrWhiteSpace(MissingVoiceAttackFolderToastText))
             {
-                await _toastService.ShowToastAsync(MissingVoiceAttackFolderToastText, 4000).ConfigureAwait(true);
+                await _toastService.ShowToastAsync(MissingVoiceAttackFolderToastText, 7000).ConfigureAwait(true);
             }
         }
 
