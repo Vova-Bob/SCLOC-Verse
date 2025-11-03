@@ -224,7 +224,7 @@ namespace StarCitizenUA.Views
 
             if (!_viewModel.IsGameFolderSet)
             {
-                var foundFolder = await _viewModel.DetectGameFolderAsync(4, CancellationToken.None).ConfigureAwait(false);
+                var foundFolder = await _viewModel.DetectGameFolderAsync(4, CancellationToken.None);
                 if (!string.IsNullOrEmpty(foundFolder))
                 {
                     await UpdateGameFolderUiAsync(foundFolder, false).ConfigureAwait(true);
@@ -256,7 +256,7 @@ namespace StarCitizenUA.Views
 
             try
             {
-                var result = await _localizationInstaller.InstallAsync(folderPath!, envName!).ConfigureAwait(false);
+                var result = await _localizationInstaller.InstallAsync(folderPath!, envName!);
                 await _toastService.ShowToastAsync(result.Message).ConfigureAwait(true);
             }
             catch (Exception ex)
@@ -282,7 +282,7 @@ namespace StarCitizenUA.Views
 
             try
             {
-                var result = await _localizationInstaller.DeleteAsync(env.FolderPath, env.Name).ConfigureAwait(false);
+                var result = await _localizationInstaller.DeleteAsync(env.FolderPath, env.Name);
 
                 BtnInstall.Content = _buttonHelper.GetInstallButtonText(EnvSelector?.SelectedEnvironment, _viewModel.GameFolder);
                 await _toastService.ShowToastAsync(result.Message).ConfigureAwait(true);
@@ -321,7 +321,7 @@ namespace StarCitizenUA.Views
 
                 try
                 {
-                    var foundFolder = await _viewModel.DetectVoiceAttackFolderAsync(_voiceAttackSearchCts.Token).ConfigureAwait(false);
+                    var foundFolder = await _viewModel.DetectVoiceAttackFolderAsync(_voiceAttackSearchCts.Token);
                     if (!string.IsNullOrEmpty(foundFolder))
                     {
                         await UpdateLiaFolderUiAsync(foundFolder, false).ConfigureAwait(true);
