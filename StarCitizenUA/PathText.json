@@ -2,6 +2,6 @@
   "ReadmeText": "Якась шляпа тест тест тест тест тест тест тест тест",
   "TxtSelectedPath": "Натисніть кнопку &quot;Автопошук&quot;, або оберіть шлях до папки &quot;StarCitizen&quot; самостійно",
   "DefaultPathText": "Натисніть кнопку \"Автопошук\", або оберіть шлях до папки \"StarCitizen\" самостійно",
-  "MissingGameFolderToast": "Натисніть кнопку автопошук або оберіть шлях вручну.",
-  "MissingVoiceAttackFolderToast": "Не знайдено папку VoiceAttack. Використайте автопошук або виберіть вручну."
+  "MissingGameFolderToast": "Прейдіть в налаштування для вибору шляху до папки StarCitizen для встановлення локалізації.",
+  "MissingVoiceAttackFolderToast": "Прейдіть на вкладку налаштувань голосового асистента для вибору шляху до папки VoiceAttack для встановлення Л.І.А."
 }
