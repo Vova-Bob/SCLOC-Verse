@@ -5,5 +5,7 @@
         public string ReadmeText { get; set; } = "";
         public string TxtSelectedPath { get; set; } = "";
         public string DefaultPathText { get; set; } = "";
+        public string MissingGameFolderToast { get; set; } = "";
+        public string MissingVoiceAttackFolderToast { get; set; } = "";
     }
 }
