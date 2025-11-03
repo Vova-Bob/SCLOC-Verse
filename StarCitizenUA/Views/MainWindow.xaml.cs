@@ -49,6 +49,8 @@ namespace StarCitizenUA.Views
         private string? localFolder = string.Empty;
         private string? localLiaFolder = string.Empty;
         public string DefaultPathText = string.Empty;
+        public string MissingGameFolderToastText = string.Empty;
+        public string MissingVoiceAttackFolderToastText = string.Empty;
         private bool isSettingButtonClicked;
 
         public MainWindow(MainWindowViewModel viewModel, IWindowHelper windowHelper, ILocalizationInstaller localizationInstaller, IReadmeService readmeService)
@@ -108,12 +110,14 @@ namespace StarCitizenUA.Views
             BtnAutoSearch.ApplyTemplate();
             BtnLiaAutoSearch.ApplyTemplate();
 
+            _canvasManager.ShowCanvas("home");
+
             await _viewModel.InitializeAsync().ConfigureAwait(true);
 
-            await UpdateGameFolderUiAsync(_viewModel.GameFolder, true).ConfigureAwait(true);
-            await UpdateLiaFolderUiAsync(_viewModel.VoiceAttackFolder, true).ConfigureAwait(true);
+            await UpdateGameFolderUiAsync(_viewModel.GameFolder).ConfigureAwait(true);
+            await UpdateLiaFolderUiAsync(_viewModel.VoiceAttackFolder).ConfigureAwait(true);
 
-            _canvasManager.ShowCanvas("home");
+            await ShowStartupToastsAsync().ConfigureAwait(true);
         }
 
         private void EnvSelector_SelectionChanged(object? sender, EventArgs e)
@@ -208,7 +212,7 @@ namespace StarCitizenUA.Views
             {
                 if (_viewModel.TrySetGameFolder(dialog.SelectedPath))
                 {
-                    await UpdateGameFolderUiAsync(_viewModel.GameFolder, false).ConfigureAwait(true);
+                    await UpdateGameFolderUiAsync(_viewModel.GameFolder).ConfigureAwait(true);
                     await _toastService.ShowToastAsync($"Вибрано папку: {_viewModel.GameFolder}").ConfigureAwait(true);
                 }
                 else
@@ -227,7 +231,7 @@ namespace StarCitizenUA.Views
                 var foundFolder = await _viewModel.DetectGameFolderAsync(4, CancellationToken.None);
                 if (!string.IsNullOrEmpty(foundFolder))
                 {
-                    await UpdateGameFolderUiAsync(foundFolder, false).ConfigureAwait(true);
+                    await UpdateGameFolderUiAsync(_viewModel.GameFolder).ConfigureAwait(true);
                     await _toastService.ShowToastAsync($"Знайдено папку: {foundFolder}").ConfigureAwait(true);
                 }
                 else
@@ -239,7 +243,7 @@ namespace StarCitizenUA.Views
             else
             {
                 _viewModel.ResetGameFolder();
-                await UpdateGameFolderUiAsync(null, false).ConfigureAwait(true);
+                await UpdateGameFolderUiAsync(null).ConfigureAwait(true);
                 await _toastService.ShowToastAsync("Збережений шлях успішно скинуто.").ConfigureAwait(true);
             }
         }
@@ -300,7 +304,7 @@ namespace StarCitizenUA.Views
             {
                 if (_viewModel.TrySetVoiceAttackFolder(dialog.SelectedPath))
                 {
-                    await UpdateLiaFolderUiAsync(_viewModel.VoiceAttackFolder, false).ConfigureAwait(true);
+                    await UpdateLiaFolderUiAsync(_viewModel.VoiceAttackFolder).ConfigureAwait(true);
                     await _toastService.ShowToastAsync($"Вибрано папку: {_viewModel.VoiceAttackFolder}").ConfigureAwait(true);
                 }
                 else
@@ -324,7 +328,7 @@ namespace StarCitizenUA.Views
                     var foundFolder = await _viewModel.DetectVoiceAttackFolderAsync(_voiceAttackSearchCts.Token);
                     if (!string.IsNullOrEmpty(foundFolder))
                     {
-                        await UpdateLiaFolderUiAsync(foundFolder, false).ConfigureAwait(true);
+                        await UpdateLiaFolderUiAsync(foundFolder).ConfigureAwait(true);
                         await _toastService.ShowToastAsync($"Знайдено папку: {foundFolder}").ConfigureAwait(true);
                     }
                     else
@@ -340,7 +344,7 @@ namespace StarCitizenUA.Views
             else
             {
                 _viewModel.ResetVoiceAttackFolder();
-                await UpdateLiaFolderUiAsync(null, false).ConfigureAwait(true);
+                await UpdateLiaFolderUiAsync(null).ConfigureAwait(true);
                 await _toastService.ShowToastAsync("Збережений шлях успішно скинуто.").ConfigureAwait(true);
             }
         }
@@ -355,7 +359,7 @@ namespace StarCitizenUA.Views
             await _toastService.ShowToastAsync("Кеш очищено.").ConfigureAwait(true);
         }
 
-        private async Task UpdateGameFolderUiAsync(string? folder, bool showToastIfMissing)
+        private async Task UpdateGameFolderUiAsync(string? folder)
         {
             if (!string.IsNullOrWhiteSpace(folder))
             {
@@ -378,12 +382,12 @@ namespace StarCitizenUA.Views
                 _buttonHelper.SetButtonState(BtnAutoSearch, false);
                 _buttonStateManager.SetButtonEnabled(BtnSelectFolder, true);
 
-                if (showToastIfMissing)
-                    await _toastService.ShowToastAsync("Натисніть кнопку автопошук або оберіть шлях вручну.", 4000).ConfigureAwait(true);
+                if (EnvSelector != null)
+                    await EnvSelector.UpdateFromGameFolderAsync(null).ConfigureAwait(true);
             }
         }
 
-        private async Task UpdateLiaFolderUiAsync(string? folder, bool showToastIfMissing)
+        private async Task UpdateLiaFolderUiAsync(string? folder)
         {
             if (!string.IsNullOrWhiteSpace(folder))
             {
@@ -400,9 +404,19 @@ namespace StarCitizenUA.Views
 
                 _buttonHelper.SetButtonState(BtnLiaAutoSearch, false);
                 _buttonStateManager.SetButtonEnabled(BtnSelectLiaFolder, true);
+            }
+        }
 
-                if (showToastIfMissing)
-                    await _toastService.ShowToastAsync("Не знайдено папку VoiceAttack. Використайте автопошук або виберіть вручну.", 4000).ConfigureAwait(true);
+        private async Task ShowStartupToastsAsync()
+        {
+            if (!_viewModel.IsGameFolderSet && !string.IsNullOrWhiteSpace(MissingGameFolderToastText))
+            {
+                await _toastService.ShowToastAsync(MissingGameFolderToastText, 4000).ConfigureAwait(true);
+            }
+
+            if (!_viewModel.IsVoiceAttackFolderSet && !string.IsNullOrWhiteSpace(MissingVoiceAttackFolderToastText))
+            {
+                await _toastService.ShowToastAsync(MissingVoiceAttackFolderToastText, 4000).ConfigureAwait(true);
             }
         }
 

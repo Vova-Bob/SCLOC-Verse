@@ -26,6 +26,8 @@ namespace StarCitizenUA.Helpers
             window.TxtReadme.Text = readmeData.ReadmeText;
             window.TxtSelectedPath.Text = readmeData.TxtSelectedPath;
             window.DefaultPathText = readmeData.DefaultPathText;
+            window.MissingGameFolderToastText = readmeData.MissingGameFolderToast;
+            window.MissingVoiceAttackFolderToastText = readmeData.MissingVoiceAttackFolderToast;
         }
     }
 }

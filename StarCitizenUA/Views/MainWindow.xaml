@@ -316,8 +316,8 @@
         <Grid HorizontalAlignment="Center" VerticalAlignment="Center"
               Width="950" Height="550" Margin="90,0,0,50">
             <Border Background="#30000000" CornerRadius="10" BorderBrush="#6DB9F8" BorderThickness="1"/>
-            <controls:HomeCanvas x:Name="CanvasHome" Visibility="Collapsed"/>
-            <controls:LocalizationCanvas x:Name="CanvasLocalization" Visibility="Visible"/>
+            <controls:HomeCanvas x:Name="CanvasHome" Visibility="Visible"/>
+            <controls:LocalizationCanvas x:Name="CanvasLocalization" Visibility="Collapsed"/>
             <controls:AssistantCanvas x:Name="CanvasAssistant" Visibility="Collapsed"/>
             <controls:SettingsCanvas x:Name="CanvasSettings" Visibility="Collapsed"/>
             <controls:LiaSettingsCanvas x:Name="CanvasLiaSettings" Visibility="Collapsed"/>
