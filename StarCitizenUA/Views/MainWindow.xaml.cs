@@ -2,7 +2,9 @@ using StarCitizenUA.Controls;
 using StarCitizenUA.Helpers;
 using StarCitizenUA.Interfaces;
 using StarCitizenUA.Services;
+using StarCitizenUA.Services.LiaServices;
 using StarCitizenUA.ViewModels;
+using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -42,11 +44,7 @@ namespace StarCitizenUA.Views
         private TextBox TxtLiaSelectedPath => CanvasLiaSettings.SelectedPathTextBox;
         internal TextBox TxtLiaReadme => CanvasAssistant.ReadmeTextBox;
         internal TextBox TxtLiaSettingsReadme => CanvasLiaSettings.ReadmeTextBox;
-
-
-
         private CancellationTokenSource? _voiceAttackSearchCts;
-
         private string? localFolder = string.Empty;
         private string? localLiaFolder = string.Empty;
         public string DefaultPathText = string.Empty;
@@ -98,7 +96,7 @@ namespace StarCitizenUA.Views
             BtnLiaInstall.Click += BtnLiaInstall_Click;
             BtnLiaSettings.Click += LiaSettings_Click;
             BtnSelectLiaFolder.Click += BtnSelectLiaFolder_Click;
-            BtnLiaAutoSearch.Click += BtnLiaAutoSearch_Click;
+            BtnLiaAutoSearch.Click += BtnLiaAutoSearch_Click;          
         }
 
         private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
@@ -352,7 +350,47 @@ namespace StarCitizenUA.Views
 
         private async void BtnLiaInstall_Click(object sender, RoutedEventArgs e)
         {
-            await _toastService.ShowToastAsync("Функція встановлення LIA ще не реалізована.").ConfigureAwait(true);
+            BtnLiaInstall.IsEnabled = false;
+            TxtLiaReadme.Text = "🔧 Починаю встановлення LIA...\n";
+
+            try
+            {
+                if (string.IsNullOrWhiteSpace(localLiaFolder) || !Directory.Exists(localLiaFolder))
+                {
+                    await _toastService.ShowToastAsync("Будь ласка, виберіть папку VoiceAttack перед встановленням.").ConfigureAwait(true);
+                    BtnLiaInstall.IsEnabled = true;
+                    return;
+                }
+
+                var updater = new Updater();
+
+                TxtLiaReadme.Text += "📦 Завантажую список файлів...\n";
+                var remoteFiles = await updater.GetRemoteFileListAsync();
+
+                TxtLiaReadme.Text += "📂 Синхронізація файлів...\n";
+                var syncResult = await updater.SyncFilesAsync(remoteFiles, localLiaFolder, msg =>
+                {
+                    Dispatcher.Invoke(() => TxtLiaReadme.Text += $"{msg}\n");
+                });
+
+                TxtLiaReadme.Text += "\n🎤 Встановлення Vosk-моделі...\n";
+                await updater.DownloadAndInstallVoskModelAsync(localLiaFolder, msg =>
+                {
+                    Dispatcher.Invoke(() => TxtLiaReadme.Text += $"{msg}\n");
+                });
+
+                TxtLiaReadme.Text += "\n✅ Встановлення завершено успішно!\n";
+                await _toastService.ShowToastAsync("LIA встановлено успішно!").ConfigureAwait(true);
+            }
+            catch (Exception ex)
+            {
+                TxtLiaReadme.Text += $"\n❌ Помилка: {ex.Message}";
+                await _toastService.ShowToastAsync("Помилка під час встановлення.").ConfigureAwait(true);
+            }
+            finally
+            {
+                BtnLiaInstall.IsEnabled = true;
+            }
         }
 
         private async void BtnReset_Cash(object sender, RoutedEventArgs e)
@@ -397,6 +435,7 @@ namespace StarCitizenUA.Views
 
                 _buttonHelper.SetButtonState(BtnLiaAutoSearch, true);
                 _buttonStateManager.SetButtonEnabled(BtnSelectLiaFolder, false);
+                BtnLiaInstall.IsEnabled = true;
             }
             else
             {
@@ -405,6 +444,7 @@ namespace StarCitizenUA.Views
 
                 _buttonHelper.SetButtonState(BtnLiaAutoSearch, false);
                 _buttonStateManager.SetButtonEnabled(BtnSelectLiaFolder, true);
+                BtnLiaInstall.IsEnabled = false;
             }
 
             return Task.CompletedTask;
