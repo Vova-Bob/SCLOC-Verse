@@ -43,5 +43,27 @@ namespace StarCitizenUA.Helpers
             string userCfgPath = Path.Combine(folder, "user.cfg");
             return File.Exists(userCfgPath) ? "Оновити" : "Встановити";
         }
+        
+        public string GetLiaInstallButtonText(string? updateMessage)
+        {
+            if (string.IsNullOrWhiteSpace(updateMessage))
+                return "Встановити";
+
+            string msg = updateMessage.ToLowerInvariant().Trim();
+
+            if (msg.Contains("не знайдено") || msg.Contains("бракує") || msg.Contains("відсутн"))
+                return "Завантажити";
+
+            if (msg.Contains("неповний"))
+                return "Оновити";
+
+            if (msg.Contains("актуальна версія"))
+                return "Актуально";
+
+            if (msg.Contains("доступне оновлення"))
+                return "Оновити";
+
+            return "Встановити";
+        }
     }
 }

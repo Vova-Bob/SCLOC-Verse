@@ -7,5 +7,6 @@ namespace StarCitizenUA.Interfaces
     {
         void SetButtonState(Button button, bool active, string activeText = "Скинути", string inactiveText = "Автопошук");
         string GetInstallButtonText(EnvironmentOption? env, string? localFolder);
+        string GetLiaInstallButtonText(string? updateMessage);
     }
 }

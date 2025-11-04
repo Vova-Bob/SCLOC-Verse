@@ -44,6 +44,7 @@ namespace StarCitizenUA.Views
         private TextBox TxtLiaSelectedPath => CanvasLiaSettings.SelectedPathTextBox;
         internal TextBox TxtLiaReadme => CanvasAssistant.ReadmeTextBox;
         internal TextBox TxtLiaSettingsReadme => CanvasLiaSettings.ReadmeTextBox;
+        internal TextBox TxtLiaVersionPath => CanvasAssistant.TxtLiaVersionPath;
         private CancellationTokenSource? _voiceAttackSearchCts;
         private string? localFolder = string.Empty;
         private string? localLiaFolder = string.Empty;
@@ -51,8 +52,9 @@ namespace StarCitizenUA.Views
         public string MissingGameFolderToastText = string.Empty;
         public string MissingVoiceAttackFolderToastText = string.Empty;
         private bool isSettingButtonClicked;
+        private readonly UpdateCheckerService _updateCheckerService;
 
-        public MainWindow(MainWindowViewModel viewModel, IWindowHelper windowHelper, ILocalizationInstaller localizationInstaller, IReadmeService readmeService, IUpdater updater)
+        public MainWindow(MainWindowViewModel viewModel, IWindowHelper windowHelper, ILocalizationInstaller localizationInstaller, IReadmeService readmeService, IUpdater updater, UpdateCheckerService updateCheckerService)
         {
             InitializeComponent();
 
@@ -61,6 +63,7 @@ namespace StarCitizenUA.Views
             _localizationInstaller = localizationInstaller;
             _readmeService = readmeService;
             _updater = updater;
+            _updateCheckerService = updateCheckerService;
 
             _toastService = new ToastService(AppToast.ToastBorder, AppToast.ToastText);
             _linkService = new LinkService(_toastService);
@@ -116,7 +119,7 @@ namespace StarCitizenUA.Views
 
             await UpdateGameFolderUiAsync(_viewModel.GameFolder).ConfigureAwait(true);
             await UpdateLiaFolderUiAsync(_viewModel.VoiceAttackFolder).ConfigureAwait(true);
-
+            await UpdateLiaVersionAsync();
             await ShowStartupToastsAsync().ConfigureAwait(true);
         }
 
@@ -146,11 +149,13 @@ namespace StarCitizenUA.Views
             isSettingButtonClicked = false;
         }
 
-        private void Assistant_Click(object sender, RoutedEventArgs e)
+        private async void Assistant_Click(object sender, RoutedEventArgs e)
         {
             _canvasManager.SwitchCanvas(CanvasAssistant);
             _buttonStateManager.SetActive("assistant");
             isSettingButtonClicked = false;
+
+            await UpdateLiaVersionAsync();
         }
 
         private void Settings_Click(object sender, RoutedEventArgs e)
@@ -297,19 +302,42 @@ namespace StarCitizenUA.Views
             }
         }
 
-        private async void BtnSelectLiaFolder_Click(object sender, RoutedEventArgs e)
+        private async void BtnSelectLiaFolder_Click(object sender, System.EventArgs e)
         {
             using var dialog = new System.Windows.Forms.FolderBrowserDialog();
             if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
             {
-                if (_viewModel.TrySetVoiceAttackFolder(dialog.SelectedPath))
+                string selectedPath = dialog.SelectedPath;
+
+                try
                 {
-                    await UpdateLiaFolderUiAsync(_viewModel.VoiceAttackFolder).ConfigureAwait(true);
-                    await _toastService.ShowToastAsync($"Вибрано папку: {_viewModel.VoiceAttackFolder}").ConfigureAwait(true);
+                    var parts = selectedPath.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+                    int n = parts.Length;
+
+                    if (n >= 3 &&
+                        string.Equals(parts[n - 1], "Import", StringComparison.OrdinalIgnoreCase) &&
+                        string.Equals(parts[n - 2], "Apps", StringComparison.OrdinalIgnoreCase) &&
+                        string.Equals(parts[n - 3], "VoiceAttack 2", StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (_viewModel.TrySetVoiceAttackFolder(selectedPath))
+                        {
+                            await UpdateLiaFolderUiAsync(_viewModel.VoiceAttackFolder).ConfigureAwait(true);
+                            await _toastService.ShowToastAsync($"Вибрано папку: {_viewModel.VoiceAttackFolder}").ConfigureAwait(true);
+                            BtnLiaInstall.IsEnabled = true;
+                        }
+                        return;
+                    }
+
+                    TxtLiaVersionPath.Text = "❌ Вибрана папка повинна бути саме VoiceAttack 2\\Apps\\Import";
+                    TxtLiaVersionPath.Foreground = System.Windows.Media.Brushes.Red;
+                    BtnLiaInstall.IsEnabled = false;
+                    await _toastService.ShowToastAsync("Оберіть правильну папку VoiceAttack.").ConfigureAwait(true);
                 }
-                else
+                catch (Exception ex)
                 {
-                    await _toastService.ShowToastAsync("Обраний шлях не існує. Спробуйте інший.").ConfigureAwait(true);
+                    TxtLiaVersionPath.Text = $"❌ Помилка при перевірці шляху: {ex.Message}";
+                    TxtLiaVersionPath.Foreground = System.Windows.Media.Brushes.Red;
+                    BtnLiaInstall.IsEnabled = false;
                 }
             }
         }
@@ -372,7 +400,12 @@ namespace StarCitizenUA.Views
                 await _updater.SyncFilesAsync(remoteFiles, localLiaFolder, logCallback);
                 await _updater.DownloadAndInstallVoskModelAsync(localLiaFolder, logCallback);
 
+                var (updateMessage, _) = await _updateCheckerService.CheckForPendingUpdatesAsync();
+
+                BtnLiaInstall.Content = _buttonHelper.GetLiaInstallButtonText(updateMessage);
+
                 await _toastService.ShowToastAsync("LIA встановлено успішно!");
+                await UpdateLiaVersionAsync();
             }
             catch (Exception ex)
             {
@@ -384,6 +417,7 @@ namespace StarCitizenUA.Views
                 BtnLiaInstall.IsEnabled = true;
             }
         }
+
 
         private async void BtnReset_Cash(object sender, RoutedEventArgs e)
         {
@@ -418,7 +452,7 @@ namespace StarCitizenUA.Views
             }
         }
 
-        private Task UpdateLiaFolderUiAsync(string? folder)
+        private async Task UpdateLiaFolderUiAsync(string? folder)
         {
             if (!string.IsNullOrWhiteSpace(folder))
             {
@@ -428,6 +462,8 @@ namespace StarCitizenUA.Views
                 _buttonHelper.SetButtonState(BtnLiaAutoSearch, true);
                 _buttonStateManager.SetButtonEnabled(BtnSelectLiaFolder, false);
                 BtnLiaInstall.IsEnabled = true;
+
+                await UpdateLiaVersionAsync();
             }
             else
             {
@@ -437,9 +473,12 @@ namespace StarCitizenUA.Views
                 _buttonHelper.SetButtonState(BtnLiaAutoSearch, false);
                 _buttonStateManager.SetButtonEnabled(BtnSelectLiaFolder, true);
                 BtnLiaInstall.IsEnabled = false;
+
+                Dispatcher.Invoke(() => TxtLiaVersionPath.Text = "Папка VoiceAttack не обрана");
+                TxtLiaVersionPath.Foreground = System.Windows.Media.Brushes.Red;
             }
 
-            return Task.CompletedTask;
+            BtnLiaInstall.Content = _buttonHelper.GetLiaInstallButtonText(TxtLiaVersionPath.Text);
         }
 
         private async Task ShowStartupToastsAsync()
@@ -452,6 +491,25 @@ namespace StarCitizenUA.Views
             if (!_viewModel.IsVoiceAttackFolderSet && !string.IsNullOrWhiteSpace(MissingVoiceAttackFolderToastText))
             {
                 await _toastService.ShowToastAsync(MissingVoiceAttackFolderToastText, 7000).ConfigureAwait(true);
+            }
+        }
+
+        private async Task UpdateLiaVersionAsync()
+        {
+            if (!string.IsNullOrWhiteSpace(localLiaFolder) && Directory.Exists(localLiaFolder))
+            {
+                var (message, color) = await _updateCheckerService.CheckForPendingUpdatesAsync();
+                Dispatcher.Invoke(() =>
+                {
+                    TxtLiaVersionPath.Text = message;
+                    TxtLiaVersionPath.Foreground = color;
+                    BtnLiaInstall.Content = _buttonHelper.GetLiaInstallButtonText(message);
+                });
+            }
+            else
+            {
+                Dispatcher.Invoke(() => TxtLiaVersionPath.Text = "Папка VoiceAttack не обрана");
+                BtnLiaInstall.Content = "Встановити";
             }
         }
     }
