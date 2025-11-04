@@ -23,6 +23,7 @@ namespace StarCitizenUA.Helpers
             var readmeData = jsonService.LoadReadme();
 
             window.TxtReadme.Text = readmeData.ReadmeText;
+            window.TxtLocalizationReadme.Text = readmeData.LocalizationReadmeText;
             window.TxtLiaReadme.Text = readmeData.LiaReadmeText;
             window.TxtLiaSettingsReadme.Text = readmeData.LiaSettingsReadmeText;
             window.TxtSelectedPath.Text = readmeData.TxtSelectedPath;
@@ -33,6 +34,7 @@ namespace StarCitizenUA.Helpers
         private void SetAllFieldsMissing(MainWindow window, string message)
         {
             window.TxtReadme.Text = message;
+            window.TxtLocalizationReadme.Text = message;
             window.TxtLiaReadme.Text = message;
             window.TxtLiaSettingsReadme.Text = message;
             window.TxtSelectedPath.Text = string.Empty;
