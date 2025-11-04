@@ -14,6 +14,7 @@ namespace StarCitizenUA.Composition
         private readonly IFolderSearchService _folderSearchService;
         private readonly ISettingsService _settingsService;
         private readonly IUpdater _updater;
+        private readonly UpdateCheckerService _updateCheckerService;
 
         public AppCompositionRoot()
         {
@@ -21,6 +22,7 @@ namespace StarCitizenUA.Composition
             _folderSearchService = new FolderSearchService(_ignoreRulesProvider);
             _settingsService = new SettingsService();
             _updater = new Updater();
+            _updateCheckerService = new UpdateCheckerService(new VoiceAttackFolderHelper(_folderSearchService, _settingsService));
         }
 
         public MainWindow CreateMainWindow()
@@ -33,7 +35,7 @@ namespace StarCitizenUA.Composition
             var localizationInstaller = new LocalizationInstaller();
             var readmeService = new ReadmeService();
 
-            return new MainWindow(viewModel, windowHelper, localizationInstaller, readmeService, _updater);
+            return new MainWindow(viewModel, windowHelper, localizationInstaller, readmeService, _updater, _updateCheckerService);
         }
     }
 }
