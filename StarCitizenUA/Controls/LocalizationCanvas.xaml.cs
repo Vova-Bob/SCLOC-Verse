@@ -10,11 +10,9 @@ namespace StarCitizenUA.Controls
         }
 
         public EnvironmentSelector EnvironmentSelector => EnvSelector;
-
         public Button InstallButton => BtnInstall;
-
         public Button DeleteButton => BtnLocalisationDelete;
-
         public Button ReturnHomeButton => BtnReturnHome;
+        public TextBox ReadmeTextBox => TxtLocalizationReadme;
     }
 }

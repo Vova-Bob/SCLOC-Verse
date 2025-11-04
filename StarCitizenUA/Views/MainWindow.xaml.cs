@@ -25,6 +25,7 @@ namespace StarCitizenUA.Views
         private EnvironmentSelector EnvSelector => CanvasLocalization.EnvironmentSelector;
         private Button BtnInstall => CanvasLocalization.InstallButton;
         private Button BtnLocalisationDelete => CanvasLocalization.DeleteButton;
+        internal TextBox TxtLocalizationReadme => CanvasLocalization.ReadmeTextBox;
         private Button BtnReturnLocalizationHome => CanvasLocalization.ReturnHomeButton;
         private Button BtnAssistantReturnHome => CanvasAssistant.ReturnHomeButton;
         private Button BtnSelectFolder => CanvasSettings.SelectFolderButton;
