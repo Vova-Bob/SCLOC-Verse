@@ -27,16 +27,14 @@ namespace StarCitizenUA.Services.LiaServices
             return files;
         }
 
-        public async Task<SyncResult> SyncFilesAsync(
-            Dictionary<string, string> remoteFiles,
-            string localPath,
-            Action<string>? onProgress = null,
-            IProgress<int>? progress = null)
+       
+        public async Task<SyncResult> SyncFilesAsync(Dictionary<string, string> remoteFiles, string localPath, Action<string>? onProgress = null, IProgress<int>? progress = null)
         {
             var result = new SyncResult();
             string targetFolder = Path.Combine(localPath);
 
             int current = 0;
+
             foreach (var file in remoteFiles)
             {
                 string localFile = Path.Combine(targetFolder, file.Key.Replace('/', Path.DirectorySeparatorChar));
@@ -47,8 +45,14 @@ namespace StarCitizenUA.Services.LiaServices
 
                 if (needsDownload)
                 {
-                    onProgress?.Invoke($"📥 Завантажено: {file.Key}");
+                    if (fileExists)
+                    {
+                        File.Delete(localFile);
+                        result.DeletedCount++;
+                        onProgress?.Invoke($"🗑 Видалено старий файл: {file.Key}");
+                    }
 
+                    onProgress?.Invoke($"📥 Завантаження: {file.Key}");
                     await DownloadFileAsync(AppSettings.BaseUrl + file.Key, localFile);
                     result.Downloaded.Add(file.Key);
                 }
@@ -60,24 +64,20 @@ namespace StarCitizenUA.Services.LiaServices
                 current++;
                 progress?.Report(current);
             }
-
+        
             if (Directory.Exists(targetFolder))
             {
                 var localFiles = Directory.GetFiles(targetFolder, "*", SearchOption.AllDirectories);
                 foreach (var localFile in localFiles)
                 {
                     string relativePath = Path.GetRelativePath(targetFolder, localFile).Replace('\\', '/');
-                    if (remoteFiles.ContainsKey(relativePath))
-                    {
-                        bool hashMismatch = GetHash(localFile) != remoteFiles[relativePath];
-                        if (hashMismatch)
-                        {
-                            File.Delete(localFile);
-                            result.DeletedCount++;
-                            onProgress?.Invoke($"🗑 Видалено старий файл: {relativePath}");
-                        }
-                    }
 
+                    if (remoteFiles.ContainsKey(relativePath) && !File.Exists(localFile))
+                    {
+                        File.Delete(localFile);
+                        result.DeletedCount++;
+                        onProgress?.Invoke($"🗑 Видалено застарілий файл: {relativePath}");
+                    }
                 }
 
                 RemoveEmptyDirs(targetFolder);

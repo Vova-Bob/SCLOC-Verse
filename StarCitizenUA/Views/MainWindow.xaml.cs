@@ -358,33 +358,26 @@ namespace StarCitizenUA.Views
             {
                 if (string.IsNullOrWhiteSpace(localLiaFolder) || !Directory.Exists(localLiaFolder))
                 {
-                    await _toastService.ShowToastAsync("Будь ласка, виберіть папку VoiceAttack перед встановленням.").ConfigureAwait(true);
+                    await _toastService.ShowToastAsync("Будь ласка, виберіть папку VoiceAttack перед встановленням.");
                     BtnLiaInstall.IsEnabled = true;
                     return;
                 }
 
-                TxtLiaReadme.Text += "📦 Завантажую список файлів...\n";
+                Action<string> logCallback = msg =>
+                {
+                    Dispatcher.Invoke(() => TxtLiaReadme.Text += $"{msg}\n");
+                };
+
                 var remoteFiles = await _updater.GetRemoteFileListAsync();
+                await _updater.SyncFilesAsync(remoteFiles, localLiaFolder, logCallback);
+                await _updater.DownloadAndInstallVoskModelAsync(localLiaFolder, logCallback);
 
-                TxtLiaReadme.Text += "📂 Синхронізація файлів...\n";
-                var syncResult = await _updater.SyncFilesAsync(remoteFiles, localLiaFolder, msg =>
-                {
-                    Dispatcher.Invoke(() => TxtLiaReadme.Text += $"{msg}\n");
-                });
-
-                TxtLiaReadme.Text += "\n🎤 Встановлення Vosk-моделі...\n";
-                await _updater.DownloadAndInstallVoskModelAsync(localLiaFolder, msg =>
-                {
-                    Dispatcher.Invoke(() => TxtLiaReadme.Text += $"{msg}\n");
-                });
-
-                TxtLiaReadme.Text += "\n✅ Встановлення завершено успішно!\n";
-                await _toastService.ShowToastAsync("LIA встановлено успішно!").ConfigureAwait(true);
+                await _toastService.ShowToastAsync("LIA встановлено успішно!");
             }
             catch (Exception ex)
             {
                 TxtLiaReadme.Text += $"\n❌ Помилка: {ex.Message}";
-                await _toastService.ShowToastAsync("Помилка під час встановлення.").ConfigureAwait(true);
+                await _toastService.ShowToastAsync("Помилка під час встановлення.");
             }
             finally
             {
@@ -460,14 +453,6 @@ namespace StarCitizenUA.Views
             {
                 await _toastService.ShowToastAsync(MissingVoiceAttackFolderToastText, 7000).ConfigureAwait(true);
             }
-        }
-
-        protected override void OnClosed(EventArgs e)
-        {
-            _voiceAttackSearchCts?.Cancel();
-            _voiceAttackSearchCts?.Dispose();
-            _viewModel.CancelVoiceAttackSearch();
-            base.OnClosed(e);
         }
     }
 }
