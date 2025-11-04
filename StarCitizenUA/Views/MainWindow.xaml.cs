@@ -39,7 +39,10 @@ namespace StarCitizenUA.Views
         private Button BtnLiaAutoSearch => CanvasLiaSettings.AutoSearchButton;
         private Button BtnLiaReturn => CanvasLiaSettings.ReturnButton;
         private TextBox TxtLiaSelectedPath => CanvasLiaSettings.SelectedPathTextBox;
-        private TextBox TxtLiaReadme => CanvasLiaSettings.ReadmeTextBox;
+        internal TextBox TxtLiaReadme => CanvasAssistant.ReadmeTextBox;
+        internal TextBox TxtLiaSettingsReadme => CanvasLiaSettings.ReadmeTextBox;
+
+
 
         private CancellationTokenSource? _voiceAttackSearchCts;
 

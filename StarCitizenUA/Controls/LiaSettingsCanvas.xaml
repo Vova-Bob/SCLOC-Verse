@@ -189,7 +189,7 @@
             BorderBrush="#6DB9F8"
             BorderThickness="1"
             Background="#CC0A1D29">
-        <TextBox x:Name="TxtReadme"
+        <TextBox x:Name="TxtLiaSettingsReadme"
                  FontFamily="Arial"
                  FontSize="14"
                  Foreground="LightSlateGray"

@@ -10,9 +10,8 @@ namespace StarCitizenUA.Controls
         }
 
         public Button ReturnHomeButton => BtnReturnHome;
-
         public Button InstallButton => BtnLiaInstall;
-
         public Button OpenSettingsButton => BtnLiaSettings;
+        public TextBox ReadmeTextBox => TxtLiaReadme;
     }
 }
