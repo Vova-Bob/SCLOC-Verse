@@ -1,146 +1,161 @@
 ﻿<UserControl x:Class="StarCitizenUA.Controls.EnvironmentSelector"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:local="clr-namespace:StarCitizenUA.Controls"
              x:Name="root"
              Height="120" Width="300">
-    <!--
-        Цей елемент керування реалізує стилізований випадаючий список для
-        вибору серед декількох папок (наприклад "LIVE" та "PTU").
-        Дизайн був відтворений за зразком інтерфейсу з гри Star Citizen.
-        Основні особливості:
-        - Верхній заголовок із назвою групи ("Вміст папки").
-        - Комбобокс з двома рядками: назва оточення та версія.
-        - Кнопка-шестерня для виклику налаштувань поруч зі стрілкою випадаючого списку.
-        - Розворот стрілки при відкритті/закритті списку.
-        - Підсвічування вибраного пункту зі значком галочки.
-        Коментарі українською допомагають краще розуміти логіку елемента.
-    -->
+
+    <!-- Локальні ресурси -->
     <UserControl.Resources>
-        <!-- Шаблон для відображення вибраного елемента без галочки -->
+
+        <!-- Конвертер видимості галочки -->
+        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+
+        <!-- Шаблон вибраного елемента -->
         <DataTemplate x:Key="SelectedEnvironmentItemTemplate">
-            <StackPanel Orientation="Vertical" Margin="0,0,0,0">
-                <TextBlock Text="{Binding Name}" Foreground="White" FontWeight="Bold" FontSize="14"/>
-                <TextBlock Text="{Binding Version}" Foreground="#6DB9F8" FontSize="12"/>
+            <StackPanel Orientation="Vertical" Margin="0">
+                <!-- Назва середовища -->
+                <TextBlock Text="{Binding Name}"
+                   FontFamily="Segoe UI"
+                   FontSize="14"
+                   FontWeight="Bold"
+                   Foreground="#E8F3FF"/>
+
+                <!-- Версія гри -->
+                <TextBlock Text="{Binding Version}"
+                   FontFamily="Segoe UI"
+                   FontSize="11"
+                   FontWeight="Bold"
+                   Foreground="#4AA3D8"/>
             </StackPanel>
         </DataTemplate>
-        <!-- Конвертер для перетворення булевого значення в стан видимості -->
-        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
-        <!-- Шаблон відображення окремого елемента списку -->
+
+
+        <!-- Шаблон елемента у списку -->
         <DataTemplate x:Key="EnvironmentItemTemplate">
-            <Grid Margin="5">
+            <Grid Margin="6,4">
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
                 </Grid.ColumnDefinitions>
-                <!-- Стек із назвою та версією -->
+
                 <StackPanel Orientation="Vertical" Grid.Column="0">
-                    <TextBlock Text="{Binding Name}" Foreground="White" FontWeight="Bold" FontSize="14"/>
-                    <TextBlock Text="{Binding Version}" Foreground="#6DB9F8" FontSize="12"/>
+                    <TextBlock Text="{Binding Name}"
+                               FontFamily="Segoe UI"
+                               FontSize="15"
+                               FontWeight="SemiBold"
+                               Foreground="#E8F3FF"/>
+                    <TextBlock Text="{Binding Version}"
+                               FontFamily="Segoe UI"
+                               FontSize="13"
+                               Foreground="#4AA3D8"/>
                 </StackPanel>
-                <!-- Галочка розміщується у другій колонці та вирівнюється праворуч -->
-                <Path Grid.Column="1" Margin="0,0,8,0"
-                      Data="M2,8 L6,12 L14,4" Stroke="#6DB9F8" StrokeThickness="2"
-                      HorizontalAlignment="Right" VerticalAlignment="Center"
-                      Visibility="{Binding RelativeSource={RelativeSource AncestorType=ComboBoxItem}, Path=IsSelected, Converter={StaticResource BoolToVis}}"/>
+
+                <!-- Галочка -->
+                <Path Grid.Column="1"
+                      Margin="0,0,10,0"
+                      Data="M2,8 L6,12 L14,4"
+                      Stroke="#4AA3D8"
+                      StrokeThickness="2"
+                      HorizontalAlignment="Right"
+                      VerticalAlignment="Center"
+                      Visibility="{Binding RelativeSource={RelativeSource AncestorType=ComboBoxItem},
+                                           Path=IsSelected,
+                                           Converter={StaticResource BoolToVis}}"/>
             </Grid>
         </DataTemplate>
 
-        <!-- Стиль для комбобокса -->
+
+        <!-- Стиль для ComboBox -->
         <Style x:Key="EnvironmentComboBoxStyle" TargetType="ComboBox">
             <Setter Property="Foreground" Value="White"/>
             <Setter Property="Background" Value="#0F2C3E"/>
             <Setter Property="BorderBrush" Value="#6DB9F8"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="Padding" Value="0"/>
-            <!-- Розтягуємо вміст елемента списку на всю ширину для правильного позиціювання галочки -->
             <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
-            <!-- Встановлюємо шаблон елемента -->
             <Setter Property="ItemTemplate" Value="{StaticResource EnvironmentItemTemplate}"/>
-            <!-- Власний шаблон комбобокса -->
+
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="ComboBox">
                         <Grid>
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
-                            <!-- Фон та рамка -->
-                            <Border x:Name="Border" Grid.ColumnSpan="3"
-                                    Background="{TemplateBinding Background}"
-                                    BorderBrush="{TemplateBinding BorderBrush}"
-                                    BorderThickness="{TemplateBinding BorderThickness}"
-                                    CornerRadius="5"/>
-                            <!-- Відображення вибраного елемента без галочки -->
+
+                            <!-- Фон -->
+                            <Border x:Name="Border"
+                                    Grid.ColumnSpan="3"
+                                    Background="#102A3A"
+                                    BorderBrush="#2478A9"
+                                    BorderThickness="2"
+                                    CornerRadius="6"/>
+
+                            <!-- Вибраний елемент -->
                             <ContentPresenter x:Name="ContentSite"
                                               Grid.Column="0"
-                                              Margin="8,4,0,4"
+                                              Margin="10,4"
                                               VerticalAlignment="Center"
-                                              HorizontalAlignment="Left"
                                               Content="{Binding SelectedItem, RelativeSource={RelativeSource TemplatedParent}}"
                                               ContentTemplate="{StaticResource SelectedEnvironmentItemTemplate}"/>
-                            <!-- Кнопка розгортання списку -->
+
+                            <!-- Стрілка -->
                             <ToggleButton x:Name="ToggleButton"
                                           Grid.Column="1"
                                           Width="24" Height="24"
-                                          Margin="2"
                                           Background="Transparent"
                                           BorderBrush="{x:Null}"
                                           Focusable="False"
                                           IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}">
-                                <Grid>
-                                    <Path x:Name="Arrow"
-                                          Data="M0,4 L8,12 L16,4"
-                                          Stroke="#6DB9F8"
-                                          StrokeThickness="2"
-                                          HorizontalAlignment="Center"
-                                          VerticalAlignment="Center"/>
-                                </Grid>
+                                <Path x:Name="Arrow"
+                                      Data="M0,4 L8,12 L16,4"
+                                      Stroke="#4AA3D8"
+                                      StrokeThickness="2"
+                                      HorizontalAlignment="Center"
+                                      VerticalAlignment="Center">
+                                    <Path.RenderTransform>
+                                        <RotateTransform CenterX="8" CenterY="8"/>
+                                    </Path.RenderTransform>
+                                </Path>
                             </ToggleButton>
-                            <!-- Кнопка шестерні: синя іконка зі спливаючою підказкою "Налаштування" -->
+
+                            <!-- Шестерня -->
                             <Button x:Name="GearButton"
                                     Grid.Column="2"
                                     Width="24" Height="24"
-                                    Margin="2,2,8,2"
+                                    Margin="4,2"
                                     Background="Transparent"
                                     BorderBrush="{x:Null}"
                                     ToolTip="Налаштування">
                                 <TextBlock Text="&#xE713;"
                                            FontFamily="Segoe MDL2 Assets"
                                            FontSize="14"
-                                           Foreground="#6DB9F8"
-                                           HorizontalAlignment="Center"
-                                           VerticalAlignment="Center">
-                                    <TextBlock.Effect>
-                                        <!-- Додаємо невелику розмиту тінь, щоб позначка краще виділялася на темному фоні -->
-                                        <DropShadowEffect Color="Black" BlurRadius="4" ShadowDepth="0" Opacity="0.6"/>
-                                    </TextBlock.Effect>
-                                </TextBlock>
+                                           Foreground="#4AA3D8"/>
                             </Button>
-                            <!-- Popup із елементами комбобокса -->
+
+                            <!-- Popup зі списком -->
                             <Popup x:Name="PART_Popup"
                                    Placement="Bottom"
-                                   AllowsTransparency="True"
-                                   Focusable="False"
                                    IsOpen="{TemplateBinding IsDropDownOpen}"
-                                   PopupAnimation="Fade">
-                                <Border Background="#0F2C3E" BorderBrush="#6DB9F8" BorderThickness="1" CornerRadius="5"
+                                   PopupAnimation="Fade"
+                                   AllowsTransparency="True">
+                                <Border Background="#102A3A"
+                                        BorderBrush="#2478A9"
+                                        BorderThickness="2"
+                                        CornerRadius="6"
                                         MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource Mode=FindAncestor, AncestorType={x:Type ComboBox}}}">
                                     <ScrollViewer>
-                                        <!-- IsItemsHost = true огортає ItemsPanel комбобокса -->
                                         <StackPanel IsItemsHost="True"/>
                                     </ScrollViewer>
                                 </Border>
                             </Popup>
                         </Grid>
+
+                        <!-- Тригери -->
                         <ControlTemplate.Triggers>
-                            <!-- При відсутності доступності приглушуємо -->
-                            <Trigger Property="IsEnabled" Value="False">
-                                <Setter TargetName="Border" Property="Opacity" Value="0.5"/>
-                            </Trigger>
-                            <!-- Поворот стрілки, коли список відкрито -->
+                            <!-- Поворот стрілки -->
                             <Trigger SourceName="ToggleButton" Property="IsChecked" Value="True">
                                 <Setter TargetName="Arrow" Property="RenderTransform">
                                     <Setter.Value>
@@ -149,16 +164,24 @@
                                 </Setter>
                             </Trigger>
                         </ControlTemplate.Triggers>
+
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
         </Style>
+
     </UserControl.Resources>
-    <!-- Основний вміст елемента -->
+
+
+    <!-- Інтерфейс -->
     <StackPanel>
-        <!-- Підпис над комбобоксом -->
-        <TextBlock Text="Вибір середовища" Foreground="White" FontSize="16" FontWeight="Bold" Margin="25,0,25,4"/>
-        <!-- Комбобокс із оточеннями -->
+        <TextBlock Text="Вибір середовища"
+                   Foreground="#E8F3FF"
+                   FontFamily="Segoe UI Semibold"
+                   FontSize="16"
+                   FontWeight="SemiBold"
+                   Margin="18,0,18,6"/>
+
         <ComboBox x:Name="EnvironmentComboBox"
                   Width="250" Height="50"
                   Style="{StaticResource EnvironmentComboBoxStyle}"

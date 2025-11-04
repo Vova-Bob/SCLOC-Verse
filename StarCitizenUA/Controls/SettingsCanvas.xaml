@@ -214,21 +214,22 @@
     </Button>
 
     <Border Canvas.Left="285" Canvas.Top="88"
-            Width="600" Height="38"
-            CornerRadius="5"
-            BorderBrush="#6DB9F8"
-            BorderThickness="1"
-            Background="#20000000">
+        Width="600" Height="38"
+        CornerRadius="6"
+        BorderBrush="#1B78C8"
+        BorderThickness="1"
+        Background="#0C1A2A">
         <TextBox x:Name="TxtSelectedPath"
-                 FontFamily="Arial"
-                 FontSize="14"
-                 Foreground="LightSlateGray"
-                 Background="Transparent"
-                 BorderThickness="0"
-                 Padding="8,4"
-                 IsReadOnly="True"
-                 HorizontalContentAlignment="Center"
-                 VerticalContentAlignment="Center"/>
+           FontFamily="Segoe UI Semibold"
+           FontSize="15"
+           Foreground="#A7C6E7"
+           Background="Transparent"
+           BorderThickness="0"
+           Padding="14,4"
+           IsReadOnly="True"
+           HorizontalContentAlignment="Left"
+           VerticalContentAlignment="Center"
+           TextAlignment="Left"/>
     </Border>
 
     <Border Canvas.Left="70" Canvas.Top="220"
@@ -238,14 +239,18 @@
             BorderThickness="1"
             Background="#CC0A1D29">
         <TextBox x:Name="TxtReadme"
-                 FontFamily="Arial"
-                 FontSize="14"
-                 Foreground="LightSlateGray"
+                 FontFamily="Segoe UI Semibold"
+                 FontSize="16"
+                 Foreground="#A9C6E2"
                  Background="Transparent"
                  BorderThickness="0"
-                 Padding="8,4"
+                 Padding="10,6"
                  IsReadOnly="True"
-                 HorizontalContentAlignment="Center"
-                 VerticalContentAlignment="Center"/>
+                 AcceptsReturn="True"
+                 TextWrapping="Wrap"     
+                 HorizontalContentAlignment="Stretch"
+                 VerticalContentAlignment="Top"
+                 TextAlignment="Justify"/>
     </Border>
+
 </Canvas>
