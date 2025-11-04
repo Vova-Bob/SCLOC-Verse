@@ -15,8 +15,7 @@ namespace StarCitizenUA.Helpers
             string jsonPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, _jsonFileName);
             if (!File.Exists(jsonPath))
             {
-                window.TxtReadme.Text = "Readme файл не знайдено.";
-                window.TxtSelectedPath.Text = string.Empty;
+                SetAllFieldsMissing(window, "PathText не знайдено.");
                 return;
             }
 
@@ -24,10 +23,19 @@ namespace StarCitizenUA.Helpers
             var readmeData = jsonService.LoadReadme();
 
             window.TxtReadme.Text = readmeData.ReadmeText;
+            window.TxtLiaReadme.Text = readmeData.LiaReadmeText;
+            window.TxtLiaSettingsReadme.Text = readmeData.LiaSettingsReadmeText;
             window.TxtSelectedPath.Text = readmeData.TxtSelectedPath;
             window.DefaultPathText = readmeData.DefaultPathText;
             window.MissingGameFolderToastText = readmeData.MissingGameFolderToast;
             window.MissingVoiceAttackFolderToastText = readmeData.MissingVoiceAttackFolderToast;
+        }
+        private void SetAllFieldsMissing(MainWindow window, string message)
+        {
+            window.TxtReadme.Text = message;
+            window.TxtLiaReadme.Text = message;
+            window.TxtLiaSettingsReadme.Text = message;
+            window.TxtSelectedPath.Text = string.Empty;
         }
     }
 }

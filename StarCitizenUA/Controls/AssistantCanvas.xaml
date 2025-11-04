@@ -182,7 +182,43 @@
          FontSize="25"
          Canvas.Left="770"
          Canvas.Top="150"/>
-    
+
+    <!--<Border Canvas.Left="180" Canvas.Top="500"
+          Width="600" Height="38"
+          CornerRadius="5"
+          BorderBrush="#6DB9F8"
+          BorderThickness="1"
+          Background="#20000000">
+        <TextBox x:Name="TxtLiaVersionPath"
+               FontFamily="Arial"
+               FontSize="14"
+               Foreground="LightSlateGray"
+               Background="Transparent"
+               BorderThickness="0"
+               Padding="8,4"
+               IsReadOnly="True"
+               HorizontalContentAlignment="Center"
+               VerticalContentAlignment="Center"/>
+    </Border>-->
+
+    <Border Canvas.Left="70" Canvas.Top="220"
+         Width="820" Height="270"
+         CornerRadius="5"
+         BorderBrush="#6DB9F8"
+         BorderThickness="1"
+         Background="#CC0A1D29">
+        <TextBox x:Name="TxtLiaReadme"
+              FontFamily="Arial"
+              FontSize="14"
+              Foreground="LightSlateGray"
+              Background="Transparent"
+              BorderThickness="0"
+              Padding="8,4"
+              IsReadOnly="True"
+              HorizontalContentAlignment="Center"
+              VerticalContentAlignment="Center"/>
+    </Border>
+
 </Canvas>
     
     

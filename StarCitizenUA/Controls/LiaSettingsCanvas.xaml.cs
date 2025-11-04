@@ -17,6 +17,6 @@ namespace StarCitizenUA.Controls
 
         public TextBox SelectedPathTextBox => TxtSelectedPath;
 
-        public TextBox ReadmeTextBox => TxtReadme;
+        public TextBox ReadmeTextBox => TxtLiaSettingsReadme;
     }
 }
