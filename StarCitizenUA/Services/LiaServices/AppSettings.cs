@@ -29,11 +29,11 @@ namespace StarCitizenUA.Services.LiaServices
                 var releaseInfo = JObject.Parse(response);
                 var version = releaseInfo["tag_name"]?.ToString();
 
-                return version?.Trim();
+                return version?.Trim()?? "невідомо";
             }
             catch
             {
-                return string.Empty;
+                return "невідомо";
             }
         }
 
@@ -46,9 +46,9 @@ namespace StarCitizenUA.Services.LiaServices
             {
                 var response = await client.GetStringAsync(GitHubReleasesUrl);
                 var releaseInfo = JObject.Parse(response);
-                var downloadUrl = releaseInfo["assets"]?[0]["browser_download_url"]?.ToString();
+                var downloadUrl = releaseInfo["assets"]?[0]?["browser_download_url"]?.ToString();
 
-                return downloadUrl;
+                return downloadUrl ?? "";
             }
             catch
             {

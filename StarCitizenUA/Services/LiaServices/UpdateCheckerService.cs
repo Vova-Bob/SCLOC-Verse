@@ -66,19 +66,7 @@ namespace StarCitizenUA.Services.LiaServices
             catch
             {
                 return ("Помилка при зчитуванні version.txt.", System.Windows.Media.Brushes.Red);
-            }
-
-            //первірка на кількість файлів
-            //var expectedFiles = lines
-            //    .SkipWhile(l => !l.StartsWith("minFiles=", StringComparison.OrdinalIgnoreCase))
-            //    .Skip(1)
-            //    .Where(l => !string.IsNullOrWhiteSpace(l))
-            //    .Select(l => l.Split('|')[0].Replace('/', Path.DirectorySeparatorChar))
-            //    .ToList();
-
-            //int existingFileCount = expectedFiles.Count(f => File.Exists(Path.Combine(voicePackFolder, f)));
-            //if (expectedMinFileCount > 0 && existingFileCount < expectedMinFileCount)
-            //    return ($"Голосовий пакет неповний: знайдено {existingFileCount} із {expectedMinFileCount} файлів.", System.Windows.Media.Brushes.Orange);
+            }        
 
             if (!string.IsNullOrEmpty(remoteVersion) && remoteVersion == voicePackVersion)
                 return ($"У вас актуальна версія голосового пакету: {voicePackVersion}", System.Windows.Media.Brushes.Green);
