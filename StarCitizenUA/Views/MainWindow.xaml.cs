@@ -23,7 +23,7 @@ namespace StarCitizenUA.Views
         private readonly IButtonHelper _buttonHelper;
         private readonly IToastService _toastService;
         private readonly ILinkService _linkService;
-
+        private readonly IUpdater _updater;
         private EnvironmentSelector EnvSelector => CanvasLocalization.EnvironmentSelector;
         private Button BtnInstall => CanvasLocalization.InstallButton;
         private Button BtnLocalisationDelete => CanvasLocalization.DeleteButton;
@@ -52,7 +52,7 @@ namespace StarCitizenUA.Views
         public string MissingVoiceAttackFolderToastText = string.Empty;
         private bool isSettingButtonClicked;
 
-        public MainWindow(MainWindowViewModel viewModel, IWindowHelper windowHelper, ILocalizationInstaller localizationInstaller, IReadmeService readmeService)
+        public MainWindow(MainWindowViewModel viewModel, IWindowHelper windowHelper, ILocalizationInstaller localizationInstaller, IReadmeService readmeService, IUpdater updater)
         {
             InitializeComponent();
 
@@ -60,6 +60,7 @@ namespace StarCitizenUA.Views
             _windowHelper = windowHelper;
             _localizationInstaller = localizationInstaller;
             _readmeService = readmeService;
+            _updater = updater;
 
             _toastService = new ToastService(AppToast.ToastBorder, AppToast.ToastText);
             _linkService = new LinkService(_toastService);
@@ -362,19 +363,17 @@ namespace StarCitizenUA.Views
                     return;
                 }
 
-                var updater = new Updater();
-
                 TxtLiaReadme.Text += "📦 Завантажую список файлів...\n";
-                var remoteFiles = await updater.GetRemoteFileListAsync();
+                var remoteFiles = await _updater.GetRemoteFileListAsync();
 
                 TxtLiaReadme.Text += "📂 Синхронізація файлів...\n";
-                var syncResult = await updater.SyncFilesAsync(remoteFiles, localLiaFolder, msg =>
+                var syncResult = await _updater.SyncFilesAsync(remoteFiles, localLiaFolder, msg =>
                 {
                     Dispatcher.Invoke(() => TxtLiaReadme.Text += $"{msg}\n");
                 });
 
                 TxtLiaReadme.Text += "\n🎤 Встановлення Vosk-моделі...\n";
-                await updater.DownloadAndInstallVoskModelAsync(localLiaFolder, msg =>
+                await _updater.DownloadAndInstallVoskModelAsync(localLiaFolder, msg =>
                 {
                     Dispatcher.Invoke(() => TxtLiaReadme.Text += $"{msg}\n");
                 });

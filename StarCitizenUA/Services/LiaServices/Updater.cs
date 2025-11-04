@@ -1,12 +1,13 @@
-﻿using System.IO;
+﻿using StarCitizenUA.Interfaces;
+using StarCitizenUA.Models.LiaModels;
+using System.IO;
 using System.IO.Compression;
 using System.Net.Http;
 using System.Security.Cryptography;
-using StarCitizenUA.Models.LiaModels;
 
 namespace StarCitizenUA.Services.LiaServices
 {
-    public class Updater
+    public class Updater : IUpdater
     {
         public async Task<Dictionary<string, string>> GetRemoteFileListAsync()
         {
