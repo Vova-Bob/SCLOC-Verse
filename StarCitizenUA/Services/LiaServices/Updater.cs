@@ -67,13 +67,17 @@ namespace StarCitizenUA.Services.LiaServices
                 foreach (var localFile in localFiles)
                 {
                     string relativePath = Path.GetRelativePath(targetFolder, localFile).Replace('\\', '/');
-                    if (!remoteFiles.ContainsKey(relativePath) &&
-                        !relativePath.StartsWith(AppSettings.VoskTargetFolderName + "/"))
+                    if (remoteFiles.ContainsKey(relativePath))
                     {
-                        File.Delete(localFile);
-                        result.DeletedCount++;
-                        onProgress?.Invoke($"🗑 Видалено: {relativePath}");
+                        bool hashMismatch = GetHash(localFile) != remoteFiles[relativePath];
+                        if (hashMismatch)
+                        {
+                            File.Delete(localFile);
+                            result.DeletedCount++;
+                            onProgress?.Invoke($"🗑 Видалено старий файл: {relativePath}");
+                        }
                     }
+
                 }
 
                 RemoveEmptyDirs(targetFolder);
