@@ -111,6 +111,10 @@ namespace StarCitizenUA.Services.LiaServices
             // Якщо відсутні файли (крім ігнорованого)
             if (missingFiles.Any())
             {
+                if (existingFileCount == 1)
+                {
+                    return ($"Голосовий пакет не встановлено.", System.Windows.Media.Brushes.Red);
+                }
                 string missing = string.Join(", ", missingFiles);
                 return ($"Голосовий пакет неповний. Не знайдено файли: {missing}", System.Windows.Media.Brushes.Orange);
             }
@@ -123,7 +127,7 @@ namespace StarCitizenUA.Services.LiaServices
 
             // Перевірка версії
             if (!string.IsNullOrEmpty(remoteVersion) && remoteVersion == voicePackVersion)
-                return ($"У вас актуальна версія голосового пакету: {voicePackVersion}", System.Windows.Media.Brushes.Green);
+                return ($"У вас актуальна версія голосового пакету: {voicePackVersion}", System.Windows.Media.Brushes.LimeGreen);
 
             return ($"Доступне оновлення голосового пакету: {remoteVersion}", System.Windows.Media.Brushes.Red);
         }

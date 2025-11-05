@@ -58,17 +58,5 @@ namespace StarCitizenUA {
                 this["StarCitizenLIA"] = value;
             }
         }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("")]
-        public string VoiceAttackFolder {
-            get {
-                return ((string)(this["VoiceAttackFolder"]));
-            }
-            set {
-                this["VoiceAttackFolder"] = value;
-            }
-        }
     }
 }

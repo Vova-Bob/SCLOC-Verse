@@ -54,9 +54,6 @@ namespace StarCitizenUA.Helpers
             if (msg.Contains("не знайдено") || msg.Contains("бракує") || msg.Contains("відсутн"))
                 return "Завантажити";
 
-            if (msg.Contains("неповний"))
-                return "Оновити";
-
             if (msg.Contains("актуальна версія"))
                 return "Актуально";
 
