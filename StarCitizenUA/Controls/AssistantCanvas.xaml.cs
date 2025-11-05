@@ -14,5 +14,6 @@ namespace StarCitizenUA.Controls
         public Button OpenSettingsButton => BtnLiaSettings;
         public TextBox ReadmeTextBox => TxtLiaReadme;
         public TextBox PathVersionTextBox => TxtLiaVersionPath;
+        public TextBox SetupInfoTextBox => TxtLiaSetupe;
     }
 }

@@ -44,6 +44,7 @@ namespace StarCitizenUA.Views
         private TextBox TxtLiaSelectedPath => CanvasLiaSettings.SelectedPathTextBox;
         internal TextBox TxtLiaReadme => CanvasAssistant.ReadmeTextBox;
         internal TextBox TxtLiaSettingsReadme => CanvasLiaSettings.ReadmeTextBox;
+        internal TextBox TxtLiaSetupe => CanvasAssistant.SetupInfoTextBox;
         internal TextBox TxtLiaVersionPath => CanvasAssistant.TxtLiaVersionPath;
         private CancellationTokenSource? _voiceAttackSearchCts;
         private string? localFolder = string.Empty;
@@ -379,8 +380,8 @@ namespace StarCitizenUA.Views
 
         private async void BtnLiaInstall_Click(object sender, RoutedEventArgs e)
         {
-            BtnLiaInstall.IsEnabled = false;
-            TxtLiaReadme.Text = "🔧 Починаю встановлення LIA...\n";
+            TxtLiaSetupe.Text = string.Empty;
+            BtnLiaInstall.IsEnabled = false;         
 
             try
             {
@@ -393,7 +394,8 @@ namespace StarCitizenUA.Views
 
                 Action<string> logCallback = msg =>
                 {
-                    Dispatcher.Invoke(() => TxtLiaReadme.Text += $"{msg}\n");
+                    Dispatcher.Invoke(() => TxtLiaSetupe.Text += $"{msg}\n");
+                    TxtLiaSetupe.ScrollToEnd();
                 };
 
                 var remoteFiles = await _updater.GetRemoteFileListAsync();
@@ -404,12 +406,12 @@ namespace StarCitizenUA.Views
 
                 BtnLiaInstall.Content = _buttonHelper.GetLiaInstallButtonText(updateMessage);
 
-                await _toastService.ShowToastAsync("LIA встановлено успішно!");
+                await _toastService.ShowToastAsync("Голосовий асистент Л.І.А встановлено успішно!");
                 await UpdateLiaVersionAsync();
             }
             catch (Exception ex)
             {
-                TxtLiaReadme.Text += $"\n❌ Помилка: {ex.Message}";
+                TxtLiaSetupe.Text += $"\n❌ Помилка: {ex.Message}";
                 await _toastService.ShowToastAsync("Помилка під час встановлення.");
             }
             finally

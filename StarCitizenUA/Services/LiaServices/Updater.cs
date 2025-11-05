@@ -9,9 +9,11 @@ namespace StarCitizenUA.Services.LiaServices
 {
     public class Updater : IUpdater
     {
+        private static readonly HttpClient client = new HttpClient();
+
         public async Task<Dictionary<string, string>> GetRemoteFileListAsync()
         {
-            using HttpClient client = new();
+            //using HttpClient client = new();
             var content = await client.GetStringAsync(AppSettings.VersionFile);
 
             var files = new Dictionary<string, string>();
@@ -26,8 +28,7 @@ namespace StarCitizenUA.Services.LiaServices
             }
             return files;
         }
-
-       
+        
         public async Task<SyncResult> SyncFilesAsync(Dictionary<string, string> remoteFiles, string localPath, Action<string>? onProgress = null, IProgress<int>? progress = null)
         {
             var result = new SyncResult();
@@ -55,10 +56,11 @@ namespace StarCitizenUA.Services.LiaServices
                     onProgress?.Invoke($"📥 Завантаження: {file.Key}");
                     await DownloadFileAsync(AppSettings.BaseUrl + file.Key, localFile);
                     result.Downloaded.Add(file.Key);
+                    onProgress?.Invoke($"✔️ Актуально: {file.Key}");
                 }
                 else
                 {
-                    onProgress?.Invoke($"✅ Актуально: {file.Key}");
+                    onProgress?.Invoke($"✔️ Актуально: {file.Key}");
                 }
 
                 current++;
@@ -95,7 +97,7 @@ namespace StarCitizenUA.Services.LiaServices
 
         private async Task DownloadFileAsync(string url, string localPath)
         {
-            using HttpClient client = new();
+            //using HttpClient client = new();
             var bytes = await client.GetByteArrayAsync(url);
             Directory.CreateDirectory(Path.GetDirectoryName(localPath)!);
             await File.WriteAllBytesAsync(localPath, bytes);
@@ -125,7 +127,7 @@ namespace StarCitizenUA.Services.LiaServices
 
                     if (allFilesExist)
                     {
-                        onProgress?.Invoke($"✅ Модель Vosk вже встановлена.");
+                        onProgress?.Invoke($"✔️ Актуально: Vosk вже встановлено.");
                         return false;
                     }
                     else
@@ -152,10 +154,10 @@ namespace StarCitizenUA.Services.LiaServices
             try
             {
                 onProgress?.Invoke("📥 Завантаження моделі Vosk...");
-                using HttpClient client = new();
+                //using HttpClient client = new();
                 var bytes = await client.GetByteArrayAsync(AppSettings.VoskModelUrl);
                 await File.WriteAllBytesAsync(zipPath, bytes);
-                onProgress?.Invoke("✅ Завантажено архів Vosk");
+                onProgress?.Invoke("✔️ Завантажено архів Vosk");
 
                 string tempExtractFolder = Path.Combine(baseFolder, "tmp_vosk_extract");
                 if (Directory.Exists(tempExtractFolder))
@@ -181,13 +183,13 @@ namespace StarCitizenUA.Services.LiaServices
 
                 await File.WriteAllLinesAsync(manifestPath, extractedFiles);
 
-                onProgress?.Invoke($"✅ Модель Vosk встановлено.");
-                onProgress?.Invoke($"✔️ Голосовий асистент Л.І.А встановлено 🔚");
+                onProgress?.Invoke($"✔️ Модель Vosk встановлено.");
+                onProgress?.Invoke($"🔚 Голосовий асистент Л.І.А успішно встановлений.");
                 return true;
             }
             catch (Exception ex)
             {
-                onProgress?.Invoke("❌ Помилка при встановленні Vosk: " + ex.Message);
+                onProgress?.Invoke($"❌ Помилка при встановленні Vosk: {ex.Message}.");
                 return false;
             }
         }
