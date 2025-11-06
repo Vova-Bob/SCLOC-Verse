@@ -1,9 +1,7 @@
-global using StarCitizenUA.Services.LocalizationServices;
-
 using StarCitizenUA.Interfaces;
 using StarCitizenUA.Models;
+using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -22,7 +20,7 @@ namespace StarCitizenUA.Services.LocalizationServices
         private const string UserCfgFileName = "user.cfg";
         private const string GlobalIniFileName = "global.ini";
         private const string ReleasesApiUrl = "https://api.github.com/repos/Vova-Bob/SC_localization_UA/releases";
-        private const int MaxDownloadRetries = 4;
+        private const int MaxDownloadRetries = 3;
         private static readonly string[] LocalizationPathSegments = { "Data", "Localization", "korean_(south_korea)" };
         private static readonly Encoding UserCfgEncoding = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
         private static readonly HttpClient HttpClient = CreateHttpClient();
@@ -42,101 +40,86 @@ namespace StarCitizenUA.Services.LocalizationServices
             var localizationDir = BuildLocalizationDirectory(environmentFolder);
             var globalIniPath = Path.Combine(localizationDir, GlobalIniFileName);
 
-            FileStream? lockStream = null;
-            try
+            Directory.CreateDirectory(localizationDir);
+
+            var metadataPath = GetMetadataPath(environmentName);
+            var metadata = await ReadMetadataAsync(environmentName, cancellationToken).ConfigureAwait(false);
+
+            var release = (await GetReleaseAsync(environmentName, cancellationToken).ConfigureAwait(false))
+                ?? throw new InvalidOperationException(LocalizationMessages.ReleaseNotFound(environmentName));
+
+            var asset = release.Assets?.FirstOrDefault(a => a.Name.Equals(GlobalIniFileName, StringComparison.OrdinalIgnoreCase))
+                        ?? throw new InvalidOperationException(LocalizationMessages.AssetMissing(release.TagName, GlobalIniFileName));
+
+            ProgressChanged?.Invoke(LocalizationProgressUpdate.Checking());
+
+            var conditionalResult = await TryConditionalDownloadAsync(asset, metadata, cancellationToken).ConfigureAwait(false);
+
+            if (conditionalResult.Status == ConditionalRequestStatus.NotModified && !File.Exists(globalIniPath))
             {
-                lockStream = await AcquireInstallLockAsync(cancellationToken).ConfigureAwait(false);
-                if (lockStream is null)
-                {
-                    var lockMessage = LocalizationMessages.InstallInProgress();
-                    NotificationRaised?.Invoke(LocalizationNotification.Completed(lockMessage, false));
-                    return new LocalizationInstallResult(false, environmentName, globalIniPath, null, lockMessage);
-                }
-
-                Directory.CreateDirectory(localizationDir);
-
-                var metadataPath = GetMetadataPath(environmentName);
-                var metadata = await ReadMetadataAsync(environmentName, cancellationToken).ConfigureAwait(false);
-
-                var release = (await GetReleaseAsync(environmentName, cancellationToken).ConfigureAwait(false))
-                    ?? throw new InvalidOperationException(LocalizationMessages.ReleaseNotFound(environmentName));
-
-                var asset = release.Assets?.FirstOrDefault(a => a.Name.Equals(GlobalIniFileName, StringComparison.OrdinalIgnoreCase))
-                            ?? throw new InvalidOperationException(LocalizationMessages.AssetMissing(release.TagName, GlobalIniFileName));
-
-                ProgressChanged?.Invoke(LocalizationProgressUpdate.Checking());
-
-                var conditionalResult = await TryConditionalDownloadAsync(asset, metadata, cancellationToken).ConfigureAwait(false);
-
-                bool localizationUpdated = false;
-                LocalizationMetadata? updatedMetadata = null;
-
-                if (conditionalResult.Status == ConditionalRequestStatus.NotModified && File.Exists(globalIniPath))
-                {
-                    await EnsureMetadataConsistencyAsync(metadataPath, metadata, asset, cancellationToken).ConfigureAwait(false);
-                }
-                else
-                {
-                    HttpResponseMessage? response = conditionalResult.Response;
-                    if (response is null)
-                    {
-                        response = await DownloadAssetAsync(asset.DownloadUrl!, cancellationToken).ConfigureAwait(false);
-                    }
-
-                    SaveAssetResult downloadResult;
-                    try
-                    {
-                        downloadResult = await SaveAssetAsync(response, asset, globalIniPath, metadata, cancellationToken).ConfigureAwait(false);
-                    }
-                    finally
-                    {
-                        response.Dispose();
-                    }
-
-                    updatedMetadata = downloadResult.Metadata;
-
-                    if (downloadResult.ShouldReplace)
-                    {
-                        ReplaceWithTemp(downloadResult.TempPath, globalIniPath, downloadResult.DestinationExists);
-                        localizationUpdated = true;
-                    }
-                    else
-                    {
-                        localizationUpdated = false;
-                        if (File.Exists(downloadResult.TempPath))
-                        {
-                            File.Delete(downloadResult.TempPath);
-                        }
-                    }
-                }
-
-                cancellationToken.ThrowIfCancellationRequested();
-
-                // Створюємо user.cfg в корені середовища, якщо його немає
-                string? userCfgPathCreated = null;
-                var userCfgPath = Path.Combine(environmentFolder, UserCfgFileName);
-                if (!File.Exists(userCfgPath))
-                {
-                    await File.WriteAllTextAsync(userCfgPath, BuildUserCfgContent(), UserCfgEncoding, cancellationToken).ConfigureAwait(false);
-                    userCfgPathCreated = userCfgPath;
-                }
-
-                if (updatedMetadata is not null)
-                {
-                    await WriteMetadataAsync(metadataPath, updatedMetadata, cancellationToken).ConfigureAwait(false);
-                }
-
-                var message = LocalizationMessages.InstallCompleted(environmentName, release.TagName, userCfgPathCreated != null, localizationUpdated);
-
-                ProgressChanged?.Invoke(LocalizationProgressUpdate.Completed(localizationUpdated));
-                NotificationRaised?.Invoke(LocalizationNotification.Completed(message, localizationUpdated));
-
-                return new LocalizationInstallResult(localizationUpdated, environmentName, globalIniPath, userCfgPathCreated, message);
+                conditionalResult = ConditionalRequestResult.ForceDownload();
             }
-            finally
+
+            bool localizationUpdated = false;
+            LocalizationMetadata? updatedMetadata = null;
+
+            if (conditionalResult.Status != ConditionalRequestStatus.NotModified)
             {
-                lockStream?.Dispose();
+                HttpResponseMessage? response = conditionalResult.Response;
+                if (response is null)
+                {
+                    response = await DownloadAssetAsync(asset.DownloadUrl!, cancellationToken).ConfigureAwait(false);
+                }
+
+                SaveAssetResult downloadResult;
+                try
+                {
+                    downloadResult = await SaveAssetAsync(response, asset, globalIniPath, metadata, cancellationToken).ConfigureAwait(false);
+                }
+                finally
+                {
+                    response.Dispose();
+                }
+
+                updatedMetadata = downloadResult.Metadata;
+
+                if (!downloadResult.HashMatchesExisting)
+                {
+                    CommitTemp(downloadResult.TempPath, globalIniPath, downloadResult.DestinationExists);
+                    localizationUpdated = true;
+                }
+                else if (!downloadResult.DestinationExists)
+                {
+                    CommitTemp(downloadResult.TempPath, globalIniPath, false);
+                    localizationUpdated = true;
+                }
+                else if (File.Exists(downloadResult.TempPath))
+                {
+                    File.Delete(downloadResult.TempPath);
+                }
             }
+
+            cancellationToken.ThrowIfCancellationRequested();
+
+            string? userCfgPathCreated = null;
+            var userCfgPath = Path.Combine(environmentFolder, UserCfgFileName);
+            if (!File.Exists(userCfgPath))
+            {
+                await File.WriteAllTextAsync(userCfgPath, BuildUserCfgContent(), UserCfgEncoding, cancellationToken).ConfigureAwait(false);
+                userCfgPathCreated = userCfgPath;
+            }
+
+            if (updatedMetadata is not null)
+            {
+                await WriteMetadataAsync(metadataPath, updatedMetadata, cancellationToken).ConfigureAwait(false);
+            }
+
+            var message = LocalizationMessages.InstallCompleted(environmentName, release.TagName, userCfgPathCreated != null, localizationUpdated);
+
+            ProgressChanged?.Invoke(LocalizationProgressUpdate.Completed(localizationUpdated));
+            NotificationRaised?.Invoke(LocalizationNotification.Completed(message, localizationUpdated));
+
+            return new LocalizationInstallResult(localizationUpdated, environmentName, globalIniPath, userCfgPathCreated, message);
         }
 
         public Task<LocalizationDeleteResult> DeleteAsync(string environmentFolder, string environmentName, CancellationToken cancellationToken = default)
@@ -147,9 +130,11 @@ namespace StarCitizenUA.Services.LocalizationServices
             var localizationDir = BuildLocalizationDirectory(environmentFolder);
             var globalIniPath = Path.Combine(localizationDir, GlobalIniFileName);
             var userCfgPath = Path.Combine(environmentFolder, UserCfgFileName);
+            var metadataPath = GetMetadataPath(environmentName);
 
             bool userCfgDeleted = DeleteFileIfExists(userCfgPath);
             bool globalIniDeleted = DeleteFileIfExists(globalIniPath);
+            bool metadataDeleted = DeleteFileIfExists(metadataPath);
 
             string message = userCfgDeleted && globalIniDeleted
                 ? LocalizationMessages.DeleteAll(environmentName)
@@ -159,7 +144,7 @@ namespace StarCitizenUA.Services.LocalizationServices
                         ? LocalizationMessages.DeleteGlobalIni(environmentName)
                         : LocalizationMessages.DeleteMissing(environmentName);
 
-            return Task.FromResult(new LocalizationDeleteResult(userCfgDeleted || globalIniDeleted, userCfgDeleted, globalIniDeleted, message));
+            return Task.FromResult(new LocalizationDeleteResult(userCfgDeleted || globalIniDeleted || metadataDeleted, userCfgDeleted, globalIniDeleted, message));
         }
 
         private static async Task<ConditionalRequestResult> TryConditionalDownloadAsync(ReleaseAssetPayload asset, LocalizationMetadata? metadata, CancellationToken ct)
@@ -193,29 +178,6 @@ namespace StarCitizenUA.Services.LocalizationServices
             return ConditionalRequestResult.WithResponse(response);
         }
 
-        private static async Task EnsureMetadataConsistencyAsync(string metadataPath, LocalizationMetadata? metadata, ReleaseAssetPayload asset, CancellationToken ct)
-        {
-            if (metadata is null)
-            {
-                return;
-            }
-
-            if (metadata.AssetId == asset.Id && metadata.FileSize == asset.Size)
-            {
-                return;
-            }
-
-            var refreshed = new LocalizationMetadata
-            {
-                AssetId = asset.Id,
-                ETag = metadata.ETag,
-                Sha256 = metadata.Sha256,
-                FileSize = asset.Size,
-                LastModified = metadata.LastModified
-            };
-            await WriteMetadataAsync(metadataPath, refreshed, ct).ConfigureAwait(false);
-        }
-
         private static HttpRequestMessage CreateConditionalRequest(string url, LocalizationMetadata metadata)
         {
             var request = new HttpRequestMessage(HttpMethod.Get, url);
@@ -241,15 +203,13 @@ namespace StarCitizenUA.Services.LocalizationServices
         {
             response.EnsureSuccessStatusCode();
 
-            WarnIfUnexpectedContentType(asset.ContentType, response.Content.Headers.ContentType);
-
             var contentLength = response.Content.Headers.ContentLength;
 
             ProgressChanged?.Invoke(LocalizationProgressUpdate.Downloading(contentLength.HasValue ? 0d : null));
 
             await using var sourceStream = await response.Content.ReadAsStreamAsync(ct).ConfigureAwait(false);
 
-            var tempPath = CreateTempPath();
+            var tempPath = CreateTempPath(destinationPath);
 
             await using var tempStream = new FileStream(tempPath, FileMode.CreateNew, FileAccess.Write, FileShare.None, 81920, FileOptions.Asynchronous | FileOptions.SequentialScan);
             using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
@@ -297,37 +257,18 @@ namespace StarCitizenUA.Services.LocalizationServices
             return new SaveAssetResult(hashMatches, destinationExists, BuildMetadata(asset, response, sha, total), tempPath);
         }
 
-        private static void ReplaceWithTemp(string tempPath, string destinationPath, bool destinationExists)
+        private static void CommitTemp(string tempPath, string destinationPath, bool destinationExists)
         {
             try
             {
-                var delay = TimeSpan.FromMilliseconds(150);
-                for (var attempt = 0; attempt < 5; attempt++)
+                if (destinationExists || File.Exists(destinationPath))
                 {
-                    try
-                    {
-                        if (destinationExists || File.Exists(destinationPath))
-                        {
-                            File.Replace(tempPath, destinationPath, null);
-                        }
-                        else
-                        {
-                            File.Move(tempPath, destinationPath, overwrite: true);
-                        }
-                        return;
-                    }
-                    catch (Exception ex) when (IsSharingViolation(ex))
-                    {
-                        if (attempt == 4)
-                        {
-                            break;
-                        }
-
-                        Thread.Sleep(delay);
-                        delay = TimeSpan.FromMilliseconds(Math.Min(delay.TotalMilliseconds * 2, 2400));
-                    }
+                    File.Replace(tempPath, destinationPath, null);
                 }
-                throw new IOException(LocalizationMessages.FileLockedFailure());
+                else
+                {
+                    File.Move(tempPath, destinationPath);
+                }
             }
             finally
             {
@@ -338,28 +279,9 @@ namespace StarCitizenUA.Services.LocalizationServices
             }
         }
 
-        private static bool IsSharingViolation(Exception exception)
-        {
-            if (exception is IOException ioException)
-            {
-                const int SharingViolation = unchecked((int)0x80070020);
-                const int LockViolation = unchecked((int)0x80070021);
-                if (ioException.HResult == SharingViolation || ioException.HResult == LockViolation)
-                {
-                    return true;
-                }
-            }
-
-            return exception is UnauthorizedAccessException;
-        }
-
         private static LocalizationMetadata BuildMetadata(ReleaseAssetPayload asset, HttpResponseMessage response, string sha, long fileSize)
         {
             var etag = response.Headers.ETag?.Tag;
-            if (string.IsNullOrEmpty(etag) && response.Content.Headers.TryGetValues("ETag", out var contentEtags))
-            {
-                etag = contentEtags.FirstOrDefault();
-            }
 
             DateTimeOffset? lastModified = null;
             if (response.Content.Headers.LastModified is not null)
@@ -384,27 +306,6 @@ namespace StarCitizenUA.Services.LocalizationServices
             };
         }
 
-        private static void WarnIfUnexpectedContentType(string? expectedContentType, MediaTypeHeaderValue? actual)
-        {
-            var mediaType = actual?.MediaType ?? expectedContentType;
-            if (mediaType is null)
-            {
-                return;
-            }
-
-            if (mediaType.Contains("text", StringComparison.OrdinalIgnoreCase))
-            {
-                return;
-            }
-
-            if (mediaType.Equals("application/octet-stream", StringComparison.OrdinalIgnoreCase))
-            {
-                return;
-            }
-
-            Debug.WriteLine(LocalizationMessages.InvalidContentType(mediaType));
-        }
-
         private static async Task<LocalizationMetadata?> ReadMetadataAsync(string environmentName, CancellationToken ct)
         {
             var metadataPath = GetMetadataPath(environmentName);
@@ -422,41 +323,6 @@ namespace StarCitizenUA.Services.LocalizationServices
             {
                 return null;
             }
-        }
-
-        private static async Task<FileStream?> AcquireInstallLockAsync(CancellationToken ct)
-        {
-            var lockPath = GetLockFilePath();
-            var directory = Path.GetDirectoryName(lockPath);
-            if (!string.IsNullOrEmpty(directory))
-            {
-                Directory.CreateDirectory(directory);
-            }
-
-            for (var attempt = 0; attempt < 3; attempt++)
-            {
-                ct.ThrowIfCancellationRequested();
-                try
-                {
-                    return new FileStream(lockPath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None, 1, FileOptions.DeleteOnClose);
-                }
-                catch (Exception ex) when (IsSharingViolation(ex))
-                {
-                    if (attempt == 2)
-                    {
-                        break;
-                    }
-
-                    var delay = TimeSpan.FromMilliseconds(200 * (attempt + 1));
-                    await Task.Delay(delay, ct).ConfigureAwait(false);
-                }
-                catch (UnauthorizedAccessException)
-                {
-                    break;
-                }
-            }
-
-            return null;
         }
 
         private static async Task WriteMetadataAsync(string metadataPath, LocalizationMetadata metadata, CancellationToken ct)
@@ -479,12 +345,6 @@ namespace StarCitizenUA.Services.LocalizationServices
             Directory.CreateDirectory(cacheDirectory);
             var safeName = SanitizeEnvironmentName(environmentName);
             return Path.Combine(cacheDirectory, $"{safeName}.meta.json");
-        }
-
-        private static string GetLockFilePath()
-        {
-            var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-            return Path.Combine(localAppData, "StarCitizenUA", "cache", "localization.lock");
         }
 
         private static string SanitizeEnvironmentName(string environmentName)
@@ -529,7 +389,7 @@ namespace StarCitizenUA.Services.LocalizationServices
 
         private static async Task<HttpResponseMessage> SendWithRetryAsync(Func<HttpRequestMessage> requestFactory, CancellationToken ct)
         {
-            var delay = TimeSpan.FromSeconds(1);
+            var delay = TimeSpan.FromMilliseconds(500);
             for (var attempt = 0; attempt < MaxDownloadRetries; attempt++)
             {
                 ct.ThrowIfCancellationRequested();
@@ -546,7 +406,7 @@ namespace StarCitizenUA.Services.LocalizationServices
 
                         response.Dispose();
                         await Task.Delay(delay, ct).ConfigureAwait(false);
-                        delay = TimeSpan.FromSeconds(Math.Min(delay.TotalSeconds * 2, 30));
+                        delay = TimeSpan.FromMilliseconds(Math.Min(delay.TotalMilliseconds * 2, 2000));
                         continue;
                     }
 
@@ -580,18 +440,14 @@ namespace StarCitizenUA.Services.LocalizationServices
             }
         }
 
-        private static string CreateTempPath()
+        private static string CreateTempPath(string destinationPath)
         {
-            var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-            var tempDirectory = Path.Combine(localAppData, "StarCitizenUA", "tmp");
-            Directory.CreateDirectory(tempDirectory);
-            return Path.Combine(tempDirectory, Guid.NewGuid().ToString("N") + ".tmp");
+            var directory = Path.GetDirectoryName(destinationPath) ?? string.Empty;
+            var fileName = $".{Guid.NewGuid():N}.tmp";
+            return Path.Combine(directory, fileName);
         }
 
-        private sealed record SaveAssetResult(bool HashMatchesExisting, bool DestinationExists, LocalizationMetadata Metadata, string TempPath)
-        {
-            public bool ShouldReplace => !HashMatchesExisting || !DestinationExists;
-        }
+        private sealed record SaveAssetResult(bool HashMatchesExisting, bool DestinationExists, LocalizationMetadata Metadata, string TempPath);
 
         private sealed record ReleasePayload(
             [property: JsonPropertyName("tag_name")] string? TagName,
