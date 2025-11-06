@@ -1,10 +1,11 @@
 using StarCitizenUA.Interfaces;
 using StarCitizenUA.Models;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
-using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -40,7 +41,7 @@ namespace StarCitizenUA.Services.LocalizationServices
 
             var metadata = await ReadMetadataAsync(environmentName, cancellationToken).ConfigureAwait(false);
 
-            var release = await GetReleaseAsync(environmentName, cancellationToken).ConfigureAwait(false)
+            var release = (await GetReleaseAsync(environmentName, cancellationToken).ConfigureAwait(false))
                 ?? throw new InvalidOperationException(LocalizationMessages.ReleaseNotFound(environmentName));
 
             var asset = release.Assets?.FirstOrDefault(a => a.Name.Equals(GlobalIniFileName, StringComparison.OrdinalIgnoreCase))
@@ -309,9 +310,9 @@ namespace StarCitizenUA.Services.LocalizationServices
         private static LocalizationMetadata BuildMetadata(ReleaseAssetPayload asset, HttpResponseMessage response, string sha, long fileSize)
         {
             var etag = response.Headers.ETag?.Tag;
-            if (string.IsNullOrEmpty(etag))
+            if (string.IsNullOrEmpty(etag) && response.Content.Headers.TryGetValues("ETag", out var contentEtags))
             {
-                etag = response.Content.Headers.ETag?.Tag;
+                etag = contentEtags.FirstOrDefault();
             }
 
             DateTimeOffset? lastModified = null;
@@ -428,7 +429,7 @@ namespace StarCitizenUA.Services.LocalizationServices
         {
             if (string.IsNullOrWhiteSpace(folder)) throw new ArgumentException("Шлях до папки середовища не задано.", nameof(folder));
             if (string.IsNullOrWhiteSpace(name)) throw new ArgumentException("Назва середовища не задана.", nameof(name));
-            if (!Directory.Exists(folder)) throw new DirectoryNotFoundException($"Папку середовища "{folder}" не знайдено.");
+            if (!Directory.Exists(folder)) throw new DirectoryNotFoundException($"Папку середовища \"{folder}\" не знайдено.");
         }
 
         private static HttpClient CreateHttpClient()
@@ -476,6 +477,7 @@ namespace StarCitizenUA.Services.LocalizationServices
         private static async Task<ReleasePayload?> GetReleaseAsync(string envName, CancellationToken ct)
         {
             using var response = await SendWithRetryAsync(() => new HttpRequestMessage(HttpMethod.Get, ReleasesApiUrl), ct).ConfigureAwait(false);
+            response.EnsureSuccessStatusCode();
             await using var responseStream = await response.Content.ReadAsStreamAsync(ct).ConfigureAwait(false);
             try
             {
