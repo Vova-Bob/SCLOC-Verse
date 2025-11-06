@@ -44,6 +44,7 @@ namespace StarCitizenUA.Services.LocalizationServices
 
             var metadataPath = GetMetadataPath(environmentName);
             var metadata = await ReadMetadataAsync(environmentName, cancellationToken).ConfigureAwait(false);
+            bool isInstalled = TryValidateLocalizationState(metadataPath, globalIniPath, ref metadata);
 
             var release = (await GetReleaseAsync(environmentName, cancellationToken).ConfigureAwait(false))
                 ?? throw new InvalidOperationException(LocalizationMessages.ReleaseNotFound(environmentName));
@@ -55,7 +56,7 @@ namespace StarCitizenUA.Services.LocalizationServices
 
             var conditionalResult = await TryConditionalDownloadAsync(asset, metadata, cancellationToken).ConfigureAwait(false);
 
-            if (conditionalResult.Status == ConditionalRequestStatus.NotModified && !File.Exists(globalIniPath))
+            if (conditionalResult.Status == ConditionalRequestStatus.NotModified && !isInstalled)
             {
                 conditionalResult = ConditionalRequestResult.ForceDownload();
             }
@@ -145,6 +146,25 @@ namespace StarCitizenUA.Services.LocalizationServices
                         : LocalizationMessages.DeleteMissing(environmentName);
 
             return Task.FromResult(new LocalizationDeleteResult(userCfgDeleted || globalIniDeleted || metadataDeleted, userCfgDeleted, globalIniDeleted, message));
+        }
+
+        public static bool IsLocalizationInstalled(string environmentFolder, string environmentName)
+        {
+            if (string.IsNullOrWhiteSpace(environmentFolder) || string.IsNullOrWhiteSpace(environmentName))
+            {
+                return false;
+            }
+
+            if (!Directory.Exists(environmentFolder))
+            {
+                return false;
+            }
+
+            var localizationDir = BuildLocalizationDirectory(environmentFolder);
+            var globalIniPath = Path.Combine(localizationDir, GlobalIniFileName);
+            var metadataPath = GetMetadataPath(environmentName);
+            var metadata = TryReadMetadata(metadataPath);
+            return TryValidateLocalizationState(metadataPath, globalIniPath, ref metadata);
         }
 
         private static async Task<ConditionalRequestResult> TryConditionalDownloadAsync(ReleaseAssetPayload asset, LocalizationMetadata? metadata, CancellationToken ct)
@@ -321,6 +341,7 @@ namespace StarCitizenUA.Services.LocalizationServices
             }
             catch
             {
+                DeleteFileIfExists(metadataPath);
                 return null;
             }
         }
@@ -345,6 +366,67 @@ namespace StarCitizenUA.Services.LocalizationServices
             Directory.CreateDirectory(cacheDirectory);
             var safeName = SanitizeEnvironmentName(environmentName);
             return Path.Combine(cacheDirectory, $"{safeName}.meta.json");
+        }
+
+        private static bool TryValidateLocalizationState(string metadataPath, string globalIniPath, ref LocalizationMetadata? metadata)
+        {
+            if (!File.Exists(globalIniPath))
+            {
+                if (metadata is not null)
+                {
+                    DeleteFileIfExists(metadataPath);
+                }
+                metadata = null;
+                return false;
+            }
+
+            if (metadata is null || string.IsNullOrWhiteSpace(metadata.Sha256))
+            {
+                if (metadata is not null)
+                {
+                    DeleteFileIfExists(metadataPath);
+                }
+                metadata = null;
+                return false;
+            }
+
+            try
+            {
+                using var stream = new FileStream(globalIniPath, FileMode.Open, FileAccess.Read, FileShare.Read);
+                var localSha = Convert.ToHexString(SHA256.HashData(stream));
+                if (!localSha.Equals(metadata.Sha256, StringComparison.OrdinalIgnoreCase))
+                {
+                    DeleteFileIfExists(metadataPath);
+                    metadata = null;
+                    return false;
+                }
+            }
+            catch
+            {
+                metadata = null;
+                return false;
+            }
+
+            return true;
+        }
+
+        private static LocalizationMetadata? TryReadMetadata(string metadataPath)
+        {
+            if (!File.Exists(metadataPath))
+            {
+                return null;
+            }
+
+            try
+            {
+                using var stream = new FileStream(metadataPath, FileMode.Open, FileAccess.Read, FileShare.Read);
+                return JsonSerializer.Deserialize<LocalizationMetadata>(stream, SerializerOptions);
+            }
+            catch
+            {
+                DeleteFileIfExists(metadataPath);
+                return null;
+            }
         }
 
         private static string SanitizeEnvironmentName(string environmentName)
