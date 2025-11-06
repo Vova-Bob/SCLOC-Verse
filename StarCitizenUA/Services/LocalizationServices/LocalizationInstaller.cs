@@ -36,25 +36,26 @@ namespace StarCitizenUA.Services.LocalizationServices
 
         public async Task<LocalizationInstallResult> InstallAsync(string environmentFolder, string environmentName, CancellationToken cancellationToken = default)
         {
-            using var mutex = new Mutex(false, "Global\\StarCitizenUA.LocalizationInstaller");
-            var lockAcquired = false;
+            ValidateEnvironment(environmentFolder, environmentName);
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var localizationDir = BuildLocalizationDirectory(environmentFolder);
+            var globalIniPath = Path.Combine(localizationDir, GlobalIniFileName);
+
+            FileStream? lockStream = null;
             try
             {
-                try
+                lockStream = await AcquireInstallLockAsync(cancellationToken).ConfigureAwait(false);
+                if (lockStream is null)
                 {
-                    lockAcquired = mutex.WaitOne(TimeSpan.FromSeconds(5));
-                }
-                catch (AbandonedMutexException)
-                {
-                    lockAcquired = true;
+                    var lockMessage = LocalizationMessages.InstallInProgress();
+                    NotificationRaised?.Invoke(LocalizationNotification.Completed(lockMessage, false));
+                    return new LocalizationInstallResult(false, environmentName, globalIniPath, null, lockMessage);
                 }
 
-                ValidateEnvironment(environmentFolder, environmentName);
-                cancellationToken.ThrowIfCancellationRequested();
-
-                var localizationDir = BuildLocalizationDirectory(environmentFolder);
                 Directory.CreateDirectory(localizationDir);
 
+                var metadataPath = GetMetadataPath(environmentName);
                 var metadata = await ReadMetadataAsync(environmentName, cancellationToken).ConfigureAwait(false);
 
                 var release = (await GetReleaseAsync(environmentName, cancellationToken).ConfigureAwait(false))
@@ -62,9 +63,6 @@ namespace StarCitizenUA.Services.LocalizationServices
 
                 var asset = release.Assets?.FirstOrDefault(a => a.Name.Equals(GlobalIniFileName, StringComparison.OrdinalIgnoreCase))
                             ?? throw new InvalidOperationException(LocalizationMessages.AssetMissing(release.TagName, GlobalIniFileName));
-
-                var globalIniPath = Path.Combine(localizationDir, GlobalIniFileName);
-                var metadataPath = GetMetadataPath(environmentName);
 
                 ProgressChanged?.Invoke(LocalizationProgressUpdate.Checking());
 
@@ -137,10 +135,7 @@ namespace StarCitizenUA.Services.LocalizationServices
             }
             finally
             {
-                if (lockAcquired)
-                {
-                    mutex.ReleaseMutex();
-                }
+                lockStream?.Dispose();
             }
         }
 
@@ -429,6 +424,41 @@ namespace StarCitizenUA.Services.LocalizationServices
             }
         }
 
+        private static async Task<FileStream?> AcquireInstallLockAsync(CancellationToken ct)
+        {
+            var lockPath = GetLockFilePath();
+            var directory = Path.GetDirectoryName(lockPath);
+            if (!string.IsNullOrEmpty(directory))
+            {
+                Directory.CreateDirectory(directory);
+            }
+
+            for (var attempt = 0; attempt < 3; attempt++)
+            {
+                ct.ThrowIfCancellationRequested();
+                try
+                {
+                    return new FileStream(lockPath, FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None, 1, FileOptions.DeleteOnClose);
+                }
+                catch (Exception ex) when (IsSharingViolation(ex))
+                {
+                    if (attempt == 2)
+                    {
+                        break;
+                    }
+
+                    var delay = TimeSpan.FromMilliseconds(200 * (attempt + 1));
+                    await Task.Delay(delay, ct).ConfigureAwait(false);
+                }
+                catch (UnauthorizedAccessException)
+                {
+                    break;
+                }
+            }
+
+            return null;
+        }
+
         private static async Task WriteMetadataAsync(string metadataPath, LocalizationMetadata metadata, CancellationToken ct)
         {
             var directory = Path.GetDirectoryName(metadataPath);
@@ -449,6 +479,12 @@ namespace StarCitizenUA.Services.LocalizationServices
             Directory.CreateDirectory(cacheDirectory);
             var safeName = SanitizeEnvironmentName(environmentName);
             return Path.Combine(cacheDirectory, $"{safeName}.meta.json");
+        }
+
+        private static string GetLockFilePath()
+        {
+            var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+            return Path.Combine(localAppData, "StarCitizenUA", "cache", "localization.lock");
         }
 
         private static string SanitizeEnvironmentName(string environmentName)
