@@ -270,7 +270,15 @@ public sealed class LocalizationInstaller : ILocalizationInstaller
         var hash = Convert.ToHexString(hasher.GetHashAndReset()).ToLowerInvariant();
         var headers = response.Content.Headers;
         var etag = response.Headers.ETag?.Tag;
-        var lastModified = headers.LastModified ?? response.Headers.LastModified;
+        var lastModified = headers.LastModified;
+        if (!lastModified.HasValue && response.Headers.TryGetValues("Last-Modified", out var lastModifiedValues))
+        {
+            var lastModifiedValue = lastModifiedValues.FirstOrDefault();
+            if (lastModifiedValue != null && DateTimeOffset.TryParse(lastModifiedValue, out var parsedLastModified))
+            {
+                lastModified = parsedLastModified;
+            }
+        }
         var size = headers.ContentLength ?? totalBytes;
 
         bool fileReplaced = true;
