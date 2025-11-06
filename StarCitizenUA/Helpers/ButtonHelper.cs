@@ -1,5 +1,6 @@
 ﻿using StarCitizenUA.Interfaces;
 using StarCitizenUA.Models;
+using StarCitizenUA.Services.LocalizationServices;
 using System.IO;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -40,8 +41,9 @@ namespace StarCitizenUA.Helpers
             if (string.IsNullOrWhiteSpace(folder) || !Directory.Exists(folder))
                 return "Встановити";
 
-            string userCfgPath = Path.Combine(folder, "user.cfg");
-            return File.Exists(userCfgPath) ? "Оновити" : "Встановити";
+            return LocalizationInstaller.IsLocalizationInstalled(folder, env.Name)
+                ? "Оновити"
+                : "Встановити";
         }
         
         public string GetLiaInstallButtonText(string? updateMessage)
