@@ -3,6 +3,7 @@ global using StarCitizenUA.Services.LocalizationServices;
 using StarCitizenUA.Interfaces;
 using StarCitizenUA.Models;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -21,7 +22,6 @@ namespace StarCitizenUA.Services.LocalizationServices
         private const string GlobalIniFileName = "global.ini";
         private const string ReleasesApiUrl = "https://api.github.com/repos/Vova-Bob/SC_localization_UA/releases";
         private const int MaxDownloadRetries = 4;
-        private const long MaxIniSizeBytes = 8 * 1024 * 1024;
         private static readonly string[] LocalizationPathSegments = { "Data", "Localization", "korean_(south_korea)" };
         private static readonly Encoding UserCfgEncoding = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
         private static readonly HttpClient HttpClient = CreateHttpClient();
@@ -219,13 +219,9 @@ namespace StarCitizenUA.Services.LocalizationServices
         {
             response.EnsureSuccessStatusCode();
 
-            ValidateContentType(asset.ContentType, response.Content.Headers.ContentType);
+            WarnIfUnexpectedContentType(asset.ContentType, response.Content.Headers.ContentType);
 
             var contentLength = response.Content.Headers.ContentLength;
-            if (contentLength.HasValue && contentLength.Value > MaxIniSizeBytes)
-            {
-                throw new InvalidOperationException(LocalizationMessages.FileTooLarge(contentLength.Value, MaxIniSizeBytes));
-            }
 
             ProgressChanged?.Invoke(LocalizationProgressUpdate.Downloading(contentLength.HasValue ? 0d : null));
 
@@ -244,11 +240,6 @@ namespace StarCitizenUA.Services.LocalizationServices
             while ((read = await sourceStream.ReadAsync(buffer.AsMemory(0, buffer.Length), ct).ConfigureAwait(false)) > 0)
             {
                 total += read;
-                if (total > MaxIniSizeBytes)
-                {
-                    throw new InvalidOperationException(LocalizationMessages.FileTooLarge(total, MaxIniSizeBytes));
-                }
-
                 hash.AppendData(buffer, 0, read);
                 await tempStream.WriteAsync(buffer.AsMemory(0, read), ct).ConfigureAwait(false);
 
@@ -340,7 +331,7 @@ namespace StarCitizenUA.Services.LocalizationServices
             };
         }
 
-        private static void ValidateContentType(string? expectedContentType, MediaTypeHeaderValue? actual)
+        private static void WarnIfUnexpectedContentType(string? expectedContentType, MediaTypeHeaderValue? actual)
         {
             var mediaType = actual?.MediaType ?? expectedContentType;
             if (mediaType is null)
@@ -358,7 +349,7 @@ namespace StarCitizenUA.Services.LocalizationServices
                 return;
             }
 
-            throw new InvalidOperationException(LocalizationMessages.InvalidContentType(mediaType));
+            Debug.WriteLine(LocalizationMessages.InvalidContentType(mediaType));
         }
 
         private static async Task<LocalizationMetadata?> ReadMetadataAsync(string environmentName, CancellationToken ct)
