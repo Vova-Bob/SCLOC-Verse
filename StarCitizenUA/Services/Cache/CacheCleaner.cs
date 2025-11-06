@@ -15,28 +15,13 @@ namespace StarCitizenUA.Services.Cache
             _options = options;
         }
 
-        internal static bool IsShaderCacheDirectoryName(string? directoryName)
+        internal static bool IsShaderCacheDirectoryName(string? name)
         {
-            if (string.IsNullOrWhiteSpace(directoryName))
+            if (string.IsNullOrWhiteSpace(name))
                 return false;
 
-            var lower = directoryName.ToLowerInvariant();
-            if (lower.Contains("._del_"))
-                return false;
-
-            var normalizedBuilder = new System.Text.StringBuilder(lower.Length);
-            foreach (var ch in lower)
-            {
-                if (char.IsWhiteSpace(ch) || ch == '-' || ch == '_' || ch == ',')
-                    continue;
-                normalizedBuilder.Append(ch);
-            }
-
-            var normalized = normalizedBuilder.ToString();
-            var hasStarCitizen = normalized.Contains("starcitizen", StringComparison.Ordinal);
-            var hasScAlpha = normalized.Contains("scalpha", StringComparison.Ordinal) || lower.Contains("sc-alpha-", StringComparison.Ordinal);
-
-            return hasStarCitizen && hasScAlpha;
+            var normalized = new string(name.ToLowerInvariant().Where(char.IsLetterOrDigit).ToArray());
+            return normalized.Contains("starcitizen", StringComparison.Ordinal) && normalized.Contains("scalpha", StringComparison.Ordinal);
         }
 
         public async Task ClearAllAsync(ShaderCacheInspection inspection, CancellationToken cancellationToken = default)

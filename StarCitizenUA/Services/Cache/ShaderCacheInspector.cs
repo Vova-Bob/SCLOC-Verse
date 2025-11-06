@@ -23,12 +23,11 @@ namespace StarCitizenUA.Services.Cache
 
             var rootDirectory = new DirectoryInfo(_options.CacheRootPath);
             var candidates = GetCandidateDirectories(rootDirectory, cancellationToken).ToList();
-            var tasks = candidates.Select(directory => InspectDirectoryAsync(directory, cancellationToken)).ToList();
-
-            if (tasks.Count == 0)
+            if (candidates.Count == 0)
                 return new ShaderCacheInspection(_options, Array.Empty<ShaderCacheEntry>());
 
-            var results = await Task.WhenAll(tasks).ConfigureAwait(false);
+            var inspectionTasks = candidates.Select(directory => InspectDirectoryAsync(directory, cancellationToken)).ToArray();
+            var results = await Task.WhenAll(inspectionTasks).ConfigureAwait(false);
             var entries = results.Where(entry => entry != null).Cast<ShaderCacheEntry>().ToList();
 
             return new ShaderCacheInspection(_options, entries);
@@ -53,6 +52,9 @@ namespace StarCitizenUA.Services.Cache
             foreach (var directory in directories)
             {
                 cancellationToken.ThrowIfCancellationRequested();
+
+                if (directory.Name.Contains("._del_", StringComparison.OrdinalIgnoreCase))
+                    continue;
 
                 if (_options.SkipReparse && IsReparsePoint(directory))
                     continue;

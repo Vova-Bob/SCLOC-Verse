@@ -26,8 +26,6 @@ namespace StarCitizenUA.Services.Cache
 
         public TimeSpan DeleteRetryDelay { get; init; } = TimeSpan.FromMilliseconds(300);
 
-        public string CacheRelativePath { get; init; } = Path.Combine("cache", "shaders");
-
         public bool SkipReparse { get; init; } = true;
     }
 }
