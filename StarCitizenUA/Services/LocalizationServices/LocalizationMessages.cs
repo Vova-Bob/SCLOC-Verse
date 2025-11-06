@@ -47,5 +47,8 @@ namespace StarCitizenUA.Services.LocalizationServices
 
         internal static string FileLockedFailure()
             => "Не вдалося завершити оновлення через тимчасове блокування файлу. Спробуйте ще раз.";
+
+        internal static string InstallInProgress()
+            => "Оновлення локалізації вже виконується. Дочекайтеся завершення поточного процесу.";
     }
 }
