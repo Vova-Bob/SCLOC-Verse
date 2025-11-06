@@ -1,4 +1,6 @@
+using StarCitizenUA.Application.Localization;
 using StarCitizenUA.Helpers;
+using StarCitizenUA.Infrastructure.Localization;
 using StarCitizenUA.Interfaces;
 using StarCitizenUA.Services;
 using StarCitizenUA.Services.Common;
@@ -32,7 +34,9 @@ namespace StarCitizenUA.Composition
             var viewModel = new MainWindowViewModel(searchFolder, voiceAttackHelper, _settingsService);
 
             var windowHelper = new WindowHelper();
-            var localizationInstaller = new LocalizationInstaller();
+            var metadataStore = new LocalizationMetadataStore();
+            var gitHubClient = new GitHubLocalizationClient();
+            var localizationInstaller = new LocalizationInstaller(gitHubClient, metadataStore);
             var readmeService = new ReadmeService();
 
             return new MainWindow(viewModel, windowHelper, localizationInstaller, readmeService, _updater, _updateCheckerService);
