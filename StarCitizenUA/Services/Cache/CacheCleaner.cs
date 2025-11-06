@@ -59,7 +59,22 @@ namespace StarCitizenUA.Services.Cache
             cancellationToken.ThrowIfCancellationRequested();
 
             var tempPath = Path.Combine(directory.Parent?.FullName ?? _options.CacheRootPath, $"{directory.Name}.cleanup.{Guid.NewGuid():N}");
-            Directory.Move(directory.FullName, tempPath);
+            try
+            {
+                Directory.Move(directory.FullName, tempPath);
+            }
+            catch (IOException)
+            {
+                tempPath = directory.FullName;
+            }
+            catch (UnauthorizedAccessException)
+            {
+                tempPath = directory.FullName;
+            }
+            catch (Exception)
+            {
+                tempPath = directory.FullName;
+            }
 
             NormalizeAttributes(tempPath);
 
