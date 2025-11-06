@@ -55,7 +55,7 @@ namespace StarCitizenUA.Views
         public string MissingVoiceAttackFolderToastText = string.Empty;
         private bool isSettingButtonClicked;
         private readonly UpdateCheckerService _updateCheckerService;
-        private readonly CleanupController _cleanupController;
+        private readonly CleanupController _cacheCleanupController;
 
         public MainWindow(MainWindowViewModel viewModel, IWindowHelper windowHelper, ILocalizationInstaller localizationInstaller, IReadmeService readmeService, IUpdater updater, UpdateCheckerService updateCheckerService)
         {
@@ -71,7 +71,10 @@ namespace StarCitizenUA.Views
             _toastService = new ToastService(AppToast.ToastBorder, AppToast.ToastText);
             _linkService = new LinkService(_toastService);
 
-            _cleanupController = CleanupController.CreateDefault(_toastService, Dispatcher);
+            var options = new CacheCleanupOptions();
+            var inspector = new ShaderCacheInspector(options);
+            var cleaner = new CacheCleaner(options);
+            _cacheCleanupController = new CleanupController(inspector, cleaner, _toastService, Dispatcher);
 
             _canvasManager = new CanvasManager(this);
             _buttonStateManager = new ButtonStateManager(BtnLocalization, BtnAssistant, BtnSettings, BtnSelectFolder, BtnSelectLiaFolder);
@@ -126,7 +129,7 @@ namespace StarCitizenUA.Views
             await UpdateLiaFolderUiAsync(_viewModel.VoiceAttackFolder).ConfigureAwait(true);
             await UpdateLiaVersionAsync();
             await ShowStartupToastsAsync().ConfigureAwait(true);
-            await _cleanupController.RunStartupPromptAsync().ConfigureAwait(true);
+            await _cacheCleanupController.RunStartupPromptAsync(CancellationToken.None).ConfigureAwait(true);
         }
 
         private void EnvSelector_SelectionChanged(object? sender, EventArgs e)
@@ -428,7 +431,7 @@ namespace StarCitizenUA.Views
 
         private async void BtnReset_Cash(object sender, RoutedEventArgs e)
         {
-            await _cleanupController.HandleManualCleanupAsync().ConfigureAwait(true);
+            await _cacheCleanupController.HandleManualCleanupAsync(CancellationToken.None).ConfigureAwait(true);
         }
 
         private async Task UpdateGameFolderUiAsync(string? folder)
