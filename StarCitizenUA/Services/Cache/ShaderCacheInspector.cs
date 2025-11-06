@@ -56,6 +56,9 @@ namespace StarCitizenUA.Services.Cache
                 if (directory.Name.Contains("._del_", StringComparison.OrdinalIgnoreCase))
                     continue;
 
+                if (directory.Name.Contains(".cleanup.", StringComparison.OrdinalIgnoreCase))
+                    continue;
+
                 if (_options.SkipReparse && IsReparsePoint(directory))
                     continue;
 
