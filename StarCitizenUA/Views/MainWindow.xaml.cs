@@ -1,13 +1,11 @@
 using StarCitizenUA.Controls;
 using StarCitizenUA.Helpers;
 using StarCitizenUA.Interfaces;
-using StarCitizenUA.Domain.Localization;
 using StarCitizenUA.Services;
 using StarCitizenUA.Services.LiaServices;
 using StarCitizenUA.Services.Cache;
 using StarCitizenUA.ViewModels;
 using System.IO;
-using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -66,8 +64,6 @@ namespace StarCitizenUA.Views
             _viewModel = viewModel;
             _windowHelper = windowHelper;
             _localizationInstaller = localizationInstaller;
-            _localizationInstaller.ProgressChanged += LocalizationInstaller_ProgressChanged;
-            _localizationInstaller.NotificationRequested += LocalizationInstaller_NotificationRequested;
             _readmeService = readmeService;
             _updater = updater;
             _updateCheckerService = updateCheckerService;
@@ -115,26 +111,6 @@ namespace StarCitizenUA.Views
             BtnLiaAutoSearch.Click += BtnLiaAutoSearch_Click;          
         }
 
-        private void LocalizationInstaller_ProgressChanged(object? sender, LocalizationProgressEventArgs e)
-        {
-            // Фіксуємо прогрес у відлагоджувальному виводі для можливого логу.
-            Debug.WriteLine($"[Localization] {e.EnvironmentName}: {e.Stage} {e.Percent?.ToString("F1") ?? string.Empty}");
-        }
-
-        private void LocalizationInstaller_NotificationRequested(object? sender, LocalizationNotificationEventArgs e)
-        {
-            if (Dispatcher.HasShutdownStarted)
-            {
-                return;
-            }
-
-            _ = Dispatcher.InvokeAsync(async () =>
-            {
-                // Показуємо toast-повідомлення через UI-потік.
-                await _toastService.ShowToastAsync(e.Message, 4500).ConfigureAwait(true);
-            });
-        }
-
         private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
         {
             _windowHelper.ApplyWindowRoundCorners(this);
@@ -174,13 +150,6 @@ namespace StarCitizenUA.Views
 
         private void Minimize_Click(object sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;
         private void Close_Click(object sender, RoutedEventArgs e) => Close();
-
-        protected override void OnClosed(EventArgs e)
-        {
-            _localizationInstaller.ProgressChanged -= LocalizationInstaller_ProgressChanged;
-            _localizationInstaller.NotificationRequested -= LocalizationInstaller_NotificationRequested;
-            base.OnClosed(e);
-        }
 
         private void Localization_Click(object sender, RoutedEventArgs e)
         {
