@@ -39,13 +39,13 @@ namespace StarCitizenUA.Services.LocalizationServices
         internal static string HttpError(HttpStatusCode statusCode)
             => $"Помилка запиту до GitHub: {(int)statusCode} {statusCode}.";
 
-        internal static string FileTooLarge(long size, long limit)
-            => $"Розмір файлу локалізації {size} B перевищує дозволені {limit} B.";
-
         internal static string InvalidContentType(string mediaType)
             => $"Отримано непідтримуваний тип вмісту: {mediaType}.";
 
         internal static string ReleaseParseError()
             => "Не вдалося обробити відповідь GitHub із релізами.";
+
+        internal static string FileLockedFailure()
+            => "Не вдалося завершити оновлення через тимчасове блокування файлу. Спробуйте ще раз.";
     }
 }
