@@ -5,6 +5,8 @@ using StarCitizenUA.Services.Common;
 using StarCitizenUA.Services.LiaServices;
 using StarCitizenUA.ViewModels;
 using StarCitizenUA.Views;
+using StarCitizenUA.Services.LocalizationServices;
+
 
 namespace StarCitizenUA.Composition
 {
