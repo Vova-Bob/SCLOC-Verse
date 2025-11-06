@@ -1,3 +1,5 @@
+global using StarCitizenUA.Services.LocalizationServices;
+
 using StarCitizenUA.Interfaces;
 using StarCitizenUA.Models;
 using System.Collections.Generic;
