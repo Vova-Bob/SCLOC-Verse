@@ -11,7 +11,7 @@ namespace StarCitizenUA.Services.Cache
             Entries = entries.OrderByDescending(e => e.LastWriteTimeUtc).ToList();
             Latest = Entries.FirstOrDefault();
             HasOlder = Entries.Count > 1;
-            HasBigDirectories = Entries.Any(e => e.SizeBytes > Options.BigDirectoryBytes);
+            HasBigDirectories = Entries.Any(e => e.SizeBytes >= Options.BigDirectoryBytes);
             LatestTooLarge = Latest != null && Latest.SizeBytes > Options.LatestOkBytes;
             TotalBytes = Entries.Sum(e => e.SizeBytes);
         }

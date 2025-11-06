@@ -16,174 +16,161 @@ namespace StarCitizenUA.Services.Cache
             _options = options;
         }
 
-        public Task<ShaderCacheInspection> InspectAsync(CancellationToken cancellationToken = default)
+        public async Task<ShaderCacheInspection> InspectAsync(CancellationToken cancellationToken = default)
         {
-            return Task.Run(() => InspectInternal(cancellationToken), cancellationToken);
-        }
-
-        private ShaderCacheInspection InspectInternal(CancellationToken cancellationToken)
-        {
-            var entries = new List<ShaderCacheEntry>();
             if (!Directory.Exists(_options.CacheRootPath))
-                return new ShaderCacheInspection(_options, entries);
+                return new ShaderCacheInspection(_options, Array.Empty<ShaderCacheEntry>());
 
-            cancellationToken.ThrowIfCancellationRequested();
+            var rootDirectory = new DirectoryInfo(_options.CacheRootPath);
+            var candidates = GetCandidateDirectories(rootDirectory, cancellationToken).ToList();
+            var tasks = candidates.Select(directory => InspectDirectoryAsync(directory, cancellationToken)).ToList();
 
-            TryAddEntry(entries, new DirectoryInfo(Path.Combine(_options.CacheRootPath, _options.CacheRelativePath)), cancellationToken);
+            if (tasks.Count == 0)
+                return new ShaderCacheInspection(_options, Array.Empty<ShaderCacheEntry>());
 
-            foreach (var environmentDir in EnumerateDirectoriesSafe(_options.CacheRootPath))
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                var shadersDir = new DirectoryInfo(Path.Combine(environmentDir.FullName, _options.CacheRelativePath));
-                if (string.Equals(shadersDir.FullName, Path.Combine(_options.CacheRootPath, _options.CacheRelativePath), StringComparison.OrdinalIgnoreCase))
-                    continue;
-                TryAddEntry(entries, shadersDir, cancellationToken);
-            }
+            var results = await Task.WhenAll(tasks).ConfigureAwait(false);
+            var entries = results.Where(entry => entry != null).Cast<ShaderCacheEntry>().ToList();
 
             return new ShaderCacheInspection(_options, entries);
         }
 
-        private void TryAddEntry(ICollection<ShaderCacheEntry> entries, DirectoryInfo directory, CancellationToken cancellationToken)
+        private IEnumerable<DirectoryInfo> GetCandidateDirectories(DirectoryInfo root, CancellationToken cancellationToken)
         {
-            if (!directory.Exists)
-                return;
-
-            var (size, lastWriteTimeUtc) = CalculateDirectoryMetrics(directory, cancellationToken);
-            var displayName = DetermineDisplayName(directory);
-            entries.Add(new ShaderCacheEntry(displayName, directory.FullName, size, lastWriteTimeUtc));
-        }
-
-        private string DetermineDisplayName(DirectoryInfo shadersDirectory)
-        {
-            var current = shadersDirectory.Parent;
-            while (current != null)
-            {
-                if (string.Equals(current.Parent?.FullName, _options.CacheRootPath, StringComparison.OrdinalIgnoreCase))
-                    return current.Name;
-
-                current = current.Parent;
-            }
-
-            return shadersDirectory.Parent?.Name ?? shadersDirectory.Name;
-        }
-
-        private static (long size, DateTime lastWriteUtc) CalculateDirectoryMetrics(DirectoryInfo directory, CancellationToken cancellationToken)
-        {
-            long size = 0;
-            DateTime lastWrite = directory.LastWriteTimeUtc;
-            foreach (var file in EnumerateFilesSafe(directory))
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                try
-                {
-                    size += file.Length;
-                    if (file.LastWriteTimeUtc > lastWrite)
-                        lastWrite = file.LastWriteTimeUtc;
-                }
-                catch (FileNotFoundException)
-                {
-                }
-                catch (UnauthorizedAccessException)
-                {
-                }
-                catch (IOException)
-                {
-                }
-            }
-
-            foreach (var dir in EnumerateSubdirectoriesSafe(directory))
-            {
-                cancellationToken.ThrowIfCancellationRequested();
-                try
-                {
-                    if (dir.LastWriteTimeUtc > lastWrite)
-                        lastWrite = dir.LastWriteTimeUtc;
-                }
-                catch (IOException)
-                {
-                }
-            }
-
-            return (size, lastWrite);
-        }
-
-        private static IEnumerable<FileInfo> EnumerateFilesSafe(DirectoryInfo root)
-        {
-            var stack = new Stack<DirectoryInfo>();
-            stack.Push(root);
-
-            while (stack.Count > 0)
-            {
-                DirectoryInfo current = stack.Pop();
-                FileInfo[] files;
-                try
-                {
-                    files = current.GetFiles();
-                }
-                catch (IOException)
-                {
-                    continue;
-                }
-                catch (UnauthorizedAccessException)
-                {
-                    continue;
-                }
-
-                foreach (var file in files)
-                    yield return file;
-
-                DirectoryInfo[] subDirs;
-                try
-                {
-                    subDirs = current.GetDirectories();
-                }
-                catch (IOException)
-                {
-                    continue;
-                }
-                catch (UnauthorizedAccessException)
-                {
-                    continue;
-                }
-
-                foreach (var subDir in subDirs)
-                    stack.Push(subDir);
-            }
-        }
-
-        private static IEnumerable<DirectoryInfo> EnumerateDirectoriesSafe(string path)
-        {
+            DirectoryInfo[] directories;
             try
             {
-                return new DirectoryInfo(path).GetDirectories();
-            }
-            catch (DirectoryNotFoundException)
-            {
-                return Enumerable.Empty<DirectoryInfo>();
-            }
-            catch (UnauthorizedAccessException)
-            {
-                return Enumerable.Empty<DirectoryInfo>();
-            }
-        }
-
-        private static IEnumerable<DirectoryInfo> EnumerateSubdirectoriesSafe(DirectoryInfo root)
-        {
-            try
-            {
-                return root.GetDirectories();
-            }
-            catch (DirectoryNotFoundException)
-            {
-                return Enumerable.Empty<DirectoryInfo>();
-            }
-            catch (UnauthorizedAccessException)
-            {
-                return Enumerable.Empty<DirectoryInfo>();
+                directories = root.GetDirectories();
             }
             catch (IOException)
             {
-                return Enumerable.Empty<DirectoryInfo>();
+                yield break;
+            }
+            catch (UnauthorizedAccessException)
+            {
+                yield break;
+            }
+
+            foreach (var directory in directories)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+
+                if (_options.SkipReparse && IsReparsePoint(directory))
+                    continue;
+
+                if (!CacheCleaner.IsShaderCacheDirectoryName(directory.Name))
+                    continue;
+
+                yield return directory;
+            }
+        }
+
+        private static bool IsReparsePoint(DirectoryInfo directory)
+        {
+            try
+            {
+                return directory.Attributes.HasFlag(FileAttributes.ReparsePoint);
+            }
+            catch (IOException)
+            {
+                return false;
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return false;
+            }
+        }
+
+        private Task<ShaderCacheEntry?> InspectDirectoryAsync(DirectoryInfo directory, CancellationToken cancellationToken)
+        {
+            return Task.Run(() => InspectDirectory(directory, cancellationToken), cancellationToken);
+        }
+
+        private ShaderCacheEntry? InspectDirectory(DirectoryInfo directory, CancellationToken cancellationToken)
+        {
+            try
+            {
+                long size = 0;
+                DateTime lastWriteTime = directory.LastWriteTimeUtc;
+
+                var stack = new Stack<DirectoryInfo>();
+                stack.Push(directory);
+
+                while (stack.Count > 0)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    var current = stack.Pop();
+
+                    FileInfo[] files;
+                    try
+                    {
+                        files = current.GetFiles();
+                    }
+                    catch (IOException)
+                    {
+                        files = Array.Empty<FileInfo>();
+                    }
+                    catch (UnauthorizedAccessException)
+                    {
+                        files = Array.Empty<FileInfo>();
+                    }
+
+                    foreach (var file in files)
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+                        try
+                        {
+                            size += file.Length;
+                            if (file.LastWriteTimeUtc > lastWriteTime)
+                                lastWriteTime = file.LastWriteTimeUtc;
+                        }
+                        catch (FileNotFoundException)
+                        {
+                        }
+                        catch (UnauthorizedAccessException)
+                        {
+                        }
+                        catch (IOException)
+                        {
+                        }
+                    }
+
+                    DirectoryInfo[] subdirectories;
+                    try
+                    {
+                        subdirectories = current.GetDirectories();
+                    }
+                    catch (IOException)
+                    {
+                        continue;
+                    }
+                    catch (UnauthorizedAccessException)
+                    {
+                        continue;
+                    }
+
+                    foreach (var subDir in subdirectories)
+                    {
+                        cancellationToken.ThrowIfCancellationRequested();
+
+                        if (_options.SkipReparse && IsReparsePoint(subDir))
+                            continue;
+
+                        if (subDir.LastWriteTimeUtc > lastWriteTime)
+                            lastWriteTime = subDir.LastWriteTimeUtc;
+
+                        stack.Push(subDir);
+                    }
+                }
+
+                return new ShaderCacheEntry(directory.Name, directory.FullName, size, lastWriteTime);
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception)
+            {
+                return null;
             }
         }
     }
