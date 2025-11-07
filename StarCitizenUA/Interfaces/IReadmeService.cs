@@ -1,6 +1,4 @@
-﻿using StarCitizenUA.Views;
-
-namespace StarCitizenUA.Interfaces
+﻿namespace StarCitizenUA.Interfaces
 {
     public interface IReadmeService
     {

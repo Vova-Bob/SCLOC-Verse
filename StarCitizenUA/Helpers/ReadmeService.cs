@@ -1,5 +1,4 @@
 ﻿using StarCitizenUA.Interfaces;
-using StarCitizenUA.Views;
 using System.IO;
 
 namespace StarCitizenUA.Helpers

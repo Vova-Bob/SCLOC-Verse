@@ -11,7 +11,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Navigation;
 
-namespace StarCitizenUA.Views
+namespace StarCitizenUA
 {
     public partial class MainWindow : Window
     {
@@ -311,7 +311,7 @@ namespace StarCitizenUA.Views
             }
         }
 
-        private async void BtnSelectLiaFolder_Click(object sender, System.EventArgs e)
+        private async void BtnSelectLiaFolder_Click(object sender, EventArgs e)
         {
             using var dialog = new System.Windows.Forms.FolderBrowserDialog();
             if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
