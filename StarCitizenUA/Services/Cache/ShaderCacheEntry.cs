@@ -1,5 +1,3 @@
-using System;
-
 namespace StarCitizenUA.Services.Cache
 {
     public class ShaderCacheEntry
