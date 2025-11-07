@@ -414,7 +414,7 @@ namespace StarCitizenUA.Views
 
                 BtnLiaInstall.Content = _buttonHelper.GetLiaInstallButtonText(updateMessage);
 
-                await _toastService.ShowToastAsync("Голосовий асистент Л.І.А встановлено успішно!");
+                await _toastService.ShowToastAsync("Вітаємо! У вас актуальна версія голосового асистента Л.І.А!");
                 await UpdateLiaVersionAsync();
             }
             catch (Exception ex)
@@ -427,7 +427,6 @@ namespace StarCitizenUA.Views
                 BtnLiaInstall.IsEnabled = true;
             }
         }
-
 
         private async void BtnReset_Cash(object sender, RoutedEventArgs e)
         {

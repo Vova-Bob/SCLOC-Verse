@@ -13,7 +13,6 @@ namespace StarCitizenUA.Services.LiaServices
 
         public async Task<Dictionary<string, string>> GetRemoteFileListAsync()
         {
-            //using HttpClient client = new();
             var content = await client.GetStringAsync(AppSettings.VersionFile);
 
             var files = new Dictionary<string, string>();
@@ -97,7 +96,6 @@ namespace StarCitizenUA.Services.LiaServices
 
         private async Task DownloadFileAsync(string url, string localPath)
         {
-            //using HttpClient client = new();
             var bytes = await client.GetByteArrayAsync(url);
             Directory.CreateDirectory(Path.GetDirectoryName(localPath)!);
             await File.WriteAllBytesAsync(localPath, bytes);
