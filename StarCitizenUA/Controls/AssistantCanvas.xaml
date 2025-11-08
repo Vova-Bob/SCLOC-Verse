@@ -109,6 +109,103 @@
                 </Setter.Value>
             </Setter>
         </Style>
+
+        <SolidColorBrush x:Key="DeleteFill" Color="IndianRed"/>
+        <SolidColorBrush x:Key="DeleteFillHover" Color="red"/>
+        <SolidColorBrush x:Key="DeleteStroke" Color="#FFC0C0C0"/>
+        <SolidColorBrush x:Key="DeleteShadow" Color="#000000"/>
+
+        <Style x:Key="DeleteButton" BasedOn="{StaticResource ActionButton}" TargetType="Button">
+            <Setter Property="Width" Value="150"/>
+            <Setter Property="Height" Value="40"/>
+            <Setter Property="FontFamily" Value="Segoe UI"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="FontSize" Value="16"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type Button}">
+                        <Grid x:Name="Root" RenderTransformOrigin="0.5,0.5">
+                            <Grid.RenderTransform>
+                                <ScaleTransform x:Name="PressScale" ScaleX="1" ScaleY="1"/>
+                            </Grid.RenderTransform>
+
+                            <Grid.Effect>
+                                <DropShadowEffect Color="{Binding Color, Source={StaticResource DeleteShadow}}"
+                                          BlurRadius="12"
+                                          ShadowDepth="6"
+                                          Opacity="0.45"/>
+                            </Grid.Effect>
+
+                            <Path x:Name="BtnBg"
+                          Fill="{StaticResource DeleteFill}"
+                          Stretch="Fill" SnapsToDevicePixels="True"
+                          Data="M 5,0 L 95,0 A 6,6 0 0 1 100,6 L 100,30 L 95,40 L 5,40 A 6,6 0 0 1 0,34 L 0,10 Z"/>
+
+                            <Path x:Name="BtnStroke"
+                          Stroke="{StaticResource DeleteStroke}"
+                          StrokeThickness="1"
+                          StrokeLineJoin="Round"
+                          StrokeStartLineCap="Round"
+                          StrokeEndLineCap="Round"
+                          Fill="Transparent"
+                          Stretch="Fill" SnapsToDevicePixels="True"
+                          Data="M 5,0 L 95,0 A 5.5,5.5 0 0 1 100,5.5 L 100,30 L 95,40 L 5,40 A 5.5,5.5 0 0 1 0,34.5 L 0,10 Z"/>
+
+                            <ContentPresenter HorizontalAlignment="Center"
+                                      VerticalAlignment="Center"/>
+                        </Grid>
+
+                        <ControlTemplate.Triggers>
+                            <!-- Hover -->
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="BtnBg" Property="Fill" Value="{StaticResource DeleteFillHover}"/>
+                                <Setter TargetName="BtnStroke" Property="StrokeThickness" Value="2.6"/>
+                            </Trigger>
+
+                            <!-- Pressed -->
+                            <Trigger Property="IsPressed" Value="True">
+                                <Trigger.EnterActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="PressScale"
+                                                     Storyboard.TargetProperty="ScaleX"
+                                                     To="0.97" Duration="0:0:0.06" />
+                                            <DoubleAnimation Storyboard.TargetName="PressScale"
+                                                     Storyboard.TargetProperty="ScaleY"
+                                                     To="0.97" Duration="0:0:0.06" />
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.EnterActions>
+                                <Trigger.ExitActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="PressScale"
+                                                     Storyboard.TargetProperty="ScaleX"
+                                                     To="1" Duration="0:0:0.08" />
+                                            <DoubleAnimation Storyboard.TargetName="PressScale"
+                                                     Storyboard.TargetProperty="ScaleY"
+                                                     To="1" Duration="0:0:0.08" />
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.ExitActions>
+                            </Trigger>
+
+                            <!-- Disabled -->
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="BtnBg" Property="Fill" Value="#888888"/>
+                                <Setter TargetName="BtnStroke" Property="Stroke" Value="#AAAAAA"/>
+                                <Setter Property="Foreground" Value="#CCCCCC"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+
+
     </Canvas.Resources>
     <Grid Width="{Binding ActualWidth, RelativeSource={RelativeSource AncestorType={x:Type Canvas}}}">
         <TextBlock
@@ -271,12 +368,15 @@
                    Stretch="Uniform"/>
         </Button.Content>
     </Button>
+
     <Button x:Name="BtnLiaDelete"
-        Style="{StaticResource ActionButton}"
-        Content="Видалити"   
+        Style="{StaticResource DeleteButton}"
+        Content="Видалити"
         FontFamily="Segoe UI"
         Canvas.Left="770"
-        Canvas.Top="163" Background="IndianRed" HorizontalAlignment="Center" VerticalAlignment="Top"/>
+        Canvas.Top="163"
+        HorizontalAlignment="Center"
+        VerticalAlignment="Top"/>
 </Canvas>
     
     
