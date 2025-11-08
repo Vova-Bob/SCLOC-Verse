@@ -332,8 +332,8 @@
         </RichTextBox>
     </Border>
 
-    <Border Canvas.Left="70" Canvas.Top="86"
-      Width="650" Height="104"
+    <Border Canvas.Left="70" Canvas.Top="69"
+      Width="650" Height="133"
          CornerRadius="8"
          BorderBrush="#6DB9F8"
          BorderThickness="1"
