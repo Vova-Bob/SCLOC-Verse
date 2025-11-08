@@ -43,7 +43,7 @@ namespace StarCitizenUA
         private Button BtnLiaAutoSearch => CanvasLiaSettings.AutoSearchButton;
         private Button BtnLiaReturn => CanvasLiaSettings.ReturnButton;
         private TextBox TxtLiaSelectedPath => CanvasLiaSettings.SelectedPathTextBox;
-        internal TextBox TxtLiaReadme => CanvasAssistant.ReadmeTextBox;
+        internal RichTextBox TxtLiaReadme => CanvasAssistant.ReadmeTextBox;
         internal TextBox TxtLiaSettingsReadme => CanvasLiaSettings.ReadmeTextBox;
         internal TextBox TxtLiaSetupe => CanvasAssistant.SetupInfoTextBox;
         internal TextBox TxtLiaVersionPath => CanvasAssistant.TxtLiaVersionPath;
