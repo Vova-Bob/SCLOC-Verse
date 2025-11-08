@@ -1,5 +1,6 @@
 ﻿using StarCitizenUA.Interfaces;
 using System.IO;
+using System.Windows.Documents;
 
 namespace StarCitizenUA.Helpers
 {
@@ -23,7 +24,7 @@ namespace StarCitizenUA.Helpers
 
             window.TxtReadme.Text = readmeData.ReadmeText;
             window.TxtLocalizationReadme.Text = readmeData.LocalizationReadmeText;
-            window.TxtLiaReadme.Text = readmeData.LiaReadmeText;
+            window.TxtLiaReadme.Document.Blocks.Add(new Paragraph(new Run(readmeData.LiaReadmeText)));
             window.TxtLiaSettingsReadme.Text = readmeData.LiaSettingsReadmeText;
             window.TxtSelectedPath.Text = readmeData.TxtSelectedPath;
             window.DefaultPathText = readmeData.DefaultPathText;
@@ -34,7 +35,7 @@ namespace StarCitizenUA.Helpers
         {
             window.TxtReadme.Text = message;
             window.TxtLocalizationReadme.Text = message;
-            window.TxtLiaReadme.Text = message;
+            window.TxtLiaReadme.Document.Blocks.Add(new Paragraph(new Run(message)));
             window.TxtLiaSettingsReadme.Text = message;
             window.TxtSelectedPath.Text = string.Empty;
         }

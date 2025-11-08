@@ -202,24 +202,38 @@
     </Border>
 
     <Border Canvas.Left="70" Canvas.Top="220"
-         Width="820" Height="270"
-            CornerRadius="8"
-            BorderBrush="#6DB9F8"
-            BorderThickness="1"
-            Background="#CC0A1D29">
-        <TextBox x:Name="TxtLiaReadme"
-                 FontFamily="Segoe UI Semibold"
+        Width="820" Height="270"
+        CornerRadius="8"
+        BorderBrush="#6DB9F8"
+        BorderThickness="1"
+        Background="#CC0A1D29">
+        <RichTextBox x:Name="TxtLiaReadme"
                  FontSize="16"
                  Foreground="#A9C6E2"
                  Background="Transparent"
                  BorderThickness="0"
-                 Padding="10,6"
                  IsReadOnly="True"
-                 AcceptsReturn="True"
-                 TextWrapping="Wrap"
-                 HorizontalContentAlignment="Stretch"
-                 VerticalContentAlignment="Top"
-                 TextAlignment="Justify"/>
+                 IsDocumentEnabled="True">
+            <FlowDocument>
+                <Paragraph>
+                    ⚠️ Увага! Для роботи голосового асистента необхідно попередньо встановити програму VoiceAttack!
+                </Paragraph>
+                <Paragraph>
+                    <Run>     </Run>
+                    🔗
+                    <Hyperlink NavigateUri="https://voiceattack.com/" RequestNavigate="Hyperlink_RequestNavigate"
+                           FontWeight="Bold" Foreground="Orange">
+                        Офіційний сайт
+                    </Hyperlink>
+                    <Run>        </Run>
+                    🔗
+                    <Hyperlink NavigateUri="https://store.steampowered.com/app/3046550/VoiceAttack_v2/" RequestNavigate="Hyperlink_RequestNavigate"
+                           FontWeight="Bold" Foreground="Orange">
+                        Steam-версія
+                    </Hyperlink>
+                </Paragraph>
+            </FlowDocument>
+        </RichTextBox>
     </Border>
 
     <Border Canvas.Left="70" Canvas.Top="86"
