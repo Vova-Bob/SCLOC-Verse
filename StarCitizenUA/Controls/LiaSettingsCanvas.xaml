@@ -141,7 +141,7 @@
 
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="BgCircle" Property="Opacity" Value="0.18"/>
+                                <Setter TargetName="BgCircle" Property="Opacity" Value="0"/>
                                 <Setter TargetName="Arrow" Property="StrokeThickness" Value="5.6"/>
                             </Trigger>
                             <Trigger Property="IsPressed" Value="True">
