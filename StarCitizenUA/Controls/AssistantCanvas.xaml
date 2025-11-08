@@ -158,13 +158,11 @@
                         </Grid>
 
                         <ControlTemplate.Triggers>
-                            <!-- Hover -->
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter TargetName="BtnBg" Property="Fill" Value="{StaticResource DeleteFillHover}"/>
                                 <Setter TargetName="BtnStroke" Property="StrokeThickness" Value="2.6"/>
                             </Trigger>
 
-                            <!-- Pressed -->
                             <Trigger Property="IsPressed" Value="True">
                                 <Trigger.EnterActions>
                                     <BeginStoryboard>
@@ -192,7 +190,6 @@
                                 </Trigger.ExitActions>
                             </Trigger>
 
-                            <!-- Disabled -->
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter TargetName="BtnBg" Property="Fill" Value="#888888"/>
                                 <Setter TargetName="BtnStroke" Property="Stroke" Value="#AAAAAA"/>
