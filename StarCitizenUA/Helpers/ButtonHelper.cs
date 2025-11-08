@@ -1,7 +1,9 @@
 ﻿using StarCitizenUA.Interfaces;
 using StarCitizenUA.Models;
 using StarCitizenUA.Services.LocalizationServices;
+using System;
 using System.IO;
+using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
 
@@ -9,49 +11,60 @@ namespace StarCitizenUA.Helpers
 {
     public class ButtonHelper : IButtonHelper
     {
-        public void SetButtonState(Button button, bool active, string activeText = "Скинути", string inactiveText = "Автопошук")
+        private const string AutoTextDefault = "Автопошук";
+        private const string ResetTextDefault = "Скинути";
+
+        private static readonly SolidColorBrush BrushAuto;
+        private static readonly SolidColorBrush BrushReset;
+
+        static ButtonHelper()
         {
-            if (button == null) return;
+            var auto = Color.FromRgb(0x30, 0x54, 0x6E);
+            var reset = Color.FromRgb(0x7E, 0x2D, 0x2D);
 
-            var btnText = (TextBlock)button.Template.FindName("BtnText", button);
-            var bgPath = (System.Windows.Shapes.Path)button.Template.FindName("BgPath", button);
+            BrushAuto = new SolidColorBrush(auto);
+            BrushReset = new SolidColorBrush(reset);
 
-            if (btnText == null || bgPath == null) return;
+            BrushAuto.Freeze();
+            BrushReset.Freeze();
+        }
 
-            if (active)
-            {
-                btnText.Text = activeText;
-                bgPath.Fill = new SolidColorBrush(Colors.IndianRed);
-            }
+        public void ToggleAutoSearch(Button button)
+        {
+            if (button is null) return;
+            bool nextActive = !IsResetState(button.Content as string);
+            SetButtonState(button, nextActive, ResetTextDefault, AutoTextDefault);
+        }
+
+        public void SetButtonState(Button button, bool active, string activeText = ResetTextDefault, string inactiveText = AutoTextDefault)
+        {
+            if (button is null) return;
+            if (!button.Dispatcher.CheckAccess())
+                button.Dispatcher.Invoke(() => ApplyState(button, active, activeText, inactiveText));
             else
-            {
-                btnText.Text = inactiveText;
-                bgPath.Fill = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#30546E")!);
-            }
+                ApplyState(button, active, activeText, inactiveText);
         }
 
         public string GetInstallButtonText(EnvironmentOption? env, string? localFolder)
         {
-            if (env == null) return "Встановити";
+            if (env is null) return "Встановити";
 
-            string? folder = !string.IsNullOrWhiteSpace(env.FolderPath)
-                ? env.FolderPath
-                : (!string.IsNullOrWhiteSpace(localFolder) ? Path.Combine(localFolder, env.Name) : null);
+            string? folder =
+                !string.IsNullOrWhiteSpace(env.FolderPath) ? env.FolderPath :
+                (!string.IsNullOrWhiteSpace(localFolder) ? Path.Combine(localFolder!, env.Name) : null);
 
             if (string.IsNullOrWhiteSpace(folder) || !Directory.Exists(folder))
                 return "Встановити";
 
-            return LocalizationInstaller.IsLocalizationInstalled(folder, env.Name)
-                ? "Оновити"
-                : "Встановити";
+            return LocalizationInstaller.IsLocalizationInstalled(folder!, env.Name) ? "Оновити" : "Встановити";
         }
-        
+
         public string GetLiaInstallButtonText(string? updateMessage)
         {
             if (string.IsNullOrWhiteSpace(updateMessage))
                 return "Встановити";
 
-            string msg = updateMessage.ToLowerInvariant().Trim();
+            string msg = updateMessage.ToLowerInvariant();
 
             if (msg.Contains("не знайдено") || msg.Contains("бракує") || msg.Contains("відсутн"))
                 return "Завантажити";
@@ -63,6 +76,15 @@ namespace StarCitizenUA.Helpers
                 return "Оновити";
 
             return "Встановити";
+        }
+
+        private static bool IsResetState(string? contentText) =>
+            string.Equals(contentText, ResetTextDefault, StringComparison.Ordinal);
+
+        private static void ApplyState(Button button, bool active, string activeText, string inactiveText)
+        {
+            button.Content = active ? activeText : inactiveText;
+            button.Background = active ? BrushReset : BrushAuto;
         }
     }
 }
