@@ -251,7 +251,7 @@
 
     <!-- Поле вибраного шляху -->
     <Border Canvas.Left="295" Canvas.Top="88"
-            Width="591" Height="38"
+            Width="595" Height="40"
             CornerRadius="6"
             BorderBrush="{StaticResource BtnStroke}"
             BorderThickness="1"
