@@ -123,6 +123,7 @@
             <Setter Property="FontSize" Value="16"/>
             <Setter Property="Foreground" Value="White"/>
             <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Background" Value="{StaticResource DeleteFill}"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="{x:Type Button}">
@@ -139,10 +140,9 @@
                             </Grid.Effect>
 
                             <Path x:Name="BtnBg"
-                          Fill="{StaticResource DeleteFill}"
+                          Fill="{TemplateBinding Background}"
                           Stretch="Fill" SnapsToDevicePixels="True"
                           Data="M 5,0 L 95,0 A 6,6 0 0 1 100,6 L 100,30 L 95,40 L 5,40 A 6,6 0 0 1 0,34 L 0,10 Z"/>
-
                             <Path x:Name="BtnStroke"
                           Stroke="{StaticResource DeleteStroke}"
                           StrokeThickness="1"
@@ -191,18 +191,17 @@
                             </Trigger>
 
                             <Trigger Property="IsEnabled" Value="False">
-                                <Setter TargetName="BtnBg" Property="Fill" Value="#888888"/>
-                                <Setter TargetName="BtnStroke" Property="Stroke" Value="#AAAAAA"/>
-                                <Setter Property="Foreground" Value="#CCCCCC"/>
+                                <Setter TargetName="BtnBg" Property="Fill" Value="{StaticResource DeleteFill}"/>
+                                <Setter TargetName="BtnStroke" Property="Stroke" Value="{StaticResource DeleteStroke}"/>
+                                <Setter Property="Foreground" Value="White"/>
+                                <Setter Property="Opacity" Value="0.7"/>
                             </Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
             </Setter>
         </Style>
-
-
-
+        
     </Canvas.Resources>
     <Grid Width="{Binding ActualWidth, RelativeSource={RelativeSource AncestorType={x:Type Canvas}}}">
         <TextBlock
