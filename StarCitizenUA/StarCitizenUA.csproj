@@ -13,6 +13,7 @@
     <None Remove="app_icon.ico" />
     <None Remove="Images\background_general.png" />
     <None Remove="Images\community_logo.png" />
+    <None Remove="Images\smallLogo-removebg-preview.png" />
   </ItemGroup>
 
   <ItemGroup>
@@ -26,6 +27,7 @@
     </Resource>
     <Resource Include="Images\background_general.png" />
     <Resource Include="Images\community_logo.png" />
+    <Resource Include="Images\smallLogo-removebg-preview.png" />
     <Content Include="PathText.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
