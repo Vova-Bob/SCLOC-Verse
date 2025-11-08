@@ -1,3 +1,4 @@
+using Microsoft.VisualBasic;
 using StarCitizenUA.Controls;
 using StarCitizenUA.Helpers;
 using StarCitizenUA.Interfaces;
@@ -425,7 +426,6 @@ namespace StarCitizenUA
             finally
             {
                 BtnLiaInstall.IsEnabled = true;
-                BtnLiaDelete.IsEnabled = true;
             }
         }
 
@@ -510,15 +510,13 @@ namespace StarCitizenUA
                 await UpdateLiaVersionAsync();
                 await _toastService.ShowToastAsync("Файли голосового асистента успішно видалені.");
                 BtnLiaInstall.IsEnabled = true;
-                BtnLiaDelete.IsEnabled = false; 
             }
             catch (Exception ex)
             {
                 TxtLiaVersionPath.Text = $"Помилка при видаленні: {ex.Message}";
                 TxtLiaVersionPath.Foreground = System.Windows.Media.Brushes.Red;
                 BtnLiaInstall.IsEnabled = true;
-                BtnLiaDelete.IsEnabled = false;
-            }
+            }    
         }
 
         private async void BtnReset_Cash(object sender, RoutedEventArgs e)
@@ -607,6 +605,14 @@ namespace StarCitizenUA
             if (!string.IsNullOrWhiteSpace(localLiaFolder) && Directory.Exists(localLiaFolder))
             {
                 var (message, color) = await _updateCheckerService.CheckForPendingUpdatesAsync();
+                if (message == "Голосовий пакет не встановлено.")
+                {
+                    BtnLiaDelete.IsEnabled = false;
+                }
+                else 
+                {
+                    BtnLiaDelete.IsEnabled = true;
+                }
                 Dispatcher.Invoke(() =>
                 {
                     TxtLiaVersionPath.Text = message;
