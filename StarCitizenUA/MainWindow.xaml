@@ -322,6 +322,7 @@
             <controls:AssistantCanvas x:Name="CanvasAssistant" Visibility="Collapsed"/>
             <controls:SettingsCanvas x:Name="CanvasSettings" Visibility="Collapsed"/>
             <controls:LiaSettingsCanvas x:Name="CanvasLiaSettings" Visibility="Collapsed"/>
+            <controls:VoiceAttackCanvas x:Name="CanvasVoiceAttack" Visibility="Collapsed"/>
         </Grid>
 
         <StackPanel Orientation="Vertical" Margin="6,48,0,0" HorizontalAlignment="Left" Width="100">

@@ -30,6 +30,7 @@ namespace StarCitizenUA.Helpers
             window.DefaultPathText = readmeData.DefaultPathText;
             window.MissingGameFolderToastText = readmeData.MissingGameFolderToast;
             window.MissingVoiceAttackFolderToastText = readmeData.MissingVoiceAttackFolderToast;
+            window.TxtVoiceAttackReadme.Text = readmeData.VoiceAttackReadmeText;
         }
         private void SetAllFieldsMissing(MainWindow window, string message)
         {
@@ -38,6 +39,7 @@ namespace StarCitizenUA.Helpers
             window.TxtLiaReadme.Document.Blocks.Add(new Paragraph(new Run(message)));
             window.TxtLiaSettingsReadme.Text = message;
             window.TxtSelectedPath.Text = string.Empty;
+            window.TxtVoiceAttackReadme.Text = message;
         }
     }
 }

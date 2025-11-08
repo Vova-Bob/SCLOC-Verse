@@ -42,11 +42,15 @@ namespace StarCitizenUA
         private Button BtnSelectLiaFolder => CanvasLiaSettings.SelectFolderButton;
         private Button BtnLiaAutoSearch => CanvasLiaSettings.AutoSearchButton;
         private Button BtnLiaReturn => CanvasLiaSettings.ReturnButton;
+        private Button BtnVaReturn => CanvasVoiceAttack.ReturnButton;
         private TextBox TxtLiaSelectedPath => CanvasLiaSettings.SelectedPathTextBox;
         internal RichTextBox TxtLiaReadme => CanvasAssistant.ReadmeTextBox;
         internal TextBox TxtLiaSettingsReadme => CanvasLiaSettings.ReadmeTextBox;
         internal TextBox TxtLiaSetupe => CanvasAssistant.SetupInfoTextBox;
         internal TextBox TxtLiaVersionPath => CanvasAssistant.TxtLiaVersionPath;
+        private Button BtnLiaSettingsVA => CanvasAssistant.BtnLiaSettingsVA;
+        internal TextBox TxtVoiceAttackReadme => CanvasVoiceAttack.ReadmeTextBox;
+
         private CancellationTokenSource? _voiceAttackSearchCts;
         private string? localFolder = string.Empty;
         private string? localLiaFolder = string.Empty;
@@ -99,6 +103,7 @@ namespace StarCitizenUA
             BtnAssistantReturnHome.Click += ReturnToHome_Click;
             BtnSettingsReturn.Click += ReturnToLocalization_Click;
             BtnLiaReturn.Click += ReturnToAssistant_Click;
+            BtnVaReturn.Click += ReturnToAssistant_Click;
 
             BtnInstall.Click += BtnInstall_Click;
             BtnLocalisationDelete.Click += LocalisationDelete_Click;
@@ -108,7 +113,8 @@ namespace StarCitizenUA
             BtnLiaInstall.Click += BtnLiaInstall_Click;
             BtnLiaSettings.Click += LiaSettings_Click;
             BtnSelectLiaFolder.Click += BtnSelectLiaFolder_Click;
-            BtnLiaAutoSearch.Click += BtnLiaAutoSearch_Click;          
+            BtnLiaAutoSearch.Click += BtnLiaAutoSearch_Click;
+            BtnLiaSettingsVA.Click += BtnLiaSettingsVA_Click;
         }
 
         private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
@@ -424,6 +430,12 @@ namespace StarCitizenUA
         private async void BtnReset_Cash(object sender, RoutedEventArgs e)
         {
             await _cacheCleanupController.HandleManualCleanupAsync(CancellationToken.None).ConfigureAwait(true);
+        }
+
+        private void BtnLiaSettingsVA_Click(object sender, RoutedEventArgs e)
+        {
+            _canvasManager.SwitchCanvas(CanvasVoiceAttack);
+            _buttonStateManager.SetActive("voiceattack");
         }
 
         private async Task UpdateGameFolderUiAsync(string? folder)
