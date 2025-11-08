@@ -2,240 +2,278 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Background="Transparent">
-    <Grid Width="{Binding ActualWidth, RelativeSource={RelativeSource AncestorType=Canvas}}">
-        <TextBlock
-            Text="Налаштування"
-            FontFamily="Arial"
-            Foreground="White"
-            FontSize="20"
-            FontWeight="Bold"
-            HorizontalAlignment="Center"
-            Margin="0,20,0,0"/>
+
+    <!-- ============== РЕСУРСИ (автономний файл) ============== -->
+    <Canvas.Resources>
+        <!-- Базові кольори -->
+        <SolidColorBrush x:Key="BtnFill"        Color="#30546E"/>
+        <SolidColorBrush x:Key="BtnFillHover"   Color="#3A6682"/>
+        <SolidColorBrush x:Key="BtnStroke"      Color="#8DD0FF"/>
+        <SolidColorBrush x:Key="BtnShadow"      Color="#000000"/>
+
+        <!-- Кольори для режимів Автопошуку -->
+        <SolidColorBrush x:Key="AutoFill"        Color="#30546E"/>
+        <SolidColorBrush x:Key="AutoFillHover"   Color="#3A6682"/>
+        <SolidColorBrush x:Key="ResetFill"       Color="#7E2D2D"/>
+        <SolidColorBrush x:Key="ResetFillHover"  Color="#933838"/>
+
+        <!-- Спільний стиль дійової кнопки (спрощений шаблон, без тригерів усередині) -->
+        <Style x:Key="ActionButton" TargetType="{x:Type Button}">
+            <Setter Property="Width" Value="150"/>
+            <Setter Property="Height" Value="40"/>
+            <Setter Property="FontFamily" Value="Segoe UI"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="FontSize" Value="16"/>
+            <Setter Property="Background" Value="{StaticResource BtnFill}"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type Button}">
+                        <Grid x:Name="Root" RenderTransformOrigin="0.5,0.5">
+                            <Grid.RenderTransform>
+                                <ScaleTransform x:Name="PressScale" ScaleX="1" ScaleY="1"/>
+                            </Grid.RenderTransform>
+
+                            <!-- тінь (фіксований колір, без прив’язок, щоб уникнути UnsetValue) -->
+                            <Grid.Effect>
+                                <DropShadowEffect Color="Black" BlurRadius="12" ShadowDepth="6" Opacity="0.45"/>
+                            </Grid.Effect>
+
+                            <!-- фон бере колір із Background кнопки -->
+                            <Path x:Name="BtnBg"
+                                  Fill="{TemplateBinding Background}"
+                                  Stretch="Fill" SnapsToDevicePixels="True"
+                                  Data="M 5,0 L 95,0 A 6,6 0 0 1 100,6 L 100,30 L 95,40 L 5,40 A 6,6 0 0 1 0,34 L 0,10 Z"/>
+
+                            <!-- рамка -->
+                            <Path x:Name="BtnStrokePath"
+                                  Stroke="{StaticResource BtnStroke}"
+                                  StrokeThickness="1"
+                                  StrokeLineJoin="Round"
+                                  StrokeStartLineCap="Round"
+                                  StrokeEndLineCap="Round"
+                                  Fill="Transparent"
+                                  Stretch="Fill" SnapsToDevicePixels="True"
+                                  Data="M 5,0 L 95,0 A 5.5,5.5 0 0 1 100,5.5 L 100,30 L 95,40 L 5,40 A 5.5,5.5 0 0 1 0,34.5 L 0,10 Z"/>
+
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Grid>
+
+                        <!-- лише анімація натискання/вимкнення -->
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Trigger.EnterActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="PressScale"
+                                                             Storyboard.TargetProperty="ScaleX"
+                                                             To="0.97" Duration="0:0:0.06"/>
+                                            <DoubleAnimation Storyboard.TargetName="PressScale"
+                                                             Storyboard.TargetProperty="ScaleY"
+                                                             To="0.97" Duration="0:0:0.06"/>
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.EnterActions>
+                                <Trigger.ExitActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="PressScale"
+                                                             Storyboard.TargetProperty="ScaleX"
+                                                             To="1" Duration="0:0:0.08"/>
+                                            <DoubleAnimation Storyboard.TargetName="PressScale"
+                                                             Storyboard.TargetProperty="ScaleY"
+                                                             To="1" Duration="0:0:0.08"/>
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.ExitActions>
+                            </Trigger>
+
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.55"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+
+            <!-- Ховер-ефект через стиль (фон → BtnFillHover) -->
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="{StaticResource BtnFillHover}"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Стиль кнопки повернення -->
+        <Style x:Key="ReturnButton" TargetType="{x:Type Button}">
+            <Setter Property="Width" Value="50"/>
+            <Setter Property="Height" Value="100"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type Button}">
+                        <Grid x:Name="Root" RenderTransformOrigin="0.5,0.5">
+                            <Grid.RenderTransform>
+                                <ScaleTransform x:Name="PressScale" ScaleX="1" ScaleY="1"/>
+                            </Grid.RenderTransform>
+
+                            <Grid.Effect>
+                                <DropShadowEffect Color="Black" BlurRadius="12" ShadowDepth="6" Opacity="0.45"/>
+                            </Grid.Effect>
+
+                            <Rectangle Fill="Transparent"
+                                       Width="{TemplateBinding Width}"
+                                       Height="{TemplateBinding Height}"/>
+
+                            <Ellipse x:Name="BgCircle"
+                                     Width="{TemplateBinding Width}"
+                                     Height="{TemplateBinding Height}"
+                                     Fill="{StaticResource BtnFill}"
+                                     Opacity="0"/>
+
+                            <Path x:Name="Arrow"
+                                  Data="M22,5 L12,22 L22,39"
+                                  Stroke="{StaticResource BtnStroke}"
+                                  StrokeThickness="5"
+                                  StrokeStartLineCap="Round"
+                                  StrokeEndLineCap="Round"
+                                  StrokeLineJoin="Round"
+                                  HorizontalAlignment="Center"
+                                  VerticalAlignment="Center"/>
+                        </Grid>
+
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="BgCircle" Property="Opacity" Value="0.18"/>
+                                <Setter TargetName="Arrow" Property="StrokeThickness" Value="5.6"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Trigger.EnterActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="PressScale" Storyboard.TargetProperty="ScaleX"
+                                                             To="0.97" Duration="0:0:0.06"/>
+                                            <DoubleAnimation Storyboard.TargetName="PressScale" Storyboard.TargetProperty="ScaleY"
+                                                             To="0.97" Duration="0:0:0.06"/>
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.EnterActions>
+                                <Trigger.ExitActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="PressScale" Storyboard.TargetProperty="ScaleX"
+                                                             To="1" Duration="0:0:0.08"/>
+                                            <DoubleAnimation Storyboard.TargetName="PressScale" Storyboard.TargetProperty="ScaleY"
+                                                             To="1" Duration="0:0:0.08"/>
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.ExitActions>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.55"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Стиль для Автопошуку/Скинути: той самий шаблон, інші кольори -->
+        <Style x:Key="AutoSearchButton" BasedOn="{StaticResource ActionButton}" TargetType="{x:Type Button}">
+            <!-- стандартний стан -->
+            <Setter Property="Background" Value="{StaticResource AutoFill}"/>
+
+            <Style.Triggers>
+                <!-- Hover у стандартному стані -->
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="{StaticResource AutoFillHover}"/>
+                </Trigger>
+
+                <!-- Коли текст = "Скинути" → червоний фон -->
+                <Trigger Property="Content" Value="Скинути">
+                    <Setter Property="Background" Value="{StaticResource ResetFill}"/>
+                </Trigger>
+
+                <!-- Hover у режимі "Скинути" -->
+                <MultiTrigger>
+                    <MultiTrigger.Conditions>
+                        <Condition Property="Content" Value="Скинути"/>
+                        <Condition Property="IsMouseOver" Value="True"/>
+                    </MultiTrigger.Conditions>
+                    <Setter Property="Background" Value="{StaticResource ResetFillHover}"/>
+                </MultiTrigger>
+            </Style.Triggers>
+        </Style>
+    </Canvas.Resources>
+
+    <!-- Заголовок -->
+    <Grid Width="{Binding ActualWidth, RelativeSource={RelativeSource AncestorType={x:Type Canvas}}}">
+        <TextBlock Text="Налаштування"
+                   FontFamily="Arial"
+                   Foreground="White"
+                   FontSize="20"
+                   FontWeight="Bold"
+                   HorizontalAlignment="Center"
+                   Margin="0,20,0,0"/>
     </Grid>
 
+    <!-- Кнопка повернення -->
     <Button x:Name="BtnReturn"
-            Canvas.Top="240" Canvas.Right="910" Width="40" Height="100"
-            Background="Transparent"
-            Cursor="Hand" HorizontalAlignment="Left" Canvas.Left="0" VerticalAlignment="Center">
-        <Button.Template>
-            <ControlTemplate TargetType="Button">
-                <Grid>
-                    <Rectangle Fill="Transparent" Width="50" Height="100"/>
-                    <Ellipse x:Name="BgCircle"
-                             Width="50" Height="100"
-                             Fill="Transparent"
-                             HorizontalAlignment="Center"
-                             VerticalAlignment="Center"
-                             Opacity="1">
-                        <Ellipse.Effect>
-                            <DropShadowEffect Color="Black" BlurRadius="10" ShadowDepth="0" Opacity="0.6"/>
-                        </Ellipse.Effect>
-                    </Ellipse>
-                    <Path x:Name="ArrowPath2"
-                          Data="M22,5 L12,22 L22,39"
-                          Stroke="#6DB9F8"
-                          StrokeThickness="5"
-                          StrokeStartLineCap="Round"
-                          StrokeEndLineCap="Round"
-                          StrokeLineJoin="Round"
-                          HorizontalAlignment="Center"
-                          VerticalAlignment="Center"
-                          Opacity="1"/>
-                </Grid>
-                <ControlTemplate.Triggers>
-                    <Trigger Property="IsMouseOver" Value="True">
-                        <Setter TargetName="BgCircle" Property="Opacity" Value="0.9"/>
-                        <Setter TargetName="ArrowPath2" Property="Opacity" Value="0.85"/>
-                    </Trigger>
-                    <Trigger Property="IsPressed" Value="True">
-                        <Setter TargetName="BgCircle" Property="Opacity" Value="0.8"/>
-                        <Setter TargetName="ArrowPath2" Property="Opacity" Value="0.6"/>
-                        <Setter TargetName="BgCircle" Property="RenderTransform">
-                            <Setter.Value>
-                                <ScaleTransform ScaleX="0.95" ScaleY="0.95"/>
-                            </Setter.Value>
-                        </Setter>
-                    </Trigger>
-                </ControlTemplate.Triggers>
-            </ControlTemplate>
-        </Button.Template>
-    </Button>
+            Style="{StaticResource ReturnButton}"
+            Canvas.Top="240"
+            Canvas.Left="0"
+            Width="50" Height="100"
+            HorizontalAlignment="Left"
+            VerticalAlignment="Center"/>
 
+    <!-- Кнопка Провідник -->
     <Button x:Name="BtnSelectFolder"
-           Width="100" Height="40"
-           Canvas.Left="70" Canvas.Top="87"
-           Cursor="Hand"
-           HorizontalAlignment="Center" VerticalAlignment="Top">
-        <Button.Template>
-            <ControlTemplate TargetType="Button">
-                <Grid>
-                    <Grid.Effect>
-                        <DropShadowEffect
-                            Color="Black"
-                            BlurRadius="10"
-                            ShadowDepth="4"
-                            Opacity="0.6" />
-                    </Grid.Effect>
-                    <Path x:Name="BgPath" Fill="#30546E" Stretch="None">
-                        <Path.Data>
-                            <PathGeometry>
-                                <PathFigure StartPoint="15,0">
-                                    <LineSegment Point="120,0" />
-                                    <ArcSegment Point="150,5" Size="20,20" SweepDirection="Clockwise"/>
-                                    <LineSegment Point="150,25"/>
-                                    <LineSegment Point="135,40"/>
-                                    <LineSegment Point="25,40"/>
-                                    <ArcSegment Point="0,25" Size="15,15" SweepDirection="Clockwise"/>
-                                    <LineSegment Point="0,15"/>
-                                    <LineSegment Point="15,0"/>
-                                </PathFigure>
-                            </PathGeometry>
-                        </Path.Data>
-                    </Path>
-                    <ContentPresenter HorizontalAlignment="Center"
-                                     VerticalAlignment="Center"
-                                     RecognizesAccessKey="True"/>
-                </Grid>
-                <ControlTemplate.Triggers>
-                    <Trigger Property="IsMouseOver" Value="True">
-                        <Setter TargetName="BgPath" Property="Opacity" Value="0.7"/>
-                    </Trigger>
-                </ControlTemplate.Triggers>
-            </ControlTemplate>
-        </Button.Template>
-        <TextBlock Text="Провідник"
-                   FontFamily="Arial"
-                   FontWeight="Bold"
-                   FontSize="14"
-                   Foreground="White"
-                   HorizontalAlignment="Center"
-                   VerticalAlignment="Center"/>
-    </Button>
+            Style="{StaticResource ActionButton}"
+            Content="Провідник"
+            Canvas.Left="70" Canvas.Top="87"
+            Width="106" Height="40" HorizontalAlignment="Left" VerticalAlignment="Center"/>
 
+    <!-- Кнопка Автопошук/Скинути (ідентичний шаблон/дизайн до "Провідник") -->
     <Button x:Name="BtnAutoSearch"
-            Width="100" Height="40"
-            Canvas.Left="175" Canvas.Top="87"
-            Cursor="Hand"
-            HorizontalAlignment="Center" VerticalAlignment="Top">
-        <Button.Template>
-            <ControlTemplate TargetType="Button">
-                <Grid RenderTransformOrigin="0.5,0.5">
-                    <Grid.RenderTransform>
-                        <ScaleTransform ScaleX="-1"/>
-                    </Grid.RenderTransform>
-                    <Grid.Effect>
-                        <DropShadowEffect Color="Black" BlurRadius="10" ShadowDepth="4" Opacity="0.6" />
-                    </Grid.Effect>
-                    <Path x:Name="BgPath" Fill="#30546E" Stretch="None">
-                        <Path.Data>
-                            <PathGeometry>
-                                <PathFigure StartPoint="15,0">
-                                    <LineSegment Point="120,0" />
-                                    <ArcSegment Point="150,5" Size="20,20" SweepDirection="Clockwise"/>
-                                    <LineSegment Point="150,25"/>
-                                    <LineSegment Point="135,40"/>
-                                    <LineSegment Point="25,40"/>
-                                    <ArcSegment Point="0,25" Size="15,15" SweepDirection="Clockwise"/>
-                                    <LineSegment Point="0,15"/>
-                                    <LineSegment Point="15,0"/>
-                                </PathFigure>
-                            </PathGeometry>
-                        </Path.Data>
-                    </Path>
-                    <TextBlock x:Name="BtnText"
-                               Text="Автопошук"
-                               FontWeight="Bold"
-                               FontFamily="Arial"
-                               FontSize="14"
-                               Foreground="White"
-                               HorizontalAlignment="Center"
-                               VerticalAlignment="Center"
-                               RenderTransformOrigin="0.5,0.5">
-                        <TextBlock.RenderTransform>
-                            <ScaleTransform ScaleX="-1"/>
-                        </TextBlock.RenderTransform>
-                    </TextBlock>
-                </Grid>
-                <ControlTemplate.Triggers>
-                    <Trigger Property="IsMouseOver" Value="True">
-                        <Setter TargetName="BgPath" Property="Opacity" Value="0.7"/>
-                    </Trigger>
-                </ControlTemplate.Triggers>
-            </ControlTemplate>
-        </Button.Template>
-    </Button>
+            Style="{StaticResource AutoSearchButton}"
+            Content="Автопошук"
+            Canvas.Left="183" Canvas.Top="87"
+            Width="103" Height="40" HorizontalAlignment="Left" VerticalAlignment="Top"/>
 
+    <!-- Кнопка Очистити кеш -->
     <Button x:Name="BtnResetCash"
-            Width="205" Height="40"
-            Canvas.Left="70" Canvas.Top="153"
-            Cursor="Hand"
-            HorizontalAlignment="Center" VerticalAlignment="Top">
-        <Button.Template>
-            <ControlTemplate TargetType="Button">
-                <Grid>
-                    <Grid.Effect>
-                        <DropShadowEffect
-                            Color="Black"
-                            BlurRadius="10"
-                            ShadowDepth="4"
-                            Opacity="0.6" />
-                    </Grid.Effect>
-                    <Path x:Name="BgPath" Fill="#30546E" Stretch="None">
-                        <Path.Data>
-                            <PathGeometry>
-                                <PathFigure StartPoint="15,0">
-                                    <LineSegment Point="175,0"/>
-                                    <ArcSegment Point="205,5" Size="20,20" SweepDirection="Clockwise"/>
-                                    <LineSegment Point="205,25"/>
-                                    <LineSegment Point="190,40"/>
-                                    <LineSegment Point="25,40"/>
-                                    <ArcSegment Point="0,25" Size="15,15" SweepDirection="Clockwise"/>
-                                    <LineSegment Point="0,15"/>
-                                    <LineSegment Point="15,0"/>
-                                </PathFigure>
-                            </PathGeometry>
-                        </Path.Data>
-                    </Path>
-                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" RecognizesAccessKey="True"/>
-                </Grid>
-                <ControlTemplate.Triggers>
-                    <Trigger Property="IsMouseOver" Value="True">
-                        <Setter TargetName="BgPath" Property="Opacity" Value="0.7"/>
-                    </Trigger>
-                </ControlTemplate.Triggers>
-            </ControlTemplate>
-        </Button.Template>
-        <TextBlock Text="Очистити кеш"
-                   FontWeight="Bold"
-                   FontSize="14"
-                   Foreground="White"
-                   HorizontalAlignment="Center"
-                   VerticalAlignment="Center"/>
-    </Button>
+            Style="{StaticResource ActionButton}"
+            Content="Очистити кеш"
+            Canvas.Left="72" Canvas.Top="157"
+            Width="205" Height="40"/>
 
-    <Border Canvas.Left="285" Canvas.Top="88"
-        Width="600" Height="38"
-        CornerRadius="6"
-        BorderBrush="#1B78C8"
-        BorderThickness="1"
-        Background="#0C1A2A">
+    <!-- Поле вибраного шляху -->
+    <Border Canvas.Left="295" Canvas.Top="88"
+            Width="595" Height="40"
+            CornerRadius="6"
+            BorderBrush="{StaticResource BtnStroke}"
+            BorderThickness="1"
+            Background="#0C1A2A" HorizontalAlignment="Left" VerticalAlignment="Top">
         <TextBox x:Name="TxtSelectedPath"
-           FontFamily="Segoe UI Semibold"
-           FontSize="15"
-           Foreground="#A7C6E7"
-           Background="Transparent"
-           BorderThickness="0"
-           Padding="14,4"
-           IsReadOnly="True"
-           HorizontalContentAlignment="Left"
-           VerticalContentAlignment="Center"
-           TextAlignment="Left"/>
+                 FontFamily="Segoe UI Semibold"
+                 FontSize="15"
+                 Foreground="#A7C6E7"
+                 Background="Transparent"
+                 BorderThickness="0"
+                 Padding="14,4"
+                 IsReadOnly="True"
+                 HorizontalContentAlignment="Left"
+                 VerticalContentAlignment="Center"
+                 TextAlignment="Left" Margin="1,0,-1,0" RenderTransformOrigin="0.501,0.477"/>
     </Border>
 
+    <!-- README блок -->
     <Border Canvas.Left="70" Canvas.Top="220"
             Width="820" Height="270"
-            CornerRadius="5"
-            BorderBrush="#6DB9F8"
+            CornerRadius="8"
+            BorderBrush="{StaticResource BtnStroke}"
             BorderThickness="1"
             Background="#CC0A1D29">
         <TextBox x:Name="TxtReadme"
@@ -247,7 +285,7 @@
                  Padding="10,6"
                  IsReadOnly="True"
                  AcceptsReturn="True"
-                 TextWrapping="Wrap"     
+                 TextWrapping="Wrap"
                  HorizontalContentAlignment="Stretch"
                  VerticalContentAlignment="Top"
                  TextAlignment="Justify"/>
