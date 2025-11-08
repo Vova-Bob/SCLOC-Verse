@@ -127,9 +127,9 @@ namespace StarCitizenUA.Services.LiaServices
 
             // Перевірка версії
             if (!string.IsNullOrEmpty(remoteVersion) && remoteVersion == voicePackVersion)
-                return ($"У вас актуальна версія голосового пакету: {voicePackVersion}", System.Windows.Media.Brushes.LimeGreen);
+                return ($"У вас актуальна версія голосового пакету: {remoteVersion}", System.Windows.Media.Brushes.LimeGreen);
 
-            return ($"Доступне оновлення голосового пакету: {remoteVersion}", System.Windows.Media.Brushes.Red);
+            return ($"Доступне оновлення голосового пакету: {voicePackVersion}", System.Windows.Media.Brushes.Red);
         }
 
         public async Task<bool> UpdateVersionFileAsync()
