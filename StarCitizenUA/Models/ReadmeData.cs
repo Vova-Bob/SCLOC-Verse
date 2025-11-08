@@ -10,5 +10,6 @@
         public string DefaultPathText { get; set; } = "";
         public string MissingGameFolderToast { get; set; } = "";
         public string MissingVoiceAttackFolderToast { get; set; } = "";
+        public string VoiceAttackReadmeText { get; set; } = "";
     }
 }

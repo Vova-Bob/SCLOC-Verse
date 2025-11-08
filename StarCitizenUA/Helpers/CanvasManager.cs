@@ -1,7 +1,6 @@
 ﻿using StarCitizenUA.Interfaces;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Media;
 using System.Windows.Media.Animation;
 
 namespace StarCitizenUA.Helpers
@@ -24,6 +23,7 @@ namespace StarCitizenUA.Helpers
             if (_window.CanvasAssistant.Visibility == Visibility.Visible) return _window.CanvasAssistant;
             if (_window.CanvasSettings.Visibility == Visibility.Visible) return _window.CanvasSettings;
             if (_window.CanvasLiaSettings.Visibility == Visibility.Visible) return _window.CanvasLiaSettings;
+            if (_window.CanvasVoiceAttack.Visibility == Visibility.Visible) return _window.CanvasVoiceAttack;
             return null;
         }
         public void SwitchCanvas(Canvas showCanvas, double durationSeconds = 0.3)
@@ -63,6 +63,7 @@ namespace StarCitizenUA.Helpers
             _window.CanvasAssistant.Visibility = Visibility.Collapsed;
             _window.CanvasSettings.Visibility = Visibility.Collapsed;
             _window.CanvasLiaSettings.Visibility = Visibility.Collapsed;
+            _window.CanvasVoiceAttack.Visibility = Visibility.Collapsed;
 
             switch (which.ToLower())
             {
@@ -85,6 +86,10 @@ namespace StarCitizenUA.Helpers
                 case "liasettings":
                     _window.CanvasLiaSettings.Visibility = Visibility.Visible;
                     _currentCanvas = _window.CanvasLiaSettings;
+                    break;
+                case "voiceattack":
+                    _window.CanvasVoiceAttack.Visibility = Visibility.Visible;
+                    _currentCanvas = _window.CanvasVoiceAttack;
                     break;
                 default:
                     _window.CanvasHome.Visibility = Visibility.Visible;
