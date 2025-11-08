@@ -174,7 +174,7 @@
         Style="{StaticResource ActionButton}"
         Content="Встановити"
         Canvas.Left="770"
-        Canvas.Top="88"/>
+        Canvas.Top="69" HorizontalAlignment="Center" VerticalAlignment="Top"/>
 
     <Button x:Name="BtnLiaSettings"
          Style="{StaticResource ActionButton}"
@@ -182,7 +182,7 @@
          FontFamily="Segoe MDL2 Assets"
          FontSize="25"
          Canvas.Left="770"
-         Canvas.Top="150" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+         Canvas.Top="116" HorizontalAlignment="Center" VerticalAlignment="Top"/>
 
     <Border Canvas.Left="0" Canvas.Top="520"
         Width="950" Height="30"
@@ -271,8 +271,12 @@
                    Stretch="Uniform"/>
         </Button.Content>
     </Button>
-
-
+    <Button x:Name="BtnLiaDelete"
+        Style="{StaticResource ActionButton}"
+        Content="Видалити"   
+        FontFamily="Segoe UI"
+        Canvas.Left="770"
+        Canvas.Top="163" Background="IndianRed" HorizontalAlignment="Center" VerticalAlignment="Top"/>
 </Canvas>
     
     
