@@ -345,7 +345,7 @@ namespace StarCitizenUA
                         return;
                     }
 
-                    TxtLiaVersionPath.Text = "❌ Вибрана папка повинна бути саме VoiceAttack 2\\Apps\\Import";
+                    TxtLiaVersionPath.Text = "❌ Вибрана директорія має бути VoiceAttack 2\\Apps\\Import";
                     TxtLiaVersionPath.Foreground = System.Windows.Media.Brushes.Red;
                     BtnLiaInstall.IsEnabled = false;
                     await _toastService.ShowToastAsync("Оберіть правильну папку VoiceAttack.").ConfigureAwait(true);
