@@ -508,14 +508,13 @@ namespace StarCitizenUA
                 TxtLiaVersionPath.Foreground = System.Windows.Media.Brushes.Orange;
                 BtnLiaInstall.Content = "Встановити";
                 await UpdateLiaVersionAsync();
-                await _toastService.ShowToastAsync("Файли голосового асистента успішно видалені.");
-                BtnLiaInstall.IsEnabled = true;
+                await _toastService.ShowToastAsync("Файли голосового асистента успішно видалені.");                
             }
             catch (Exception ex)
             {
                 TxtLiaVersionPath.Text = $"Помилка при видаленні: {ex.Message}";
                 TxtLiaVersionPath.Foreground = System.Windows.Media.Brushes.Red;
-                BtnLiaInstall.IsEnabled = true;
+                await UpdateLiaVersionAsync();
             }    
         }
 
@@ -608,8 +607,8 @@ namespace StarCitizenUA
                 if (message == "Голосовий пакет не встановлено.")
                 {
                     BtnLiaDelete.IsEnabled = false;
-                }
-                else 
+                }     
+                else
                 {
                     BtnLiaDelete.IsEnabled = true;
                 }
@@ -624,6 +623,8 @@ namespace StarCitizenUA
             {
                 Dispatcher.Invoke(() => TxtLiaVersionPath.Text = "Папка VoiceAttack не обрана");
                 BtnLiaInstall.Content = "Встановити";
+                BtnLiaDelete.IsEnabled = false;
+                BtnLiaInstall.IsEnabled = false;
             }
         }
     }
