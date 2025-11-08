@@ -393,13 +393,6 @@ namespace StarCitizenUA
 
             try
             {
-                if (string.IsNullOrWhiteSpace(localLiaFolder) || !Directory.Exists(localLiaFolder))
-                {
-                    await _toastService.ShowToastAsync("Будь ласка, виберіть папку VoiceAttack перед встановленням.");
-                    BtnLiaInstall.IsEnabled = true;
-                    return;
-                }
-
                 Action<string> logCallback = msg =>
                 {
                     Dispatcher.Invoke(() => TxtLiaSetupe.Text += $"{msg}\n");
@@ -407,8 +400,8 @@ namespace StarCitizenUA
                 };
 
                 var remoteFiles = await _updater.GetRemoteFileListAsync();
-                await _updater.SyncFilesAsync(remoteFiles, localLiaFolder, logCallback);
-                await _updater.DownloadAndInstallVoskModelAsync(localLiaFolder, logCallback);
+                await _updater.SyncFilesAsync(remoteFiles, localLiaFolder!, logCallback);
+                await _updater.DownloadAndInstallVoskModelAsync(localLiaFolder!, logCallback);
 
                 var (updateMessage, _) = await _updateCheckerService.CheckForPendingUpdatesAsync();
 
