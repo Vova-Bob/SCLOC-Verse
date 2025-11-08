@@ -128,12 +128,10 @@ namespace StarCitizenUA
             BtnLiaAutoSearch.ApplyTemplate();
 
             _canvasManager.ShowCanvas("home");
-
-            await _viewModel.InitializeAsync().ConfigureAwait(true);
-
-            await UpdateGameFolderUiAsync(_viewModel.GameFolder).ConfigureAwait(true);
-            await UpdateLiaFolderUiAsync(_viewModel.VoiceAttackFolder).ConfigureAwait(true);
             await UpdateLiaVersionAsync();
+            await _viewModel.InitializeAsync().ConfigureAwait(true);
+            await UpdateGameFolderUiAsync(_viewModel.GameFolder).ConfigureAwait(true);
+            await UpdateLiaFolderUiAsync(_viewModel.VoiceAttackFolder).ConfigureAwait(true);            
             await ShowStartupToastsAsync().ConfigureAwait(true);
             await _cacheCleanupController.RunStartupPromptAsync(CancellationToken.None).ConfigureAwait(true);
         }
