@@ -63,7 +63,7 @@
                 <!-- 1 картка з LIA -->
                 <Border Margin="10,0" CornerRadius="12" Background="#111" Cursor="Hand" MouseLeftButtonUp="YouTubeCard_Click">
                     <StackPanel Margin="10">
-                        <TextBlock Text="Голосовий асистент Л.І.А: демонстрація можливостей" Foreground="White" FontWeight="Bold" Margin="0,0,0,10"/>
+                        <TextBlock Text="Голосовий асистент Л.І.А" Foreground="White" FontWeight="Bold" Margin="0,0,0,10"/>
                         <Grid>
                             <Rectangle Height="200" RadiusX="12" RadiusY="12">
                                 <Rectangle.Fill>
