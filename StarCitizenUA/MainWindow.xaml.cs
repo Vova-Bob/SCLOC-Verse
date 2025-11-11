@@ -127,7 +127,8 @@ namespace StarCitizenUA
             MainGrid.MouseMove += (s, e2) => _windowHelper.HandleMouseMove(this, bgImage, e2.GetPosition(MainGrid), MainGrid);
             MainGrid.MouseLeave += (s, e2) => _windowHelper.HandleMouseLeave(this, bgImage, MainGrid);
             _readmeService.LoadReadme(this);
-
+            CanvasHome.LinkService = _linkService;
+            CanvasHome.ToastService = _toastService;
             BtnAutoSearch.ApplyTemplate();
             BtnLiaAutoSearch.ApplyTemplate();
 
