@@ -119,9 +119,30 @@
 
                 <!-- Картка 2 -->
                 <Border Style="{StaticResource CardStyle}" Margin="10,0" MouseLeftButtonUp="Card2_Click">
-                    <StackPanel Margin="15">
-                        <TextBlock Text="Демонстраційна картка 2" Foreground="White" TextWrapping="Wrap"/>
-                    </StackPanel>
+                    <Grid Margin="10">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <!-- Текст -->
+                            <RowDefinition Height="*"/>
+                            <!-- Картинка -->
+                        </Grid.RowDefinitions>
+
+                        <!-- Текст зверху -->
+                        <TextBlock Text="Організація USF"
+                                   Foreground="White"
+                                   FontWeight="Bold"
+                                   Margin="0,0,0,10"
+                                   HorizontalAlignment="Left"/>
+
+                        <!-- Картинка по центру -->
+                        <Image Grid.Row="1"
+                               Source="/Images/USF-logo.png"
+                               Width="150"
+                               Height="150"
+                               Stretch="Uniform"
+                               HorizontalAlignment="Center"
+                               VerticalAlignment="Center"/>
+                    </Grid>
                 </Border>
 
                 <!-- Картка 3 -->

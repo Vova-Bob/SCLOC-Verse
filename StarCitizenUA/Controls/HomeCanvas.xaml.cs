@@ -117,7 +117,7 @@ namespace StarCitizenUA.Controls
 
         private void Card2_Click(object sender, MouseButtonEventArgs e)
         {
-            OpenUrl("https://example.com/card2");// Замінити на фактичне посилання
+            OpenUrl("https://robertsspaceindustries.com/en/orgs/UKR");
         }
 
         private void Card3_Click(object sender, MouseButtonEventArgs e)
