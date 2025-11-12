@@ -176,23 +176,83 @@
         </Style>
 
         <!-- Локальний стиль для Автопошуку/Скинути -->
-        <Style x:Key="AutoSearchButton" BasedOn="{StaticResource ActionButton}" TargetType="{x:Type Button}">
-            <Setter Property="Background" Value="{StaticResource AutoFill}"/>
+        <Style x:Key="AutoSearchButton" TargetType="{x:Type Button}" BasedOn="{StaticResource ActionButton}">
             <Style.Triggers>
-                <Trigger Property="IsMouseOver" Value="True">
-                    <Setter Property="Background" Value="{StaticResource AutoFillHover}"/>
+                <Trigger Property="Content" Value="Автопошук">
+                    <Setter Property="Background" Value="{StaticResource AutoFill}"/>
                 </Trigger>
                 <Trigger Property="Content" Value="Скинути">
                     <Setter Property="Background" Value="{StaticResource ResetFill}"/>
                 </Trigger>
-                <MultiTrigger>
-                    <MultiTrigger.Conditions>
-                        <Condition Property="Content" Value="Скинути"/>
-                        <Condition Property="IsMouseOver" Value="True"/>
-                    </MultiTrigger.Conditions>
-                    <Setter Property="Background" Value="{StaticResource ResetFillHover}"/>
-                </MultiTrigger>
             </Style.Triggers>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Grid x:Name="Root" RenderTransformOrigin="0.5,0.5">
+                            <Grid.RenderTransform>
+                                <ScaleTransform x:Name="PressScale" ScaleX="1" ScaleY="1"/>
+                            </Grid.RenderTransform>
+
+                            <Grid.Effect>
+                                <DropShadowEffect Color="Black" BlurRadius="12" ShadowDepth="6" Opacity="0.45"/>
+                            </Grid.Effect>
+
+                            <Path x:Name="BtnBg"
+                          Fill="{TemplateBinding Background}"
+                          Stretch="Fill"
+                          Data="M 5,0 L 95,0 A 6,6 0 0 1 100,6 L 100,30 L 95,40 L 5,40 A 6,6 0 0 1 0,34 L 0,10 Z"/>
+                            <Path x:Name="BtnStrokePath"
+                          Stroke="{StaticResource BtnStroke}"
+                          StrokeThickness="1"
+                          StrokeLineJoin="Round"
+                          StrokeStartLineCap="Round"
+                          StrokeEndLineCap="Round"
+                          Fill="Transparent"
+                          Stretch="Fill"
+                          Data="M 5,0 L 95,0 A 5.5,5.5 0 0 1 100,5.5 L 100,30 L 95,40 L 5,40 A 5.5,5.5 0 0 1 0,34.5 L 0,10 Z"/>
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Grid>
+
+                        <ControlTemplate.Triggers>
+                            <!-- Hover -->
+                            <MultiTrigger>
+                                <MultiTrigger.Conditions>
+                                    <Condition Property="IsMouseOver" Value="True"/>
+                                    <Condition Property="Content" Value="Автопошук"/>
+                                </MultiTrigger.Conditions>
+                                <Setter TargetName="BtnBg" Property="Fill" Value="{StaticResource AutoFillHover}"/>
+                            </MultiTrigger>
+                            <MultiTrigger>
+                                <MultiTrigger.Conditions>
+                                    <Condition Property="IsMouseOver" Value="True"/>
+                                    <Condition Property="Content" Value="Скинути"/>
+                                </MultiTrigger.Conditions>
+                                <Setter TargetName="BtnBg" Property="Fill" Value="{StaticResource ResetFillHover}"/>
+                            </MultiTrigger>
+
+                            <!-- Pressed анімація -->
+                            <Trigger Property="IsPressed" Value="True">
+                                <Trigger.EnterActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="PressScale" Storyboard.TargetProperty="ScaleX" To="0.97" Duration="0:0:0.06"/>
+                                            <DoubleAnimation Storyboard.TargetName="PressScale" Storyboard.TargetProperty="ScaleY" To="0.97" Duration="0:0:0.06"/>
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.EnterActions>
+                                <Trigger.ExitActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="PressScale" Storyboard.TargetProperty="ScaleX" To="1" Duration="0:0:0.08"/>
+                                            <DoubleAnimation Storyboard.TargetName="PressScale" Storyboard.TargetProperty="ScaleY" To="1" Duration="0:0:0.08"/>
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.ExitActions>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
         </Style>
     </Canvas.Resources>
 
