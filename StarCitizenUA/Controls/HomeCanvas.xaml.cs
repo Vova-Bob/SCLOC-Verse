@@ -56,8 +56,8 @@ namespace StarCitizenUA.Controls
         {
             if (SliderPanel == null || SliderPanel.Children.Count == 0) return;
 
-            int visibleCards = 6;
-            double totalMargin = 10 * 2 * visibleCards; // Margin.Left + Margin.Right кожної картки
+            int visibleCards = 5;
+            double totalMargin = 20 * 2 * visibleCards; // Margin.Left + Margin.Right кожної картки
 
             double cardWidth = (ScrollContainer.ActualWidth - totalMargin) / visibleCards;
 
