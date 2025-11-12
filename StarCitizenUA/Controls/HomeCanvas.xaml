@@ -6,8 +6,8 @@
     <!-- ===== РЕСУРСИ ===== -->
     <Canvas.Resources>
         <!-- Базові кольори карток -->
-        <SolidColorBrush x:Key="CardFill" Color="#222"/>
-        <SolidColorBrush x:Key="CardFillHover" Color="#333"/>
+        <SolidColorBrush x:Key="CardFill" Color="#1F3C4C"/>
+        <SolidColorBrush x:Key="CardFillHover" Color="#385565"/>
         <SolidColorBrush x:Key="CardBorder" Color="#4A90E2"/>
         <SolidColorBrush x:Key="CardShadow" Color="#000000"/>
 
