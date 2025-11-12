@@ -1,4 +1,3 @@
-using Microsoft.VisualBasic;
 using StarCitizenUA.Controls;
 using StarCitizenUA.Helpers;
 using StarCitizenUA.Interfaces;
@@ -7,7 +6,6 @@ using StarCitizenUA.Services.Cache;
 using StarCitizenUA.Services.LiaServices;
 using StarCitizenUA.ViewModels;
 using System.IO;
-using System.Runtime;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -120,25 +118,31 @@ namespace StarCitizenUA
             BtnLiaSettingsVA.Click += BtnLiaSettingsVA_Click;
             BtnLiaDelete.Click += BtnLiaDelete_Click;
         }
-
         private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
         {
             _windowHelper.ApplyWindowRoundCorners(this);
             MainGrid.MouseMove += (s, e2) => _windowHelper.HandleMouseMove(this, bgImage, e2.GetPosition(MainGrid), MainGrid);
             MainGrid.MouseLeave += (s, e2) => _windowHelper.HandleMouseLeave(this, bgImage, MainGrid);
             _readmeService.LoadReadme(this);
-            CanvasHome.LinkService = _linkService;
             CanvasHome.ToastService = _toastService;
+            CanvasHome.LinkService = _linkService;
             BtnAutoSearch.ApplyTemplate();
             BtnLiaAutoSearch.ApplyTemplate();
-
+            BtnAutoSearch.IsEnabled = true;
+            BtnLiaAutoSearch.IsEnabled = true;
             _canvasManager.ShowCanvas("home");
-            await UpdateLiaVersionAsync();
-            await _viewModel.InitializeAsync().ConfigureAwait(true);
-            await UpdateGameFolderUiAsync(_viewModel.GameFolder).ConfigureAwait(true);
-            await UpdateLiaFolderUiAsync(_viewModel.VoiceAttackFolder).ConfigureAwait(true);
-            await ShowStartupToastsAsync().ConfigureAwait(true);
-            await _cacheCleanupController.RunStartupPromptAsync(CancellationToken.None).ConfigureAwait(true);
+            var tasks = new Task[]
+            {
+                UpdateLiaVersionAsync(),
+                _viewModel.InitializeAsync(),
+                UpdateGameFolderUiAsync(_viewModel.GameFolder),
+                UpdateLiaFolderUiAsync(_viewModel.VoiceAttackFolder)
+            };
+
+            await Task.WhenAll(tasks).ConfigureAwait(true);
+
+            _ = ShowStartupToastsAsync();
+            _ = _cacheCleanupController.RunStartupPromptAsync(CancellationToken.None);
         }
 
         private void EnvSelector_SelectionChanged(object? sender, EventArgs e)
@@ -505,18 +509,18 @@ namespace StarCitizenUA
                     new DirectoryInfo(updaterFolder).Attributes = FileAttributes.Normal;
                     Directory.Delete(updaterFolder, true);
                 }
-                
+
                 TxtLiaVersionPath.Foreground = System.Windows.Media.Brushes.Orange;
                 BtnLiaInstall.Content = "Встановити";
                 await UpdateLiaVersionAsync();
-                await _toastService.ShowToastAsync("Файли голосового асистента успішно видалені.");                
+                await _toastService.ShowToastAsync("Файли голосового асистента успішно видалені.");
             }
             catch (Exception ex)
             {
                 TxtLiaVersionPath.Text = $"Помилка при видаленні: {ex.Message}";
                 TxtLiaVersionPath.Foreground = System.Windows.Media.Brushes.Red;
                 await UpdateLiaVersionAsync();
-            }    
+            }
         }
 
         private async void BtnReset_Cash(object sender, RoutedEventArgs e)
@@ -608,7 +612,7 @@ namespace StarCitizenUA
                 if (message == "Голосовий пакет не встановлено.")
                 {
                     BtnLiaDelete.IsEnabled = false;
-                }     
+                }
                 else
                 {
                     BtnLiaDelete.IsEnabled = true;
