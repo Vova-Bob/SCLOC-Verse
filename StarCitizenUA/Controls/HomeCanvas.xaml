@@ -3,6 +3,88 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Background="Transparent">
 
+    <!-- ===== РЕСУРСИ ===== -->
+    <Canvas.Resources>
+        <!-- Базові кольори карток -->
+        <SolidColorBrush x:Key="CardFill" Color="#222"/>
+        <SolidColorBrush x:Key="CardFillHover" Color="#333"/>
+        <SolidColorBrush x:Key="CardBorder" Color="#4A90E2"/>
+        <SolidColorBrush x:Key="CardShadow" Color="#000000"/>
+
+
+        <!-- Стиль картки -->
+        <Style x:Key="CardStyle" TargetType="Border">
+            <Setter Property="CornerRadius" Value="12"/>
+            <Setter Property="BorderBrush" Value="{StaticResource CardBorder}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Background" Value="{StaticResource CardFill}"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="RenderTransformOrigin" Value="0.5,0.5"/>
+            <Setter Property="RenderTransform">
+                <Setter.Value>
+                    <ScaleTransform ScaleX="1" ScaleY="1"/>
+                </Setter.Value>
+            </Setter>
+            <Setter Property="Effect">
+                <Setter.Value>
+                    <DropShadowEffect Color="#000000" BlurRadius="8" ShadowDepth="4" Opacity="0.4"/>
+                </Setter.Value>
+            </Setter>
+
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="{StaticResource CardFillHover}"/>
+                    <Setter Property="BorderThickness" Value="2"/>
+                    <Setter Property="Effect">
+                        <Setter.Value>
+                            <DropShadowEffect Color="#000000" BlurRadius="8" ShadowDepth="4" Opacity="0.4"/>
+                        </Setter.Value>
+                    </Setter>
+                </Trigger>
+                <Trigger Property="IsMouseCaptured" Value="True">
+                    <Setter Property="RenderTransform">
+                        <Setter.Value>
+                            <ScaleTransform ScaleX="0.97" ScaleY="0.97"/>
+                        </Setter.Value>
+                    </Setter>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Горизонтальна ScrollBar -->
+        <Style TargetType="ScrollBar">
+            <Setter Property="Orientation" Value="Horizontal"/>
+            <Setter Property="Height" Value="10"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ScrollBar">
+                        <Grid Width="800" Height="10">
+                            <Rectangle Fill="#1F3C4C" RadiusX="2.5" RadiusY="2.5"/>
+                            <Track x:Name="PART_Track" IsDirectionReversed="false" Focusable="false">
+                                <Track.Thumb>
+                                    <Thumb Height="10">
+                                        <Thumb.Template>
+                                            <ControlTemplate TargetType="Thumb">
+                                                <Border Background="#4A90E2" CornerRadius="2.5"/>
+                                            </ControlTemplate>
+                                        </Thumb.Template>
+                                    </Thumb>
+                                </Track.Thumb>
+                                <Track.IncreaseRepeatButton>
+                                    <RepeatButton Visibility="Collapsed"/>
+                                </Track.IncreaseRepeatButton>
+                                <Track.DecreaseRepeatButton>
+                                    <RepeatButton Visibility="Collapsed"/>
+                                </Track.DecreaseRepeatButton>
+                            </Track>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+    </Canvas.Resources>
+
     <!-- Заголовки -->
     <TextBlock Canvas.Left="30" Canvas.Top="30" Foreground="White" FontSize="22" FontWeight="Bold">
         Ласкаво просимо до Star Citizen Localizer!
@@ -12,56 +94,16 @@
     </TextBlock>
 
     <!-- Контейнер для слайдера -->
-    <Grid x:Name="ScrollContainer"
-          Canvas.Bottom="10"
-          Height="400"
-          HorizontalAlignment="Center"
-          ClipToBounds="True">
-
+    <Grid x:Name="ScrollContainer" Canvas.Bottom="10" Height="400" HorizontalAlignment="Center" ClipToBounds="True">
         <ScrollViewer x:Name="SliderScroll"
                       HorizontalScrollBarVisibility="Auto"
-                      VerticalScrollBarVisibility="Disabled"
-                      PanningMode="HorizontalOnly"
-                      CanContentScroll="False"
+                      VerticalScrollBarVisibility="Disabled" 
+                      PanningMode="HorizontalOnly" CanContentScroll="False"
                       Padding="0,0,0,10">
-
-            <ScrollViewer.Resources>
-                <Style TargetType="ScrollBar">
-                    <Setter Property="Orientation" Value="Horizontal"/>
-                    <Setter Property="Height" Value="10"/>
-                    <Setter Property="Template">
-                        <Setter.Value>
-                            <ControlTemplate TargetType="ScrollBar">
-                                <Grid Width="800" Height="10">
-                                    <Rectangle Fill="#1F3C4C" RadiusX="2.5" RadiusY="2.5"/>
-                                    <Track x:Name="PART_Track" IsDirectionReversed="false" Focusable="false">
-                                        <Track.Thumb>
-                                            <Thumb Height="10">
-                                                <Thumb.Template>
-                                                    <ControlTemplate TargetType="Thumb">
-                                                        <Border Background="#4A90E2" CornerRadius="2.5"/>
-                                                    </ControlTemplate>
-                                                </Thumb.Template>
-                                            </Thumb>
-                                        </Track.Thumb>
-                                        <Track.IncreaseRepeatButton>
-                                            <RepeatButton Visibility="Collapsed"/>
-                                        </Track.IncreaseRepeatButton>
-                                        <Track.DecreaseRepeatButton>
-                                            <RepeatButton Visibility="Collapsed"/>
-                                        </Track.DecreaseRepeatButton>
-                                    </Track>
-                                </Grid>
-                            </ControlTemplate>
-                        </Setter.Value>
-                    </Setter>
-                </Style>
-            </ScrollViewer.Resources>
-
             <StackPanel x:Name="SliderPanel" Orientation="Horizontal" VerticalAlignment="Bottom">
 
-                <!-- 1 картка з LIA -->
-                <Border Margin="10,0" CornerRadius="12" Background="#111" Cursor="Hand" MouseLeftButtonUp="YouTubeCard_Click">
+                <!-- Картка 1 -->
+                <Border Style="{StaticResource CardStyle}" Margin="10,0" MouseLeftButtonUp="YouTubeCard_Click">
                     <StackPanel Margin="10">
                         <TextBlock Text="Голосовий асистент Л.І.А" Foreground="White" FontWeight="Bold" Margin="0,0,0,10"/>
                         <Grid>
@@ -75,48 +117,55 @@
                     </StackPanel>
                 </Border>
 
-                <!-- Демонстраційні картки, клікабельні -->
-                <Border Margin="10,0" CornerRadius="12" Background="#222" Cursor="Hand" MouseLeftButtonUp="Card2_Click">
+                <!-- Картка 2 -->
+                <Border Style="{StaticResource CardStyle}" Margin="10,0" MouseLeftButtonUp="Card2_Click">
                     <StackPanel Margin="15">
                         <TextBlock Text="Демонстраційна картка 2" Foreground="White" TextWrapping="Wrap"/>
                     </StackPanel>
                 </Border>
 
-                <Border Margin="10,0" CornerRadius="12" Background="#333" Cursor="Hand" MouseLeftButtonUp="Card3_Click">
+                <!-- Картка 3 -->
+                <Border Style="{StaticResource CardStyle}" Margin="10,0" MouseLeftButtonUp="Card3_Click">
                     <StackPanel Margin="15">
                         <TextBlock Text="Демонстраційна картка 3" Foreground="White" TextWrapping="Wrap"/>
                     </StackPanel>
                 </Border>
 
-                <Border Margin="10,0" CornerRadius="12" Background="#444" Cursor="Hand" MouseLeftButtonUp="Card4_Click">
+                <!-- Картка 4 -->
+                <Border Style="{StaticResource CardStyle}" Margin="10,0" MouseLeftButtonUp="Card4_Click">
                     <StackPanel Margin="15">
                         <TextBlock Text="Демонстраційна картка 4" Foreground="White" TextWrapping="Wrap"/>
                     </StackPanel>
                 </Border>
 
-                <Border Margin="10,0" CornerRadius="12" Background="#555" Cursor="Hand" MouseLeftButtonUp="Card5_Click">
+                <!-- Картка 5 -->
+                <Border Style="{StaticResource CardStyle}" Margin="10,0" MouseLeftButtonUp="Card5_Click">
                     <StackPanel Margin="15">
                         <TextBlock Text="Демонстраційна картка 5" Foreground="White" TextWrapping="Wrap"/>
                     </StackPanel>
                 </Border>
 
-                <Border Margin="10,0" CornerRadius="12" Background="#666" Cursor="Hand" MouseLeftButtonUp="Card6_Click">
+                <!-- Картка 6 -->
+                <Border Style="{StaticResource CardStyle}" Margin="10,0" MouseLeftButtonUp="Card6_Click">
                     <StackPanel Margin="15">
                         <TextBlock Text="Демонстраційна картка 6" Foreground="White" TextWrapping="Wrap"/>
                     </StackPanel>
                 </Border>
 
-                <Border Margin="10,0" CornerRadius="12" Background="#777" Cursor="Hand" MouseLeftButtonUp="Card7_Click">
+                <!-- Картка 7 -->
+                <Border Style="{StaticResource CardStyle}" Margin="10,0" MouseLeftButtonUp="Card7_Click">
                     <StackPanel Margin="15">
                         <TextBlock Text="Демонстраційна картка 7" Foreground="White" TextWrapping="Wrap"/>
                     </StackPanel>
                 </Border>
 
-                <Border Margin="10,0" CornerRadius="12" Background="#888" Cursor="Hand" MouseLeftButtonUp="Card8_Click">
+                <!-- Картка 8 -->
+                <Border Style="{StaticResource CardStyle}" Margin="10,0" MouseLeftButtonUp="Card8_Click">
                     <StackPanel Margin="15">
                         <TextBlock Text="Демонстраційна картка 8" Foreground="White" TextWrapping="Wrap"/>
                     </StackPanel>
                 </Border>
+
             </StackPanel>
         </ScrollViewer>
     </Grid>
