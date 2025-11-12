@@ -82,7 +82,7 @@
                 </Setter.Value>
             </Setter>
         </Style>
-
+        
     </Canvas.Resources>
 
     <!-- Заголовки -->
@@ -99,11 +99,11 @@
                       HorizontalScrollBarVisibility="Auto"
                       VerticalScrollBarVisibility="Disabled" 
                       PanningMode="HorizontalOnly" CanContentScroll="False"
-                      Padding="0,0,0,10">
+                      Padding="0,0,0,5">
             <StackPanel x:Name="SliderPanel" Orientation="Horizontal" VerticalAlignment="Bottom">
 
                 <!-- Картка 1 -->
-                <Border Style="{StaticResource CardStyle}" Margin="10" MouseLeftButtonUp="YouTubeCard_Click">
+                <Border Style="{StaticResource CardStyle}" Margin="5" MouseLeftButtonUp="YouTubeCard_Click">
                     <Grid Margin="5,0,0,0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
