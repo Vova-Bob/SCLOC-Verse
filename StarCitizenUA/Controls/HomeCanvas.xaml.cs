@@ -56,8 +56,8 @@ namespace StarCitizenUA.Controls
         {
             if (SliderPanel == null || SliderPanel.Children.Count == 0) return;
 
-            int visibleCards = 4;
-            double totalMargin = 45 * 2 * visibleCards; // Margin.Left + Margin.Right кожної картки
+            int visibleCards = 5;
+            double totalMargin = 20 * 2 * visibleCards; // Margin.Left + Margin.Right кожної картки
 
             double cardWidth = (ScrollContainer.ActualWidth - totalMargin) / visibleCards;
 
@@ -127,12 +127,12 @@ namespace StarCitizenUA.Controls
 
         private void Card4_Click(object sender, MouseButtonEventArgs e)
         {
-            OpenUrl("https://example.com/card4");// Замінити на фактичне посилання
+            OpenUrl("https://scloc.pp.ua/");
         }
 
         private void Card5_Click(object sender, MouseButtonEventArgs e)
         {
-            OpenUrl("https://example.com/card5");// Замінити на фактичне посилання
+            OpenUrl("https://www.erkul.games/live/calculator");
         }
 
         private void Card6_Click(object sender, MouseButtonEventArgs e)

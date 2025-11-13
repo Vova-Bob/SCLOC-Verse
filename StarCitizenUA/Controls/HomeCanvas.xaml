@@ -136,7 +136,6 @@
                     </Grid>
                 </Border>
 
-
                 <!-- Картка 2 -->
                 <Border Style="{StaticResource CardStyle}" Width="300" Margin="10,0" MouseLeftButtonUp="Card2_Click">
                     <Grid Margin="5">
@@ -193,7 +192,6 @@
                         </Grid>
                     </Grid>
                 </Border>
-
 
                 <!-- Картка 3 -->
                 <Border Style="{StaticResource CardStyle}" Width="300" Margin="10,0" MouseLeftButtonUp="Card3_Click">
@@ -263,17 +261,64 @@
                 </Border>
                 
                 <!-- Картка 4 -->
-                <Border Style="{StaticResource CardStyle}" Margin="10,0" MouseLeftButtonUp="Card4_Click">
-                    <StackPanel Margin="15">
-                        <TextBlock Text="Демонстраційна картка 4" Foreground="White" TextWrapping="Wrap"/>
-                    </StackPanel>
+                <Border Style="{StaticResource CardStyle}" Margin="5" MouseLeftButtonUp="Card4_Click">
+                    <Grid Margin="5,0,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Текстова частина зліва -->
+                        <StackPanel Grid.Column="0" VerticalAlignment="Center" HorizontalAlignment="Center">
+                            <TextBlock Text="UA Community"
+                                       Foreground="White"
+                                       FontWeight="Bold"
+                                       FontSize="16"
+                                       Margin="0,0,0,5"
+                                       TextWrapping="Wrap"/>                          
+                        </StackPanel>
+
+                        <!-- Права частина з картинкою -->
+                        <Grid Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center">
+                            <Image Source="/Images/SC_UA_Community.png"
+                                   Width="190"
+                                   Height="190"
+                                   Stretch="Uniform"
+                                   VerticalAlignment="Center"
+                                   HorizontalAlignment="Center"/>
+                        </Grid>
+                    </Grid>
                 </Border>
 
                 <!-- Картка 5 -->
-                <Border Style="{StaticResource CardStyle}" Margin="10,0" MouseLeftButtonUp="Card5_Click">
-                    <StackPanel Margin="15">
-                        <TextBlock Text="Демонстраційна картка 5" Foreground="White" TextWrapping="Wrap"/>
-                    </StackPanel>
+                <Border Style="{StaticResource CardStyle}" Margin="5" MouseLeftButtonUp="Card5_Click">
+                    <Grid Margin="5,0,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Текстова частина зліва -->
+                        <StackPanel Grid.Column="0" VerticalAlignment="Center" HorizontalAlignment="Center">
+                            <TextBlock Text="DPS калькулятор"
+                        Foreground="White"
+                        FontWeight="Bold"
+                        FontSize="16"
+                        Margin="0,0,0,5"
+                        TextWrapping="Wrap"/>
+                        </StackPanel>
+
+                        <!-- Права частина з картинкою -->
+                        <Grid Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center">
+                            <Image Source="/Images/made_by_community.png"
+                                   Width="150"
+                                   Height="150"
+                                   Stretch="Fill"
+                                   VerticalAlignment="Center"
+                                   HorizontalAlignment="Center"
+                                   Margin="0,0,15,0"/>
+                        </Grid>
+                    </Grid>
                 </Border>
 
                 <!-- Картка 6 -->
