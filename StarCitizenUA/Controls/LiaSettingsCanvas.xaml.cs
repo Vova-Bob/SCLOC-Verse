@@ -15,7 +15,7 @@ namespace StarCitizenUA.Controls
 
         public Button AutoSearchButton => BtnAutoSearch;
 
-        public TextBox SelectedPathTextBox => TxtSelectedPath;
+        public TextBox SelectedPathTextBox => TxtSelectedLiaPath;
 
         public TextBox ReadmeTextBox => TxtLiaSettingsReadme;
     }
