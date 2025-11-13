@@ -201,7 +201,7 @@
                 </Setter.Value>
             </Setter>
         </Style>
-        
+
     </Canvas.Resources>
     <Grid Width="{Binding ActualWidth, RelativeSource={RelativeSource AncestorType={x:Type Canvas}}}">
         <TextBlock
@@ -216,9 +216,9 @@
 
     <!-- Кнопка повернення на головну -->
     <Button x:Name="BtnReturnHome"
-            Canvas.Top="240" Canvas.Right="910" Width="40" Height="100"
+            Canvas.Top="240" Canvas.Right="90" Width="40" Height="100"
             Background="Transparent"
-            Cursor="Hand" HorizontalAlignment="Left" Canvas.Left="0" VerticalAlignment="Center">
+            Cursor="Hand" HorizontalAlignment="Center" Canvas.Left="5" VerticalAlignment="Top">
         <Button.Template>
             <ControlTemplate TargetType="{x:Type Button}">
                 <Grid>
