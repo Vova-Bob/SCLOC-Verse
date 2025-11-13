@@ -89,8 +89,15 @@
     <TextBlock Canvas.Left="30" Canvas.Top="30" Foreground="White" FontSize="22" FontWeight="Bold">
         Ласкаво просимо до Star Citizen Localizer!
     </TextBlock>
-    <TextBlock Canvas.Left="30" Canvas.Top="70" Foreground="White" FontSize="16" Opacity="0.8">
-        Тут ви можете встановити українську локалізацію, або встановити голосовий асистент.
+    <TextBlock Canvas.Left="30"
+           Canvas.Top="70"
+           Foreground="White"
+           FontSize="16"
+           Opacity="0.8"
+           Width="900"
+           TextWrapping="Wrap">
+    Тут ви можете встановити українську локалізацію та голосовий асистент.
+    Також до ваших послуг спільноти гравців та корисні інструменти для комфортної гри!
     </TextBlock>
 
     <!-- Контейнер для слайдера -->
