@@ -25,6 +25,8 @@ namespace StarCitizenUA
         private readonly IToastService _toastService;
         private readonly ILinkService _linkService;
         private readonly IUpdater _updater;
+        private bool _showGameFolderToast = true;
+        private bool _showVoiceAttackFolderToast = true;
         private EnvironmentSelector EnvSelector => CanvasLocalization.EnvironmentSelector;
         private Button BtnInstall => CanvasLocalization.InstallButton;
         private Button BtnLocalisationDelete => CanvasLocalization.DeleteButton;
@@ -252,6 +254,8 @@ namespace StarCitizenUA
 
         private async void BtnAutoSearch_Click(object sender, RoutedEventArgs e)
         {
+            _showGameFolderToast = false;
+            _showVoiceAttackFolderToast = false;
             BtnAutoSearch.ApplyTemplate();
 
             if (!_viewModel.IsGameFolderSet)
@@ -367,6 +371,7 @@ namespace StarCitizenUA
 
         private async void BtnLiaAutoSearch_Click(object sender, RoutedEventArgs e)
         {
+            _showVoiceAttackFolderToast = false;
             BtnLiaAutoSearch.ApplyTemplate();
 
             if (!_viewModel.IsVoiceAttackFolderSet)
@@ -594,12 +599,12 @@ namespace StarCitizenUA
 
         private async Task ShowStartupToastsAsync()
         {
-            if (!_viewModel.IsGameFolderSet && !string.IsNullOrWhiteSpace(MissingGameFolderToastText))
+            if (_showGameFolderToast && !_viewModel.IsGameFolderSet && !string.IsNullOrWhiteSpace(MissingGameFolderToastText))
             {
                 await _toastService.ShowToastAsync(MissingGameFolderToastText, 7000).ConfigureAwait(true);
             }
 
-            if (!_viewModel.IsVoiceAttackFolderSet && !string.IsNullOrWhiteSpace(MissingVoiceAttackFolderToastText))
+            if (_showVoiceAttackFolderToast && !_viewModel.IsVoiceAttackFolderSet && !string.IsNullOrWhiteSpace(MissingVoiceAttackFolderToastText))
             {
                 await _toastService.ShowToastAsync(MissingVoiceAttackFolderToastText, 7000).ConfigureAwait(true);
             }
