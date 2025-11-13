@@ -118,6 +118,7 @@ namespace StarCitizenUA
             BtnLiaSettingsVA.Click += BtnLiaSettingsVA_Click;
             BtnLiaDelete.Click += BtnLiaDelete_Click;
         }
+
         private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
         {
             _windowHelper.ApplyWindowRoundCorners(this);

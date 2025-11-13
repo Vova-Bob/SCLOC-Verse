@@ -1,4 +1,5 @@
 ﻿using StarCitizenUA.Interfaces;
+using System.Collections.Concurrent;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -10,7 +11,8 @@ namespace StarCitizenUA.Services
     {
         private readonly Border _toastBorder;
         private readonly TextBlock _toastText;
-        private CancellationTokenSource? _cts;
+        private readonly ConcurrentQueue<(string message, int duration)> _toastQueue = new();
+        private bool _isShowing;
 
         public ToastService(Border toastBorder, TextBlock toastText)
         {
@@ -21,38 +23,54 @@ namespace StarCitizenUA.Services
                 _toastBorder.RenderTransform = new TranslateTransform();
         }
 
-        public async Task ShowToastAsync(string message, int durationMs = 5000)
+        public Task ShowToastAsync(string message, int durationMs = 5000)
         {
-            _cts?.Cancel();
-            _cts = new CancellationTokenSource();
-            var token = _cts.Token;
-
-            _toastText.Text = message;
-            _toastBorder.Visibility = Visibility.Visible;
-
-            var fadeIn = new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(300));
-            var moveIn = new DoubleAnimation(30, 0, TimeSpan.FromMilliseconds(300));
-
-            _toastBorder.BeginAnimation(UIElement.OpacityProperty, fadeIn);
-            (_toastBorder.RenderTransform as TranslateTransform)?.BeginAnimation(TranslateTransform.YProperty, moveIn);
-
-            try
+            var tcs = new TaskCompletionSource();
+            _toastQueue.Enqueue((message, durationMs));
+            if (!_isShowing)
             {
-                await Task.Delay(durationMs, token).ConfigureAwait(true);
+                _ = ShowNextToastAsync();
             }
-            catch (TaskCanceledException)
+            return tcs.Task;
+        }
+
+        private async Task ShowNextToastAsync()
+        {
+            _isShowing = true;
+
+            while (_toastQueue.TryDequeue(out var item))
             {
-                return;
+                string message = item.message;
+                int durationMs = item.duration;
+
+                await Application.Current.Dispatcher.InvokeAsync(() =>
+                {
+                    _toastText.Text = message;
+                    _toastBorder.Visibility = Visibility.Visible;
+
+                    var fadeIn = new DoubleAnimation(0, 1, TimeSpan.FromMilliseconds(300));
+                    var moveIn = new DoubleAnimation(30, 0, TimeSpan.FromMilliseconds(300));
+
+                    _toastBorder.BeginAnimation(UIElement.OpacityProperty, fadeIn);
+                    (_toastBorder.RenderTransform as TranslateTransform)?.BeginAnimation(TranslateTransform.YProperty, moveIn);
+                });
+
+                await Task.Delay(durationMs);
+
+                await Application.Current.Dispatcher.InvokeAsync(() =>
+                {
+                    var fadeOut = new DoubleAnimation(1, 0, TimeSpan.FromMilliseconds(500));
+                    fadeOut.Completed += (s, e) =>
+                    {
+                        _toastBorder.Visibility = Visibility.Collapsed;
+                    };
+                    _toastBorder.BeginAnimation(UIElement.OpacityProperty, fadeOut);
+                });
+
+                await Task.Delay(500);
             }
 
-            var fadeOut = new DoubleAnimation(1, 0, TimeSpan.FromMilliseconds(500));
-            fadeOut.Completed += (s, e) =>
-            {
-                if (!token.IsCancellationRequested)
-                    _toastBorder.Visibility = Visibility.Collapsed;
-            };
-
-            _toastBorder.BeginAnimation(UIElement.OpacityProperty, fadeOut);
+            _isShowing = false;
         }
     }
 }
