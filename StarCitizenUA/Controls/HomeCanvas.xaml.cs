@@ -4,6 +4,8 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Threading;
+
 
 namespace StarCitizenUA.Controls
 {
@@ -11,6 +13,9 @@ namespace StarCitizenUA.Controls
     {
         private double WidthRatio = 0.66 * 1.35;
         private double HeightRatio = 0.35;
+        private DispatcherTimer? smoothScrollTimer;
+        private double targetOffset;
+        private double currentVelocity;
 
         public IToastService? ToastService { get; set; }
         public ILinkService? LinkService { get; set; }
@@ -20,6 +25,7 @@ namespace StarCitizenUA.Controls
             InitializeComponent();
             Loaded += HomeCanvas_Loaded;
             SizeChanged += HomeCanvas_SizeChanged;
+            this.PreviewMouseWheel += HomeCanvas_PreviewMouseWheel;
         }
 
         private void HomeCanvas_Loaded(object sender, RoutedEventArgs e)
@@ -33,6 +39,48 @@ namespace StarCitizenUA.Controls
             UpdateCardHeights();
             UpdateCardWidths();
             CenterScrollContainer();
+        }
+
+        private void HomeCanvas_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
+        {
+            if (!SliderScroll.IsMouseOver) return;
+
+            e.Handled = true;
+
+            double scrollStep = 150;
+            targetOffset = SliderScroll.HorizontalOffset - (e.Delta > 0 ? scrollStep : -scrollStep);
+
+            targetOffset = Math.Max(0, Math.Min(targetOffset, SliderScroll.ScrollableWidth));
+
+            if (smoothScrollTimer == null)
+            {
+                smoothScrollTimer = new DispatcherTimer
+                {
+                    Interval = TimeSpan.FromMilliseconds(16)
+                };
+                smoothScrollTimer.Tick += SmoothScrollTimer_Tick;
+            }
+
+            if (!smoothScrollTimer.IsEnabled)
+                smoothScrollTimer.Start();
+        }
+
+        private void SmoothScrollTimer_Tick(object? sender, EventArgs e)
+        {
+            if (SliderScroll == null) return;
+
+            double current = SliderScroll.HorizontalOffset;
+            double delta = (targetOffset - current) * 0.2;
+            currentVelocity = delta;
+
+            if (Math.Abs(delta) < 0.5)
+            {
+                SliderScroll.ScrollToHorizontalOffset(targetOffset);
+                smoothScrollTimer?.Stop();
+                return;
+            }
+
+            SliderScroll.ScrollToHorizontalOffset(current + delta);
         }
 
         private void UpdateCardHeights()
