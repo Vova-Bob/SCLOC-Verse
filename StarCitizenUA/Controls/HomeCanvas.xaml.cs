@@ -44,13 +44,12 @@ namespace StarCitizenUA.Controls
         private void HomeCanvas_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
         {
             if (!SliderScroll.IsMouseOver) return;
-
             e.Handled = true;
 
-            double scrollStep = 150;
-            targetOffset = SliderScroll.HorizontalOffset - (e.Delta > 0 ? scrollStep : -scrollStep);
+            double scrollStep = 100;
+            double scrollDelta = (e.Delta > 0 ? -scrollStep : scrollStep);
 
-            targetOffset = Math.Max(0, Math.Min(targetOffset, SliderScroll.ScrollableWidth));
+            targetOffset = Math.Max(0, Math.Min(targetOffset + scrollDelta, SliderScroll.ScrollableWidth));
 
             if (smoothScrollTimer == null)
             {
@@ -61,6 +60,8 @@ namespace StarCitizenUA.Controls
                 smoothScrollTimer.Tick += SmoothScrollTimer_Tick;
             }
 
+            currentVelocity += (targetOffset - SliderScroll.HorizontalOffset) * 0.1;
+
             if (!smoothScrollTimer.IsEnabled)
                 smoothScrollTimer.Start();
         }
@@ -70,17 +71,21 @@ namespace StarCitizenUA.Controls
             if (SliderScroll == null) return;
 
             double current = SliderScroll.HorizontalOffset;
-            double delta = (targetOffset - current) * 0.2;
-            currentVelocity = delta;
 
-            if (Math.Abs(delta) < 0.5)
+            currentVelocity *= 0.85;
+
+            double next = current + currentVelocity;
+
+            if (Math.Abs(currentVelocity) < 0.3 && Math.Abs(next - targetOffset) < 0.3)
             {
                 SliderScroll.ScrollToHorizontalOffset(targetOffset);
+                currentVelocity = 0;
                 smoothScrollTimer?.Stop();
                 return;
             }
 
-            SliderScroll.ScrollToHorizontalOffset(current + delta);
+            next = Math.Max(0, Math.Min(next, SliderScroll.ScrollableWidth));
+            SliderScroll.ScrollToHorizontalOffset(next);
         }
 
         private void UpdateCardHeights()
@@ -105,7 +110,7 @@ namespace StarCitizenUA.Controls
             if (SliderPanel == null || SliderPanel.Children.Count == 0) return;
 
             int visibleCards = 4;
-            double totalMargin = 80 * 2 * visibleCards; // Margin.Left + Margin.Right кожної картки
+            double totalMargin = 76 * 2 * visibleCards; // Margin.Left + Margin.Right кожної картки
 
             double cardWidth = (ScrollContainer.ActualWidth - totalMargin) / visibleCards;
 
