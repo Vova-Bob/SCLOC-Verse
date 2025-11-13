@@ -57,7 +57,7 @@ namespace StarCitizenUA.Controls
             if (SliderPanel == null || SliderPanel.Children.Count == 0) return;
 
             int visibleCards = 4;
-            double totalMargin = 30 * 2 * visibleCards; // Margin.Left + Margin.Right кожної картки
+            double totalMargin = 45 * 2 * visibleCards; // Margin.Left + Margin.Right кожної картки
 
             double cardWidth = (ScrollContainer.ActualWidth - totalMargin) / visibleCards;
 
@@ -122,7 +122,7 @@ namespace StarCitizenUA.Controls
 
         private void Card3_Click(object sender, MouseButtonEventArgs e)
         {
-            OpenUrl("https://example.com/card3");// Замінити на фактичне посилання
+            OpenUrl("https://discord.gg/y2c7M9cgbk");
         }
 
         private void Card4_Click(object sender, MouseButtonEventArgs e)
