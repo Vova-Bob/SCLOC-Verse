@@ -38,6 +38,7 @@ namespace StarCitizenUA
         private Button BtnResetCash => CanvasSettings.ResetCacheButton;
         private Button BtnSettingsReturn => CanvasSettings.ReturnButton;
         internal TextBox TxtSelectedPath => CanvasSettings.SelectedPathTextBox;
+        internal TextBox TxtSelectedLiaPath => CanvasLiaSettings.SelectedPathTextBox;
         internal TextBox TxtReadme => CanvasSettings.ReadmeTextBox;
         private Button BtnLiaInstall => CanvasAssistant.InstallButton;
         private Button BtnLiaSettings => CanvasAssistant.OpenSettingsButton;
@@ -58,6 +59,7 @@ namespace StarCitizenUA
         private string? localFolder = string.Empty;
         private string? localLiaFolder = string.Empty;
         public string DefaultPathText = string.Empty;
+        public string DefaultPathLiaText = string.Empty;
         public string MissingGameFolderToastText = string.Empty;
         public string MissingVoiceAttackFolderToastText = string.Empty;
         private bool isSettingButtonClicked;
@@ -89,6 +91,7 @@ namespace StarCitizenUA
 
             DataContext = _viewModel;
             DefaultPathText = TxtSelectedPath.Text;
+            DefaultPathLiaText = TxtLiaSelectedPath.Text;
 
             _buttonHelper.SetButtonState(BtnAutoSearch, _viewModel.IsGameFolderSet);
             _buttonHelper.SetButtonState(BtnLiaAutoSearch, _viewModel.IsVoiceAttackFolderSet);
@@ -559,6 +562,7 @@ namespace StarCitizenUA
             {
                 localFolder = string.Empty;
                 TxtSelectedPath.Text = DefaultPathText;
+                TxtSelectedLiaPath.Text = DefaultPathLiaText;
 
                 _buttonHelper.SetButtonState(BtnAutoSearch, false);
                 _buttonStateManager.SetButtonEnabled(BtnSelectFolder, true);
@@ -584,7 +588,7 @@ namespace StarCitizenUA
             else
             {
                 localLiaFolder = string.Empty;
-                TxtLiaSelectedPath.Text = DefaultPathText;
+                TxtLiaSelectedPath.Text = DefaultPathLiaText;
 
                 _buttonHelper.SetButtonState(BtnLiaAutoSearch, false);
                 _buttonStateManager.SetButtonEnabled(BtnSelectLiaFolder, true);

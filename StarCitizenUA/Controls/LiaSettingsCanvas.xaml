@@ -303,7 +303,7 @@
             BorderBrush="{StaticResource BtnStroke}"
             BorderThickness="1"
             Background="#0C1A2A">
-        <TextBox x:Name="TxtSelectedPath"
+        <TextBox x:Name="TxtSelectedLiaPath"
                  FontFamily="Segoe UI Semibold"
                  FontSize="15"
                  Foreground="#A7C6E7"

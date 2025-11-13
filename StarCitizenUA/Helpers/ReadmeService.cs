@@ -28,6 +28,8 @@ namespace StarCitizenUA.Helpers
             window.TxtLiaSettingsReadme.Text = readmeData.LiaSettingsReadmeText;
             window.TxtSelectedPath.Text = readmeData.TxtSelectedPath;
             window.DefaultPathText = readmeData.DefaultPathText;
+            window.TxtSelectedLiaPath.Text = readmeData.TxtSelectedLiaPath;
+            window.DefaultPathLiaText = readmeData.DefaultPathLiaText;
             window.MissingGameFolderToastText = readmeData.MissingGameFolderToast;
             window.MissingVoiceAttackFolderToastText = readmeData.MissingVoiceAttackFolderToast;
             window.TxtVoiceAttackReadme.Text = readmeData.VoiceAttackReadmeText;
