@@ -82,7 +82,7 @@
                 </Setter.Value>
             </Setter>
         </Style>
-        
+
     </Canvas.Resources>
 
     <!-- Заголовки -->
@@ -147,14 +147,6 @@
                             <RowDefinition Height="*"/>
                         </Grid.RowDefinitions>
 
-                        <!-- Заголовок зверху -->
-                        <!--<TextBlock Grid.Row="0"
-                                   Text="Організація USF"
-                                   Foreground="White"
-                                   FontWeight="Bold"
-                                   Margin="0,0,0,10"
-                                   HorizontalAlignment="Left"/>-->
-
                         <!-- Основний контент: текст зліва, картинка справа -->
                         <Grid Grid.Row="1">
                             <Grid.ColumnDefinitions>
@@ -204,12 +196,72 @@
 
 
                 <!-- Картка 3 -->
-                <Border Style="{StaticResource CardStyle}" Margin="10,0" MouseLeftButtonUp="Card3_Click">
-                    <StackPanel Margin="15">
-                        <TextBlock Text="Демонстраційна картка 3" Foreground="White" TextWrapping="Wrap"/>
-                    </StackPanel>
-                </Border>
+                <Border Style="{StaticResource CardStyle}" Width="300" Margin="10,0" MouseLeftButtonUp="Card3_Click">
+                    <Grid Margin="5">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
 
+                        <!-- Основний контент: текст зліва, картинка справа -->
+                        <Grid Grid.Row="1">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="1.5*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <!-- Лівий текстовий блок з фоном -->
+                            <Border Grid.Column="0"
+                                    Background="#247CB7"
+                                    CornerRadius="5"
+                                    Padding="5"
+                                    VerticalAlignment="Stretch">
+                                <!-- Використовуємо Grid, щоб розтягувалось -->
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <!-- Заголовок -->
+                                        <RowDefinition Height="Auto"/>
+                                        <!-- Список -->
+                                    </Grid.RowDefinitions>
+
+                                    <TextBlock Grid.Row="0"
+                                               Text="Discord Спільноти"
+                                               Foreground="White"
+                                               FontWeight="Bold"
+                                               FontSize="14"
+                                               TextAlignment="Center"
+                                               Margin="0,10,0,20"/>
+
+                                    <TextBlock Grid.Row="1"
+                                               TextWrapping="Wrap"
+                                               TextAlignment="Left"
+                                               Foreground="White"
+                                               FontSize="13"
+                                               LineHeight="18"
+                                               VerticalAlignment="Center"
+                                               HorizontalAlignment="Center">
+                                        <Run Text="• активна спільнота"/><LineBreak/>
+                                        <Run Text="• постійні івенти"/><LineBreak/>
+                                        <Run Text="• підтримка новачків"/><LineBreak/>
+                                        <Run Text="• корпоративні місії"/><LineBreak/>
+                                        <Run Text="• зацікавлення"/>
+                                    </TextBlock>
+                                </Grid>
+                            </Border>
+
+                            <!-- Права картинка -->
+                            <Image Grid.Column="1"
+                                   Source="/Images/Discord.png"
+                                   Width="160"
+                                   Height="160"
+                                   Stretch="Uniform"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"/>
+                        </Grid>
+                    </Grid>
+                </Border>
+                
                 <!-- Картка 4 -->
                 <Border Style="{StaticResource CardStyle}" Margin="10,0" MouseLeftButtonUp="Card4_Click">
                     <StackPanel Margin="15">
