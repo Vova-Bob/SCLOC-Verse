@@ -1,6 +1,7 @@
 ﻿using StarCitizenUA.Controls;
 using StarCitizenUA.Helpers;
 using StarCitizenUA.Interfaces;
+using StarCitizenUA.Models.LiaModels;
 using StarCitizenUA.Services;
 using StarCitizenUA.Services.Cache;
 using StarCitizenUA.Services.LiaServices;
@@ -8,6 +9,7 @@ using StarCitizenUA.ViewModels;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Media;
 using System.Windows.Navigation;
 
 namespace StarCitizenUA
@@ -307,8 +309,11 @@ namespace StarCitizenUA
             {
                 Action<string> logCallback = msg =>
                 {
-                    Dispatcher.Invoke(() => TxtLiaSetupe.Text += $"{msg}\n");
-                    TxtLiaSetupe.ScrollToEnd();
+                    Dispatcher.Invoke(() =>
+                    {
+                        TxtLiaSetupe.Text += $"{msg}\n";
+                        TxtLiaSetupe.ScrollToEnd();
+                    });
                 };
 
                 await _updater.InstallLatestAsync(logCallback).ConfigureAwait(true);
@@ -346,7 +351,7 @@ namespace StarCitizenUA
             catch (Exception ex)
             {
                 TxtLiaVersionPath.Text = $"Помилка при видаленні: {ex.Message}";
-                TxtLiaVersionPath.Foreground = System.Windows.Media.Brushes.Red;
+                TxtLiaVersionPath.Foreground = MapColor(LiaStatusColor.Red);
             }
             finally
             {
@@ -400,14 +405,20 @@ namespace StarCitizenUA
         {
             var status = await _updater.GetStatusAsync().ConfigureAwait(true);
 
-            Dispatcher.Invoke(() =>
-            {
-                TxtLiaVersionPath.Text = status.Message;
-                TxtLiaVersionPath.Foreground = status.Color;
-                BtnLiaInstall.Content = _buttonHelper.GetLiaInstallButtonText(status.Message);
-                BtnLiaDelete.IsEnabled = status.IsInstalled;
-                BtnLiaInstall.IsEnabled = true;
-            });
+            TxtLiaVersionPath.Text = status.Message;
+            TxtLiaVersionPath.Foreground = MapColor(status.Color);
+
+            BtnLiaInstall.Content = _buttonHelper.GetLiaInstallButtonText(status.Message);
+            BtnLiaDelete.IsEnabled = status.IsInstalled;
+            BtnLiaInstall.IsEnabled = true;
         }
+
+        private static Brush MapColor(LiaStatusColor color) => color switch
+        {
+            LiaStatusColor.Red => Brushes.Red,
+            LiaStatusColor.Orange => Brushes.Orange,
+            LiaStatusColor.Green => Brushes.LimeGreen,
+            _ => Brushes.LightSlateGray
+        };
     }
 }
