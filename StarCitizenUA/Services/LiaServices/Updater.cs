@@ -1,11 +1,11 @@
 using Newtonsoft.Json;
 using StarCitizenUA.Interfaces;
+using StarCitizenUA.Models.LiaModels;
 using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Windows.Media;
 
 namespace StarCitizenUA.Services.LiaServices
 {
@@ -27,7 +27,7 @@ namespace StarCitizenUA.Services.LiaServices
                     null,
                     latestVersion,
                     "Голосовий асистент Л.І.А не встановлено.",
-                    Brushes.Red);
+                    LiaStatusColor.Red);
             }
 
             if (latestVersion == null)
@@ -38,7 +38,7 @@ namespace StarCitizenUA.Services.LiaServices
                     installedVersion,
                     null,
                     $"Встановлена версія Л.І.А: {installedVersion}. Не вдалося перевірити оновлення.",
-                    Brushes.Orange);
+                    LiaStatusColor.Orange);
             }
 
             if (latestVersion.CompareTo(installedVersion) > 0)
@@ -49,7 +49,7 @@ namespace StarCitizenUA.Services.LiaServices
                     installedVersion,
                     latestVersion,
                     $"Доступне оновлення версії {latestVersion}. Встановлено: {installedVersion}",
-                    Brushes.Red);
+                    LiaStatusColor.Red);
             }
 
             return new LiaInstallStatus(
@@ -58,7 +58,7 @@ namespace StarCitizenUA.Services.LiaServices
                 installedVersion,
                 latestVersion,
                 $"Встановлена актуальна версія Л.І.А: {installedVersion}",
-                Brushes.LimeGreen);
+                LiaStatusColor.Green);
         }
 
         public async Task InstallLatestAsync(
@@ -268,7 +268,6 @@ namespace StarCitizenUA.Services.LiaServices
                 }
                 catch
                 {
-                    // Best effort cleanup only.
                 }
             }
         }
