@@ -66,8 +66,8 @@ namespace StarCitizenUA.Helpers
 
             string msg = updateMessage.ToLowerInvariant();
 
-            if (msg.Contains("не знайдено") || msg.Contains("бракує") || msg.Contains("відсутн"))
-                return "Завантажити";
+            if (msg.Contains("не встановлено") || msg.Contains("не знайдено") || msg.Contains("бракує") || msg.Contains("відсутн"))
+                return "Встановити";
 
             if (msg.Contains("актуальна версія"))
                 return "Актуально";

@@ -23,14 +23,13 @@ namespace StarCitizenUA.Composition
             _folderSearchService = new FolderSearchService(_ignoreRulesProvider);
             _settingsService = new SettingsService();
             _updater = new Updater();
-            _updateCheckerService = new UpdateCheckerService(new VoiceAttackFolderHelper(_folderSearchService, _settingsService));
+            _updateCheckerService = new UpdateCheckerService(_updater);
         }
 
         public MainWindow CreateMainWindow()
         {
             var searchFolder = new SearchFolder(_folderSearchService, _settingsService);
-            var voiceAttackHelper = new VoiceAttackFolderHelper(_folderSearchService, _settingsService);
-            var viewModel = new MainWindowViewModel(searchFolder, voiceAttackHelper, _settingsService);
+            var viewModel = new MainWindowViewModel(searchFolder, _settingsService);
 
             var windowHelper = new WindowHelper();
             var localizationInstaller = new LocalizationInstaller();

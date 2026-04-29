@@ -46,17 +46,5 @@ namespace StarCitizenUA {
                 this["StarCitizenUA"] = value;
             }
         }
-        
-        [global::System.Configuration.UserScopedSettingAttribute()]
-        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("")]
-        public string StarCitizenLIA {
-            get {
-                return ((string)(this["StarCitizenLIA"]));
-            }
-            set {
-                this["StarCitizenLIA"] = value;
-            }
-        }
     }
 }
