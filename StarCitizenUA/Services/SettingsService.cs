@@ -12,36 +12,15 @@ namespace StarCitizenUA.Services
             Settings.Default.Save();
         }
 
-        public void ClearVoiceAttackFolder()
-        {
-            Settings.Default.StarCitizenLIA = string.Empty;
-            Settings.Default.Save();
-        }
-
         public string? GetGameFolder()
         {
             var path = Settings.Default.StarCitizenUA;
             return ValidatePath(path);
         }
 
-        public string? GetVoiceAttackFolder()
-        {
-            var path = Settings.Default.StarCitizenLIA;
-            return ValidatePath(path);
-        }
-
         public bool TrySetGameFolder(string? path)
         {
             if (!TryPersist(path, value => Settings.Default.StarCitizenUA = value))
-                return false;
-
-            Settings.Default.Save();
-            return true;
-        }
-
-        public bool TrySetVoiceAttackFolder(string? path)
-        {
-            if (!TryPersist(path, value => Settings.Default.StarCitizenLIA = value))
                 return false;
 
             Settings.Default.Save();

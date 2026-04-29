@@ -7,16 +7,13 @@ namespace StarCitizenUA.ViewModels
     public class MainWindowViewModel : INotifyPropertyChanged
     {
         private readonly ISearchFolder _searchFolder;
-        private readonly IVoiceAttackFolderHelper _voiceAttackFolderHelper;
         private readonly ISettingsService _settingsService;
 
         private string? _gameFolder;
-        private string? _voiceAttackFolder;
 
-        public MainWindowViewModel(ISearchFolder searchFolder, IVoiceAttackFolderHelper voiceAttackFolderHelper, ISettingsService settingsService)
+        public MainWindowViewModel(ISearchFolder searchFolder, ISettingsService settingsService)
         {
             _searchFolder = searchFolder;
-            _voiceAttackFolderHelper = voiceAttackFolderHelper;
             _settingsService = settingsService;
         }
 
@@ -36,27 +33,11 @@ namespace StarCitizenUA.ViewModels
             }
         }
 
-        public string? VoiceAttackFolder
-        {
-            get => _voiceAttackFolder;
-            private set
-            {
-                if (_voiceAttackFolder != value)
-                {
-                    _voiceAttackFolder = value;
-                    OnPropertyChanged();
-                    OnPropertyChanged(nameof(IsVoiceAttackFolderSet));
-                }
-            }
-        }
-
         public bool IsGameFolderSet => !string.IsNullOrWhiteSpace(GameFolder);
-        public bool IsVoiceAttackFolderSet => !string.IsNullOrWhiteSpace(VoiceAttackFolder);
 
         public Task InitializeAsync()
         {
             GameFolder = _settingsService.GetGameFolder();
-            VoiceAttackFolder = _settingsService.GetVoiceAttackFolder();
             return Task.CompletedTask;
         }
 
@@ -78,18 +59,6 @@ namespace StarCitizenUA.ViewModels
             return null;
         }
 
-        public async Task<string?> DetectVoiceAttackFolderAsync(CancellationToken cancellationToken)
-        {
-            var found = await _voiceAttackFolderHelper.FindVoiceAttackImportFolderAsync(cancellationToken);
-            if (!string.IsNullOrEmpty(found))
-            {
-                _settingsService.TrySetVoiceAttackFolder(found);
-                VoiceAttackFolder = _settingsService.GetVoiceAttackFolder();
-            }
-
-            return found;
-        }
-
         public bool TrySetGameFolder(string? path)
         {
             if (_settingsService.TrySetGameFolder(path))
@@ -101,30 +70,11 @@ namespace StarCitizenUA.ViewModels
             return false;
         }
 
-        public bool TrySetVoiceAttackFolder(string? path)
-        {
-            if (_settingsService.TrySetVoiceAttackFolder(path))
-            {
-                VoiceAttackFolder = _settingsService.GetVoiceAttackFolder();
-                return true;
-            }
-
-            return false;
-        }
-
         public void ResetGameFolder()
         {
             _settingsService.ClearGameFolder();
             GameFolder = null;
         }
-
-        public void ResetVoiceAttackFolder()
-        {
-            _settingsService.ClearVoiceAttackFolder();
-            VoiceAttackFolder = null;
-        }
-
-        public void CancelVoiceAttackSearch() => _voiceAttackFolderHelper.CancelActiveSearch();
 
         protected void OnPropertyChanged([CallerMemberName] string? propertyName = null)
         {

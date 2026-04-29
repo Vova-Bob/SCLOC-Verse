@@ -9,17 +9,15 @@ namespace StarCitizenUA.Helpers
         private readonly Button btnAssistant;
         private readonly Button btnSettings;
         private readonly Button btnSelectFolder;
-        private readonly Button btnSelectLiaFolder;
 
         public ButtonStateManager(
             Button loc, Button asst, Button set,
-            Button selectFolder, Button selectLiaFolder)
+            Button selectFolder)
         {
             btnLocalization = loc;
             btnAssistant = asst;
             btnSettings = set;
             btnSelectFolder = selectFolder;
-            btnSelectLiaFolder = selectLiaFolder;
         }
 
         public void SetActive(string active)
@@ -44,10 +42,9 @@ namespace StarCitizenUA.Helpers
             button.Opacity = enabled ? 1.0 : 0.5;
         }
 
-        public void UpdateFolderButtons(bool isPathSet, bool isLiaPathSet)
+        public void UpdateFolderButtons(bool isPathSet)
         {
             SetButtonEnabled(btnSelectFolder, !isPathSet);
-            SetButtonEnabled(btnSelectLiaFolder, !isLiaPathSet);
         }
     }
 }

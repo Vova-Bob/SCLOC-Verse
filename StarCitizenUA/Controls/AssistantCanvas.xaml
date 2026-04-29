@@ -1,10 +1,9 @@
-<Canvas
-        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:av="http://schemas.microsoft.com/expression/blend/2008" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" mc:Ignorable="av" x:Class="StarCitizenUA.Controls.AssistantCanvas"
-        Background="Transparent">
+﻿<Canvas
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:av="http://schemas.microsoft.com/expression/blend/2008" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" mc:Ignorable="av" x:Class="StarCitizenUA.Controls.AssistantCanvas"
+    Background="Transparent">
 
-    <!-- ===== РЕСУРСИ ДЛЯ КНОПОК ===== -->
     <Canvas.Resources>
         <!-- Базові кольори -->
         <SolidColorBrush x:Key="BtnFill"        Color="#30546E"/>
@@ -40,7 +39,7 @@
                                                   Opacity="0.45"/>
                             </Grid.Effect>
 
-                            <!-- ФОН та Геометрія кнопок-->
+                            <!-- Фон та геометрія кнопок-->
                             <Path x:Name="BtnBg"
                                   Fill="{TemplateBinding Background}"
                                   Stretch="Fill" SnapsToDevicePixels="True"
@@ -203,6 +202,7 @@
         </Style>
 
     </Canvas.Resources>
+
     <Grid Width="{Binding ActualWidth, RelativeSource={RelativeSource AncestorType={x:Type Canvas}}}">
         <TextBlock
             Text="Голосовий асистент"
@@ -269,14 +269,6 @@
         Canvas.Left="770"
         Canvas.Top="69" HorizontalAlignment="Center" VerticalAlignment="Top"/>
 
-    <Button x:Name="BtnLiaSettings"
-         Style="{StaticResource ActionButton}"
-         Content="&#xE713;"   
-         FontFamily="Segoe MDL2 Assets"
-         FontSize="25"
-         Canvas.Left="770"
-         Canvas.Top="116" HorizontalAlignment="Center" VerticalAlignment="Top"/>
-
     <Border Canvas.Left="0" Canvas.Top="520"
         Width="950" Height="30"
         CornerRadius="0,0,8,8"
@@ -309,25 +301,7 @@
                  IsReadOnly="True"
                  IsDocumentEnabled="True">
             <FlowDocument>
-                <Paragraph>
-                    <Run Text="⚠️ Увага! Для роботи голосового асистента необхідно попередньо встановити програму VoiceAttack!"/>
-                </Paragraph>
-                <Paragraph>
-                    <Run Text="     "/>
-                    <Run Text=" 🔗 "/>
-                    <Hyperlink NavigateUri="https://voiceattack.com/" RequestNavigate="Hyperlink_RequestNavigate"
-                           FontWeight="Bold" Foreground="Orange">
-                        <Run Text="Офіційний сайт"/>
-                    </Hyperlink>
-                    <Run Text=" "/>
-                    <Run Text="     "/>
-                    <Run Text=" 🔗 "/>
-                    <Hyperlink NavigateUri="https://store.steampowered.com/app/3046550/VoiceAttack_v2/" RequestNavigate="Hyperlink_RequestNavigate"
-                           FontWeight="Bold" Foreground="Orange">
-                        <Run Text="Steam-версія"/>
-                    </Hyperlink>
-                    <Run Text="           Налаштування VoiceAttack  ->"/>
-                </Paragraph>
+                <Paragraph/>
             </FlowDocument>
         </RichTextBox>
     </Border>
@@ -351,30 +325,14 @@
               VerticalContentAlignment="Top"
               TextAlignment="Justify"/>
     </Border>
-    <Button x:Name="BtnLiaSettingsVA"
-        Style="{StaticResource ActionButton}"
-        Canvas.Left="705"
-        Canvas.Top="260"
-        HorizontalAlignment="Left"
-        VerticalAlignment="Center" Width="100" Height="30">
-        <Button.Content>
-            <Image Source="/Images/smallLogo-removebg-preview.png" 
-                   Width="25"
-                   Height="25" 
-                   Stretch="Uniform"/>
-        </Button.Content>
-    </Button>
 
     <Button x:Name="BtnLiaDelete"
         Style="{StaticResource DeleteButton}"
         Content="Видалити"
         FontFamily="Segoe UI"
         Canvas.Left="770"
-        Canvas.Top="163"
+        Canvas.Top="116"
         HorizontalAlignment="Center"
         VerticalAlignment="Top"/>
+
 </Canvas>
-    
-    
-
-
