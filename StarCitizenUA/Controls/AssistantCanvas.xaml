@@ -110,7 +110,7 @@
         </Style>
 
         <SolidColorBrush x:Key="DeleteFill" Color="IndianRed"/>
-        <SolidColorBrush x:Key="DeleteFillHover" Color="red"/>
+        <SolidColorBrush x:Key="DeleteFillHover" Color="Red"/>
         <SolidColorBrush x:Key="DeleteStroke" Color="#FFC0C0C0"/>
         <SolidColorBrush x:Key="DeleteShadow" Color="#000000"/>
 
