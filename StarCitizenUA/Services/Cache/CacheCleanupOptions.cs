@@ -4,7 +4,7 @@ namespace StarCitizenUA.Services.Cache
 {
     public class CacheCleanupOptions
     {
-        private const double LatestOkGigabytes = 1.5d;
+        private const double LatestOkGigabytes = 2.5d;
         private const double BigDirGigabytes = 3.0d;
 
         public CacheCleanupOptions()
