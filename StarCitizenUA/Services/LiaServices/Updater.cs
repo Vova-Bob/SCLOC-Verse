@@ -267,8 +267,7 @@ namespace StarCitizenUA.Services.LiaServices
                     File.Delete(scriptPath);
                 }
                 catch
-                {
-                }
+                {}
             }
         }
 

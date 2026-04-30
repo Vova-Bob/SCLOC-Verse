@@ -1,3 +1,4 @@
+using StarCitizenUA.Controls;
 using StarCitizenUA.Interfaces;
 using System.Globalization;
 using System.Text;
@@ -76,14 +77,15 @@ namespace StarCitizenUA.Services.Cache
                 if (!inspection.HasCache)
                 {
                     if (scenario == CleanupScenario.Manual)
-                        await ShowToastAsync("Кеш вже порожній.").ConfigureAwait(false);
+                        await ShowToastAsync("Кеш уже порожній.").ConfigureAwait(false);
+
                     return;
                 }
 
                 if (inspection.LatestTooLarge)
                 {
                     var message = BuildLatestTooLargeMessage(inspection);
-                    var result = await ShowMessageBoxAsync(message, "Очищення кешу", MessageBoxButton.YesNo, MessageBoxImage.Warning).ConfigureAwait(false);
+                    var result = await ShowDialogAsync(message, "Очищення кешу", MessageBoxButton.YesNo, MessageBoxImage.Warning).ConfigureAwait(false);
                     if (result == MessageBoxResult.Yes)
                     {
                         await _cleaner.ClearAllAsync(inspection, cancellationToken).ConfigureAwait(false);
@@ -94,7 +96,7 @@ namespace StarCitizenUA.Services.Cache
                 }
 
                 var generalMessage = BuildGeneralPrompt(inspection);
-                var generalResult = await ShowMessageBoxAsync(generalMessage, "Очищення кешу", MessageBoxButton.YesNoCancel, MessageBoxImage.Question).ConfigureAwait(false);
+                var generalResult = await ShowDialogAsync(generalMessage, "Очищення кешу", MessageBoxButton.YesNoCancel, MessageBoxImage.Question).ConfigureAwait(false);
 
                 switch (generalResult)
                 {
@@ -106,8 +108,6 @@ namespace StarCitizenUA.Services.Cache
                         await _cleaner.ClearAllAsync(inspection, cancellationToken).ConfigureAwait(false);
                         await ShowToastAsync("Кеш шейдерів очищено.").ConfigureAwait(false);
                         break;
-                    default:
-                        break;
                 }
             }
             catch (OperationCanceledException)
@@ -116,7 +116,7 @@ namespace StarCitizenUA.Services.Cache
             }
             catch (Exception ex)
             {
-                await ShowMessageBoxAsync($"Не вдалося виконати очищення кешу.\n{ex.Message}", "Помилка", MessageBoxButton.OK, MessageBoxImage.Error).ConfigureAwait(false);
+                await ShowDialogAsync($"Не вдалося виконати очищення кешу.\n{ex.Message}", "Помилка", MessageBoxButton.OK, MessageBoxImage.Error).ConfigureAwait(false);
             }
         }
 
@@ -130,8 +130,7 @@ namespace StarCitizenUA.Services.Cache
             builder.AppendLine("Останній кеш шейдерів занадто великий.");
             builder.AppendLine($"{latest.DisplayName}: {FormatBytes(latest.SizeBytes)} (поріг {FormatBytes(inspection.Options.LatestOkBytes)}).");
             builder.AppendLine();
-            builder.AppendLine("Натисніть «Так», щоб видалити весь кеш шейдерів.");
-            builder.AppendLine("Натисніть «Ні», щоб скасувати.");
+            builder.AppendLine("Очистити весь кеш шейдерів?");
             return builder.ToString();
         }
 
@@ -142,13 +141,14 @@ namespace StarCitizenUA.Services.Cache
             builder.AppendLine($"Загальний розмір: {FormatBytes(inspection.TotalBytes)}.");
 
             if (inspection.Latest != null)
-            {
                 builder.AppendLine($"Останній кеш ({inspection.Latest.DisplayName}): {FormatBytes(inspection.Latest.SizeBytes)}.");
-            }
 
             if (inspection.HasOlder)
             {
-                var older = inspection.Entries.Where(e => !ReferenceEquals(e, inspection.Latest)).Select(e => $"• {e.DisplayName} — {FormatBytes(e.SizeBytes)}");
+                var older = inspection.Entries
+                    .Where(e => !ReferenceEquals(e, inspection.Latest))
+                    .Select(e => $"• {e.DisplayName} - {FormatBytes(e.SizeBytes)}");
+
                 builder.AppendLine();
                 builder.AppendLine("Старі кеші:");
                 foreach (var line in older)
@@ -157,8 +157,10 @@ namespace StarCitizenUA.Services.Cache
 
             if (inspection.HasBigDirectories)
             {
-                var big = inspection.Entries.Where(e => e.SizeBytes > inspection.Options.BigDirectoryBytes)
-                    .Select(e => $"• {e.DisplayName} — {FormatBytes(e.SizeBytes)}");
+                var big = inspection.Entries
+                    .Where(e => e.SizeBytes > inspection.Options.BigDirectoryBytes)
+                    .Select(e => $"• {e.DisplayName} - {FormatBytes(e.SizeBytes)}");
+
                 builder.AppendLine();
                 builder.AppendLine($"Папки понад {FormatBytes(inspection.Options.BigDirectoryBytes)}:");
                 foreach (var line in big)
@@ -166,19 +168,17 @@ namespace StarCitizenUA.Services.Cache
             }
 
             builder.AppendLine();
-            builder.AppendLine("Варіанти:");
-            builder.AppendLine("Так — видалити лише старі кеші.");
-            builder.AppendLine("Ні — видалити весь кеш.");
-            builder.AppendLine("Скасувати — залишити все як є.");
+            builder.AppendLine("Оберіть, що очистити:");
             return builder.ToString();
         }
 
-        private async Task<MessageBoxResult> ShowMessageBoxAsync(string message, string caption, MessageBoxButton buttons, MessageBoxImage image)
+        private async Task<MessageBoxResult> ShowDialogAsync(string message, string caption, MessageBoxButton buttons, MessageBoxImage image)
         {
             if (_dispatcher.CheckAccess())
-                return MessageBox.Show(message, caption, buttons, image);
+                return CacheCleanupDialog.ShowDialog(Application.Current?.MainWindow, caption, message, buttons, image);
 
-            return await _dispatcher.InvokeAsync(() => MessageBox.Show(message, caption, buttons, image)).Task.ConfigureAwait(false);
+            return await _dispatcher.InvokeAsync(() =>
+                CacheCleanupDialog.ShowDialog(Application.Current?.MainWindow, caption, message, buttons, image)).Task.ConfigureAwait(false);
         }
 
         private async Task ShowToastAsync(string message)

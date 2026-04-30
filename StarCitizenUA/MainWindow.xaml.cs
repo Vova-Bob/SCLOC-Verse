@@ -341,8 +341,11 @@ namespace StarCitizenUA
             {
                 Action<string> logCallback = msg =>
                 {
-                    Dispatcher.Invoke(() => TxtLiaSetupe.Text += $"{msg}\n");
-                    TxtLiaSetupe.ScrollToEnd();
+                    Dispatcher.Invoke(() =>
+                    {
+                        TxtLiaSetupe.Text += $"{msg}\n";
+                        TxtLiaSetupe.ScrollToEnd();
+                    });
                 };
 
                 await _updater.UninstallAsync(logCallback).ConfigureAwait(true);
