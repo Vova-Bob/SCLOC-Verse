@@ -99,7 +99,6 @@ namespace StarCitizenUA
 
             CanvasHome.UpdateCheckButtonControl.Click += CheckUpdateButton_Click;
             CanvasHome.CurrentVersionTextControl.Text = _applicationVersionProvider.GetCurrentVersion().ToString();
-            CanvasHome.UpdateStatusTextControl.Text = "Натисніть, щоб перевірити оновлення";
 
             CanvasSettings.UpdateChannelSelector.ItemsSource = Enum.GetValues(typeof(UpdateChannel));
             CanvasSettings.UpdateChannelSelector.SelectionChanged += UpdateChannelSelector_SelectionChanged;
@@ -179,12 +178,14 @@ namespace StarCitizenUA
                     case UpdateCheckStatus.UpToDate:
                         CanvasHome.UpdateStatusTextControl.Text = "Актуальна версія";
                         CanvasHome.UpdateStatusTextControl.Foreground = Brushes.LimeGreen;
+                        await _updateHistoryService.AddEntryAsync(CreateHistoryEntry(UpdateOperation.Check, UpdateOperationResult.Success, result)).ConfigureAwait(true);
                         await _toastService.ShowToastAsync("Ви використовуєте актуальну версію.").ConfigureAwait(true);
                         break;
 
                     case UpdateCheckStatus.UpdateAvailable:
                         CanvasHome.UpdateStatusTextControl.Text = $"Доступна версія {result.LatestVersion}";
                         CanvasHome.UpdateStatusTextControl.Foreground = Brushes.Orange;
+                        await _updateHistoryService.AddEntryAsync(CreateHistoryEntry(UpdateOperation.Check, UpdateOperationResult.Success, result)).ConfigureAwait(true);
                         await _toastService.ShowToastAsync($"Доступна версія {result.LatestVersion}.").ConfigureAwait(true);
 
                         var dialogResult = MessageBox.Show(
