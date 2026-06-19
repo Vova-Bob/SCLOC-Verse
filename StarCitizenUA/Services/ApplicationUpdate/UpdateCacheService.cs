@@ -4,6 +4,7 @@ using StarCitizenUA.Models.ApplicationUpdate;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading.Tasks;
 
 namespace StarCitizenUA.Services.ApplicationUpdate
 {
@@ -22,12 +23,12 @@ namespace StarCitizenUA.Services.ApplicationUpdate
             _cacheFilePath = Path.Combine(cacheDirectory, "update-cache.json");
         }
 
-        public UpdateCacheEntry? Read(UpdateChannel channel)
+        public async Task<UpdateCacheEntry?> ReadAsync(UpdateChannel channel)
         {
             if (!File.Exists(_cacheFilePath))
                 return null;
 
-            var json = File.ReadAllText(_cacheFilePath);
+            var json = await File.ReadAllTextAsync(_cacheFilePath).ConfigureAwait(false);
 
             var entry = JsonConvert.DeserializeObject<UpdateCacheEntry>(json);
             if (entry == null || entry.Channel != channel)
@@ -36,7 +37,7 @@ namespace StarCitizenUA.Services.ApplicationUpdate
             return entry;
         }
 
-        public void Write(UpdateChannel channel, List<GitHubRelease> releases, TimeSpan ttl)
+        public async Task WriteAsync(UpdateChannel channel, List<GitHubRelease> releases)
         {
             var entry = new UpdateCacheEntry
             {
@@ -46,22 +47,20 @@ namespace StarCitizenUA.Services.ApplicationUpdate
             };
 
             var json = JsonConvert.SerializeObject(entry, Formatting.Indented);
-            File.WriteAllText(_cacheFilePath, json);
+            await File.WriteAllTextAsync(_cacheFilePath, json).ConfigureAwait(false);
         }
 
-        public bool IsValid(UpdateCacheEntry entry, TimeSpan ttl)
+        public bool IsValid(UpdateCacheEntry? entry)
         {
-            if (entry == null)
-                return false;
-
-            var expiry = entry.CachedAt.Add(ttl);
-            return DateTimeOffset.UtcNow <= expiry;
+            return entry != null;
         }
 
-        public void Clear()
+        public async Task ClearAsync()
         {
             if (File.Exists(_cacheFilePath))
-                File.Delete(_cacheFilePath);
+            {
+                await Task.Run(() => File.Delete(_cacheFilePath)).ConfigureAwait(false);
+            }
         }
     }
 }
