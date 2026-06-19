@@ -35,6 +35,7 @@ namespace StarCitizenUA
         private readonly IUpdateDownloader _updateDownloader;
         private readonly IUpdateInstaller _updateInstaller;
         private readonly IUpdateHistoryService _updateHistoryService;
+        private readonly IUpdateVerifier _updateVerifier;
         private bool _showGameFolderToast = true;
         private EnvironmentSelector EnvSelector => CanvasLocalization.EnvironmentSelector;
         private Button BtnInstall => CanvasLocalization.InstallButton;
@@ -61,7 +62,7 @@ namespace StarCitizenUA
         private readonly UpdateCheckerService _updateCheckerService;
         private readonly CleanupController _cacheCleanupController;
 
-        public MainWindow(MainWindowViewModel viewModel, IWindowHelper windowHelper, ILocalizationInstaller localizationInstaller, IReadmeService readmeService, IUpdater updater, UpdateCheckerService updateCheckerService, IApplicationUpdateService applicationUpdateService, IUpdateChannelService updateChannelService, IApplicationVersionProvider applicationVersionProvider, IUpdateDownloader updateDownloader, IUpdateInstaller updateInstaller, IUpdateHistoryService updateHistoryService)
+        public MainWindow(MainWindowViewModel viewModel, IWindowHelper windowHelper, ILocalizationInstaller localizationInstaller, IReadmeService readmeService,     IUpdater updater, UpdateCheckerService updateCheckerService, IApplicationUpdateService applicationUpdateService, IUpdateChannelService updateChannelService, IApplicationVersionProvider applicationVersionProvider, IUpdateDownloader updateDownloader, IUpdateInstaller updateInstaller, IUpdateHistoryService updateHistoryService, IUpdateVerifier updateVerifier)
         {
             InitializeComponent();
 
@@ -77,6 +78,7 @@ namespace StarCitizenUA
             _updateDownloader = updateDownloader;
             _updateInstaller = updateInstaller;
             _updateHistoryService = updateHistoryService;
+            _updateVerifier = updateVerifier;
 
             _toastService = new ToastService(AppToast.ToastBorder, AppToast.ToastText);
             _linkService = new LinkService(_toastService);
@@ -260,6 +262,40 @@ namespace StarCitizenUA
                 CanvasHome.UpdateStatusTextControl.Text = "Помилка завантаження";
                 CanvasHome.UpdateStatusTextControl.Foreground = Brushes.Red;
                 await _toastService.ShowToastAsync($"Помилка завантаження: {ex.Message}").ConfigureAwait(true);
+                return;
+            }
+
+            try
+            {
+                if (string.IsNullOrWhiteSpace(result.ExpectedChecksum))
+                {
+                    await _updateHistoryService.AddEntryAsync(CreateHistoryEntry(UpdateOperation.Verify, UpdateOperationResult.Skipped, result, "Контрольна сума відсутня.")).ConfigureAwait(true);
+                }
+                else
+                {
+                    var isValid = await _updateVerifier.VerifyAsync(
+                        installerPath,
+                        result.ExpectedChecksum,
+                        CancellationToken.None).ConfigureAwait(true);
+
+                    if (!isValid)
+                    {
+                        await _updateHistoryService.AddEntryAsync(CreateHistoryEntry(UpdateOperation.Verify, UpdateOperationResult.Failed, result, "Невідповідність контрольної суми.")).ConfigureAwait(true);
+                        CanvasHome.UpdateStatusTextControl.Text = "Помилка перевірки файлу";
+                        CanvasHome.UpdateStatusTextControl.Foreground = Brushes.Red;
+                        await _toastService.ShowToastAsync("Помилка перевірки файлу оновлення.").ConfigureAwait(true);
+                        return;
+                    }
+
+                    await _updateHistoryService.AddEntryAsync(CreateHistoryEntry(UpdateOperation.Verify, UpdateOperationResult.Success, result)).ConfigureAwait(true);
+                }
+            }
+            catch (Exception ex)
+            {
+                await _updateHistoryService.AddEntryAsync(CreateHistoryEntry(UpdateOperation.Verify, UpdateOperationResult.Failed, result, ex.Message)).ConfigureAwait(true);
+                CanvasHome.UpdateStatusTextControl.Text = "Помилка перевірки файлу";
+                CanvasHome.UpdateStatusTextControl.Foreground = Brushes.Red;
+                await _toastService.ShowToastAsync($"Помилка перевірки файлу: {ex.Message}").ConfigureAwait(true);
                 return;
             }
 

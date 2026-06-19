@@ -24,6 +24,7 @@ namespace StarCitizenUA.Composition
         private readonly IUpdateDownloader _updateDownloader;
         private readonly IUpdateInstaller _updateInstaller;
         private readonly IUpdateHistoryService _updateHistoryService;
+        private readonly IUpdateVerifier _updateVerifier;
 
         public AppCompositionRoot()
         {
@@ -53,6 +54,7 @@ namespace StarCitizenUA.Composition
             _updateDownloader = new UpdateDownloader(httpClient);
             _updateInstaller = new UpdateInstaller(new UpdateScriptBuilder());
             _updateHistoryService = new UpdateHistoryService();
+            _updateVerifier = new UpdateVerifier();
         }
 
         public MainWindow CreateMainWindow()
@@ -76,7 +78,8 @@ namespace StarCitizenUA.Composition
                 _applicationVersionProvider,
                 _updateDownloader,
                 _updateInstaller,
-                _updateHistoryService);
+                _updateHistoryService,
+                _updateVerifier);
         }
     }
 }

@@ -2,6 +2,7 @@ using StarCitizenUA.Helpers;
 using StarCitizenUA.Interfaces;
 using StarCitizenUA.Models.ApplicationUpdate;
 using System;
+using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Threading;
@@ -80,6 +81,7 @@ namespace StarCitizenUA.Services.ApplicationUpdate
                         new Version(0, 0, 0, 0),
                         string.Empty,
                         string.Empty,
+                        string.Empty,
                         channel,
                         "Не знайдено релізів з інсталятором для поточного каналу.");
                 }
@@ -92,12 +94,18 @@ namespace StarCitizenUA.Services.ApplicationUpdate
                     ? $"Доступна нова версія: {latestVersion}."
                     : "Ви використовуєте актуальну версію.";
 
+                var expectedChecksum = await ResolveExpectedChecksumAsync(
+                    installerAsset,
+                    latestRelease,
+                    cancellationToken).ConfigureAwait(false);
+
                 return CreateResult(
                     status,
                     isUpdateAvailable,
                     currentVersion,
                     latestVersion,
                     installerAsset.BrowserDownloadUrl,
+                    expectedChecksum,
                     latestRelease.Body,
                     channel,
                     message);
@@ -143,12 +151,63 @@ namespace StarCitizenUA.Services.ApplicationUpdate
                 : UpdateChannel.Stable;
         }
 
+        private async Task<string> ResolveExpectedChecksumAsync(
+            GitHubReleaseAsset installerAsset,
+            GitHubRelease release,
+            CancellationToken cancellationToken)
+        {
+            var checksumAsset = release.Assets.FirstOrDefault(a =>
+                a.Name.Equals($"{installerAsset.Name}.sha256", StringComparison.OrdinalIgnoreCase))
+                ??
+                release.Assets.FirstOrDefault(a =>
+                    a.Name.Equals(
+                        $"{Path.GetFileNameWithoutExtension(installerAsset.Name)}.sha256",
+                        StringComparison.OrdinalIgnoreCase));
+
+            if (checksumAsset == null)
+                return string.Empty;
+
+            try
+            {
+                var checksumContent = await _gitHubClient.DownloadTextAsync(
+                    checksumAsset.BrowserDownloadUrl,
+                    cancellationToken).ConfigureAwait(false);
+
+                return ParseChecksum(checksumContent);
+            }
+            catch
+            {
+                return string.Empty;
+            }
+        }
+
+        private static string ParseChecksum(string content)
+        {
+            if (string.IsNullOrWhiteSpace(content))
+                return string.Empty;
+
+            content = content.Trim();
+
+            var tokens = content.Split(
+                new[] { ' ', '\t', '\r', '\n', ':' },
+                StringSplitOptions.RemoveEmptyEntries);
+
+            foreach (var token in tokens)
+            {
+                if (token.Length >= 32 && token.All(c => Uri.IsHexDigit(c)))
+                    return token;
+            }
+
+            return string.Empty;
+        }
+
         private static UpdateCheckResult CreateResult(
             UpdateCheckStatus status,
             bool isUpdateAvailable,
             Version currentVersion,
             Version latestVersion,
             string downloadUrl,
+            string expectedChecksum,
             string releaseNotes,
             UpdateChannel channel,
             string message)
@@ -160,6 +219,7 @@ namespace StarCitizenUA.Services.ApplicationUpdate
                 CurrentVersion = currentVersion,
                 LatestVersion = latestVersion,
                 DownloadUrl = downloadUrl,
+                ExpectedChecksum = expectedChecksum,
                 ReleaseNotes = releaseNotes,
                 Channel = channel,
                 Message = message
@@ -168,13 +228,14 @@ namespace StarCitizenUA.Services.ApplicationUpdate
 
         private static UpdateCheckResult CreateFailureResult(string message)
         {
-            return new UpdateCheckResult
+                return new UpdateCheckResult
             {
                 Status = UpdateCheckStatus.CheckFailed,
                 IsUpdateAvailable = false,
                 CurrentVersion = new Version(0, 0, 0, 0),
                 LatestVersion = new Version(0, 0, 0, 0),
                 DownloadUrl = string.Empty,
+                ExpectedChecksum = string.Empty,
                 ReleaseNotes = string.Empty,
                 Channel = UpdateChannel.Stable,
                 Message = message
