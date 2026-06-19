@@ -1,4 +1,5 @@
 using StarCitizenUA.Composition;
+using System.Threading;
 using System.Windows;
 
 namespace StarCitizenUA
@@ -8,9 +9,41 @@ namespace StarCitizenUA
     /// </summary>
     public partial class App : Application
     {
+        private static Mutex? _singleInstanceMutex;
+        private const string SingleInstanceMutexName = "SCLocalizationUA_SingleInstanceMutex";
+
         protected override void OnStartup(StartupEventArgs e)
         {
             base.OnStartup(e);
+
+            // Перевірка single instance через локальний Mutex.
+            bool createdNew;
+            try
+            {
+                _singleInstanceMutex = new Mutex(true, SingleInstanceMutexName, out createdNew);
+            }
+            catch (AbandonedMutexException)
+            {
+                // Попередній екземпляр аварійно завершився, mutex звільнено.
+                // Поточний процес стає першим екземпляром.
+                createdNew = true;
+                _singleInstanceMutex = new Mutex(true, SingleInstanceMutexName, out _);
+            }
+
+            if (!createdNew)
+            {
+                _singleInstanceMutex.Dispose();
+                _singleInstanceMutex = null;
+
+                MessageBox.Show(
+                    "Програма вже запущена. Ви можете мати лише один активний екземпляр.",
+                    "SCLocalizationUA",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+
+                Shutdown();
+                return;
+            }
 
             // Явна міграція налаштувань після оновлення версії додатка.
             if (Settings.Default.UpgradeRequired)
@@ -38,6 +71,20 @@ namespace StarCitizenUA
             MainWindow = window;
             window.Show();
         }
-    }
 
+        protected override void OnExit(ExitEventArgs e)
+        {
+            try
+            {
+                _singleInstanceMutex?.ReleaseMutex();
+            }
+            catch
+            {
+                // Ігноруємо помилки при звільненні mutex.
+            }
+
+            _singleInstanceMutex?.Dispose();
+            base.OnExit(e);
+        }
+    }
 }
