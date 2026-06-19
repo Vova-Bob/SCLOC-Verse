@@ -4,8 +4,6 @@ namespace StarCitizenUA.Models.ApplicationUpdate
     {
         Check,
         Download,
-        Verify,
-        Install,
-        Restart
+        Install
     }
 }

@@ -4,7 +4,7 @@ namespace StarCitizenUA.Models.ApplicationUpdate
     {
         UpToDate,
         UpdateAvailable,
-        Error,
-        NoReleaseFound
+        CheckFailed,
+        ChannelNotFound
     }
 }
