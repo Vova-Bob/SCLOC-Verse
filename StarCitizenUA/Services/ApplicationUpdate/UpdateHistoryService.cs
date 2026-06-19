@@ -22,7 +22,7 @@ namespace StarCitizenUA.Services.ApplicationUpdate
             if (!Directory.Exists(appDirectory))
                 Directory.CreateDirectory(appDirectory);
 
-            _historyFilePath = Path.Combine(appDirectory, "update-history.json");
+            _historyFilePath = Path.Combine(appDirectory, UpdateConstants.UpdateHistoryFileName);
         }
 
         public async Task AddEntryAsync(UpdateHistoryEntry entry)
