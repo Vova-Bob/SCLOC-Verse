@@ -16,5 +16,9 @@ namespace StarCitizenUA.Interfaces
             string owner,
             string repo,
             CancellationToken cancellationToken = default);
+
+        Task<string> DownloadTextAsync(
+            string url,
+            CancellationToken cancellationToken = default);
     }
 }

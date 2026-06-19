@@ -63,5 +63,18 @@ namespace StarCitizenUA.Services.ApplicationUpdate
 
             return JsonConvert.DeserializeObject<List<GitHubRelease>>(json) ?? new List<GitHubRelease>();
         }
+
+        public async Task<string> DownloadTextAsync(
+            string url,
+            CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrWhiteSpace(url))
+                throw new ArgumentException("URL cannot be empty.", nameof(url));
+
+            using var response = await _httpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
+            response.EnsureSuccessStatusCode();
+
+            return await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+        }
     }
 }
