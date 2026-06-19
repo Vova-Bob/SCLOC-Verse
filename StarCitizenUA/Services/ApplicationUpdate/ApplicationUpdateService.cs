@@ -11,6 +11,8 @@ namespace StarCitizenUA.Services.ApplicationUpdate
 {
     public class ApplicationUpdateService : IApplicationUpdateService
     {
+        private readonly string _owner;
+        private readonly string _repo;
         private readonly IApplicationVersionProvider _versionProvider;
         private readonly IUpdateChannelService _channelService;
         private readonly IGitHubReleaseClient _gitHubClient;
@@ -18,12 +20,21 @@ namespace StarCitizenUA.Services.ApplicationUpdate
         private readonly IReleaseChannelResolver _channelResolver;
 
         public ApplicationUpdateService(
+            string owner,
+            string repo,
             IApplicationVersionProvider versionProvider,
             IUpdateChannelService channelService,
             IGitHubReleaseClient gitHubClient,
             IUpdateCacheService cacheService,
             IReleaseChannelResolver channelResolver)
         {
+            if (string.IsNullOrWhiteSpace(owner))
+                throw new ArgumentException("Owner cannot be empty.", nameof(owner));
+            if (string.IsNullOrWhiteSpace(repo))
+                throw new ArgumentException("Repo cannot be empty.", nameof(repo));
+
+            _owner = owner;
+            _repo = repo;
             _versionProvider = versionProvider ?? throw new ArgumentNullException(nameof(versionProvider));
             _channelService = channelService ?? throw new ArgumentNullException(nameof(channelService));
             _gitHubClient = gitHubClient ?? throw new ArgumentNullException(nameof(gitHubClient));
@@ -37,10 +48,8 @@ namespace StarCitizenUA.Services.ApplicationUpdate
             {
                 var currentVersion = _versionProvider.GetCurrentVersion();
                 var channel = ResolveChannel(_channelService.GetUpdateChannel());
-                var owner = "SCLocalizationUA"; // placeholder until confirmed
-                var repo = "SCLocalizationUA";  // placeholder until confirmed
 
-                var releases = await GetReleasesAsync(channel, owner, repo, cancellationToken).ConfigureAwait(false);
+                var releases = await GetReleasesAsync(channel, cancellationToken).ConfigureAwait(false);
 
                 var filteredReleases = releases
                     .Where(r => _channelResolver.IsChannelMatch(r, channel))
@@ -83,20 +92,12 @@ namespace StarCitizenUA.Services.ApplicationUpdate
                     ? $"Доступна нова версія: {latestVersion}."
                     : "Ви використовуєте актуальну версію.";
 
-                var assetInfo = new ReleaseAssetInfo
-                {
-                    Name = installerAsset.Name,
-                    DownloadUrl = installerAsset.BrowserDownloadUrl,
-                    Size = installerAsset.Size,
-                    Checksum = ExtractChecksum(latestRelease.Body)
-                };
-
                 return CreateResult(
                     status,
                     isUpdateAvailable,
                     currentVersion,
                     latestVersion,
-                    assetInfo.DownloadUrl,
+                    installerAsset.BrowserDownloadUrl,
                     latestRelease.Body,
                     channel,
                     message);
@@ -117,8 +118,6 @@ namespace StarCitizenUA.Services.ApplicationUpdate
 
         private async Task<List<GitHubRelease>> GetReleasesAsync(
             UpdateChannel channel,
-            string owner,
-            string repo,
             CancellationToken cancellationToken)
         {
             var cachedEntry = await _cacheService.ReadAsync(channel).ConfigureAwait(false);
@@ -128,7 +127,7 @@ namespace StarCitizenUA.Services.ApplicationUpdate
                 return cachedEntry.Releases;
             }
 
-            var releases = await _gitHubClient.GetReleasesAsync(owner, repo, cancellationToken).ConfigureAwait(false);
+            var releases = await _gitHubClient.GetReleasesAsync(_owner, _repo, cancellationToken).ConfigureAwait(false);
             await _cacheService.WriteAsync(channel, releases).ConfigureAwait(false);
 
             return releases;
@@ -142,25 +141,6 @@ namespace StarCitizenUA.Services.ApplicationUpdate
             return Enum.TryParse<UpdateChannel>(channelName, true, out var channel)
                 ? channel
                 : UpdateChannel.Stable;
-        }
-
-        private static string? ExtractChecksum(string? releaseBody)
-        {
-            if (string.IsNullOrWhiteSpace(releaseBody))
-                return null;
-
-            var lines = releaseBody.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
-            foreach (var line in lines)
-            {
-                var trimmed = line.Trim();
-                if (trimmed.StartsWith("checksum:", StringComparison.OrdinalIgnoreCase))
-                {
-                    var checksum = trimmed.Substring("checksum:".Length).Trim();
-                    return string.IsNullOrWhiteSpace(checksum) ? null : checksum;
-                }
-            }
-
-            return null;
         }
 
         private static UpdateCheckResult CreateResult(
