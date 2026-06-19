@@ -85,6 +85,8 @@ namespace StarCitizenUA
             DataContext = _viewModel;
             DefaultPathText = TxtSelectedPath.Text;
 
+            _buttonHelper.SetButtonState(BtnAutoSearch, _viewModel.IsGameFolderSet);
+
             CanvasHome.UpdateCheckButtonControl.Click += CheckUpdateButton_Click;
             CanvasHome.CurrentVersionTextControl.Text = _applicationVersionProvider.GetCurrentVersion().ToString();
             CanvasHome.UpdateStatusTextControl.Text = "Натисніть, щоб перевірити оновлення";
