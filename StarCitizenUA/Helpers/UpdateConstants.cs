@@ -8,6 +8,7 @@ namespace StarCitizenUA.Helpers
 
         public const string UpdateDirectoryName = "SCLocalizationUA";
         public const string CacheFileName = "update-cache.json";
+        public const string UpdateHistoryFileName = "update-history.json";
 
         public static readonly TimeSpan CacheTtl = TimeSpan.FromMinutes(30);
 
