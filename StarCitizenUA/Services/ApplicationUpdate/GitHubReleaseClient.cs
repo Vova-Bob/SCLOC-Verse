@@ -13,33 +13,50 @@ namespace StarCitizenUA.Services.ApplicationUpdate
     {
         private readonly HttpClient _httpClient;
 
-        public GitHubReleaseClient(HttpClient httpClient)
+        public GitHubReleaseClient(HttpClient httpClient, string userAgent)
         {
             _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
+
+            if (string.IsNullOrWhiteSpace(userAgent))
+                throw new ArgumentException("User-Agent cannot be empty.", nameof(userAgent));
+
+            _httpClient.DefaultRequestHeaders.UserAgent.ParseAdd(userAgent);
+            _httpClient.DefaultRequestHeaders.Accept.ParseAdd("application/vnd.github+json");
         }
 
-        public async Task<GitHubRelease?> GetLatestReleaseAsync(string owner, string repo, string userAgent, CancellationToken cancellationToken = default)
-        {
-            var releases = await GetReleasesAsync(owner, repo, userAgent, cancellationToken).ConfigureAwait(false);
-            return releases.Count > 0 ? releases[0] : null;
-        }
-
-        public async Task<List<GitHubRelease>> GetReleasesAsync(string owner, string repo, string userAgent, CancellationToken cancellationToken = default)
+        public async Task<GitHubRelease?> GetLatestReleaseAsync(
+            string owner,
+            string repo,
+            CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrWhiteSpace(owner))
                 throw new ArgumentException("Owner cannot be empty.", nameof(owner));
             if (string.IsNullOrWhiteSpace(repo))
                 throw new ArgumentException("Repo cannot be empty.", nameof(repo));
-            if (string.IsNullOrWhiteSpace(userAgent))
-                throw new ArgumentException("User-Agent cannot be empty.", nameof(userAgent));
+
+            var url = $"https://api.github.com/repos/{owner}/{repo}/releases/latest";
+
+            using var response = await _httpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
+            response.EnsureSuccessStatusCode();
+
+            var json = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+
+            return JsonConvert.DeserializeObject<GitHubRelease>(json);
+        }
+
+        public async Task<List<GitHubRelease>> GetReleasesAsync(
+            string owner,
+            string repo,
+            CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrWhiteSpace(owner))
+                throw new ArgumentException("Owner cannot be empty.", nameof(owner));
+            if (string.IsNullOrWhiteSpace(repo))
+                throw new ArgumentException("Repo cannot be empty.", nameof(repo));
 
             var url = $"https://api.github.com/repos/{owner}/{repo}/releases";
 
-            using var request = new HttpRequestMessage(HttpMethod.Get, url);
-            request.Headers.Add("User-Agent", userAgent);
-            request.Headers.Add("Accept", "application/vnd.github+json");
-
-            using var response = await _httpClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
+            using var response = await _httpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
 
             var json = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);

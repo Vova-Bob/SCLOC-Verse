@@ -7,7 +7,14 @@ namespace StarCitizenUA.Interfaces
 {
     public interface IGitHubReleaseClient
     {
-        Task<GitHubRelease?> GetLatestReleaseAsync(string owner, string repo, string userAgent, CancellationToken cancellationToken = default);
-        Task<List<GitHubRelease>> GetReleasesAsync(string owner, string repo, string userAgent, CancellationToken cancellationToken = default);
+        Task<GitHubRelease?> GetLatestReleaseAsync(
+            string owner,
+            string repo,
+            CancellationToken cancellationToken = default);
+
+        Task<List<GitHubRelease>> GetReleasesAsync(
+            string owner,
+            string repo,
+            CancellationToken cancellationToken = default);
     }
 }
