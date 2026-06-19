@@ -7,6 +7,7 @@ using StarCitizenUA.Services;
 using StarCitizenUA.Services.Cache;
 using StarCitizenUA.Services.LiaServices;
 using StarCitizenUA.ViewModels;
+using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -30,6 +31,9 @@ namespace StarCitizenUA
         private readonly IApplicationUpdateService _applicationUpdateService;
         private readonly IUpdateChannelService _updateChannelService;
         private readonly IApplicationVersionProvider _applicationVersionProvider;
+        private readonly IUpdateDownloader _updateDownloader;
+        private readonly IUpdateInstaller _updateInstaller;
+        private readonly IUpdateHistoryService _updateHistoryService;
         private bool _showGameFolderToast = true;
         private EnvironmentSelector EnvSelector => CanvasLocalization.EnvironmentSelector;
         private Button BtnInstall => CanvasLocalization.InstallButton;
@@ -56,7 +60,7 @@ namespace StarCitizenUA
         private readonly UpdateCheckerService _updateCheckerService;
         private readonly CleanupController _cacheCleanupController;
 
-        public MainWindow(MainWindowViewModel viewModel, IWindowHelper windowHelper, ILocalizationInstaller localizationInstaller, IReadmeService readmeService, IUpdater updater, UpdateCheckerService updateCheckerService, IApplicationUpdateService applicationUpdateService, IUpdateChannelService updateChannelService, IApplicationVersionProvider applicationVersionProvider)
+        public MainWindow(MainWindowViewModel viewModel, IWindowHelper windowHelper, ILocalizationInstaller localizationInstaller, IReadmeService readmeService, IUpdater updater, UpdateCheckerService updateCheckerService, IApplicationUpdateService applicationUpdateService, IUpdateChannelService updateChannelService, IApplicationVersionProvider applicationVersionProvider, IUpdateDownloader updateDownloader, IUpdateInstaller updateInstaller, IUpdateHistoryService updateHistoryService)
         {
             InitializeComponent();
 
@@ -69,6 +73,9 @@ namespace StarCitizenUA
             _applicationUpdateService = applicationUpdateService;
             _updateChannelService = updateChannelService;
             _applicationVersionProvider = applicationVersionProvider;
+            _updateDownloader = updateDownloader;
+            _updateInstaller = updateInstaller;
+            _updateHistoryService = updateHistoryService;
 
             _toastService = new ToastService(AppToast.ToastBorder, AppToast.ToastText);
             _linkService = new LinkService(_toastService);
@@ -184,19 +191,25 @@ namespace StarCitizenUA
 
                         if (dialogResult == MessageBoxResult.Yes)
                         {
-                            await _toastService.ShowToastAsync("Встановлення оновлення буде реалізовано в наступних задачах.").ConfigureAwait(true);
+                            await InstallUpdateAsync(result).ConfigureAwait(true);
+                        }
+                        else
+                        {
+                            await _updateHistoryService.AddEntryAsync(CreateHistoryEntry(UpdateOperation.Install, UpdateOperationResult.Cancelled, result, "Користувач відмовився від встановлення.")).ConfigureAwait(true);
                         }
                         break;
 
                     case UpdateCheckStatus.CheckFailed:
                         CanvasHome.UpdateStatusTextControl.Text = "Помилка перевірки";
                         CanvasHome.UpdateStatusTextControl.Foreground = Brushes.Red;
+                        await _updateHistoryService.AddEntryAsync(CreateHistoryEntry(UpdateOperation.Check, UpdateOperationResult.Failed, result, result.Message)).ConfigureAwait(true);
                         await _toastService.ShowToastAsync($"Помилка: {result.Message}").ConfigureAwait(true);
                         break;
 
                     case UpdateCheckStatus.ChannelNotFound:
                         CanvasHome.UpdateStatusTextControl.Text = "Канал не знайдено";
                         CanvasHome.UpdateStatusTextControl.Foreground = Brushes.Gray;
+                        await _updateHistoryService.AddEntryAsync(CreateHistoryEntry(UpdateOperation.Check, UpdateOperationResult.Skipped, result, "Не знайдено релізів для поточного каналу.")).ConfigureAwait(true);
                         await _toastService.ShowToastAsync("Для поточного каналу не знайдено релізів.").ConfigureAwait(true);
                         break;
                 }
@@ -211,6 +224,90 @@ namespace StarCitizenUA
             {
                 CanvasHome.UpdateCheckButtonControl.IsEnabled = true;
             }
+        }
+
+        private async Task InstallUpdateAsync(UpdateCheckResult result)
+        {
+            var updateDirectory = Path.Combine(
+                Path.GetTempPath(),
+                UpdateConstants.UpdateDirectoryName,
+                UpdateConstants.UpdatesDirectoryName);
+
+            if (!Directory.Exists(updateDirectory))
+                Directory.CreateDirectory(updateDirectory);
+
+            foreach (var existingFile in Directory.EnumerateFiles(updateDirectory, "*.exe"))
+            {
+                try { File.Delete(existingFile); }
+                catch { /* ігноруємо помилки очищення старих файлів */ }
+            }
+
+            string installerPath;
+            try
+            {
+                installerPath = await _updateDownloader.DownloadAsync(
+                    result.DownloadUrl,
+                    updateDirectory,
+                    CancellationToken.None).ConfigureAwait(true);
+
+                await _updateHistoryService.AddEntryAsync(CreateHistoryEntry(UpdateOperation.Download, UpdateOperationResult.Success, result)).ConfigureAwait(true);
+            }
+            catch (Exception ex)
+            {
+                await _updateHistoryService.AddEntryAsync(CreateHistoryEntry(UpdateOperation.Download, UpdateOperationResult.Failed, result, ex.Message)).ConfigureAwait(true);
+                CanvasHome.UpdateStatusTextControl.Text = "Помилка завантаження";
+                CanvasHome.UpdateStatusTextControl.Foreground = Brushes.Red;
+                await _toastService.ShowToastAsync($"Помилка завантаження: {ex.Message}").ConfigureAwait(true);
+                return;
+            }
+
+            try
+            {
+                var currentExePath = Environment.ProcessPath
+                    ?? throw new InvalidOperationException("Unable to determine executable path.");
+
+                var installStarted = await _updateInstaller.InstallAsync(
+                    installerPath,
+                    currentExePath,
+                    CancellationToken.None).ConfigureAwait(true);
+
+                if (installStarted)
+                {
+                    await _updateHistoryService.AddEntryAsync(CreateHistoryEntry(UpdateOperation.Install, UpdateOperationResult.Success, result)).ConfigureAwait(true);
+                    await _toastService.ShowToastAsync("Оновлення встановлюється. Додаток буде перезапущено.", 2000).ConfigureAwait(true);
+                    Application.Current.Shutdown();
+                }
+                else
+                {
+                    await _updateHistoryService.AddEntryAsync(CreateHistoryEntry(UpdateOperation.Install, UpdateOperationResult.Failed, result, "Не вдалося запустити процес встановлення.")).ConfigureAwait(true);
+                    await _toastService.ShowToastAsync("Не вдалося запустити встановлення оновлення.").ConfigureAwait(true);
+                }
+            }
+            catch (Exception ex)
+            {
+                await _updateHistoryService.AddEntryAsync(CreateHistoryEntry(UpdateOperation.Install, UpdateOperationResult.Failed, result, ex.Message)).ConfigureAwait(true);
+                CanvasHome.UpdateStatusTextControl.Text = "Помилка встановлення";
+                CanvasHome.UpdateStatusTextControl.Foreground = Brushes.Red;
+                await _toastService.ShowToastAsync($"Помилка встановлення: {ex.Message}").ConfigureAwait(true);
+            }
+        }
+
+        private UpdateHistoryEntry CreateHistoryEntry(
+            UpdateOperation operation,
+            UpdateOperationResult result,
+            UpdateCheckResult checkResult,
+            string errorMessage = "")
+        {
+            return new UpdateHistoryEntry
+            {
+                Timestamp = DateTimeOffset.Now,
+                Channel = checkResult.Channel,
+                FromVersion = checkResult.CurrentVersion,
+                ToVersion = checkResult.LatestVersion,
+                Operation = operation,
+                Result = result,
+                ErrorMessage = errorMessage
+            };
         }
 
         private void UpdateChannelSelector_SelectionChanged(object sender, SelectionChangedEventArgs e)

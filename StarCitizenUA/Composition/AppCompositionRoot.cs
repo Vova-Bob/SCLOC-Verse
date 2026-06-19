@@ -21,6 +21,9 @@ namespace StarCitizenUA.Composition
         private readonly IApplicationVersionProvider _applicationVersionProvider;
         private readonly IUpdateChannelService _updateChannelService;
         private readonly IApplicationUpdateService _applicationUpdateService;
+        private readonly IUpdateDownloader _updateDownloader;
+        private readonly IUpdateInstaller _updateInstaller;
+        private readonly IUpdateHistoryService _updateHistoryService;
 
         public AppCompositionRoot()
         {
@@ -46,6 +49,10 @@ namespace StarCitizenUA.Composition
                 gitHubClient,
                 updateCacheService,
                 releaseChannelResolver);
+
+            _updateDownloader = new UpdateDownloader(httpClient);
+            _updateInstaller = new UpdateInstaller(new UpdateScriptBuilder());
+            _updateHistoryService = new UpdateHistoryService();
         }
 
         public MainWindow CreateMainWindow()
@@ -66,7 +73,10 @@ namespace StarCitizenUA.Composition
                 _updateCheckerService,
                 _applicationUpdateService,
                 _updateChannelService,
-                _applicationVersionProvider);
+                _applicationVersionProvider,
+                _updateDownloader,
+                _updateInstaller,
+                _updateHistoryService);
         }
     }
 }
