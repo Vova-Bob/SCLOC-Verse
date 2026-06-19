@@ -4,6 +4,7 @@ namespace StarCitizenUA.Models.ApplicationUpdate
     {
         Success,
         Failed,
-        Cancelled
+        Cancelled,
+        Skipped
     }
 }

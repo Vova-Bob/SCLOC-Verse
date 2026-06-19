@@ -1,12 +1,12 @@
 using System;
+using System.Collections.Generic;
 
 namespace StarCitizenUA.Models.ApplicationUpdate
 {
     public class UpdateCacheEntry
     {
-        public Version Version { get; set; } = new Version(0, 0, 0, 0);
-        public string DownloadUrl { get; set; } = string.Empty;
-        public string? Checksum { get; set; }
-        public DateTimeOffset Expiry { get; set; }
+        public DateTimeOffset CachedAt { get; set; }
+        public UpdateChannel Channel { get; set; }
+        public List<GitHubRelease> Releases { get; set; } = new();
     }
 }

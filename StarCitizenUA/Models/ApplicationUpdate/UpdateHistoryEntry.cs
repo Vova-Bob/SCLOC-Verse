@@ -4,9 +4,12 @@ namespace StarCitizenUA.Models.ApplicationUpdate
 {
     public class UpdateHistoryEntry
     {
-        public Version Version { get; set; } = new Version(0, 0, 0, 0);
-        public DateTimeOffset Date { get; set; }
+        public DateTimeOffset Timestamp { get; set; }
         public UpdateChannel Channel { get; set; }
+        public Version FromVersion { get; set; } = new Version(0, 0, 0, 0);
+        public Version ToVersion { get; set; } = new Version(0, 0, 0, 0);
+        public UpdateOperation Operation { get; set; }
         public UpdateOperationResult Result { get; set; }
+        public string ErrorMessage { get; set; } = string.Empty;
     }
 }

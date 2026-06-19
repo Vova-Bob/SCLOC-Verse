@@ -18,6 +18,9 @@ namespace StarCitizenUA.Models.ApplicationUpdate
         [JsonProperty("published_at")]
         public DateTimeOffset PublishedAt { get; set; }
 
+        [JsonProperty("prerelease")]
+        public bool Prerelease { get; set; }
+
         [JsonProperty("assets")]
         public List<GitHubReleaseAsset> Assets { get; set; } = new();
     }
