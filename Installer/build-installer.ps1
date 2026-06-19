@@ -22,9 +22,10 @@ function Test-InnoSetupCompiler {
 
 function Publish-Application {
     Write-Host "Publishing application..." -ForegroundColor Cyan
+    $projectPath = Join-Path $ProjectDir "StarCitizenUA.csproj"
     $arguments = @(
         "publish",
-        "StarCitizenUA.csproj",
+        "$projectPath",
         "-c", $Configuration,
         "-r", $RuntimeIdentifier,
         "--self-contained"
