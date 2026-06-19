@@ -5,6 +5,7 @@ using StarCitizenUA.Models.ApplicationUpdate;
 using StarCitizenUA.Models.LiaModels;
 using StarCitizenUA.Services;
 using StarCitizenUA.Services.Cache;
+using StarCitizenUA.Windows;
 using StarCitizenUA.Services.LiaServices;
 using StarCitizenUA.ViewModels;
 using System.IO;
@@ -100,6 +101,7 @@ namespace StarCitizenUA
 
             CanvasSettings.UpdateChannelSelector.ItemsSource = Enum.GetValues(typeof(UpdateChannel));
             CanvasSettings.UpdateChannelSelector.SelectionChanged += UpdateChannelSelector_SelectionChanged;
+            CanvasSettings.UpdateHistoryButtonControl.Click += UpdateHistoryButton_Click;
 
             Loaded += MainWindow_Loaded;
             EnvSelector.GearClicked += EnvSelector_GearClicked;
@@ -316,6 +318,16 @@ namespace StarCitizenUA
             {
                 _updateChannelService.SetUpdateChannel(channel.ToString());
             }
+        }
+
+        private void UpdateHistoryButton_Click(object sender, RoutedEventArgs e)
+        {
+            var window = new UpdateHistoryWindow(_updateHistoryService)
+            {
+                Owner = this
+            };
+
+            window.ShowDialog();
         }
 
         private void EnvSelector_SelectionChanged(object? sender, EventArgs e)
