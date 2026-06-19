@@ -327,6 +327,15 @@
     <TextBlock Canvas.Left="70" Canvas.Top="330" Text="Канал оновлення:" Foreground="White" FontSize="14"/>
     <ComboBox x:Name="UpdateChannelComboBox" Canvas.Left="220" Canvas.Top="327" Width="150" Height="28"/>
 
+    <!-- Кнопка історії оновлень -->
+    <Button x:Name="UpdateHistoryButton"
+            Style="{StaticResource ActionButton}"
+            Content="Історія оновлень"
+            Canvas.Left="400"
+            Canvas.Top="327"
+            Width="170"
+            Height="28"/>
+
     <!-- README блок -->
     <Border Canvas.Left="70" Canvas.Top="220"
             Width="820" Height="270"
