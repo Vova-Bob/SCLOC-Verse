@@ -50,9 +50,12 @@ namespace StarCitizenUA.Services.ApplicationUpdate
             await File.WriteAllTextAsync(_cacheFilePath, json).ConfigureAwait(false);
         }
 
-        public bool IsValid(UpdateCacheEntry? entry)
+        public bool IsValid(UpdateCacheEntry? entry, TimeSpan ttl)
         {
-            return entry != null;
+            if (entry == null)
+                return false;
+
+            return DateTimeOffset.UtcNow <= entry.CachedAt.Add(ttl);
         }
 
         public async Task ClearAsync()
