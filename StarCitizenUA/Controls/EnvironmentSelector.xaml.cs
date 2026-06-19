@@ -84,8 +84,8 @@ namespace StarCitizenUA.Controls
         {
             try
             {
-                string idFile = Path.Combine(envDir, "f_win_game_client_release.id");
-                if (!File.Exists(idFile)) return "версія невідома";
+                string idFile = ResolveVersionFilePath(envDir);
+                if (string.IsNullOrEmpty(idFile)) return "версія невідома";
 
                 using var fs = File.OpenRead(idFile);
                 using var doc = await JsonDocument.ParseAsync(fs);
@@ -105,6 +105,17 @@ namespace StarCitizenUA.Controls
                 return $"{branch}.{change}";
             }
             catch { return "версія невідома"; }
+        }
+
+        private static string ResolveVersionFilePath(string envDir)
+        {
+            string buildManifest = Path.Combine(envDir, "build_manifest.id");
+            if (File.Exists(buildManifest)) return buildManifest;
+
+            string releaseId = Path.Combine(envDir, "f_win_game_client_release.id");
+            if (File.Exists(releaseId)) return releaseId;
+
+            return string.Empty;
         }
 
         //Перевірка вибраного середовища
