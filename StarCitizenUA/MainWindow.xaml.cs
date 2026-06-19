@@ -1,6 +1,7 @@
 ﻿using StarCitizenUA.Controls;
 using StarCitizenUA.Helpers;
 using StarCitizenUA.Interfaces;
+using StarCitizenUA.Models.ApplicationUpdate;
 using StarCitizenUA.Models.LiaModels;
 using StarCitizenUA.Services;
 using StarCitizenUA.Services.Cache;
@@ -26,6 +27,9 @@ namespace StarCitizenUA
         private readonly IToastService _toastService;
         private readonly ILinkService _linkService;
         private readonly IUpdater _updater;
+        private readonly IApplicationUpdateService _applicationUpdateService;
+        private readonly IUpdateChannelService _updateChannelService;
+        private readonly IApplicationVersionProvider _applicationVersionProvider;
         private bool _showGameFolderToast = true;
         private EnvironmentSelector EnvSelector => CanvasLocalization.EnvironmentSelector;
         private Button BtnInstall => CanvasLocalization.InstallButton;
@@ -52,7 +56,7 @@ namespace StarCitizenUA
         private readonly UpdateCheckerService _updateCheckerService;
         private readonly CleanupController _cacheCleanupController;
 
-        public MainWindow(MainWindowViewModel viewModel, IWindowHelper windowHelper, ILocalizationInstaller localizationInstaller, IReadmeService readmeService, IUpdater updater, UpdateCheckerService updateCheckerService)
+        public MainWindow(MainWindowViewModel viewModel, IWindowHelper windowHelper, ILocalizationInstaller localizationInstaller, IReadmeService readmeService, IUpdater updater, UpdateCheckerService updateCheckerService, IApplicationUpdateService applicationUpdateService, IUpdateChannelService updateChannelService, IApplicationVersionProvider applicationVersionProvider)
         {
             InitializeComponent();
 
@@ -62,6 +66,9 @@ namespace StarCitizenUA
             _readmeService = readmeService;
             _updater = updater;
             _updateCheckerService = updateCheckerService;
+            _applicationUpdateService = applicationUpdateService;
+            _updateChannelService = updateChannelService;
+            _applicationVersionProvider = applicationVersionProvider;
 
             _toastService = new ToastService(AppToast.ToastBorder, AppToast.ToastText);
             _linkService = new LinkService(_toastService);
@@ -78,7 +85,12 @@ namespace StarCitizenUA
             DataContext = _viewModel;
             DefaultPathText = TxtSelectedPath.Text;
 
-            _buttonHelper.SetButtonState(BtnAutoSearch, _viewModel.IsGameFolderSet);
+            CanvasHome.UpdateCheckButtonControl.Click += CheckUpdateButton_Click;
+            CanvasHome.CurrentVersionTextControl.Text = _applicationVersionProvider.GetCurrentVersion().ToString();
+            CanvasHome.UpdateStatusTextControl.Text = "Натисніть, щоб перевірити оновлення";
+
+            CanvasSettings.UpdateChannelSelector.ItemsSource = Enum.GetValues(typeof(UpdateChannel));
+            CanvasSettings.UpdateChannelSelector.SelectionChanged += UpdateChannelSelector_SelectionChanged;
 
             Loaded += MainWindow_Loaded;
             EnvSelector.GearClicked += EnvSelector_GearClicked;
@@ -121,8 +133,90 @@ namespace StarCitizenUA
 
             await Task.WhenAll(tasks).ConfigureAwait(true);
 
+            InitializeUpdateChannel();
+
             _ = ShowStartupToastsAsync();
             _ = _cacheCleanupController.RunStartupPromptAsync(CancellationToken.None);
+        }
+
+        private void InitializeUpdateChannel()
+        {
+            var currentChannel = _updateChannelService.GetUpdateChannel();
+            if (Enum.TryParse<UpdateChannel>(currentChannel, out var channel))
+                CanvasSettings.UpdateChannelSelector.SelectedItem = channel;
+            else
+                CanvasSettings.UpdateChannelSelector.SelectedItem = UpdateChannel.Stable;
+        }
+
+        private async void CheckUpdateButton_Click(object sender, RoutedEventArgs e)
+        {
+            CanvasHome.UpdateCheckButtonControl.IsEnabled = false;
+            CanvasHome.UpdateStatusTextControl.Text = "Перевірка...";
+            CanvasHome.UpdateStatusTextControl.Foreground = Brushes.LightSlateGray;
+
+            try
+            {
+                var result = await _applicationUpdateService.CheckForUpdatesAsync(CancellationToken.None).ConfigureAwait(true);
+
+                CanvasHome.CurrentVersionTextControl.Text = result.CurrentVersion?.ToString() ?? "—";
+                CanvasHome.AvailableVersionTextControl.Text = result.LatestVersion?.ToString() ?? "—";
+
+                switch (result.Status)
+                {
+                    case UpdateCheckStatus.UpToDate:
+                        CanvasHome.UpdateStatusTextControl.Text = "Актуальна версія";
+                        CanvasHome.UpdateStatusTextControl.Foreground = Brushes.LimeGreen;
+                        await _toastService.ShowToastAsync("Ви використовуєте актуальну версію.").ConfigureAwait(true);
+                        break;
+
+                    case UpdateCheckStatus.UpdateAvailable:
+                        CanvasHome.UpdateStatusTextControl.Text = $"Доступна версія {result.LatestVersion}";
+                        CanvasHome.UpdateStatusTextControl.Foreground = Brushes.Orange;
+                        await _toastService.ShowToastAsync($"Доступна версія {result.LatestVersion}.").ConfigureAwait(true);
+
+                        var dialogResult = MessageBox.Show(
+                            $"Доступна нова версія {result.LatestVersion}. Бажаєте завантажити та встановити?",
+                            "Оновлення",
+                            MessageBoxButton.YesNo,
+                            MessageBoxImage.Question);
+
+                        if (dialogResult == MessageBoxResult.Yes)
+                        {
+                            await _toastService.ShowToastAsync("Встановлення оновлення буде реалізовано в наступних задачах.").ConfigureAwait(true);
+                        }
+                        break;
+
+                    case UpdateCheckStatus.CheckFailed:
+                        CanvasHome.UpdateStatusTextControl.Text = "Помилка перевірки";
+                        CanvasHome.UpdateStatusTextControl.Foreground = Brushes.Red;
+                        await _toastService.ShowToastAsync($"Помилка: {result.Message}").ConfigureAwait(true);
+                        break;
+
+                    case UpdateCheckStatus.ChannelNotFound:
+                        CanvasHome.UpdateStatusTextControl.Text = "Канал не знайдено";
+                        CanvasHome.UpdateStatusTextControl.Foreground = Brushes.Gray;
+                        await _toastService.ShowToastAsync("Для поточного каналу не знайдено релізів.").ConfigureAwait(true);
+                        break;
+                }
+            }
+            catch (Exception ex)
+            {
+                CanvasHome.UpdateStatusTextControl.Text = "Помилка";
+                CanvasHome.UpdateStatusTextControl.Foreground = Brushes.Red;
+                await _toastService.ShowToastAsync($"Помилка: {ex.Message}").ConfigureAwait(true);
+            }
+            finally
+            {
+                CanvasHome.UpdateCheckButtonControl.IsEnabled = true;
+            }
+        }
+
+        private void UpdateChannelSelector_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (CanvasSettings.UpdateChannelSelector.SelectedItem is UpdateChannel channel)
+            {
+                _updateChannelService.SetUpdateChannel(channel.ToString());
+            }
         }
 
         private void EnvSelector_SelectionChanged(object? sender, EventArgs e)
