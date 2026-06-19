@@ -3,6 +3,28 @@
 ##
 ## Get latest from https://github.com/github/gitignore/blob/master/VisualStudio.gitignore
 
+# AI / LLM tools
+.history/
+.speckit/
+.codex/
+.kilocode/
+.kilo/
+.opencode/
+
+# Local IDE artifacts
+.groupedtimelineinclude
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# Rider
+.idea/
+*.sln.iml
+
+# Coverage
+coverage/
+
 # User-specific files
 *.rsuser
 *.suo
