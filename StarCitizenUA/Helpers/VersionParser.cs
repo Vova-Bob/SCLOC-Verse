@@ -6,7 +6,7 @@ namespace StarCitizenUA.Helpers
     public static class VersionParser
     {
         private static readonly Regex VersionRegex = new(
-            @"^v?(?\u003cmajor\u003e\d+)(\.(?\u003cminor\u003e\d+))?(\.(?\u003cbuild\u003e\d+))?(\.(?\u003crevision\u003e\d+))?(?:[-+].*)?$",
+            @"^v?(?<major>\d+)(\.(?<minor>\d+))?(\.(?<build>\d+))?(\.(?<revision>\d+))?(?:[-+].*)?$",
             RegexOptions.Compiled | RegexOptions.IgnoreCase);
 
         public static Version Parse(string? input)
