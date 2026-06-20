@@ -122,7 +122,12 @@ namespace StarCitizenUA.Windows
 
         private void VersionsGrid_MouseDoubleClick(object sender, MouseButtonEventArgs e)
         {
-            if (VersionsGrid.SelectedItem is not VersionManagerItem item || item.IsInstalled)
+            // Ігноруємо подвійний клік — використовуємо лише явну кнопку Встановити
+        }
+
+        private void InstallButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is not Button button || button.DataContext is not VersionManagerItem item || item.IsInstalled)
                 return;
 
             _installRequested(item.Release);
