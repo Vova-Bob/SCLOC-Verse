@@ -42,6 +42,7 @@ namespace StarCitizenUA
         private readonly IReleaseChannelResolver _releaseChannelResolver;
         private readonly UpdateStatusPresenter _updateStatusPresenter;
         private bool _showGameFolderToast = true;
+        private DateTime? _suppressStartupUpdateCheckUntil;
         private EnvironmentSelector EnvSelector => CanvasLocalization.EnvironmentSelector;
         private Button BtnInstall => CanvasLocalization.InstallButton;
         private Button BtnLocalisationDelete => CanvasLocalization.DeleteButton;
@@ -268,6 +269,13 @@ namespace StarCitizenUA
         private async Task RunStartupUpdateCheckAsync()
         {
             await Task.Delay(UpdateConstants.StartupUpdateCheckDelay).ConfigureAwait(true);
+
+            if (_suppressStartupUpdateCheckUntil.HasValue && DateTime.Now < _suppressStartupUpdateCheckUntil.Value)
+            {
+                _backgroundUpdateMonitor.Start();
+                return;
+            }
+
             await RunManualUpdateCheckAsync().ConfigureAwait(true);
             _backgroundUpdateMonitor.Start();
         }
@@ -427,39 +435,50 @@ namespace StarCitizenUA
 
         private async Task InstallReleaseAsync(GitHubRelease release)
         {
-            var version = VersionParser.Parse(release.TagName);
-            var asset = release.Assets.FirstOrDefault(a => a.Name.Equals(UpdateConstants.SetupAssetName, StringComparison.OrdinalIgnoreCase));
-            if (asset == null)
+            try
             {
-                await _toastService.ShowToastAsync("Не знайдено інсталятор у релізі.").ConfigureAwait(true);
-                return;
-            }
-
-            var checksumAsset = release.Assets.FirstOrDefault(a => a.Name.Equals(UpdateConstants.ChecksumAssetName, StringComparison.OrdinalIgnoreCase));
-            string checksum = string.Empty;
-            if (checksumAsset != null)
-            {
-                try
+                var version = VersionParser.Parse(release.TagName);
+                var asset = release.Assets.FirstOrDefault(a => a.Name.Equals(UpdateConstants.SetupAssetName, StringComparison.OrdinalIgnoreCase));
+                if (asset == null)
                 {
-                    checksum = await _gitHubReleaseClient.DownloadTextAsync(checksumAsset.BrowserDownloadUrl, CancellationToken.None).ConfigureAwait(true);
-                    checksum = checksum.Trim().Split(' ').FirstOrDefault() ?? string.Empty;
+                    await _toastService.ShowToastAsync("Не знайдено інсталятор у релізі.").ConfigureAwait(true);
+                    return;
                 }
-                catch { /* ігноруємо помилку завантаження checksum */ }
+
+                var checksumAsset = release.Assets.FirstOrDefault(a => a.Name.Equals(UpdateConstants.ChecksumAssetName, StringComparison.OrdinalIgnoreCase));
+                string checksum = string.Empty;
+                if (checksumAsset != null)
+                {
+                    try
+                    {
+                        checksum = await _gitHubReleaseClient.DownloadTextAsync(checksumAsset.BrowserDownloadUrl, CancellationToken.None).ConfigureAwait(true);
+                        checksum = checksum.Trim().Split(' ').FirstOrDefault() ?? string.Empty;
+                    }
+                    catch { /* ігноруємо помилку завантаження checksum */ }
+                }
+
+                var result = new UpdateCheckResult
+                {
+                    IsUpdateAvailable = true,
+                    CurrentVersion = _applicationVersionProvider.GetCurrentVersion(),
+                    LatestVersion = version,
+                    DownloadUrl = asset.BrowserDownloadUrl,
+                    ExpectedChecksum = checksum,
+                    ReleaseNotes = release.Body,
+                    Channel = _releaseChannelResolver.ResolveChannel(release),
+                    Status = UpdateCheckStatus.UpdateAvailable
+                };
+
+                // Пригнічуємо автоматичну перевірку оновлень при наступному запуску,
+                // щоб тільки що встановлена версія не пропонувала оновитися одразу після перезапуску.
+                _suppressStartupUpdateCheckUntil = DateTime.Now.AddMinutes(5);
+
+                await InstallUpdateAsync(result).ConfigureAwait(true);
             }
-
-            var result = new UpdateCheckResult
+            catch (Exception ex)
             {
-                IsUpdateAvailable = true,
-                CurrentVersion = _applicationVersionProvider.GetCurrentVersion(),
-                LatestVersion = version,
-                DownloadUrl = asset.BrowserDownloadUrl,
-                ExpectedChecksum = checksum,
-                ReleaseNotes = release.Body,
-                Channel = _releaseChannelResolver.ResolveChannel(release),
-                Status = UpdateCheckStatus.UpdateAvailable
-            };
-
-            await InstallUpdateAsync(result).ConfigureAwait(true);
+                await _toastService.ShowToastAsync($"Помилка встановлення версії: {ex.Message}").ConfigureAwait(true);
+            }
         }
 
         private void EnvSelector_SelectionChanged(object? sender, EventArgs e)
