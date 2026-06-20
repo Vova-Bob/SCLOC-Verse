@@ -4,6 +4,7 @@ using StarCitizenUA.Interfaces;
 using StarCitizenUA.Models.ApplicationUpdate;
 using StarCitizenUA.Models.LiaModels;
 using StarCitizenUA.Services;
+using StarCitizenUA.Services.ApplicationUpdate;
 using StarCitizenUA.Services.Cache;
 using StarCitizenUA.Windows;
 using StarCitizenUA.Services.LiaServices;
@@ -30,12 +31,14 @@ namespace StarCitizenUA
         private readonly ILinkService _linkService;
         private readonly IUpdater _updater;
         private readonly IApplicationUpdateService _applicationUpdateService;
+        private readonly IBackgroundUpdateMonitor _backgroundUpdateMonitor;
         private readonly IUpdateChannelService _updateChannelService;
         private readonly IApplicationVersionProvider _applicationVersionProvider;
         private readonly IUpdateDownloader _updateDownloader;
         private readonly IUpdateInstaller _updateInstaller;
         private readonly IUpdateHistoryService _updateHistoryService;
         private readonly IUpdateVerifier _updateVerifier;
+        private readonly UpdateStatusPresenter _updateStatusPresenter;
         private bool _showGameFolderToast = true;
         private EnvironmentSelector EnvSelector => CanvasLocalization.EnvironmentSelector;
         private Button BtnInstall => CanvasLocalization.InstallButton;
@@ -62,7 +65,7 @@ namespace StarCitizenUA
         private readonly UpdateCheckerService _updateCheckerService;
         private readonly CleanupController _cacheCleanupController;
 
-        public MainWindow(MainWindowViewModel viewModel, IWindowHelper windowHelper, ILocalizationInstaller localizationInstaller, IReadmeService readmeService,     IUpdater updater, UpdateCheckerService updateCheckerService, IApplicationUpdateService applicationUpdateService, IUpdateChannelService updateChannelService, IApplicationVersionProvider applicationVersionProvider, IUpdateDownloader updateDownloader, IUpdateInstaller updateInstaller, IUpdateHistoryService updateHistoryService, IUpdateVerifier updateVerifier)
+        public MainWindow(MainWindowViewModel viewModel, IWindowHelper windowHelper, ILocalizationInstaller localizationInstaller, IReadmeService readmeService,     IUpdater updater, UpdateCheckerService updateCheckerService, IApplicationUpdateService applicationUpdateService, IBackgroundUpdateMonitor backgroundUpdateMonitor, IUpdateChannelService updateChannelService, IApplicationVersionProvider applicationVersionProvider, IUpdateDownloader updateDownloader, IUpdateInstaller updateInstaller, IUpdateHistoryService updateHistoryService, IUpdateVerifier updateVerifier)
         {
             InitializeComponent();
 
@@ -73,6 +76,7 @@ namespace StarCitizenUA
             _updater = updater;
             _updateCheckerService = updateCheckerService;
             _applicationUpdateService = applicationUpdateService;
+            _backgroundUpdateMonitor = backgroundUpdateMonitor;
             _updateChannelService = updateChannelService;
             _applicationVersionProvider = applicationVersionProvider;
             _updateDownloader = updateDownloader;
@@ -82,6 +86,13 @@ namespace StarCitizenUA
 
             _toastService = new ToastService(AppToast.ToastBorder, AppToast.ToastText);
             _linkService = new LinkService(_toastService);
+            _updateStatusPresenter = new UpdateStatusPresenter(
+                CanvasHome.CurrentVersionTextControl,
+                CanvasHome.AvailableVersionTextControl,
+                CanvasHome.UpdateStatusTextControl,
+                CanvasHome.UpdateCheckButtonControl,
+                CanvasHome.UpdatePanel,
+                CanvasHome.HideUpdatePanelStoryboard);
 
             var options = new CacheCleanupOptions();
             var inspector = new ShaderCacheInspector(options);
@@ -99,6 +110,9 @@ namespace StarCitizenUA
 
             CanvasHome.UpdateCheckButtonControl.Click += CheckUpdateButton_Click;
             CanvasHome.CurrentVersionTextControl.Text = _applicationVersionProvider.GetCurrentVersion().ToString();
+
+            _backgroundUpdateMonitor.UpdateAvailable += OnBackgroundUpdateAvailable;
+            _backgroundUpdateMonitor.CheckFailed += OnBackgroundUpdateCheckFailed;
 
             CanvasSettings.UpdateChannelSelector.ItemsSource = Enum.GetValues(typeof(UpdateChannel));
             CanvasSettings.UpdateChannelSelector.SelectionChanged += UpdateChannelSelector_SelectionChanged;
@@ -149,6 +163,8 @@ namespace StarCitizenUA
 
             _ = ShowStartupToastsAsync();
             _ = _cacheCleanupController.RunStartupPromptAsync(CancellationToken.None);
+
+            _ = RunStartupUpdateCheckAsync();
         }
 
         private void InitializeUpdateChannel()
@@ -162,73 +178,89 @@ namespace StarCitizenUA
 
         private async void CheckUpdateButton_Click(object sender, RoutedEventArgs e)
         {
-            CanvasHome.UpdateCheckButtonControl.IsEnabled = false;
-            CanvasHome.UpdateStatusTextControl.Text = "Перевірка...";
-            CanvasHome.UpdateStatusTextControl.Foreground = Brushes.LightSlateGray;
+            await RunManualUpdateCheckAsync().ConfigureAwait(true);
+        }
+
+        private async Task RunManualUpdateCheckAsync()
+        {
+            var currentVersion = _applicationVersionProvider.GetCurrentVersion();
+            _updateStatusPresenter.ShowChecking(currentVersion);
 
             try
             {
                 var result = await _applicationUpdateService.CheckForUpdatesAsync(CancellationToken.None).ConfigureAwait(true);
-
-                CanvasHome.CurrentVersionTextControl.Text = result.CurrentVersion?.ToString() ?? "—";
-                CanvasHome.AvailableVersionTextControl.Text = result.LatestVersion?.ToString() ?? "—";
-
-                switch (result.Status)
-                {
-                    case UpdateCheckStatus.UpToDate:
-                        CanvasHome.UpdateStatusTextControl.Text = "Актуальна версія";
-                        CanvasHome.UpdateStatusTextControl.Foreground = Brushes.LimeGreen;
-                        await _updateHistoryService.AddEntryAsync(CreateHistoryEntry(UpdateOperation.Check, UpdateOperationResult.Success, result)).ConfigureAwait(true);
-                        await _toastService.ShowToastAsync("Ви використовуєте актуальну версію.").ConfigureAwait(true);
-                        break;
-
-                    case UpdateCheckStatus.UpdateAvailable:
-                        CanvasHome.UpdateStatusTextControl.Text = $"Доступна версія {result.LatestVersion}";
-                        CanvasHome.UpdateStatusTextControl.Foreground = Brushes.Orange;
-                        await _updateHistoryService.AddEntryAsync(CreateHistoryEntry(UpdateOperation.Check, UpdateOperationResult.Success, result)).ConfigureAwait(true);
-                        await _toastService.ShowToastAsync($"Доступна версія {result.LatestVersion}.").ConfigureAwait(true);
-
-                        var dialogResult = MessageBox.Show(
-                            $"Доступна нова версія {result.LatestVersion}. Бажаєте завантажити та встановити?",
-                            "Оновлення",
-                            MessageBoxButton.YesNo,
-                            MessageBoxImage.Question);
-
-                        if (dialogResult == MessageBoxResult.Yes)
-                        {
-                            await InstallUpdateAsync(result).ConfigureAwait(true);
-                        }
-                        else
-                        {
-                            await _updateHistoryService.AddEntryAsync(CreateHistoryEntry(UpdateOperation.Install, UpdateOperationResult.Cancelled, result, "Користувач відмовився від встановлення.")).ConfigureAwait(true);
-                        }
-                        break;
-
-                    case UpdateCheckStatus.CheckFailed:
-                        CanvasHome.UpdateStatusTextControl.Text = "Помилка перевірки";
-                        CanvasHome.UpdateStatusTextControl.Foreground = Brushes.Red;
-                        await _updateHistoryService.AddEntryAsync(CreateHistoryEntry(UpdateOperation.Check, UpdateOperationResult.Failed, result, result.Message)).ConfigureAwait(true);
-                        await _toastService.ShowToastAsync($"Помилка: {result.Message}").ConfigureAwait(true);
-                        break;
-
-                    case UpdateCheckStatus.ChannelNotFound:
-                        CanvasHome.UpdateStatusTextControl.Text = "Канал не знайдено";
-                        CanvasHome.UpdateStatusTextControl.Foreground = Brushes.Gray;
-                        await _updateHistoryService.AddEntryAsync(CreateHistoryEntry(UpdateOperation.Check, UpdateOperationResult.Skipped, result, "Не знайдено релізів для поточного каналу.")).ConfigureAwait(true);
-                        await _toastService.ShowToastAsync("Для поточного каналу не знайдено релізів.").ConfigureAwait(true);
-                        break;
-                }
+                await ApplyUpdateCheckResultAsync(result).ConfigureAwait(true);
             }
             catch (Exception ex)
             {
-                CanvasHome.UpdateStatusTextControl.Text = "Помилка";
-                CanvasHome.UpdateStatusTextControl.Foreground = Brushes.Red;
+                _updateStatusPresenter.ShowCheckFailed(new UpdateCheckResult { Message = ex.Message });
                 await _toastService.ShowToastAsync($"Помилка: {ex.Message}").ConfigureAwait(true);
             }
             finally
             {
-                CanvasHome.UpdateCheckButtonControl.IsEnabled = true;
+                _updateStatusPresenter.EnableActionButton();
             }
+        }
+
+        private async Task ApplyUpdateCheckResultAsync(UpdateCheckResult result)
+        {
+            switch (result.Status)
+            {
+                case UpdateCheckStatus.UpToDate:
+                    _updateStatusPresenter.ShowUpToDate(result);
+                    await _updateHistoryService.AddEntryAsync(CreateHistoryEntry(UpdateOperation.Check, UpdateOperationResult.Success, result)).ConfigureAwait(true);
+                    await _toastService.ShowToastAsync("Ви використовуєте актуальну версію.").ConfigureAwait(true);
+                    break;
+
+                case UpdateCheckStatus.UpdateAvailable:
+                    _updateStatusPresenter.ShowUpdateAvailable(result);
+                    await _updateHistoryService.AddEntryAsync(CreateHistoryEntry(UpdateOperation.Check, UpdateOperationResult.Success, result)).ConfigureAwait(true);
+
+                    var dialogResult = MessageBox.Show(
+                        $"Доступна нова версія {result.LatestVersion}. Бажаєте завантажити та встановити?",
+                        "Оновлення програми",
+                        MessageBoxButton.YesNo,
+                        MessageBoxImage.Question);
+
+                    if (dialogResult == MessageBoxResult.Yes)
+                    {
+                        await InstallUpdateAsync(result).ConfigureAwait(true);
+                    }
+                    else
+                    {
+                        await _updateHistoryService.AddEntryAsync(CreateHistoryEntry(UpdateOperation.Install, UpdateOperationResult.Cancelled, result, "Користувач відмовився від встановлення.")).ConfigureAwait(true);
+                    }
+                    break;
+
+                case UpdateCheckStatus.CheckFailed:
+                    _updateStatusPresenter.ShowCheckFailed(result);
+                    await _updateHistoryService.AddEntryAsync(CreateHistoryEntry(UpdateOperation.Check, UpdateOperationResult.Failed, result, result.Message)).ConfigureAwait(true);
+                    await _toastService.ShowToastAsync($"Помилка: {result.Message}").ConfigureAwait(true);
+                    break;
+
+                case UpdateCheckStatus.ChannelNotFound:
+                    _updateStatusPresenter.ShowChannelNotFound(result);
+                    await _updateHistoryService.AddEntryAsync(CreateHistoryEntry(UpdateOperation.Check, UpdateOperationResult.Skipped, result, "Не знайдено релізів для поточного каналу.")).ConfigureAwait(true);
+                    await _toastService.ShowToastAsync("Для поточного каналу не знайдено релізів.").ConfigureAwait(true);
+                    break;
+            }
+        }
+
+        private async Task RunStartupUpdateCheckAsync()
+        {
+            await Task.Delay(UpdateConstants.StartupUpdateCheckDelay).ConfigureAwait(true);
+            await RunManualUpdateCheckAsync().ConfigureAwait(true);
+            _backgroundUpdateMonitor.Start();
+        }
+
+        private async void OnBackgroundUpdateAvailable(object? sender, UpdateCheckResult result)
+        {
+            await _toastService.ShowToastAsync($"Доступна нова версія SCLOC-Verse {result.LatestVersion}").ConfigureAwait(true);
+        }
+
+        private void OnBackgroundUpdateCheckFailed(object? sender, Exception exception)
+        {
+            System.Diagnostics.Debug.WriteLine($"[BackgroundUpdateCheckFailed] {exception}");
         }
 
         private async Task InstallUpdateAsync(UpdateCheckResult result)

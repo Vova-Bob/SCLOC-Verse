@@ -101,23 +101,33 @@
     </TextBlock>
 
     <!-- Панель оновлення -->
-    <StackPanel Canvas.Left="700" Canvas.Top="30" Width="220">
+    <StackPanel x:Name="UpdatePanel" Canvas.Left="700" Canvas.Top="30" Width="220" Opacity="1" Visibility="Visible">
+        <StackPanel.Resources>
+            <Storyboard x:Key="HideUpdatePanelStoryboard">
+                <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                 From="1" To="0"
+                                 Duration="0:0:0.4"/>
+                <ObjectAnimationUsingKeyFrames Storyboard.TargetProperty="Visibility">
+                    <DiscreteObjectKeyFrame KeyTime="0:0:0.4" Value="{x:Static Visibility.Collapsed}"/>
+                </ObjectAnimationUsingKeyFrames>
+            </Storyboard>
+        </StackPanel.Resources>
         <Border Background="#CC1F3C4C"
                 CornerRadius="12"
                 BorderBrush="#4A90E2"
                 BorderThickness="1"
                 Padding="15">
             <StackPanel>
-                <TextBlock Text="Оновлення" Foreground="White" FontSize="18" FontWeight="Bold" Margin="0,0,0,12"/>
+                <TextBlock Text="Оновлення програми" Foreground="White" FontSize="18" FontWeight="Bold" Margin="0,0,0,12"/>
 
-                <TextBlock Text="Поточна версія:" Foreground="#CCCCCC" FontSize="12"/>
+                <TextBlock Text="Версія:" Foreground="#CCCCCC" FontSize="12"/>
                 <TextBlock x:Name="CurrentVersionTextBlock" Text="—" Foreground="White" FontSize="13" Margin="0,0,0,10"/>
 
                 <TextBlock Text="Доступна версія:" Foreground="#CCCCCC" FontSize="12"/>
                 <TextBlock x:Name="AvailableVersionTextBlock" Text="—" Foreground="White" FontSize="13" Margin="0,0,0,10"/>
 
                 <TextBlock Text="Статус:" Foreground="#CCCCCC" FontSize="12"/>
-                <TextBlock x:Name="UpdateStatusTextBlock" Text="Не перевірено" TextWrapping="Wrap" Foreground="White" FontSize="13" Margin="0,0,0,14"/>
+                <TextBlock x:Name="UpdateStatusTextBlock" Text="Перевіряємо оновлення..." TextWrapping="Wrap" Foreground="White" FontSize="13" Margin="0,0,0,14"/>
 
                 <Button x:Name="CheckUpdateButton" Content="Перевірити оновлення" Width="180" Height="34" HorizontalAlignment="Left"/>
             </StackPanel>

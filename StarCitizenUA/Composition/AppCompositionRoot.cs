@@ -21,6 +21,7 @@ namespace StarCitizenUA.Composition
         private readonly IApplicationVersionProvider _applicationVersionProvider;
         private readonly IUpdateChannelService _updateChannelService;
         private readonly IApplicationUpdateService _applicationUpdateService;
+        private readonly IBackgroundUpdateMonitor _backgroundUpdateMonitor;
         private readonly IUpdateDownloader _updateDownloader;
         private readonly IUpdateInstaller _updateInstaller;
         private readonly IUpdateHistoryService _updateHistoryService;
@@ -51,6 +52,8 @@ namespace StarCitizenUA.Composition
                 updateCacheService,
                 releaseChannelResolver);
 
+            _backgroundUpdateMonitor = new BackgroundUpdateMonitor(_applicationUpdateService);
+
             _updateDownloader = new UpdateDownloader(httpClient);
             _updateInstaller = new UpdateInstaller(new UpdateScriptBuilder());
             _updateHistoryService = new UpdateHistoryService();
@@ -74,6 +77,7 @@ namespace StarCitizenUA.Composition
                 _updater,
                 _updateCheckerService,
                 _applicationUpdateService,
+                _backgroundUpdateMonitor,
                 _updateChannelService,
                 _applicationVersionProvider,
                 _updateDownloader,
