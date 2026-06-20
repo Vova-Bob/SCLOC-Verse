@@ -180,6 +180,91 @@
             </Setter>
         </Style>
 
+        <!-- Стиль для ComboBox каналу оновлення -->
+        <Style x:Key="UpdateChannelComboBoxStyle" TargetType="{x:Type ComboBox}">
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Background" Value="#0C1A2A"/>
+            <Setter Property="BorderBrush" Value="#2478A9"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="6,2"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type ComboBox}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+
+                            <Border x:Name="Border"
+                                    Grid.ColumnSpan="2"
+                                    Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                    CornerRadius="6"/>
+
+                            <ContentPresenter x:Name="ContentSite"
+                                              Grid.Column="0"
+                                              Margin="{TemplateBinding Padding}"
+                                              VerticalAlignment="Center"
+                                              Content="{Binding SelectedItem, RelativeSource={RelativeSource TemplatedParent}}"
+                                              ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
+                                              ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}"/>
+
+                            <ToggleButton x:Name="ToggleButton"
+                                          Grid.Column="1"
+                                          Width="20" Height="20"
+                                          Margin="0,0,4,0"
+                                          Background="Transparent"
+                                          BorderBrush="{x:Null}"
+                                          Focusable="False"
+                                          IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}">
+                                <Path x:Name="Arrow"
+                                      Data="M0,3 L6,9 L12,3"
+                                      Stroke="#A7C6E7"
+                                      StrokeThickness="2"
+                                      HorizontalAlignment="Center"
+                                      VerticalAlignment="Center">
+                                    <Path.RenderTransform>
+                                        <RotateTransform CenterX="6" CenterY="6"/>
+                                    </Path.RenderTransform>
+                                </Path>
+                            </ToggleButton>
+
+                            <Popup x:Name="PART_Popup"
+                                   Placement="Bottom"
+                                   IsOpen="{TemplateBinding IsDropDownOpen}"
+                                   PopupAnimation="Fade"
+                                   AllowsTransparency="True">
+                                <Border Background="#0C1A2A"
+                                        BorderBrush="#2478A9"
+                                        BorderThickness="1"
+                                        CornerRadius="6"
+                                        MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource Mode=FindAncestor, AncestorType={x:Type ComboBox}}}">
+                                    <ScrollViewer>
+                                        <StackPanel IsItemsHost="True"/>
+                                    </ScrollViewer>
+                                </Border>
+                            </Popup>
+                        </Grid>
+
+                        <ControlTemplate.Triggers>
+                            <Trigger SourceName="ToggleButton" Property="IsChecked" Value="True">
+                                <Setter TargetName="Arrow" Property="RenderTransform">
+                                    <Setter.Value>
+                                        <RotateTransform Angle="180" CenterX="6" CenterY="6"/>
+                                    </Setter.Value>
+                                </Setter>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <!-- Стиль для Автопошуку/Скинути: той самий шаблон, інші кольори -->
         <Style x:Key="AutoSearchButton" TargetType="{x:Type Button}" BasedOn="{StaticResource ActionButton}">
             <Style.Triggers>
@@ -325,7 +410,14 @@
 
     <!-- Канал оновлення -->
     <TextBlock Canvas.Left="70" Canvas.Top="505" Text="Канал оновлення:" Foreground="White" FontSize="14"/>
-    <ComboBox x:Name="UpdateChannelComboBox" Canvas.Left="220" Canvas.Top="502" Width="150" Height="28" DisplayMemberPath="DisplayName" SelectedValuePath="Value"/>
+    <ComboBox x:Name="UpdateChannelComboBox"
+               Style="{StaticResource UpdateChannelComboBoxStyle}"
+               Canvas.Left="220"
+               Canvas.Top="502"
+               Width="150"
+               Height="28"
+               DisplayMemberPath="DisplayName"
+               SelectedValuePath="Value"/>
 
     <!-- Кнопка менеджера версій -->
     <Button x:Name="UpdateHistoryButton"
