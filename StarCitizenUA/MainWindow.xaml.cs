@@ -275,7 +275,7 @@ namespace StarCitizenUA
                 return;
             }
 
-            await RunManualUpdateCheckAsync(forceRefresh: false).ConfigureAwait(true);
+            await RunManualUpdateCheckAsync(forceRefresh: true).ConfigureAwait(true);
             _backgroundUpdateMonitor.Start();
         }
 
