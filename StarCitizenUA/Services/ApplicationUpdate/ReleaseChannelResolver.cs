@@ -12,11 +12,7 @@ namespace StarCitizenUA.Services.ApplicationUpdate
             if (release == null)
                 throw new ArgumentNullException(nameof(release));
 
-            var tagName = release.TagName;
-            if (string.IsNullOrWhiteSpace(tagName))
-                throw new ArgumentException("TagName cannot be empty.", nameof(release));
-
-            return ResolveFromTag(tagName);
+            return ResolveFromRelease(release);
         }
 
         public bool IsChannelMatch(GitHubRelease release, UpdateChannel channel)
@@ -27,17 +23,9 @@ namespace StarCitizenUA.Services.ApplicationUpdate
             return ResolveChannel(release) == channel;
         }
 
-        private static UpdateChannel ResolveFromTag(string tagName)
+        private static UpdateChannel ResolveFromRelease(GitHubRelease release)
         {
-            var lowerTag = tagName.ToLowerInvariant();
-
-            if (lowerTag.Contains("-experimental"))
-                return UpdateChannel.Experimental;
-
-            if (lowerTag.Contains("-dev"))
-                return UpdateChannel.Dev;
-
-            return UpdateChannel.Stable;
+            return release.Prerelease ? UpdateChannel.Dev : UpdateChannel.Stable;
         }
     }
 }
