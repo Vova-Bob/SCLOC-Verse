@@ -39,7 +39,6 @@ namespace StarCitizenUA
         private readonly IUpdateHistoryService _updateHistoryService;
         private readonly IUpdateVerifier _updateVerifier;
         private readonly IGitHubReleaseClient _gitHubReleaseClient;
-        private readonly IReleaseChannelResolver _releaseChannelResolver;
         private readonly UpdateStatusPresenter _updateStatusPresenter;
         private bool _showGameFolderToast = true;
         private DateTime? _suppressStartupUpdateCheckUntil;
@@ -68,7 +67,7 @@ namespace StarCitizenUA
         private readonly UpdateCheckerService _updateCheckerService;
         private readonly CleanupController _cacheCleanupController;
 
-        public MainWindow(MainWindowViewModel viewModel, IWindowHelper windowHelper, ILocalizationInstaller localizationInstaller, IReadmeService readmeService,     IUpdater updater, UpdateCheckerService updateCheckerService, IApplicationUpdateService applicationUpdateService, IBackgroundUpdateMonitor backgroundUpdateMonitor, IUpdateChannelService updateChannelService, IApplicationVersionProvider applicationVersionProvider, IUpdateDownloader updateDownloader, IUpdateInstaller updateInstaller, IUpdateHistoryService updateHistoryService, IUpdateVerifier updateVerifier, IGitHubReleaseClient gitHubReleaseClient, IReleaseChannelResolver releaseChannelResolver)
+        public MainWindow(MainWindowViewModel viewModel, IWindowHelper windowHelper, ILocalizationInstaller localizationInstaller, IReadmeService readmeService,     IUpdater updater, UpdateCheckerService updateCheckerService, IApplicationUpdateService applicationUpdateService, IBackgroundUpdateMonitor backgroundUpdateMonitor, IUpdateChannelService updateChannelService, IApplicationVersionProvider applicationVersionProvider, IUpdateDownloader updateDownloader, IUpdateInstaller updateInstaller, IUpdateHistoryService updateHistoryService, IUpdateVerifier updateVerifier, IGitHubReleaseClient gitHubReleaseClient)
         {
             InitializeComponent();
 
@@ -87,7 +86,6 @@ namespace StarCitizenUA
             _updateHistoryService = updateHistoryService;
             _updateVerifier = updateVerifier;
             _gitHubReleaseClient = gitHubReleaseClient;
-            _releaseChannelResolver = releaseChannelResolver;
 
             _toastService = new ToastService(AppToast.ToastBorder, AppToast.ToastText);
             _linkService = new LinkService(_toastService);
@@ -435,13 +433,12 @@ namespace StarCitizenUA
 
         private void UpdateHistoryButton_Click(object sender, RoutedEventArgs e)
         {
-            var window = new UpdateHistoryWindow(
-                _gitHubReleaseClient,
-                _applicationVersionProvider,
-                _updateChannelService,
-                _releaseChannelResolver,
-                _linkService,
-                release => _ = InstallReleaseAsync(release))
+                var window = new UpdateHistoryWindow(
+                    _gitHubReleaseClient,
+                    _applicationVersionProvider,
+                    _updateChannelService,
+                    _linkService,
+                    release => _ = InstallReleaseAsync(release))
             {
                 Owner = this
             };
@@ -481,7 +478,7 @@ namespace StarCitizenUA
                     DownloadUrl = asset.BrowserDownloadUrl,
                     ExpectedChecksum = checksum,
                     ReleaseNotes = release.Body,
-                    Channel = _releaseChannelResolver.ResolveChannel(release),
+                    Channel = release.Prerelease ? UpdateChannel.Dev : UpdateChannel.Stable,
                     Status = UpdateCheckStatus.UpdateAvailable
                 };
 

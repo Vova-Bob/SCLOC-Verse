@@ -27,7 +27,6 @@ namespace StarCitizenUA.Composition
         private readonly IUpdateHistoryService _updateHistoryService;
         private readonly IUpdateVerifier _updateVerifier;
         private readonly IGitHubReleaseClient _gitHubReleaseClient;
-        private readonly IReleaseChannelResolver _releaseChannelResolver;
 
         public AppCompositionRoot()
         {
@@ -43,7 +42,6 @@ namespace StarCitizenUA.Composition
             var httpClient = new HttpClient();
             var gitHubClient = new GitHubReleaseClient(httpClient, UpdateConstants.UserAgent);
             var updateCacheService = new UpdateCacheService();
-            var releaseChannelResolver = new ReleaseChannelResolver();
 
             _applicationUpdateService = new ApplicationUpdateService(
                 "Vova-Bob",
@@ -51,8 +49,7 @@ namespace StarCitizenUA.Composition
                 _applicationVersionProvider,
                 _updateChannelService,
                 gitHubClient,
-                updateCacheService,
-                releaseChannelResolver);
+                updateCacheService);
 
             _backgroundUpdateMonitor = new BackgroundUpdateMonitor(_applicationUpdateService);
 
@@ -61,7 +58,6 @@ namespace StarCitizenUA.Composition
             _updateHistoryService = new UpdateHistoryService();
             _updateVerifier = new UpdateVerifier();
             _gitHubReleaseClient = gitHubClient;
-            _releaseChannelResolver = releaseChannelResolver;
         }
 
         public MainWindow CreateMainWindow()
@@ -88,8 +84,7 @@ namespace StarCitizenUA.Composition
                 _updateInstaller,
                 _updateHistoryService,
                 _updateVerifier,
-                _gitHubReleaseClient,
-                _releaseChannelResolver);
+                _gitHubReleaseClient);
         }
     }
 }

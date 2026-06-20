@@ -17,7 +17,6 @@ namespace StarCitizenUA.Windows
         private readonly IGitHubReleaseClient _gitHubReleaseClient;
         private readonly IApplicationVersionProvider _applicationVersionProvider;
         private readonly IUpdateChannelService _updateChannelService;
-        private readonly IReleaseChannelResolver _releaseChannelResolver;
         private readonly ILinkService _linkService;
         private readonly Action<GitHubRelease> _installRequested;
         private readonly string _owner = "Vova-Bob";
@@ -27,7 +26,6 @@ namespace StarCitizenUA.Windows
             IGitHubReleaseClient gitHubReleaseClient,
             IApplicationVersionProvider applicationVersionProvider,
             IUpdateChannelService updateChannelService,
-            IReleaseChannelResolver releaseChannelResolver,
             ILinkService linkService,
             Action<GitHubRelease> installRequested)
         {
@@ -36,7 +34,6 @@ namespace StarCitizenUA.Windows
             _gitHubReleaseClient = gitHubReleaseClient ?? throw new ArgumentNullException(nameof(gitHubReleaseClient));
             _applicationVersionProvider = applicationVersionProvider ?? throw new ArgumentNullException(nameof(applicationVersionProvider));
             _updateChannelService = updateChannelService ?? throw new ArgumentNullException(nameof(updateChannelService));
-            _releaseChannelResolver = releaseChannelResolver ?? throw new ArgumentNullException(nameof(releaseChannelResolver));
             _linkService = linkService ?? throw new ArgumentNullException(nameof(linkService));
             _installRequested = installRequested ?? throw new ArgumentNullException(nameof(installRequested));
 
@@ -63,7 +60,7 @@ namespace StarCitizenUA.Windows
                 var releases = await _gitHubReleaseClient.GetReleasesAsync(_owner, _repo, CancellationToken.None).ConfigureAwait(true);
 
                 var items = releases
-                    .Where(r => _releaseChannelResolver.IsChannelMatch(r, currentChannel))
+                    .Where(r => IsChannelMatch(r, currentChannel))
                     .Where(r => VersionParser.TryParse(r.TagName, out _))
                     .Select(r => CreateVersionItem(r, currentVersion))
                     .OrderByDescending(i => i.ReleaseDate)
@@ -100,7 +97,8 @@ namespace StarCitizenUA.Windows
                 HasDetails = !string.IsNullOrWhiteSpace(release.Body) && release.Body.Length > shortDescription.Length,
                 StatusText = isInstalled ? "Встановлено" : "Встановити",
                 StatusColor = isInstalled ? "#4CAF50" : "#2196F3",
-                Release = release
+                Release = release,
+                Channel = GetChannel(release)
             };
         }
 
@@ -118,6 +116,18 @@ namespace StarCitizenUA.Windows
         {
             var channelName = _updateChannelService.GetUpdateChannel();
             return Enum.TryParse<UpdateChannel>(channelName, out var channel) ? channel : UpdateChannel.Stable;
+        }
+
+        private static bool IsChannelMatch(GitHubRelease release, UpdateChannel channel)
+        {
+            return channel == UpdateChannel.Dev
+                ? release.Prerelease
+                : !release.Prerelease;
+        }
+
+        private static UpdateChannel GetChannel(GitHubRelease release)
+        {
+            return release.Prerelease ? UpdateChannel.Dev : UpdateChannel.Stable;
         }
 
         private void VersionsGrid_MouseDoubleClick(object sender, MouseButtonEventArgs e)
