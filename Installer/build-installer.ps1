@@ -28,7 +28,9 @@ function Publish-Application {
         "$projectPath",
         "-c", $Configuration,
         "-r", $RuntimeIdentifier,
-        "--self-contained"
+        "--self-contained",
+        "-p:PublishSingleFile=true",
+        "-p:PublishReadyToRun=true"
     )
 
     & dotnet @arguments
