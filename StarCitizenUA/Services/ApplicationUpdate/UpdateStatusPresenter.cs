@@ -1,5 +1,7 @@
+using StarCitizenUA.Helpers;
 using StarCitizenUA.Models.ApplicationUpdate;
 using System;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -43,7 +45,7 @@ namespace StarCitizenUA.Services.ApplicationUpdate
             _actionButton.IsEnabled = false;
         }
 
-        public void ShowUpToDate(UpdateCheckResult result)
+        public async Task ShowUpToDateAsync(UpdateCheckResult result)
         {
             EnsurePanelVisible();
             _currentVersionTextBlock.Text = result.CurrentVersion?.ToString() ?? "—";
@@ -53,6 +55,7 @@ namespace StarCitizenUA.Services.ApplicationUpdate
             _actionButton.Content = "Перевірити оновлення";
             _actionButton.IsEnabled = true;
 
+            await Task.Delay(UpdateConstants.UpdatePanelAutoHideDelay).ConfigureAwait(true);
             BeginAutoHide();
         }
 
