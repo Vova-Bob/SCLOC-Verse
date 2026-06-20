@@ -325,12 +325,12 @@
 
     <!-- Канал оновлення -->
     <TextBlock Canvas.Left="70" Canvas.Top="505" Text="Канал оновлення:" Foreground="White" FontSize="14"/>
-    <ComboBox x:Name="UpdateChannelComboBox" Canvas.Left="220" Canvas.Top="502" Width="150" Height="28"/>
+    <ComboBox x:Name="UpdateChannelComboBox" Canvas.Left="220" Canvas.Top="502" Width="150" Height="28" DisplayMemberPath="DisplayName" SelectedValuePath="Value"/>
 
-    <!-- Кнопка історії оновлень -->
+    <!-- Кнопка менеджера версій -->
     <Button x:Name="UpdateHistoryButton"
             Style="{StaticResource ActionButton}"
-            Content="Історія оновлень"
+            Content="Менеджер версій"
             Canvas.Left="400"
             Canvas.Top="502"
             Width="170"

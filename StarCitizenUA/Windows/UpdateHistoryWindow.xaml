@@ -1,7 +1,7 @@
 <Window x:Class="StarCitizenUA.Windows.UpdateHistoryWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Історія оновлень"
+        Title="Менеджер версій"
         Height="500"
         Width="700"
         WindowStartupLocation="CenterOwner"
@@ -9,6 +9,9 @@
         Background="#0F2C3E"
         TextOptions.TextFormattingMode="Display"
         SnapsToDevicePixels="True">
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter"/>
+    </Window.Resources>
     <Grid Margin="15">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -17,14 +20,14 @@
         </Grid.RowDefinitions>
 
         <TextBlock Grid.Row="0"
-                   Text="Історія оновлень"
+                   Text="Менеджер версій"
                    Foreground="White"
                    FontSize="18"
                    FontWeight="Bold"
                    Margin="0,0,0,10"/>
 
         <DataGrid Grid.Row="1"
-                  x:Name="HistoryGrid"
+                  x:Name="VersionsGrid"
                   AutoGenerateColumns="False"
                   IsReadOnly="True"
                   Background="#0A1D29"
@@ -33,15 +36,30 @@
                   Foreground="White"
                   BorderBrush="#4A90E2"
                   BorderThickness="1"
-                  GridLinesVisibility="Horizontal">
+                  GridLinesVisibility="Horizontal"
+                  MouseDoubleClick="VersionsGrid_MouseDoubleClick">
             <DataGrid.Columns>
-                <DataGridTextColumn Header="Дата" Binding="{Binding Timestamp, StringFormat=yyyy-MM-dd HH:mm}" Width="120"/>
-                <DataGridTextColumn Header="Канал" Binding="{Binding Channel}" Width="80"/>
-                <DataGridTextColumn Header="З версії" Binding="{Binding FromVersion}" Width="80"/>
-                <DataGridTextColumn Header="На версію" Binding="{Binding ToVersion}" Width="80"/>
-                <DataGridTextColumn Header="Операція" Binding="{Binding Operation}" Width="80"/>
-                <DataGridTextColumn Header="Результат" Binding="{Binding Result}" Width="80"/>
-                <DataGridTextColumn Header="Помилка" Binding="{Binding ErrorMessage}" Width="*"/>
+                <DataGridTextColumn Header="Дата" Binding="{Binding ReleaseDate, StringFormat=dd.MM.yyyy}" Width="100"/>
+                <DataGridTextColumn Header="Версія" Binding="{Binding Version}" Width="80"/>
+                <DataGridTextColumn Header="Опис" Binding="{Binding Description}" Width="*"/>
+                <DataGridTemplateColumn Header="Статус" Width="120">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <TextBlock Text="{Binding StatusText}" VerticalAlignment="Center"/>
+                                <Button Content="Детальніше..."
+                                        Margin="5,0,0,0"
+                                        Padding="4,0"
+                                        Background="Transparent"
+                                        Foreground="#8DD0FF"
+                                        BorderThickness="0"
+                                        Cursor="Hand"
+                                        Visibility="{Binding HasDetails, Converter={StaticResource BooleanToVisibilityConverter}}"
+                                        Click="DetailsButton_Click"/>
+                            </StackPanel>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
             </DataGrid.Columns>
         </DataGrid>
 
@@ -49,8 +67,6 @@
                     Orientation="Horizontal"
                     HorizontalAlignment="Right"
                     Margin="0,10,0,0">
-            <Button x:Name="RefreshButton" Content="Оновити" Width="100" Height="30" Margin="0,0,10,0"/>
-            <Button x:Name="ClearButton" Content="Очистити" Width="100" Height="30" Margin="0,0,10,0"/>
             <Button x:Name="CloseButton" Content="Закрити" Width="100" Height="30"/>
         </StackPanel>
     </Grid>

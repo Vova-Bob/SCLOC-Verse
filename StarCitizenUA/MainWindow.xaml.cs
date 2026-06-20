@@ -38,6 +38,8 @@ namespace StarCitizenUA
         private readonly IUpdateInstaller _updateInstaller;
         private readonly IUpdateHistoryService _updateHistoryService;
         private readonly IUpdateVerifier _updateVerifier;
+        private readonly IGitHubReleaseClient _gitHubReleaseClient;
+        private readonly IReleaseChannelResolver _releaseChannelResolver;
         private readonly UpdateStatusPresenter _updateStatusPresenter;
         private bool _showGameFolderToast = true;
         private EnvironmentSelector EnvSelector => CanvasLocalization.EnvironmentSelector;
@@ -65,7 +67,7 @@ namespace StarCitizenUA
         private readonly UpdateCheckerService _updateCheckerService;
         private readonly CleanupController _cacheCleanupController;
 
-        public MainWindow(MainWindowViewModel viewModel, IWindowHelper windowHelper, ILocalizationInstaller localizationInstaller, IReadmeService readmeService,     IUpdater updater, UpdateCheckerService updateCheckerService, IApplicationUpdateService applicationUpdateService, IBackgroundUpdateMonitor backgroundUpdateMonitor, IUpdateChannelService updateChannelService, IApplicationVersionProvider applicationVersionProvider, IUpdateDownloader updateDownloader, IUpdateInstaller updateInstaller, IUpdateHistoryService updateHistoryService, IUpdateVerifier updateVerifier)
+        public MainWindow(MainWindowViewModel viewModel, IWindowHelper windowHelper, ILocalizationInstaller localizationInstaller, IReadmeService readmeService,     IUpdater updater, UpdateCheckerService updateCheckerService, IApplicationUpdateService applicationUpdateService, IBackgroundUpdateMonitor backgroundUpdateMonitor, IUpdateChannelService updateChannelService, IApplicationVersionProvider applicationVersionProvider, IUpdateDownloader updateDownloader, IUpdateInstaller updateInstaller, IUpdateHistoryService updateHistoryService, IUpdateVerifier updateVerifier, IGitHubReleaseClient gitHubReleaseClient, IReleaseChannelResolver releaseChannelResolver)
         {
             InitializeComponent();
 
@@ -83,6 +85,8 @@ namespace StarCitizenUA
             _updateInstaller = updateInstaller;
             _updateHistoryService = updateHistoryService;
             _updateVerifier = updateVerifier;
+            _gitHubReleaseClient = gitHubReleaseClient;
+            _releaseChannelResolver = releaseChannelResolver;
 
             _toastService = new ToastService(AppToast.ToastBorder, AppToast.ToastText);
             _linkService = new LinkService(_toastService);
@@ -114,7 +118,11 @@ namespace StarCitizenUA
             _backgroundUpdateMonitor.UpdateAvailable += OnBackgroundUpdateAvailable;
             _backgroundUpdateMonitor.CheckFailed += OnBackgroundUpdateCheckFailed;
 
-            CanvasSettings.UpdateChannelSelector.ItemsSource = Enum.GetValues(typeof(UpdateChannel));
+            CanvasSettings.UpdateChannelSelector.ItemsSource = new[]
+            {
+                new { DisplayName = "Стабільний", Value = UpdateChannel.Stable },
+                new { DisplayName = "Тестовий", Value = UpdateChannel.Dev }
+            };
             CanvasSettings.UpdateChannelSelector.SelectionChanged += UpdateChannelSelector_SelectionChanged;
             CanvasSettings.UpdateHistoryButtonControl.Click += UpdateHistoryButton_Click;
 
@@ -171,9 +179,20 @@ namespace StarCitizenUA
         {
             var currentChannel = _updateChannelService.GetUpdateChannel();
             if (Enum.TryParse<UpdateChannel>(currentChannel, out var channel))
-                CanvasSettings.UpdateChannelSelector.SelectedItem = channel;
+            {
+                foreach (dynamic item in CanvasSettings.UpdateChannelSelector.Items)
+                {
+                    if (item.Value == channel)
+                    {
+                        CanvasSettings.UpdateChannelSelector.SelectedItem = item;
+                        break;
+                    }
+                }
+            }
             else
-                CanvasSettings.UpdateChannelSelector.SelectedItem = UpdateChannel.Stable;
+            {
+                CanvasSettings.UpdateChannelSelector.SelectedIndex = 0;
+            }
         }
 
         private async void CheckUpdateButton_Click(object sender, RoutedEventArgs e)
@@ -383,20 +402,64 @@ namespace StarCitizenUA
 
         private void UpdateChannelSelector_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            if (CanvasSettings.UpdateChannelSelector.SelectedItem is UpdateChannel channel)
+            dynamic selected = CanvasSettings.UpdateChannelSelector.SelectedItem;
+            if (selected != null)
             {
-                _updateChannelService.SetUpdateChannel(channel.ToString());
+                _updateChannelService.SetUpdateChannel(selected.Value.ToString());
             }
         }
 
         private void UpdateHistoryButton_Click(object sender, RoutedEventArgs e)
         {
-            var window = new UpdateHistoryWindow(_updateHistoryService)
+            var window = new UpdateHistoryWindow(
+                _gitHubReleaseClient,
+                _applicationVersionProvider,
+                _updateChannelService,
+                _releaseChannelResolver,
+                _linkService,
+                release => _ = InstallReleaseAsync(release))
             {
                 Owner = this
             };
 
             window.ShowDialog();
+        }
+
+        private async Task InstallReleaseAsync(GitHubRelease release)
+        {
+            var version = VersionParser.Parse(release.TagName);
+            var asset = release.Assets.FirstOrDefault(a => a.Name.Equals(UpdateConstants.SetupAssetName, StringComparison.OrdinalIgnoreCase));
+            if (asset == null)
+            {
+                await _toastService.ShowToastAsync("Не знайдено інсталятор у релізі.").ConfigureAwait(true);
+                return;
+            }
+
+            var checksumAsset = release.Assets.FirstOrDefault(a => a.Name.Equals(UpdateConstants.ChecksumAssetName, StringComparison.OrdinalIgnoreCase));
+            string checksum = string.Empty;
+            if (checksumAsset != null)
+            {
+                try
+                {
+                    checksum = await _gitHubReleaseClient.DownloadTextAsync(checksumAsset.BrowserDownloadUrl, CancellationToken.None).ConfigureAwait(true);
+                    checksum = checksum.Trim().Split(' ').FirstOrDefault() ?? string.Empty;
+                }
+                catch { /* ігноруємо помилку завантаження checksum */ }
+            }
+
+            var result = new UpdateCheckResult
+            {
+                IsUpdateAvailable = true,
+                CurrentVersion = _applicationVersionProvider.GetCurrentVersion(),
+                LatestVersion = version,
+                DownloadUrl = asset.BrowserDownloadUrl,
+                ExpectedChecksum = checksum,
+                ReleaseNotes = release.Body,
+                Channel = _releaseChannelResolver.ResolveChannel(release),
+                Status = UpdateCheckStatus.UpdateAvailable
+            };
+
+            await InstallUpdateAsync(result).ConfigureAwait(true);
         }
 
         private void EnvSelector_SelectionChanged(object? sender, EventArgs e)
