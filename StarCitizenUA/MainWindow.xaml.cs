@@ -176,23 +176,33 @@ namespace StarCitizenUA
             _ = RunStartupUpdateCheckAsync();
         }
 
+        private bool _isInitializingUpdateChannel;
+
         private void InitializeUpdateChannel()
         {
-            var currentChannel = _updateChannelService.GetUpdateChannel();
-            if (Enum.TryParse<UpdateChannel>(currentChannel, out var channel))
+            _isInitializingUpdateChannel = true;
+            try
             {
-                foreach (dynamic item in CanvasSettings.UpdateChannelSelector.Items)
+                var currentChannel = _updateChannelService.GetUpdateChannel();
+                if (Enum.TryParse<UpdateChannel>(currentChannel, out var channel))
                 {
-                    if (item.Value == channel)
+                    foreach (dynamic item in CanvasSettings.UpdateChannelSelector.Items)
                     {
-                        CanvasSettings.UpdateChannelSelector.SelectedItem = item;
-                        break;
+                        if (item.Value == channel)
+                        {
+                            CanvasSettings.UpdateChannelSelector.SelectedItem = item;
+                            break;
+                        }
                     }
                 }
+                else
+                {
+                    CanvasSettings.UpdateChannelSelector.SelectedIndex = 0;
+                }
             }
-            else
+            finally
             {
-                CanvasSettings.UpdateChannelSelector.SelectedIndex = 0;
+                _isInitializingUpdateChannel = false;
             }
         }
 
@@ -411,6 +421,11 @@ namespace StarCitizenUA
 
         private void UpdateChannelSelector_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
+            // Ігноруємо події, що відбуваються під час ініціалізації UI,
+            // щоб не перезаписати значення, перенесене з попередньої версії.
+            if (_isInitializingUpdateChannel)
+                return;
+
             dynamic selected = CanvasSettings.UpdateChannelSelector.SelectedItem;
             if (selected != null)
             {
