@@ -44,7 +44,7 @@ namespace StarCitizenUA.Composition
 
             _applicationUpdateService = new ApplicationUpdateService(
                 "Vova-Bob",
-                "SCLocalizationUA",
+                "SCLOC-Verse",
                 _applicationVersionProvider,
                 _updateChannelService,
                 gitHubClient,
