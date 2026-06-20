@@ -4,7 +4,7 @@ using System.IO;
 
 namespace StarCitizenUA.Services
 {
-    public class SettingsService : ISettingsService
+    public class SettingsService : ISettingsService, IUpdateChannelService
     {
         public void ClearGameFolder()
         {
@@ -25,6 +25,18 @@ namespace StarCitizenUA.Services
 
             Settings.Default.Save();
             return true;
+        }
+
+        public string GetUpdateChannel()
+        {
+            var channel = Settings.Default.UpdateChannel;
+            return string.IsNullOrWhiteSpace(channel) ? "Stable" : channel;
+        }
+
+        public void SetUpdateChannel(string channel)
+        {
+            Settings.Default.UpdateChannel = string.IsNullOrWhiteSpace(channel) ? "Stable" : channel;
+            Settings.Default.Save();
         }
 
         private static string? ValidatePath(string? path)

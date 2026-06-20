@@ -11,6 +11,12 @@
 .kilo/
 .opencode/
 
+# Backup bundles
+*.bundle
+
+# Installer output
+Installer/Output/
+
 # Local IDE artifacts
 .groupedtimelineinclude
 

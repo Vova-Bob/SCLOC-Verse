@@ -8,5 +8,11 @@
     <Setting Name="StarCitizenUA" Type="System.String" Scope="User">
       <Value Profile="(Default)" />
     </Setting>
+    <Setting Name="UpdateChannel" Type="System.String" Scope="User">
+      <Value Profile="(Default)">Stable</Value>
+    </Setting>
+    <Setting Name="UpgradeRequired" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">False</Value>
+    </Setting>
   </Settings>
 </SettingsFile>
