@@ -98,7 +98,8 @@ namespace StarCitizenUA.Windows
                 ReleaseUrl = $"https://github.com/{_owner}/{_repo}/releases/tag/{release.TagName}",
                 IsInstalled = isInstalled,
                 HasDetails = !string.IsNullOrWhiteSpace(release.Body) && release.Body.Length > shortDescription.Length,
-                StatusText = isInstalled ? "🟢 Встановлено" : "🔵 Встановити",
+                StatusText = isInstalled ? "Встановлено" : "Встановити",
+                StatusColor = isInstalled ? "#4CAF50" : "#2196F3",
                 Release = release
             };
         }

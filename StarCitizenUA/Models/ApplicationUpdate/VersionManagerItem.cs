@@ -14,6 +14,7 @@ namespace StarCitizenUA.Models.ApplicationUpdate
         public bool CanInstall => !IsInstalled;
         public bool HasDetails { get; set; }
         public string StatusText { get; set; } = string.Empty;
+        public string StatusColor { get; set; } = "#808080";
         public GitHubRelease Release { get; set; } = new();
     }
 }
