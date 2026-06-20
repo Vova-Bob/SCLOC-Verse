@@ -15,6 +15,7 @@ namespace StarCitizenUA.Models.ApplicationUpdate
         public bool HasDetails { get; set; }
         public string StatusText { get; set; } = string.Empty;
         public string StatusColor { get; set; } = "#808080";
+        public UpdateChannel Channel { get; set; }
         public GitHubRelease Release { get; set; } = new();
     }
 }

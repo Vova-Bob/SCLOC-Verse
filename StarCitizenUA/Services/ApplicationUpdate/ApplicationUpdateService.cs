@@ -18,7 +18,6 @@ namespace StarCitizenUA.Services.ApplicationUpdate
         private readonly IUpdateChannelService _channelService;
         private readonly IGitHubReleaseClient _gitHubClient;
         private readonly IUpdateCacheService _cacheService;
-        private readonly IReleaseChannelResolver _channelResolver;
 
         public ApplicationUpdateService(
             string owner,
@@ -26,8 +25,7 @@ namespace StarCitizenUA.Services.ApplicationUpdate
             IApplicationVersionProvider versionProvider,
             IUpdateChannelService channelService,
             IGitHubReleaseClient gitHubClient,
-            IUpdateCacheService cacheService,
-            IReleaseChannelResolver channelResolver)
+            IUpdateCacheService cacheService)
         {
             if (string.IsNullOrWhiteSpace(owner))
                 throw new ArgumentException("Owner cannot be empty.", nameof(owner));
@@ -40,7 +38,6 @@ namespace StarCitizenUA.Services.ApplicationUpdate
             _channelService = channelService ?? throw new ArgumentNullException(nameof(channelService));
             _gitHubClient = gitHubClient ?? throw new ArgumentNullException(nameof(gitHubClient));
             _cacheService = cacheService ?? throw new ArgumentNullException(nameof(cacheService));
-            _channelResolver = channelResolver ?? throw new ArgumentNullException(nameof(channelResolver));
         }
 
         public async Task<UpdateCheckResult> CheckForUpdatesAsync(
@@ -55,7 +52,7 @@ namespace StarCitizenUA.Services.ApplicationUpdate
                 var releases = await GetReleasesAsync(channel, forceRefresh, cancellationToken).ConfigureAwait(false);
 
                 var filteredReleases = releases
-                    .Where(r => _channelResolver.IsChannelMatch(r, channel))
+                    .Where(r => IsChannelMatch(r, channel))
                     .Where(r => VersionParser.TryParse(r.TagName, out _))
                     .OrderByDescending(r => VersionParser.Parse(r.TagName))
                     .ToList();
@@ -155,6 +152,13 @@ namespace StarCitizenUA.Services.ApplicationUpdate
             return Enum.TryParse<UpdateChannel>(channelName, true, out var channel)
                 ? channel
                 : UpdateChannel.Stable;
+        }
+
+        private static bool IsChannelMatch(GitHubRelease release, UpdateChannel channel)
+        {
+            return channel == UpdateChannel.Dev
+                ? release.Prerelease
+                : !release.Prerelease;
         }
 
         private async Task<string> ResolveExpectedChecksumAsync(
