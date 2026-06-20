@@ -207,7 +207,7 @@ namespace StarCitizenUA
             switch (result.Status)
             {
                 case UpdateCheckStatus.UpToDate:
-                    _updateStatusPresenter.ShowUpToDate(result);
+                    await _updateStatusPresenter.ShowUpToDateAsync(result).ConfigureAwait(true);
                     await _updateHistoryService.AddEntryAsync(CreateHistoryEntry(UpdateOperation.Check, UpdateOperationResult.Success, result)).ConfigureAwait(true);
                     await _toastService.ShowToastAsync("Ви використовуєте актуальну версію.").ConfigureAwait(true);
                     break;
