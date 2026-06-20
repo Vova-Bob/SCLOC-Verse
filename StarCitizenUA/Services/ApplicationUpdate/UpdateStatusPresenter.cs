@@ -70,6 +70,20 @@ namespace StarCitizenUA.Services.ApplicationUpdate
             _actionButton.IsEnabled = true;
         }
 
+        public async Task ShowUpdateCancelledAsync(UpdateCheckResult result)
+        {
+            EnsurePanelVisible();
+            _currentVersionTextBlock.Text = result.CurrentVersion?.ToString() ?? "—";
+            _availableVersionTextBlock.Text = result.LatestVersion?.ToString() ?? "—";
+            _statusTextBlock.Text = "Оновлення скасовано";
+            _statusTextBlock.Foreground = Brushes.Gray;
+            _actionButton.Content = "Перевірити оновлення";
+            _actionButton.IsEnabled = true;
+
+            await Task.Delay(UpdateConstants.UpdatePanelAutoHideDelay).ConfigureAwait(true);
+            BeginAutoHide();
+        }
+
         public void ShowCheckFailed(UpdateCheckResult result)
         {
             EnsurePanelVisible();

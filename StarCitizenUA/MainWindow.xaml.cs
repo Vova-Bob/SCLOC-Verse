@@ -248,6 +248,7 @@ namespace StarCitizenUA
                     }
                     else
                     {
+                        await _updateStatusPresenter.ShowUpdateCancelledAsync(result).ConfigureAwait(true);
                         await _updateHistoryService.AddEntryAsync(CreateHistoryEntry(UpdateOperation.Install, UpdateOperationResult.Cancelled, result, "Користувач відмовився від встановлення.")).ConfigureAwait(true);
                     }
                     break;
