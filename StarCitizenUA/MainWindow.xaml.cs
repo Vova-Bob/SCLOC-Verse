@@ -93,7 +93,6 @@ namespace StarCitizenUA
                 CanvasHome.CurrentVersionTextControl,
                 CanvasHome.AvailableVersionTextControl,
                 CanvasHome.UpdateStatusTextControl,
-                CanvasHome.UpdateCheckButtonControl,
                 CanvasHome.UpdatePanel,
                 CanvasHome.HideUpdatePanelStoryboard);
 
@@ -111,7 +110,7 @@ namespace StarCitizenUA
 
             _buttonHelper.SetButtonState(BtnAutoSearch, _viewModel.IsGameFolderSet);
 
-            CanvasHome.UpdateCheckButtonControl.Click += CheckUpdateButton_Click;
+
             CanvasHome.CurrentVersionTextControl.Text = _applicationVersionProvider.GetCurrentVersion().ToString();
 
             _backgroundUpdateMonitor.UpdateAvailable += OnBackgroundUpdateAvailable;
@@ -204,11 +203,6 @@ namespace StarCitizenUA
             }
         }
 
-        private async void CheckUpdateButton_Click(object sender, RoutedEventArgs e)
-        {
-            await RunManualUpdateCheckAsync(forceRefresh: true).ConfigureAwait(true);
-        }
-
         private async Task RunManualUpdateCheckAsync(bool forceRefresh = false)
         {
             var currentVersion = _applicationVersionProvider.GetCurrentVersion();
@@ -223,10 +217,6 @@ namespace StarCitizenUA
             {
                 _updateStatusPresenter.ShowCheckFailed(new UpdateCheckResult { Message = ex.Message });
                 await _toastService.ShowToastAsync($"Помилка: {ex.Message}").ConfigureAwait(true);
-            }
-            finally
-            {
-                _updateStatusPresenter.EnableActionButton();
             }
         }
 

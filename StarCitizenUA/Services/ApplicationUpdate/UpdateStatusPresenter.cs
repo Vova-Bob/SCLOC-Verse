@@ -14,7 +14,6 @@ namespace StarCitizenUA.Services.ApplicationUpdate
         private readonly TextBlock _currentVersionTextBlock;
         private readonly TextBlock _availableVersionTextBlock;
         private readonly TextBlock _statusTextBlock;
-        private readonly Button _actionButton;
         private readonly FrameworkElement _panel;
         private readonly Storyboard _hideStoryboard;
 
@@ -22,14 +21,12 @@ namespace StarCitizenUA.Services.ApplicationUpdate
             TextBlock currentVersionTextBlock,
             TextBlock availableVersionTextBlock,
             TextBlock statusTextBlock,
-            Button actionButton,
             FrameworkElement panel,
             Storyboard hideStoryboard)
         {
             _currentVersionTextBlock = currentVersionTextBlock ?? throw new ArgumentNullException(nameof(currentVersionTextBlock));
             _availableVersionTextBlock = availableVersionTextBlock ?? throw new ArgumentNullException(nameof(availableVersionTextBlock));
             _statusTextBlock = statusTextBlock ?? throw new ArgumentNullException(nameof(statusTextBlock));
-            _actionButton = actionButton ?? throw new ArgumentNullException(nameof(actionButton));
             _panel = panel ?? throw new ArgumentNullException(nameof(panel));
             _hideStoryboard = hideStoryboard ?? throw new ArgumentNullException(nameof(hideStoryboard));
         }
@@ -41,8 +38,6 @@ namespace StarCitizenUA.Services.ApplicationUpdate
             _availableVersionTextBlock.Text = "—";
             _statusTextBlock.Text = "Перевіряємо оновлення...";
             _statusTextBlock.Foreground = Brushes.LightSlateGray;
-            _actionButton.Content = "Перевірити оновлення";
-            _actionButton.IsEnabled = false;
         }
 
         public async Task ShowUpToDateAsync(UpdateCheckResult result)
@@ -52,8 +47,6 @@ namespace StarCitizenUA.Services.ApplicationUpdate
             _availableVersionTextBlock.Text = result.LatestVersion?.ToString() ?? "—";
             _statusTextBlock.Text = "Актуальна версія";
             _statusTextBlock.Foreground = Brushes.LimeGreen;
-            _actionButton.Content = "Перевірити оновлення";
-            _actionButton.IsEnabled = true;
 
             await Task.Delay(UpdateConstants.UpdatePanelAutoHideDelay).ConfigureAwait(true);
             BeginAutoHide();
@@ -66,8 +59,6 @@ namespace StarCitizenUA.Services.ApplicationUpdate
             _availableVersionTextBlock.Text = result.LatestVersion?.ToString() ?? "—";
             _statusTextBlock.Text = $"Доступна версія {result.LatestVersion}";
             _statusTextBlock.Foreground = Brushes.Orange;
-            _actionButton.Content = "Встановити оновлення";
-            _actionButton.IsEnabled = true;
         }
 
         public async Task ShowUpdateCancelledAsync(UpdateCheckResult result)
@@ -77,8 +68,6 @@ namespace StarCitizenUA.Services.ApplicationUpdate
             _availableVersionTextBlock.Text = result.LatestVersion?.ToString() ?? "—";
             _statusTextBlock.Text = "Оновлення скасовано";
             _statusTextBlock.Foreground = Brushes.Gray;
-            _actionButton.Content = "Перевірити оновлення";
-            _actionButton.IsEnabled = true;
 
             await Task.Delay(UpdateConstants.UpdatePanelAutoHideDelay).ConfigureAwait(true);
             BeginAutoHide();
@@ -89,8 +78,6 @@ namespace StarCitizenUA.Services.ApplicationUpdate
             EnsurePanelVisible();
             _statusTextBlock.Text = "Помилка перевірки";
             _statusTextBlock.Foreground = Brushes.Red;
-            _actionButton.Content = "Повторити";
-            _actionButton.IsEnabled = true;
         }
 
         public void ShowChannelNotFound(UpdateCheckResult result)
@@ -98,13 +85,6 @@ namespace StarCitizenUA.Services.ApplicationUpdate
             EnsurePanelVisible();
             _statusTextBlock.Text = "Канал оновлень не знайдено";
             _statusTextBlock.Foreground = Brushes.Gray;
-            _actionButton.Content = "Перевірити оновлення";
-            _actionButton.IsEnabled = true;
-        }
-
-        public void EnableActionButton()
-        {
-            _actionButton.IsEnabled = true;
         }
 
         private void EnsurePanelVisible()
