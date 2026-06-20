@@ -21,7 +21,6 @@ namespace StarCitizenUA.Controls
         public IToastService? ToastService { get; set; }
         public ILinkService? LinkService { get; set; }
 
-        public Button UpdateCheckButtonControl => CheckUpdateButton;
         public TextBlock CurrentVersionTextControl => CurrentVersionTextBlock;
         public TextBlock AvailableVersionTextControl => AvailableVersionTextBlock;
         public TextBlock UpdateStatusTextControl => UpdateStatusTextBlock;
