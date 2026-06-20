@@ -198,17 +198,17 @@ namespace StarCitizenUA
 
         private async void CheckUpdateButton_Click(object sender, RoutedEventArgs e)
         {
-            await RunManualUpdateCheckAsync().ConfigureAwait(true);
+            await RunManualUpdateCheckAsync(forceRefresh: true).ConfigureAwait(true);
         }
 
-        private async Task RunManualUpdateCheckAsync()
+        private async Task RunManualUpdateCheckAsync(bool forceRefresh = false)
         {
             var currentVersion = _applicationVersionProvider.GetCurrentVersion();
             _updateStatusPresenter.ShowChecking(currentVersion);
 
             try
             {
-                var result = await _applicationUpdateService.CheckForUpdatesAsync(CancellationToken.None).ConfigureAwait(true);
+                var result = await _applicationUpdateService.CheckForUpdatesAsync(forceRefresh, CancellationToken.None).ConfigureAwait(true);
                 await ApplyUpdateCheckResultAsync(result).ConfigureAwait(true);
             }
             catch (Exception ex)
@@ -276,7 +276,7 @@ namespace StarCitizenUA
                 return;
             }
 
-            await RunManualUpdateCheckAsync().ConfigureAwait(true);
+            await RunManualUpdateCheckAsync(forceRefresh: false).ConfigureAwait(true);
             _backgroundUpdateMonitor.Start();
         }
 

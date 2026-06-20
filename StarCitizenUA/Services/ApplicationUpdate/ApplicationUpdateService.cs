@@ -43,14 +43,16 @@ namespace StarCitizenUA.Services.ApplicationUpdate
             _channelResolver = channelResolver ?? throw new ArgumentNullException(nameof(channelResolver));
         }
 
-        public async Task<UpdateCheckResult> CheckForUpdatesAsync(CancellationToken cancellationToken = default)
+        public async Task<UpdateCheckResult> CheckForUpdatesAsync(
+            bool forceRefresh = false,
+            CancellationToken cancellationToken = default)
         {
             try
             {
                 var currentVersion = _versionProvider.GetCurrentVersion();
                 var channel = ResolveChannel(_channelService.GetUpdateChannel());
 
-                var releases = await GetReleasesAsync(channel, cancellationToken).ConfigureAwait(false);
+                var releases = await GetReleasesAsync(channel, forceRefresh, cancellationToken).ConfigureAwait(false);
 
                 var filteredReleases = releases
                     .Where(r => _channelResolver.IsChannelMatch(r, channel))
@@ -126,13 +128,17 @@ namespace StarCitizenUA.Services.ApplicationUpdate
 
         private async Task<List<GitHubRelease>> GetReleasesAsync(
             UpdateChannel channel,
+            bool forceRefresh,
             CancellationToken cancellationToken)
         {
-            var cachedEntry = await _cacheService.ReadAsync(channel).ConfigureAwait(false);
-
-            if (cachedEntry != null && _cacheService.IsValid(cachedEntry, UpdateConstants.CacheTtl))
+            if (!forceRefresh)
             {
-                return cachedEntry.Releases;
+                var cachedEntry = await _cacheService.ReadAsync(channel).ConfigureAwait(false);
+
+                if (cachedEntry != null && _cacheService.IsValid(cachedEntry, UpdateConstants.CacheTtl))
+                {
+                    return cachedEntry.Releases;
+                }
             }
 
             var releases = await _gitHubClient.GetReleasesAsync(_owner, _repo, cancellationToken).ConfigureAwait(false);
