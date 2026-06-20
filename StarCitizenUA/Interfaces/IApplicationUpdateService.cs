@@ -6,6 +6,8 @@ namespace StarCitizenUA.Interfaces
 {
     public interface IApplicationUpdateService
     {
-        Task<UpdateCheckResult> CheckForUpdatesAsync(CancellationToken cancellationToken = default);
+        Task<UpdateCheckResult> CheckForUpdatesAsync(
+            bool forceRefresh = false,
+            CancellationToken cancellationToken = default);
     }
 }

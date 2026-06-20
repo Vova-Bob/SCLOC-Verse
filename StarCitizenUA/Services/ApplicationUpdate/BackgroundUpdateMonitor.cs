@@ -56,7 +56,7 @@ namespace StarCitizenUA.Services.ApplicationUpdate
 
             try
             {
-                var result = await _updateService.CheckForUpdatesAsync(cancellationToken).ConfigureAwait(false);
+                var result = await _updateService.CheckForUpdatesAsync(forceRefresh: false, cancellationToken).ConfigureAwait(false);
 
                 if (result.Status == UpdateCheckStatus.UpdateAvailable && result.LatestVersion != null)
                 {
