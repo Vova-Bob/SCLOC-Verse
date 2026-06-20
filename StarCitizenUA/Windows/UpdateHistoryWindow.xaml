@@ -39,14 +39,13 @@
                   GridLinesVisibility="Horizontal"
                   MouseDoubleClick="VersionsGrid_MouseDoubleClick">
             <DataGrid.Columns>
-                <DataGridTextColumn Header="Дата" Binding="{Binding ReleaseDate, StringFormat=dd.MM.yyyy}" Width="100"/>
+                <DataGridTextColumn Header="Дата" Binding="{Binding ReleaseDate, StringFormat=dd.MM.yyyy}" Width="90"/>
                 <DataGridTextColumn Header="Версія" Binding="{Binding Version}" Width="80"/>
-                <DataGridTextColumn Header="Опис" Binding="{Binding Description}" Width="*"/>
-                <DataGridTemplateColumn Header="Статус" Width="120">
+                <DataGridTemplateColumn Header="Опис" Width="*">
                     <DataGridTemplateColumn.CellTemplate>
                         <DataTemplate>
                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                <TextBlock Text="{Binding StatusText}" VerticalAlignment="Center"/>
+                                <TextBlock Text="{Binding Description}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
                                 <Button Content="Детальніше..."
                                         Margin="5,0,0,0"
                                         Padding="4,0"
@@ -56,6 +55,17 @@
                                         Cursor="Hand"
                                         Visibility="{Binding HasDetails, Converter={StaticResource BooleanToVisibilityConverter}}"
                                         Click="DetailsButton_Click"/>
+                            </StackPanel>
+                        </DataTemplate>
+                    </DataGridTemplateColumn.CellTemplate>
+                </DataGridTemplateColumn>
+                <DataGridTemplateColumn Header="Статус" Width="130">
+                    <DataGridTemplateColumn.CellTemplate>
+                        <DataTemplate>
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <Ellipse Width="10" Height="10" Margin="0,0,6,0" VerticalAlignment="Center"
+                                         Fill="{Binding StatusColor}"/>
+                                <TextBlock Text="{Binding StatusText}" VerticalAlignment="Center"/>
                             </StackPanel>
                         </DataTemplate>
                     </DataGridTemplateColumn.CellTemplate>
