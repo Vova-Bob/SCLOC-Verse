@@ -4,6 +4,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Animation;
 using System.Windows.Threading;
 
 
@@ -19,6 +20,11 @@ namespace StarCitizenUA.Controls
 
         public IToastService? ToastService { get; set; }
         public ILinkService? LinkService { get; set; }
+
+        public TextBlock CurrentVersionTextControl => CurrentVersionTextBlock;
+        public TextBlock AvailableVersionTextControl => AvailableVersionTextBlock;
+        public TextBlock UpdateStatusTextControl => UpdateStatusTextBlock;
+        public Storyboard HideUpdatePanelStoryboard => (Storyboard)UpdatePanel.Resources["HideUpdatePanelStoryboard"];
 
         public HomeCanvas()
         {
@@ -110,7 +116,7 @@ namespace StarCitizenUA.Controls
             if (SliderPanel == null || SliderPanel.Children.Count == 0) return;
 
             int visibleCards = 4;
-            double totalMargin = 76 * 2 * visibleCards; // Margin.Left + Margin.Right кожної картки
+            double totalMargin = 76 * 2 * visibleCards; // Margin.Left + Margin.Right пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
 
             double cardWidth = (ScrollContainer.ActualWidth - totalMargin) / visibleCards;
 
@@ -158,7 +164,7 @@ namespace StarCitizenUA.Controls
                 catch (Exception ex)
                 {
                     if (ToastService != null)
-                        await ToastService.ShowToastAsync("Не вдалося відкрити посилання: " + ex.Message);
+                        await ToastService.ShowToastAsync("пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ: " + ex.Message);
                 }
             }
         }
@@ -190,17 +196,17 @@ namespace StarCitizenUA.Controls
 
         private void Card6_Click(object sender, MouseButtonEventArgs e)
         {
-            OpenUrl("https://example.com/card6");// Замінити на фактичне посилання
+            OpenUrl("https://example.com/card6");// пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
         }
 
         private void Card7_Click(object sender, MouseButtonEventArgs e)
         {
-            OpenUrl("https://example.com/card7");// Замінити на фактичне посилання
+            OpenUrl("https://example.com/card7");// пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
         }
 
         private void Card8_Click(object sender, MouseButtonEventArgs e)
         {
-            OpenUrl("https://example.com/card8");// Замінити на фактичне посилання
+            OpenUrl("https://example.com/card8");// пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
         }
     }
 }

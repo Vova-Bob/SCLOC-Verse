@@ -20,5 +20,9 @@ namespace StarCitizenUA.Controls
         public TextBox SelectedPathTextBox => TxtSelectedPath;
 
         public TextBox ReadmeTextBox => TxtReadme;
+
+        public ComboBox UpdateChannelSelector => UpdateChannelComboBox;
+
+        public Button UpdateHistoryButtonControl => UpdateHistoryButton;
     }
 }
