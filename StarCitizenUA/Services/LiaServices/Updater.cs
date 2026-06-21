@@ -194,25 +194,102 @@ namespace StarCitizenUA.Services.LiaServices
 
         private static async Task RunInstallerScriptAsync(string installerPath, string? certificatePath, CancellationToken cancellationToken)
         {
-            var result = await RunPowerShellAsync(BuildInstallerScript(installerPath, certificatePath), cancellationToken).ConfigureAwait(false);
+            // Сертифікат Л.І.А — self-signed (CN=Alexuẞ). AppX Deployment Service працює
+            // як LocalSystem і бачить лише машинні сховища сертифікатів. Імпорт у
+            // CurrentUser\TrustedPeople призводить до 0x800B0109 (CERT_E_UNTRUSTEDROOT)
+            // на етапі Add-AppxPackage. Тому сертифікат імпортується з elevation у
+            // LocalMachine\Root та LocalMachine\TrustedPeople — як в еталонному
+            // скрипті автора First_Install_LIA_Voice_Assistent.bat.
+            if (!string.IsNullOrWhiteSpace(certificatePath) && File.Exists(certificatePath))
+            {
+                await InstallCertificateElevatedAsync(certificatePath, cancellationToken).ConfigureAwait(false);
+            }
+
+            var result = await RunPowerShellAsync(BuildInstallerScript(installerPath), cancellationToken).ConfigureAwait(false);
 
             if (result.ExitCode != 0)
                 throw new InvalidOperationException(string.IsNullOrWhiteSpace(result.Error) ? result.Output.Trim() : result.Error.Trim());
         }
 
-        private static string BuildInstallerScript(string installerPath, string? certificatePath)
+        private static async Task InstallCertificateElevatedAsync(string certificatePath, CancellationToken cancellationToken)
+        {
+            Directory.CreateDirectory(AppSettings.UpdatesDirectory);
+            var scriptPath = Path.Combine(AppSettings.UpdatesDirectory, $"lia-cert-{Guid.NewGuid():N}.ps1");
+            var logPath = Path.Combine(AppSettings.UpdatesDirectory, $"lia-cert-{Guid.NewGuid():N}.log");
+
+            var escapedCertificatePath = EscapePowerShellString(certificatePath);
+            var escapedLogPath = EscapePowerShellString(logPath);
+
+            // certutil без прапорця -user пише у сховища LocalMachine, що вимагає
+            // прав адміністратора. Процес запускається з Verb=runas (UAC).
+            var script = $$"""
+                $ErrorActionPreference = 'Stop'
+                $certificatePath = '{{escapedCertificatePath}}'
+                $logPath = '{{escapedLogPath}}'
+
+                certutil.exe -addstore -f Root $certificatePath *>> $logPath
+                $rootExit = $LASTEXITCODE
+
+                certutil.exe -addstore -f TrustedPeople $certificatePath *>> $logPath
+                $peopleExit = $LASTEXITCODE
+
+                if ($rootExit -ne 0 -or $peopleExit -ne 0) {
+                    exit 1
+                }
+                """;
+
+            await File.WriteAllTextAsync(scriptPath, script, new UTF8Encoding(false), cancellationToken).ConfigureAwait(false);
+
+            try
+            {
+                using var process = new Process
+                {
+                    StartInfo = new ProcessStartInfo
+                    {
+                        FileName = "powershell.exe",
+                        Arguments = $"-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File \"{scriptPath}\"",
+                        UseShellExecute = true,
+                        Verb = "runas",
+                        WindowStyle = ProcessWindowStyle.Hidden
+                    }
+                };
+
+                try
+                {
+                    process.Start();
+                }
+                catch (System.ComponentModel.Win32Exception)
+                {
+                    // Користувач скасував UAC-запит на підвищення привілеїв.
+                    throw new InvalidOperationException("Імпорт сертифіката скасовано: потрібні права адміністратора.");
+                }
+
+                await process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
+
+                if (process.ExitCode != 0)
+                {
+                    var log = File.Exists(logPath)
+                        ? await File.ReadAllTextAsync(logPath, cancellationToken).ConfigureAwait(false)
+                        : string.Empty;
+
+                    throw new InvalidOperationException(
+                        $"Не вдалося імпортувати сертифікат Л.І.А (код {process.ExitCode}). {log.Trim()}");
+                }
+            }
+            finally
+            {
+                try { File.Delete(scriptPath); } catch { }
+                try { File.Delete(logPath); } catch { }
+            }
+        }
+
+        private static string BuildInstallerScript(string installerPath)
         {
             var escapedInstallerPath = EscapePowerShellString(installerPath);
-            var escapedCertificatePath = EscapePowerShellString(certificatePath ?? string.Empty);
 
             return $$"""
                 $ErrorActionPreference = 'Stop'
                 $installerPath = '{{escapedInstallerPath}}'
-                $certificatePath = '{{escapedCertificatePath}}'
-
-                if ($certificatePath -and (Test-Path -LiteralPath $certificatePath)) {
-                    Import-Certificate -FilePath $certificatePath -CertStoreLocation Cert:\CurrentUser\TrustedPeople | Out-Null
-                }
 
                 $extension = [System.IO.Path]::GetExtension($installerPath).ToLowerInvariant()
                 if ($extension -eq '.appinstaller') {

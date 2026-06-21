@@ -34,6 +34,10 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 
 [Files]
 Source: "{#PublishDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+; Іконка застосунку вбудована як WPF-ресурс у збірку (CopyToOutputDirectory=Never),
+; тому у publish-вивід вона не потрапляє. Копіюємо її з дерева сирців напряму,
+; щоб ярлики Start Menu / Desktop та UninstallDisplayIcon мали валідний IconFilename.
+Source: "..\StarCitizenUA\{#MyAppIcoName}"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 Name: "{autoprograms}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"; WorkingDir: "{app}"; IconFilename: "{app}\{#MyAppIcoName}"
