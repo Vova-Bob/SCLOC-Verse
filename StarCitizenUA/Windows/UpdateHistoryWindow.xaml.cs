@@ -18,6 +18,7 @@ namespace StarCitizenUA.Windows
         private readonly IApplicationVersionProvider _applicationVersionProvider;
         private readonly IUpdateChannelService _updateChannelService;
         private readonly ILinkService _linkService;
+        private readonly IDialogService _dialogService;
         private readonly Action<GitHubRelease> _installRequested;
         private readonly string _owner = "Vova-Bob";
         private readonly string _repo = "SCLOC-Verse";
@@ -27,6 +28,7 @@ namespace StarCitizenUA.Windows
             IApplicationVersionProvider applicationVersionProvider,
             IUpdateChannelService updateChannelService,
             ILinkService linkService,
+            IDialogService dialogService,
             Action<GitHubRelease> installRequested)
         {
             InitializeComponent();
@@ -35,6 +37,7 @@ namespace StarCitizenUA.Windows
             _applicationVersionProvider = applicationVersionProvider ?? throw new ArgumentNullException(nameof(applicationVersionProvider));
             _updateChannelService = updateChannelService ?? throw new ArgumentNullException(nameof(updateChannelService));
             _linkService = linkService ?? throw new ArgumentNullException(nameof(linkService));
+            _dialogService = dialogService ?? throw new ArgumentNullException(nameof(dialogService));
             _installRequested = installRequested ?? throw new ArgumentNullException(nameof(installRequested));
 
             Loaded += UpdateHistoryWindow_Loaded;
@@ -70,11 +73,10 @@ namespace StarCitizenUA.Windows
             }
             catch (Exception ex)
             {
-                MessageBox.Show(
+                await _dialogService.ShowErrorAsync(
                     $"Не вдалося завантажити список версій: {ex.Message}",
                     "Помилка",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Error);
+                    this).ConfigureAwait(true);
 
                 VersionsGrid.ItemsSource = Array.Empty<VersionManagerItem>();
             }
@@ -157,11 +159,10 @@ namespace StarCitizenUA.Windows
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show(
+                    await _dialogService.ShowErrorAsync(
                         $"Не вдалося відкрити посилання: {ex.Message}",
                         "Помилка",
-                        MessageBoxButton.OK,
-                        MessageBoxImage.Error);
+                        this).ConfigureAwait(true);
                 }
             }
         }
