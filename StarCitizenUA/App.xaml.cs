@@ -1,4 +1,5 @@
 using StarCitizenUA.Composition;
+using StarCitizenUA.Controls.Dialogs;
 using StarCitizenUA.Services.ApplicationUpdate;
 using System;
 using System.IO;
@@ -41,11 +42,13 @@ namespace StarCitizenUA
                 _singleInstanceMutex.Dispose();
                 _singleInstanceMutex = null;
 
-                MessageBox.Show(
-                    "Програма вже запущена. Ви можете мати лише один активний екземпляр.",
-                    "SCLocalizationUA",
-                    MessageBoxButton.OK,
-                    MessageBoxImage.Information);
+                BaseDialog.Show(new DialogOptions
+                {
+                    Type = DialogType.Info,
+                    Title = "SCLocalizationUA",
+                    Message = "Програма вже запущена. Ви можете мати лише один активний екземпляр.",
+                    Buttons = MessageBoxButton.OK
+                });
 
                 Shutdown();
                 return;

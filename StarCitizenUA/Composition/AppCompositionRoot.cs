@@ -7,6 +7,7 @@ using StarCitizenUA.Services.LiaServices;
 using StarCitizenUA.Services.LocalizationServices;
 using StarCitizenUA.ViewModels;
 using System.Net.Http;
+using System.Windows.Threading;
 
 
 namespace StarCitizenUA.Composition
@@ -27,6 +28,7 @@ namespace StarCitizenUA.Composition
         private readonly IUpdateHistoryService _updateHistoryService;
         private readonly IUpdateVerifier _updateVerifier;
         private readonly IGitHubReleaseClient _gitHubReleaseClient;
+        private readonly IDialogService _dialogService;
 
         public AppCompositionRoot()
         {
@@ -58,6 +60,7 @@ namespace StarCitizenUA.Composition
             _updateHistoryService = new UpdateHistoryService();
             _updateVerifier = new UpdateVerifier();
             _gitHubReleaseClient = gitHubClient;
+            _dialogService = new DialogService(Dispatcher.CurrentDispatcher);
         }
 
         public MainWindow CreateMainWindow()
@@ -84,7 +87,8 @@ namespace StarCitizenUA.Composition
                 _updateInstaller,
                 _updateHistoryService,
                 _updateVerifier,
-                _gitHubReleaseClient);
+                _gitHubReleaseClient,
+                _dialogService);
         }
     }
 }

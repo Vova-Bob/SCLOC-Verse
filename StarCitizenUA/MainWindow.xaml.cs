@@ -39,6 +39,7 @@ namespace StarCitizenUA
         private readonly IUpdateHistoryService _updateHistoryService;
         private readonly IUpdateVerifier _updateVerifier;
         private readonly IGitHubReleaseClient _gitHubReleaseClient;
+        private readonly IDialogService _dialogService;
         private readonly UpdateStatusPresenter _updateStatusPresenter;
         private bool _showGameFolderToast = true;
         private DateTime? _suppressStartupUpdateCheckUntil;
@@ -67,7 +68,7 @@ namespace StarCitizenUA
         private readonly UpdateCheckerService _updateCheckerService;
         private readonly CleanupController _cacheCleanupController;
 
-        public MainWindow(MainWindowViewModel viewModel, IWindowHelper windowHelper, ILocalizationInstaller localizationInstaller, IReadmeService readmeService,     IUpdater updater, UpdateCheckerService updateCheckerService, IApplicationUpdateService applicationUpdateService, IBackgroundUpdateMonitor backgroundUpdateMonitor, IUpdateChannelService updateChannelService, IApplicationVersionProvider applicationVersionProvider, IUpdateDownloader updateDownloader, IUpdateInstaller updateInstaller, IUpdateHistoryService updateHistoryService, IUpdateVerifier updateVerifier, IGitHubReleaseClient gitHubReleaseClient)
+        public MainWindow(MainWindowViewModel viewModel, IWindowHelper windowHelper, ILocalizationInstaller localizationInstaller, IReadmeService readmeService,     IUpdater updater, UpdateCheckerService updateCheckerService, IApplicationUpdateService applicationUpdateService, IBackgroundUpdateMonitor backgroundUpdateMonitor, IUpdateChannelService updateChannelService, IApplicationVersionProvider applicationVersionProvider, IUpdateDownloader updateDownloader, IUpdateInstaller updateInstaller, IUpdateHistoryService updateHistoryService, IUpdateVerifier updateVerifier, IGitHubReleaseClient gitHubReleaseClient, IDialogService dialogService)
         {
             InitializeComponent();
 
@@ -86,6 +87,7 @@ namespace StarCitizenUA
             _updateHistoryService = updateHistoryService;
             _updateVerifier = updateVerifier;
             _gitHubReleaseClient = gitHubReleaseClient;
+            _dialogService = dialogService;
 
             _toastService = new ToastService(AppToast.ToastBorder, AppToast.ToastText);
             _linkService = new LinkService(_toastService);
@@ -234,13 +236,12 @@ namespace StarCitizenUA
                     _updateStatusPresenter.ShowUpdateAvailable(result);
                     await _updateHistoryService.AddEntryAsync(CreateHistoryEntry(UpdateOperation.Check, UpdateOperationResult.Success, result)).ConfigureAwait(true);
 
-                    var dialogResult = MessageBox.Show(
+                    var confirmed = await _dialogService.ShowConfirmationAsync(
                         $"Доступна нова версія {result.LatestVersion}. Бажаєте завантажити та встановити?",
                         "Оновлення програми",
-                        MessageBoxButton.YesNo,
-                        MessageBoxImage.Question);
+                        this).ConfigureAwait(true);
 
-                    if (dialogResult == MessageBoxResult.Yes)
+                    if (confirmed)
                     {
                         await InstallUpdateAsync(result).ConfigureAwait(true);
                     }
@@ -428,6 +429,7 @@ namespace StarCitizenUA
                     _applicationVersionProvider,
                     _updateChannelService,
                     _linkService,
+                    _dialogService,
                     release => _ = InstallReleaseAsync(release))
             {
                 Owner = this
