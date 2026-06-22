@@ -1,6 +1,6 @@
-# SCLocalizationUA Development Rules
+# SCLOC-Verse Development Rules
 
-Ти працюєш над проєктом SCLocalizationUA.
+Ти працюєш над проєктом SCLOC-Verse.
 
 Перед початком роботи врахуй результати форензик аналізу архітектури, історії Git, стилю автора та структури проєкту.
 

@@ -38,12 +38,12 @@ namespace SCLOCVerse {
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("")]
-        public string StarCitizenUA {
+        public string GameFolder {
             get {
-                return ((string)(this["StarCitizenUA"]));
+                return ((string)(this["GameFolder"]));
             }
             set {
-                this["StarCitizenUA"] = value;
+                this["GameFolder"] = value;
             }
         }
 

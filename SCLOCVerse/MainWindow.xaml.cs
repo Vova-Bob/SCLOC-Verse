@@ -1,4 +1,5 @@
 ﻿using SCLOCVerse.Controls;
+using SCLOCVerse.Controls.Dialogs;
 using SCLOCVerse.Helpers;
 using SCLOCVerse.Interfaces;
 using SCLOCVerse.Models.ApplicationUpdate;
@@ -501,6 +502,11 @@ namespace SCLOCVerse
 
         private void Minimize_Click(object sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;
         private void Close_Click(object sender, RoutedEventArgs e) => Close();
+        private void About_Click(object sender, RoutedEventArgs e)
+        {
+            var version = _applicationVersionProvider.GetCurrentVersion().ToString();
+            AboutDialog.Show(this, version);
+        }
 
         private void Localization_Click(object sender, RoutedEventArgs e)
         {

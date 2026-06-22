@@ -8,19 +8,19 @@ namespace SCLOCVerse.Services
     {
         public void ClearGameFolder()
         {
-            Settings.Default.StarCitizenUA = string.Empty;
+            Settings.Default.GameFolder = string.Empty;
             Settings.Default.Save();
         }
 
         public string? GetGameFolder()
         {
-            var path = Settings.Default.StarCitizenUA;
+            var path = Settings.Default.GameFolder;
             return ValidatePath(path);
         }
 
         public bool TrySetGameFolder(string? path)
         {
-            if (!TryPersist(path, value => Settings.Default.StarCitizenUA = value))
+            if (!TryPersist(path, value => Settings.Default.GameFolder = value))
                 return false;
 
             Settings.Default.Save();

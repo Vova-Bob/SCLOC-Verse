@@ -2,12 +2,9 @@
 using SCLOCVerse.Controls.Dialogs;
 using SCLOCVerse.Services.ApplicationUpdate;
 using System;
-using System.IO;
-using System.Linq;
 using System.Reflection;
 using System.Threading;
 using System.Windows;
-using System.Xml.Linq;
 
 namespace SCLOCVerse
 {
@@ -81,21 +78,6 @@ namespace SCLOCVerse
                 // Р†РіРЅРѕСЂСѓС”РјРѕ РїРѕРјРёР»РєРё РјС–РіСЂР°С†С–С—, С‰РѕР± РЅРµ Р±Р»РѕРєСѓРІР°С‚Рё Р·Р°РїСѓСЃРє РґРѕРґР°С‚РєР°.
             }
 
-            // РЇРІРЅРѕ Р·Р°Р±РёСЂР°С”РјРѕ Р·РЅР°С‡РµРЅРЅСЏ Р· РїРѕРїРµСЂРµРґРЅСЊРѕС— РІРµСЂСЃС–С—.
-            // РќР° РјРѕРјРµРЅС‚ РїРµСЂС€РѕРіРѕ Р·Р°РїСѓСЃРєСѓ РЅРѕРІРѕС— РІРµСЂСЃС–С— РєРѕСЂРёСЃС‚СѓРІР°С‡ С‰Рµ РЅРµ РјР°РІ РјРѕР¶Р»РёРІРѕСЃС‚С–
-            // Р·РјС–РЅРёС‚Рё РЅР°Р»Р°С€С‚СѓРІР°РЅРЅСЏ, С‚РѕРјСѓ РїРѕРїРµСЂРµРґРЅС” Р·РЅР°С‡РµРЅРЅСЏ РјР°С” РїСЂС–РѕСЂРёС‚РµС‚.
-            var previousValues = TryReadPreviousVersionSettings(currentVersion);
-
-            if (!string.IsNullOrWhiteSpace(previousValues.StarCitizenUA))
-            {
-                Settings.Default.StarCitizenUA = previousValues.StarCitizenUA;
-            }
-
-            if (!string.IsNullOrWhiteSpace(previousValues.UpdateChannel))
-            {
-                Settings.Default.UpdateChannel = previousValues.UpdateChannel;
-            }
-
             // Р“Р°СЂР°РЅС‚СѓС”РјРѕ Р·РЅР°С‡РµРЅРЅСЏ Р·Р° Р·Р°РјРѕРІС‡СѓРІР°РЅРЅСЏРј РґР»СЏ РєР°РЅР°Р»Сѓ РѕРЅРѕРІР»РµРЅСЊ.
             if (string.IsNullOrWhiteSpace(Settings.Default.UpdateChannel))
             {
@@ -105,69 +87,6 @@ namespace SCLOCVerse
             Settings.Default.LastAppVersion = currentVersion;
             Settings.Default.UpgradeRequired = false;
             Settings.Default.Save();
-        }
-
-        private static (string? StarCitizenUA, string? UpdateChannel) TryReadPreviousVersionSettings(string currentVersion)
-        {
-            try
-            {
-                var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-                var settingsBaseDir = Path.Combine(localAppData, "SCLOCVerse");
-                if (!Directory.Exists(settingsBaseDir))
-                    return (null, null);
-
-                var urlDirs = Directory.GetDirectories(settingsBaseDir, "SCLOCVerse_Url_*");
-                if (urlDirs.Length == 0)
-                    return (null, null);
-
-                Version? current = null;
-                _ = Version.TryParse(currentVersion, out current);
-
-                string? bestDir = null;
-                Version? bestVersion = null;
-
-                foreach (var urlDir in urlDirs)
-                {
-                    foreach (var versionDir in Directory.GetDirectories(urlDir))
-                    {
-                        var dirName = Path.GetFileName(versionDir);
-                        if (!Version.TryParse(dirName, out var version))
-                            continue;
-
-                        if (current != null && version >= current)
-                            continue;
-
-                        if (bestVersion == null || version > bestVersion)
-                        {
-                            bestVersion = version;
-                            bestDir = versionDir;
-                        }
-                    }
-                }
-
-                if (bestDir == null)
-                    return (null, null);
-
-                var configPath = Path.Combine(bestDir, "user.config");
-                if (!File.Exists(configPath))
-                    return (null, null);
-
-                var doc = XDocument.Load(configPath);
-                var starCitizenPath = doc.Descendants("setting")
-                    .Where(s => (string?)s.Attribute("name") == "StarCitizenUA")
-                    .Select(s => (string?)s.Element("value"))
-                    .FirstOrDefault();
-                var updateChannel = doc.Descendants("setting")
-                    .Where(s => (string?)s.Attribute("name") == "UpdateChannel")
-                    .Select(s => (string?)s.Element("value"))
-                    .FirstOrDefault();
-
-                return (starCitizenPath, updateChannel);
-            }
-            catch
-            {
-                return (null, null);
-            }
         }
 
         private static string GetCurrentVersionString()
