@@ -17,6 +17,13 @@
 # Installer output
 Installer/Output/
 
+# Forensic / audit artifacts (temporary, must never be public)
+a3f2884-*
+mojibake-findings-*.txt
+*.clean.cs
+*.clean.xaml
+*.clean.json
+
 # Local IDE artifacts
 .groupedtimelineinclude
 
