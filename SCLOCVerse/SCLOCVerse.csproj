@@ -16,9 +16,9 @@
     <Authors>VALDEUS (Vova-Bob), AlexLiberty (Alexuß)</Authors>
     <Copyright>Copyright (c) 2025-2026 VALDEUS (Vova-Bob), AlexLiberty (Alexuß)</Copyright>
     <PackageId>SCLOC-Verse</PackageId>
-  <Version>1.0.1.12</Version>
-  <AssemblyVersion>1.0.1.12</AssemblyVersion>
-  <FileVersion>1.0.1.12</FileVersion>
+  <Version>1.0.0.0</Version>
+  <AssemblyVersion>1.0.0.0</AssemblyVersion>
+  <FileVersion>1.0.0.0</FileVersion>
     <SelfContained>true</SelfContained>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
   </PropertyGroup>
