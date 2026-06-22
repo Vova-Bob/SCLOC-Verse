@@ -5,7 +5,7 @@
     <Setting Name="LastAppVersion" Type="System.String" Scope="User">
       <Value Profile="(Default)" />
     </Setting>
-    <Setting Name="StarCitizenUA" Type="System.String" Scope="User">
+    <Setting Name="GameFolder" Type="System.String" Scope="User">
       <Value Profile="(Default)" />
     </Setting>
     <Setting Name="UpdateChannel" Type="System.String" Scope="User">
