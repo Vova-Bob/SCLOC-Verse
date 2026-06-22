@@ -1,0 +1,207 @@
+﻿<Canvas x:Class="SCLOCVerse.Controls.LocalizationCanvas"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:controls="clr-namespace:SCLOCVerse.Controls"
+        Background="Transparent">
+
+    <!-- ===== Р Р•РЎРЈР РЎР Р”Р›РЇ РљРќРћРџРћРљ ===== -->
+    <Canvas.Resources>
+        <!-- Р‘Р°Р·РѕРІС– РєРѕР»СЊРѕСЂРё -->
+        <SolidColorBrush x:Key="BtnFill"        Color="#30546E"/>
+        <SolidColorBrush x:Key="BtnFillHover"   Color="#3A6682"/>
+        <SolidColorBrush x:Key="BtnStroke"      Color="#8DD0FF"/>
+        <SolidColorBrush x:Key="BtnShadow"      Color="#000000"/>
+
+        <!-- РЎРїС–Р»СЊРЅРёР№ СЃС‚РёР»СЊ РґС–Р№РѕРІРѕС— РєРЅРѕРїРєРё Р· СЂР°РјРєРѕСЋ С– Р°РЅС–РјР°С†С–С”СЋ РЅР°С‚РёСЃРєР°РЅРЅСЏ -->
+        <Style x:Key="ActionButton" TargetType="Button">
+            <Setter Property="Width" Value="150"/>
+            <Setter Property="Height" Value="40"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="FontSize" Value="16"/>
+            <Setter Property="Background" Value="{StaticResource BtnFill}"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <!-- Р’РµСЃСЊ РєРѕРЅС‚РµРЅС‚ Сѓ РєРѕСЂРµРЅС– РґР»СЏ Р°РЅС–РјР°С†С–С— Scale -->
+                        <Grid x:Name="Root" RenderTransformOrigin="0.5,0.5">
+                            <Grid.RenderTransform>
+                                <!-- РјР°СЃС€С‚Р°Р±СѓС”РјРѕ РІРµСЃСЊ Grid РїСЂРё РЅР°С‚РёСЃРєР°РЅРЅС– -->
+                                <ScaleTransform x:Name="PressScale" ScaleX="1" ScaleY="1"/>
+                            </Grid.RenderTransform>
+
+                            <!-- РўС–РЅСЊ РїС–Рґ РєРЅРѕРїРєРѕСЋ -->
+                            <Grid.Effect>
+                                <DropShadowEffect Color="{Binding Color, Source={StaticResource BtnShadow}}"
+                                                  BlurRadius="12"
+                                                  ShadowDepth="6"
+                                                  Opacity="0.45"/>
+                            </Grid.Effect>
+
+                            <!-- Р¤РћРќ С‚Р° Р“РµРѕРјРµС‚СЂС–СЏ РєРЅРѕРїРѕРє-->
+                            <Path x:Name="BtnBg"
+                                  Fill="{TemplateBinding Background}"
+                                  Stretch="Fill" SnapsToDevicePixels="True"
+                                  Data="M 5,0 L 95,0 A 6,6 0 0 1 100,6 L 100,30 L 95,40 L 5,40 A 6,6 0 0 1 0,34 L 0,10 Z"/>
+
+                            <!-- Р РђРњРљРђ -->
+                            <Path x:Name="BtnStroke"
+                                  Stroke="{StaticResource BtnStroke}"
+                                  StrokeThickness="1"
+                                  StrokeLineJoin="Round"
+                                  StrokeStartLineCap="Round"
+                                  StrokeEndLineCap="Round"
+                                  Fill="Transparent"
+                                  Stretch="Fill" SnapsToDevicePixels="True"
+                                  Data="M 5,0 L 95,0 A 5.5,5.5 0 0 1 100,5.5 L 100,30 L 95,40 L 5,40 A 5.5,5.5 0 0 1 0,34.5 L 0,10 Z"/>
+
+                            <!-- РўРµРєСЃС‚ -->
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"/>
+                        </Grid>
+
+                        <!-- РўР РР“Р•Р Р РЎРўРђРќР†Р’ -->
+                        <ControlTemplate.Triggers>
+                            <!-- РќР°РІРµРґРµРЅРЅСЏ: Р»РµРіРєРµ РїС–РґСЃРІС–С‡РµРЅРЅСЏ -->
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="BtnBg" Property="Fill" Value="{StaticResource BtnFillHover}"/>
+                                <Setter TargetName="BtnStroke" Property="StrokeThickness" Value="2.6"/>
+                            </Trigger>
+
+                            <!-- РќР°С‚РёСЃРЅРµРЅРЅСЏ: РјвЂ™СЏРєРµ СЃС‚РёСЃРєР°РЅРЅСЏ Р· Р°РЅС–РјР°С†С–С”СЋ -->
+                            <Trigger Property="IsPressed" Value="True">
+                                <Trigger.EnterActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <!-- СЃС‚РёСЃРєР°С”РјРѕ РґРѕ 0.97 -->
+                                            <DoubleAnimation Storyboard.TargetName="PressScale"
+                                                             Storyboard.TargetProperty="ScaleX"
+                                                             To="0.97" Duration="0:0:0.06" />
+                                            <DoubleAnimation Storyboard.TargetName="PressScale"
+                                                             Storyboard.TargetProperty="ScaleY"
+                                                             To="0.97" Duration="0:0:0.06" />
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.EnterActions>
+                                <Trigger.ExitActions>
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <!-- РїРѕРІРµСЂС‚Р°С”РјРѕ 1.00 -->
+                                            <DoubleAnimation Storyboard.TargetName="PressScale"
+                                                             Storyboard.TargetProperty="ScaleX"
+                                                             To="1" Duration="0:0:0.08" />
+                                            <DoubleAnimation Storyboard.TargetName="PressScale"
+                                                             Storyboard.TargetProperty="ScaleY"
+                                                             To="1" Duration="0:0:0.08" />
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </Trigger.ExitActions>
+                            </Trigger>
+
+                            <!-- Р’РёРјРєРЅРµРЅРѕ -->
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.55"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Canvas.Resources>
+
+    <!-- Р—Р°РіРѕР»РѕРІРѕРє СЃРµРєС†С–С— -->
+    <Grid Width="{Binding ActualWidth, RelativeSource={RelativeSource AncestorType=Canvas}}">
+        <TextBlock Text="Р’СЃС‚Р°РЅРѕРІР»РµРЅРЅСЏ Р»РѕРєР°Р»С–Р·Р°С†С–С—"
+                   FontFamily="Arial"
+                   Foreground="White"
+                   FontSize="20"
+                   FontWeight="Bold"
+                   HorizontalAlignment="Center"
+                   Margin="0,20,0,0"/>
+    </Grid>
+
+    <!-- РЎРµР»РµРєС‚РѕСЂ СЃРµСЂРµРґРѕРІРёС‰Р° -->
+    <controls:EnvironmentSelector x:Name="EnvSelector"
+                                  Canvas.Left="475"
+                                  Canvas.Top="60"/>
+
+    <!-- РљРЅРѕРїРєР° РїРѕРІРµСЂРЅРµРЅРЅСЏ РЅР° РіРѕР»РѕРІРЅСѓ (Р·Р°Р»РёС€РёРІ СЏРє Р±СѓР»Рѕ) -->
+    <Button x:Name="BtnReturnHome"
+            Canvas.Top="240" Canvas.Right="910"
+            Width="40" Height="100"
+            Background="Transparent"
+            Cursor="Hand" HorizontalAlignment="Left"
+            Canvas.Left="0" VerticalAlignment="Center">
+        <Button.Template>
+            <ControlTemplate TargetType="Button">
+                <Grid>
+                    <Rectangle Fill="Transparent" Width="50" Height="100"/>
+                    <Ellipse x:Name="BgCircle" Width="50" Height="100" Fill="Transparent"
+                             HorizontalAlignment="Center" VerticalAlignment="Center" Opacity="1">
+                        <Ellipse.Effect>
+                            <DropShadowEffect Color="Black" BlurRadius="10" ShadowDepth="0" Opacity="0.6"/>
+                        </Ellipse.Effect>
+                    </Ellipse>
+                    <Path x:Name="ArrowPath2"
+                          Data="M22,5 L12,22 L22,39"
+                          Stroke="#6DB9F8" StrokeThickness="5"
+                          StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                          StrokeLineJoin="Round" HorizontalAlignment="Center"
+                          VerticalAlignment="Center" Opacity="1"/>
+                </Grid>
+                <ControlTemplate.Triggers>
+                    <Trigger Property="IsMouseOver" Value="True">
+                        <Setter TargetName="BgCircle" Property="Opacity" Value="0.9"/>
+                        <Setter TargetName="ArrowPath2" Property="Opacity" Value="0.85"/>
+                    </Trigger>
+                    <Trigger Property="IsPressed" Value="True">
+                        <Setter TargetName="BgCircle" Property="Opacity" Value="0.8"/>
+                        <Setter TargetName="ArrowPath2" Property="Opacity" Value="0.6"/>
+                        <Setter TargetName="BgCircle" Property="RenderTransform">
+                            <Setter.Value>
+                                <ScaleTransform ScaleX="0.95" ScaleY="0.95"/>
+                            </Setter.Value>
+                        </Setter>
+                    </Trigger>
+                </ControlTemplate.Triggers>
+            </ControlTemplate>
+        </Button.Template>
+    </Button>
+
+    <!-- РљРќРћРџРљР Р”Р†Р™ Р—Р† РЎРџР†Р›Р¬РќРРњ РЎРўРР›Р•Рњ -->
+    <Button x:Name="BtnInstall"
+            Style="{StaticResource ActionButton}"
+            Content="Р’СЃС‚Р°РЅРѕРІРёС‚Рё"
+            Canvas.Left="770"
+            Canvas.Top="88"/>
+
+    <Button x:Name="BtnLocalisationDelete"
+            Style="{StaticResource ActionButton}"
+            Content="Р’РёРґР°Р»РёС‚Рё"
+            Canvas.Left="770"
+            Canvas.Top="150"/>
+
+    <Border Canvas.Left="70" Canvas.Top="220"
+     Width="820" Height="270"
+     CornerRadius="10"
+     BorderBrush="#6DB9F8"
+     BorderThickness="1"
+     Background="#CC0A1D29">
+        <TextBox x:Name="TxtLocalizationReadme"
+         FontFamily="Segoe UI Semibold"
+         FontSize="16"
+         Foreground="#A9C6E2"
+         Background="Transparent"
+         BorderThickness="0"
+         Padding="10,6"
+         IsReadOnly="True"
+         AcceptsReturn="True"
+         TextWrapping="Wrap"            
+         HorizontalContentAlignment="Stretch"
+         VerticalContentAlignment="Top"
+         TextAlignment="Justify"/>
+
+    </Border>
+
+</Canvas>
