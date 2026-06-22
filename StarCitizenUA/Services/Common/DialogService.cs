@@ -72,6 +72,11 @@ namespace StarCitizenUA.Services.Common
             });
         }
 
+        public Task<bool> ShowUpdateDialogAsync(string availableVersion, Window? owner = null)
+        {
+            return ShowOnUiThreadAsync(() => UpdateDialog.Show(owner ?? ResolveOwner(), availableVersion));
+        }
+
         public Task<MessageBoxResult> ShowMessageAsync(string message, string? title = null, MessageBoxButton buttons = MessageBoxButton.OK, Window? owner = null)
         {
             return ShowOnUiThreadAsync(() => BaseDialog.Show(new DialogOptions

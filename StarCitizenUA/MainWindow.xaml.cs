@@ -236,10 +236,7 @@ namespace StarCitizenUA
                     _updateStatusPresenter.ShowUpdateAvailable(result);
                     await _updateHistoryService.AddEntryAsync(CreateHistoryEntry(UpdateOperation.Check, UpdateOperationResult.Success, result)).ConfigureAwait(true);
 
-                    var confirmed = await _dialogService.ShowConfirmationAsync(
-                        $"Доступна нова версія {result.LatestVersion}. Бажаєте завантажити та встановити?",
-                        "Оновлення програми",
-                        this).ConfigureAwait(true);
+                    var confirmed = await _dialogService.ShowUpdateDialogAsync(result.LatestVersion.ToString(), this).ConfigureAwait(true);
 
                     if (confirmed)
                     {

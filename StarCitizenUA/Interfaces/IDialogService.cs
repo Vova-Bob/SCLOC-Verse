@@ -30,6 +30,11 @@ namespace StarCitizenUA.Interfaces
         Task<bool> ShowConfirmationAsync(string message, string? title = null, Window? owner = null);
 
         /// <summary>
+        /// Показує компактний діалог оновлення з кнопками Встановити/Пізніше.
+        /// </summary>
+        Task<bool> ShowUpdateDialogAsync(string availableVersion, Window? owner = null);
+
+        /// <summary>
         /// Показує діалог підтвердження з заданими кнопками.
         /// </summary>
         Task<MessageBoxResult> ShowMessageAsync(string message, string? title = null, MessageBoxButton buttons = MessageBoxButton.OK, Window? owner = null);
