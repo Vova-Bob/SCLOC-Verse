@@ -41,7 +41,8 @@
 * ризики регресії;
 * вплив на UI;
 * вплив на архітектуру;
-* вплив на сумісність.
+* вплив на сумісність;
+* вплив на кодування тексту (особливо при роботі з українською мовою, GitHub API, JSON, XAML, .iss, .ps1).
 
 Формат:
 
@@ -70,6 +71,61 @@ git add .
 git commit -m "<короткий опис українською>"
 
 Усі commit-повідомлення українською мовою.
+
+---
+
+# Правила кодування тексту (P0)
+
+Це критичне правило. Пошкодження українського тексту (mojibake) не допускається ні в коді, ні в релізних артефактах, ні в GitHub API.
+
+## Джерела ризику
+
+* PowerShell за замовчуванням використовує кодування консолі (часто Windows-1251 або OEM), а не UTF-8.
+* `Invoke-WebRequest -Body $string` кодує тіло запиту в кодуванні консолі, яке GitHub API не розуміє для українських символів.
+* `Out-File`, `Set-Content` без `-Encoding UTF8` можуть записати файл у Windows-1251.
+* `File.ReadAllText` без явного `Encoding.UTF8` на системі з не-UTF8 локаллю прочитає файл неправильно.
+* Редактори, які зберігають XAML/JSON/C# файли без BOM або в ANSI, псують українські символи.
+
+## Обов'язкові вимоги
+
+1. **Всі C# / XAML / JSON / .iss / .ps1 файли** мають бути збережені у **UTF-8**.
+2. **Усі українські тексти в коді** мають бути UTF-8 з коректними кодами символів, без mojibake (`Р›Р°СЃРєР°РІРѕ`, `??????` тощо).
+3. **Читання текстових файлів** виконувати тільки з явним `Encoding.UTF8`:
+   ```csharp
+   File.ReadAllText(path, Encoding.UTF8)
+   await File.ReadAllTextAsync(path, Encoding.UTF8)
+   new StreamReader(path, Encoding.UTF8)
+   ```
+4. **Запис текстових файлів** виконувати тільки з явним `Encoding.UTF8`:
+   ```csharp
+   File.WriteAllText(path, content, Encoding.UTF8)
+   await File.WriteAllTextAsync(path, content, Encoding.UTF8)
+   ```
+5. **PowerShell — запис файлів**:
+   ```powershell
+   $content | Set-Content -Path $file -Encoding UTF8
+   [System.Text.Encoding]::UTF8.GetBytes($content) | Set-Content -Path $file -Encoding Byte
+   ```
+6. **PowerShell — веб-запити з JSON**:
+   ```powershell
+   $json = @{ body = "Український текст" } | ConvertTo-Json
+   $bytes = [System.Text.Encoding]::UTF8.GetBytes($json)
+   Invoke-WebRequest -Uri $url -Method POST -Body $bytes -ContentType "application/json; charset=utf-8" -Headers @{ ... }
+   ```
+   Ніколи не передавати український текст в `-Body $string` напряму.
+7. **GitHub API release notes** створювати/оновлювати тільки з UTF-8 байтами та заголовком `Content-Type: application/json; charset=utf-8`.
+
+## Перевірка перед commit / релізом
+
+* Запускати `dotnet build` та візуально перевіряти всі екрани з українським текстом.
+* Перевіряти GitHub release notes в браузері одразу після публікації.
+* Якщо знайдено `Р›Р°СЃРєР°РІРѕ`, `Ð›Ð°`, `??????` — це P0 регресія, виправляти негайно.
+
+## Наслідки порушення
+
+* Пошкоджений український текст у продукті = P0 дефект.
+* Пошкоджені release notes = непрофесійний публічний реліз.
+* Mojibake в commit історії ускладнює подальшу роботу з кодом.
 
 ---
 
