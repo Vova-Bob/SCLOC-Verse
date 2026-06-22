@@ -77,9 +77,25 @@ function New-ChecksumFile {
     Write-Host "Created: $checksumFile" -ForegroundColor Green
 }
 
+function Test-NoMojibake {
+    Write-Host "Running mojibake detection scan..." -ForegroundColor Cyan
+
+    $scannerPath = Join-Path $PSScriptRoot "..\Scripts\MojibakeScanner.utf8.ps1"
+    $repoRoot = Join-Path $PSScriptRoot ".."
+
+    & powershell -NoProfile -ExecutionPolicy Bypass -File $scannerPath -RepoPath $repoRoot
+
+    if ($LASTEXITCODE -ne 0) {
+        throw "Mojibake/replacement characters detected in source files. Fix encoding before release. See scanner output above."
+    }
+
+    Write-Host "No mojibake detected." -ForegroundColor Green
+}
+
 try {
     Push-Location $PSScriptRoot
     Test-InnoSetupCompiler
+    Test-NoMojibake
     Publish-Application
     Build-Installer
     New-ChecksumFile
