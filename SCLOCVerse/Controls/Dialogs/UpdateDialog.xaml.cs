@@ -10,7 +10,7 @@ namespace SCLOCVerse.Controls.Dialogs
         {
             InitializeComponent();
 
-            MessageText.Text = $"Р’РµСЂСЃС–СЏ {availableVersion} РіРѕС‚РѕРІР° РґРѕ РІСЃС‚Р°РЅРѕРІР»РµРЅРЅСЏ.";
+            MessageText.Text = $"Версія {availableVersion} готова до встановлення.";
         }
 
         public bool InstallRequested { get; private set; }

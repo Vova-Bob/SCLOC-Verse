@@ -3,7 +3,7 @@
 namespace SCLOCVerse.Controls.Dialogs
 {
     /// <summary>
-    /// РћРїРёСЃ РєРЅРѕРїРєРё СѓРЅС–С„С–РєРѕРІР°РЅРѕРіРѕ РґС–Р°Р»РѕРіСѓ.
+    /// Опис кнопки уніфікованого діалогу.
     /// </summary>
     public sealed class DialogButtonInfo
     {

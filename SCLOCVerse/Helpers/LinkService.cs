@@ -17,7 +17,7 @@ namespace SCLOCVerse.Helpers
             if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) ||
                 (uri.Scheme != Uri.UriSchemeHttps && uri.Scheme != Uri.UriSchemeHttp))
             {
-                await _toastService.ShowToastAsync("РќРµРїСЂРёРїСѓСЃС‚РёРјРµ РїРѕСЃРёР»Р°РЅРЅСЏ. РџРµСЂРµРІС–СЂС‚Рµ URL.", 4000).ConfigureAwait(true);
+                await _toastService.ShowToastAsync("Неприпустиме посилання. Перевірте URL.", 4000).ConfigureAwait(true);
                 return;
             }
 
@@ -30,16 +30,16 @@ namespace SCLOCVerse.Helpers
                     FileName = uri.AbsoluteUri,
                     UseShellExecute = true
                 });
-                await _toastService.ShowToastAsync("Р’С–РґРєСЂРёРІР°С”РјРѕ РїРѕСЃРёР»Р°РЅРЅСЏ Сѓ Р±СЂР°СѓР·РµСЂС–.", 3000).ConfigureAwait(true);
+                await _toastService.ShowToastAsync("Відкриваємо посилання у браузері.", 3000).ConfigureAwait(true);
             }
             catch (OperationCanceledException)
             {
-                Debug.WriteLine("[LinkService] Р’С–РґРєСЂРёС‚С‚СЏ РїРѕСЃРёР»Р°РЅРЅСЏ СЃРєР°СЃРѕРІР°РЅРѕ РєРѕСЂРёСЃС‚СѓРІР°С‡РµРј.");
+                Debug.WriteLine("[LinkService] Відкриття посилання скасовано користувачем.");
             }
             catch (Exception ex)
             {
-                Debug.WriteLine($"[LinkService] РќРµ РІРґР°Р»РѕСЃСЏ РІС–РґРєСЂРёС‚Рё {uri.AbsoluteUri}: {ex}");
-                await _toastService.ShowToastAsync($"РќРµ РІРґР°Р»РѕСЃСЏ РІС–РґРєСЂРёС‚Рё РїРѕСЃРёР»Р°РЅРЅСЏ: {ex.Message}").ConfigureAwait(true);
+                Debug.WriteLine($"[LinkService] Не вдалося відкрити {uri.AbsoluteUri}: {ex}");
+                await _toastService.ShowToastAsync($"Не вдалося відкрити посилання: {ex.Message}").ConfigureAwait(true);
             }
         }
     }

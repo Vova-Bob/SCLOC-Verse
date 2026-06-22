@@ -43,27 +43,27 @@ namespace SCLOCVerse.Controls
             {
                 MessageBoxButton.OK => new[]
                 {
-                    new DialogButtonInfo("Р“Р°СЂР°Р·Рґ", MessageBoxResult.OK, isDefault: true)
+                    new DialogButtonInfo("Гаразд", MessageBoxResult.OK, isDefault: true)
                 },
                 MessageBoxButton.YesNo => new[]
                 {
-                    new DialogButtonInfo("РћС‡РёСЃС‚РёС‚Рё", MessageBoxResult.Yes, isDefault: true, isDestructive: true),
-                    new DialogButtonInfo("РЎРєР°СЃСѓРІР°С‚Рё", MessageBoxResult.No)
+                    new DialogButtonInfo("Очистити", MessageBoxResult.Yes, isDefault: true, isDestructive: true),
+                    new DialogButtonInfo("Скасувати", MessageBoxResult.No)
                 },
                 MessageBoxButton.YesNoCancel => new[]
                 {
-                    new DialogButtonInfo("РЎС‚Р°СЂС– РєРµС€С–", MessageBoxResult.Yes, isDefault: true, isDestructive: true),
-                    new DialogButtonInfo("Р’РµСЃСЊ РєРµС€", MessageBoxResult.No, isDestructive: true),
-                    new DialogButtonInfo("РЎРєР°СЃСѓРІР°С‚Рё", MessageBoxResult.Cancel)
+                    new DialogButtonInfo("Старі кеші", MessageBoxResult.Yes, isDefault: true, isDestructive: true),
+                    new DialogButtonInfo("Весь кеш", MessageBoxResult.No, isDestructive: true),
+                    new DialogButtonInfo("Скасувати", MessageBoxResult.Cancel)
                 },
                 MessageBoxButton.OKCancel => new[]
                 {
-                    new DialogButtonInfo("Р“Р°СЂР°Р·Рґ", MessageBoxResult.OK, isDefault: true, isDestructive: image == MessageBoxImage.Warning),
-                    new DialogButtonInfo("РЎРєР°СЃСѓРІР°С‚Рё", MessageBoxResult.Cancel)
+                    new DialogButtonInfo("Гаразд", MessageBoxResult.OK, isDefault: true, isDestructive: image == MessageBoxImage.Warning),
+                    new DialogButtonInfo("Скасувати", MessageBoxResult.Cancel)
                 },
                 _ => new[]
                 {
-                    new DialogButtonInfo("РЎРєР°СЃСѓРІР°С‚Рё", MessageBoxResult.Cancel)
+                    new DialogButtonInfo("Скасувати", MessageBoxResult.Cancel)
                 }
             };
         }

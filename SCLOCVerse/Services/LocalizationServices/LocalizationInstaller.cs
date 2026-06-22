@@ -234,7 +234,7 @@ namespace SCLOCVerse.Services.LocalizationServices
             await using var tempStream = new FileStream(tempPath, FileMode.CreateNew, FileAccess.Write, FileShare.None, 81920, FileOptions.Asynchronous | FileOptions.SequentialScan);
             using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
 
-            // Р—Р°РІР°РЅС‚Р°Р¶СѓС”РјРѕ global.ini РѕРґСЂР°Р·Сѓ РІ РїР°РїРєСѓ Р»РѕРєР°Р»С–Р·Р°С†С–С—
+            // Завантажуємо global.ini одразу в папку локалізації
             long total = 0;
             var buffer = new byte[81920];
             int read;
@@ -456,9 +456,9 @@ namespace SCLOCVerse.Services.LocalizationServices
 
         private static void ValidateEnvironment(string folder, string name)
         {
-            if (string.IsNullOrWhiteSpace(folder)) throw new ArgumentException("РЁР»СЏС… РґРѕ РїР°РїРєРё СЃРµСЂРµРґРѕРІРёС‰Р° РЅРµ Р·Р°РґР°РЅРѕ.", nameof(folder));
-            if (string.IsNullOrWhiteSpace(name)) throw new ArgumentException("РќР°Р·РІР° СЃРµСЂРµРґРѕРІРёС‰Р° РЅРµ Р·Р°РґР°РЅР°.", nameof(name));
-            if (!Directory.Exists(folder)) throw new DirectoryNotFoundException($"РџР°РїРєСѓ СЃРµСЂРµРґРѕРІРёС‰Р° \"{folder}\" РЅРµ Р·РЅР°Р№РґРµРЅРѕ.");
+            if (string.IsNullOrWhiteSpace(folder)) throw new ArgumentException("Шлях до папки середовища не задано.", nameof(folder));
+            if (string.IsNullOrWhiteSpace(name)) throw new ArgumentException("Назва середовища не задана.", nameof(name));
+            if (!Directory.Exists(folder)) throw new DirectoryNotFoundException($"Папку середовища \"{folder}\" не знайдено.");
         }
 
         private static HttpClient CreateHttpClient()

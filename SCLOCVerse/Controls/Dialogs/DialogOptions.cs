@@ -5,7 +5,7 @@ using System.Windows.Media;
 namespace SCLOCVerse.Controls.Dialogs
 {
     /// <summary>
-    /// РџР°СЂР°РјРµС‚СЂРё РґР»СЏ РєРѕРЅС„С–РіСѓСЂР°С†С–С— BaseDialog.
+    /// Параметри для конфігурації BaseDialog.
     /// </summary>
     public sealed class DialogOptions
     {

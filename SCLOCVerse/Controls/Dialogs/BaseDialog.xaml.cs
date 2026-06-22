@@ -20,7 +20,7 @@ namespace SCLOCVerse.Controls.Dialogs
 
             var accentBrush = options.AccentBrush ?? GetDefaultAccentBrush(options.Type);
 
-            // РђРєС†РµРЅС‚ РґР»СЏ СЂРѕР·РґС–Р»СЋРІР°Р»СЊРЅРѕС— Р»С–РЅС–С—.
+            // Акцент для розділювальної лінії.
             if (FindResource("DialogBorder") is SolidColorBrush borderBrush)
             {
                 borderBrush.Color = ((SolidColorBrush)accentBrush).Color;
@@ -123,27 +123,27 @@ namespace SCLOCVerse.Controls.Dialogs
             {
                 MessageBoxButton.OK => new[]
                 {
-                    new DialogButtonInfo("Р“Р°СЂР°Р·Рґ", MessageBoxResult.OK, isDefault: true)
+                    new DialogButtonInfo("Гаразд", MessageBoxResult.OK, isDefault: true)
                 },
                 MessageBoxButton.OKCancel => new[]
                 {
-                    new DialogButtonInfo("Р“Р°СЂР°Р·Рґ", MessageBoxResult.OK, isDefault: true),
-                    new DialogButtonInfo("РЎРєР°СЃСѓРІР°С‚Рё", MessageBoxResult.Cancel)
+                    new DialogButtonInfo("Гаразд", MessageBoxResult.OK, isDefault: true),
+                    new DialogButtonInfo("Скасувати", MessageBoxResult.Cancel)
                 },
                 MessageBoxButton.YesNo => new[]
                 {
-                    new DialogButtonInfo("РўР°Рє", MessageBoxResult.Yes, isDefault: true),
-                    new DialogButtonInfo("РќС–", MessageBoxResult.No)
+                    new DialogButtonInfo("Так", MessageBoxResult.Yes, isDefault: true),
+                    new DialogButtonInfo("Ні", MessageBoxResult.No)
                 },
                 MessageBoxButton.YesNoCancel => new[]
                 {
-                    new DialogButtonInfo("РўР°Рє", MessageBoxResult.Yes, isDefault: true),
-                    new DialogButtonInfo("РќС–", MessageBoxResult.No),
-                    new DialogButtonInfo("РЎРєР°СЃСѓРІР°С‚Рё", MessageBoxResult.Cancel)
+                    new DialogButtonInfo("Так", MessageBoxResult.Yes, isDefault: true),
+                    new DialogButtonInfo("Ні", MessageBoxResult.No),
+                    new DialogButtonInfo("Скасувати", MessageBoxResult.Cancel)
                 },
                 _ => new[]
                 {
-                    new DialogButtonInfo("Р“Р°СЂР°Р·Рґ", MessageBoxResult.OK, isDefault: true)
+                    new DialogButtonInfo("Гаразд", MessageBoxResult.OK, isDefault: true)
                 }
             };
         }
