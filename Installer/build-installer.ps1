@@ -3,7 +3,7 @@
 [CmdletBinding()]
 param (
     [string]$InnoSetupCompiler = "C:\Program Files (x86)\Inno Setup 6\ISCC.exe",
-    [string]$ProjectDir = "..\StarCitizenUA",
+    [string]$ProjectDir = "..\SCLOCVerse",
     [string]$Configuration = "Release",
     [string]$RuntimeIdentifier = "win-x64"
 )
@@ -12,7 +12,7 @@ $ErrorActionPreference = 'Stop'
 
 $publishDir = Join-Path $ProjectDir "bin\$Configuration\net9.0-windows\$RuntimeIdentifier\publish"
 $installerOutputDir = Join-Path $PSScriptRoot "Output"
-$setupExeName = "SCLocalizationUA_Setup.exe"
+$setupExeName = "SCLOC-Verse_Setup.exe"
 
 function Test-InnoSetupCompiler {
     if (-not (Test-Path $InnoSetupCompiler)) {
@@ -22,7 +22,7 @@ function Test-InnoSetupCompiler {
 
 function Publish-Application {
     Write-Host "Publishing application..." -ForegroundColor Cyan
-    $projectPath = Join-Path $ProjectDir "StarCitizenUA.csproj"
+    $projectPath = Join-Path $ProjectDir "SCLOCVerse.csproj"
     $arguments = @(
         "publish",
         "$projectPath",
@@ -51,7 +51,7 @@ function Build-Installer {
         New-Item -ItemType Directory -Path $installerOutputDir | Out-Null
     }
 
-    $issPath = Join-Path $PSScriptRoot "SCLocalizationUA.iss"
+    $issPath = Join-Path $PSScriptRoot "SCLOC-Verse.iss"
 
     & $InnoSetupCompiler /O"$installerOutputDir" "$issPath"
 

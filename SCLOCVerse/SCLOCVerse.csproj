@@ -1,0 +1,77 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net9.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <ApplicationIcon>app_icon.ico</ApplicationIcon>
+    <AssemblyName>SCLOCVerse</AssemblyName>
+    <RootNamespace>SCLOCVerse</RootNamespace>
+    <Product>SCLOC-Verse</Product>
+    <Title>SCLOC-Verse</Title>
+    <Description>Ukrainian localization and voice assistant installer for Star Citizen</Description>
+    <Company>VALDEUS</Company>
+    <Authors>VALDEUS (Vova-Bob), AlexLiberty (Alexuß)</Authors>
+    <Copyright>Copyright (c) 2025-2026 VALDEUS (Vova-Bob), AlexLiberty (Alexuß)</Copyright>
+    <PackageId>SCLOC-Verse</PackageId>
+    <Version>1.0.1.11</Version>
+    <AssemblyVersion>1.0.1.11</AssemblyVersion>
+    <FileVersion>1.0.1.11</FileVersion>
+    <SelfContained>true</SelfContained>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove="app_icon.ico" />
+    <None Remove="Images\background_general.png" />
+    <None Remove="Images\community_logo.png" />
+    <None Remove="Images\Discord.png" />
+    <None Remove="Images\Lia.png" />
+    <None Remove="Images\made_by_community.png" />
+    <None Remove="Images\SC_UA_Community.png" />
+    <None Remove="Images\smallLogo-removebg-preview.png" />
+    <None Remove="Images\USF-logo.png" />
+    <None Remove="Images\USF-logo2.png" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
+    <PackageReference Include="WindowsAPICodePack.Shell.CommonFileDialogs" Version="1.1.5" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="app_icon.ico">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </Resource>
+    <Resource Include="Images\background_general.png" />
+    <Resource Include="Images\community_logo.png" />
+    <Resource Include="Images\Discord.png" />
+    <Resource Include="Images\Lia.png" />
+    <Resource Include="Images\made_by_community.png" />
+    <Resource Include="Images\SC_UA_Community.png" />
+    <Resource Include="Images\smallLogo-removebg-preview.png" />
+    <Resource Include="Images\USF-logo.png" />
+    <Resource Include="Images\USF-logo2.png" />
+    <Content Include="PathText.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Update="Settings.Designer.cs">
+      <DesignTimeSharedInput>True</DesignTimeSharedInput>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Settings.settings</DependentUpon>
+    </Compile>
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="Settings.settings">
+      <Generator>SettingsSingleFileGenerator</Generator>
+      <LastGenOutput>Settings.Designer.cs</LastGenOutput>
+    </None>
+  </ItemGroup>
+
+</Project>
