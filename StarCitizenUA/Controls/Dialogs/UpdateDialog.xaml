@@ -7,9 +7,10 @@
         Width="500"
         MinWidth="460"
         MaxWidth="520"
-        Height="240"
-        MinHeight="200"
-        MaxHeight="260"
+        Height="Auto"
+        MinHeight="160"
+        MaxHeight="200"
+        SizeToContent="Height"
         WindowStyle="None"
         AllowsTransparency="True"
         ResizeMode="NoResize"
@@ -32,10 +33,10 @@
         <SolidColorBrush x:Key="DialogBodyText" Color="#C7DDF0"/>
 
         <Style x:Key="UpdateButtonStyle" TargetType="{x:Type Button}">
-            <Setter Property="Height" Value="38"/>
-            <Setter Property="Width" Value="150"/>
+            <Setter Property="Height" Value="34"/>
+            <Setter Property="Width" Value="140"/>
             <Setter Property="FontFamily" Value="Segoe UI"/>
-            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="FontSize" Value="13"/>
             <Setter Property="FontWeight" Value="Bold"/>
             <Setter Property="Foreground" Value="{StaticResource DialogText}"/>
             <Setter Property="Background" Value="{StaticResource SecondaryFill}"/>
@@ -73,10 +74,10 @@
         </Style>
 
         <Style x:Key="PrimaryUpdateButtonStyle" TargetType="{x:Type Button}">
-            <Setter Property="Height" Value="38"/>
-            <Setter Property="Width" Value="150"/>
+            <Setter Property="Height" Value="34"/>
+            <Setter Property="Width" Value="140"/>
             <Setter Property="FontFamily" Value="Segoe UI"/>
-            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="FontSize" Value="13"/>
             <Setter Property="FontWeight" Value="Bold"/>
             <Setter Property="Foreground" Value="White"/>
             <Setter Property="Background" Value="{StaticResource PrimaryFill}"/>
@@ -94,7 +95,7 @@
                                  SnapsToDevicePixels="True">
                             <Border.Effect>
                                 <DropShadowEffect Color="#6DB9F8"
-                                                 BlurRadius="12"
+                                                 BlurRadius="10"
                                                  ShadowDepth="0"
                                                  Opacity="0.5"/>
                             </Border.Effect>
@@ -143,24 +144,24 @@
             <Border Grid.Row="0"
                      Background="{StaticResource DialogHeader}"
                      CornerRadius="9,9,0,0"
-                     Height="42"
+                     Height="36"
                      MouseDown="TitleBar_MouseDown">
                 <Grid>
                     <StackPanel Orientation="Horizontal"
                                  VerticalAlignment="Center"
                                  HorizontalAlignment="Left"
-                                 Margin="14,0,0,0">
+                                 Margin="12,0,0,0">
                         <TextBlock FontFamily="Segoe MDL2 Assets"
-                                   FontSize="18"
+                                   FontSize="16"
                                    Text="&#xE896;"
                                    Foreground="{StaticResource DialogAccent}"
                                    VerticalAlignment="Center"
-                                   Margin="0,0,10,0"/>
+                                   Margin="0,0,8,0"/>
                         
                         <TextBlock x:Name="TitleText"
                                    Text="Доступне оновлення"
                                    FontFamily="Arial"
-                                   FontSize="16"
+                                   FontSize="15"
                                    FontWeight="Bold"
                                    Foreground="{StaticResource DialogText}"
                                    VerticalAlignment="Center"/>
@@ -169,8 +170,8 @@
                     <Button x:Name="CloseButton"
                              HorizontalAlignment="Right"
                              VerticalAlignment="Center"
-                             Width="32"
-                             Height="28"
+                             Width="30"
+                             Height="24"
                              Margin="0,0,6,0"
                              Background="Transparent"
                              BorderThickness="0"
@@ -186,7 +187,7 @@
                                                      CornerRadius="4">
                                                 <TextBlock x:Name="Icon"
                                                            FontFamily="Segoe MDL2 Assets"
-                                                           FontSize="14"
+                                                           FontSize="13"
                                                            Text="&#xE8BB;"
                                                            Foreground="White"
                                                            HorizontalAlignment="Center"
@@ -211,13 +212,13 @@
 
             <!-- Вміст повідомлення -->
             <Grid Grid.Row="1"
-                   Margin="18,16">
+                   Margin="18,12,18,10">
                 <TextBlock x:Name="MessageText"
                            FontFamily="Segoe UI"
-                           FontSize="15"
+                           FontSize="14"
                            Foreground="{StaticResource DialogBodyText}"
                            TextWrapping="Wrap"
-                           LineHeight="22"
+                           LineHeight="20"
                            VerticalAlignment="Center"
                            HorizontalAlignment="Left"/>
             </Grid>
@@ -226,7 +227,7 @@
             <StackPanel Grid.Row="2"
                         Orientation="Horizontal"
                         HorizontalAlignment="Center"
-                        Margin="0,0,0,18">
+                        Margin="0,0,0,14">
                 <Button x:Name="InstallButton"
                          Content="ВСТАНОВИТИ"
                          Style="{StaticResource PrimaryUpdateButtonStyle}"
@@ -234,7 +235,7 @@
                 <Button x:Name="LaterButton"
                          Content="ПІЗНІШЕ"
                          Style="{StaticResource UpdateButtonStyle}"
-                         Margin="14,0,0,0"
+                         Margin="12,0,0,0"
                          Click="LaterButton_Click"/>
             </StackPanel>
         </Grid>
