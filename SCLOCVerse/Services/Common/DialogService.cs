@@ -7,8 +7,8 @@ using System.Windows.Threading;
 namespace SCLOCVerse.Services.Common
 {
     /// <summary>
-    /// Р РµР°Р»С–Р·Р°С†С–СЏ СЃРµСЂРІС–СЃСѓ СѓРЅС–С„С–РєРѕРІР°РЅРёС… РјРѕРґР°Р»СЊРЅРёС… РґС–Р°Р»РѕРіС–РІ.
-    /// Р’СЃС– РјРµС‚РѕРґРё Р±РµР·РїРµС‡РЅС– РґР»СЏ РІРёРєР»РёРєСѓ Р· С„РѕРЅРѕРІРёС… РїРѕС‚РѕРєС–РІ.
+    /// Реалізація сервісу уніфікованих модальних діалогів.
+    /// Всі методи безпечні для виклику з фонових потоків.
     /// </summary>
     public sealed class DialogService : IDialogService
     {
@@ -24,7 +24,7 @@ namespace SCLOCVerse.Services.Common
             return ShowOnUiThreadAsync(() => BaseDialog.Show(new DialogOptions
             {
                 Type = DialogType.Info,
-                Title = title ?? "Р†РЅС„РѕСЂРјР°С†С–СЏ",
+                Title = title ?? "Інформація",
                 Message = message,
                 Buttons = MessageBoxButton.OK,
                 Owner = owner ?? ResolveOwner()
@@ -36,7 +36,7 @@ namespace SCLOCVerse.Services.Common
             return ShowOnUiThreadAsync(() => BaseDialog.Show(new DialogOptions
             {
                 Type = DialogType.Error,
-                Title = title ?? "РџРѕРјРёР»РєР°",
+                Title = title ?? "Помилка",
                 Message = message,
                 Buttons = MessageBoxButton.OK,
                 Owner = owner ?? ResolveOwner()
@@ -48,7 +48,7 @@ namespace SCLOCVerse.Services.Common
             return ShowOnUiThreadAsync(() => BaseDialog.Show(new DialogOptions
             {
                 Type = DialogType.Warning,
-                Title = title ?? "РџРѕРїРµСЂРµРґР¶РµРЅРЅСЏ",
+                Title = title ?? "Попередження",
                 Message = message,
                 Buttons = MessageBoxButton.OKCancel,
                 Owner = owner ?? ResolveOwner()
@@ -62,7 +62,7 @@ namespace SCLOCVerse.Services.Common
                 var result = BaseDialog.Show(new DialogOptions
                 {
                     Type = DialogType.Confirmation,
-                    Title = title ?? "РџС–РґС‚РІРµСЂРґР¶РµРЅРЅСЏ",
+                    Title = title ?? "Підтвердження",
                     Message = message,
                     Buttons = MessageBoxButton.YesNo,
                     Owner = owner ?? ResolveOwner()
@@ -70,11 +70,6 @@ namespace SCLOCVerse.Services.Common
 
                 return result == MessageBoxResult.Yes;
             });
-        }
-
-        public Task<bool> ShowUpdateDialogAsync(string availableVersion, Window? owner = null)
-        {
-            return ShowOnUiThreadAsync(() => UpdateDialog.Show(owner ?? ResolveOwner(), availableVersion));
         }
 
         public Task<MessageBoxResult> ShowMessageAsync(string message, string? title = null, MessageBoxButton buttons = MessageBoxButton.OK, Window? owner = null)
@@ -89,6 +84,11 @@ namespace SCLOCVerse.Services.Common
             }));
         }
 
+        public Task<bool> ShowUpdateDialogAsync(string availableVersion, Window? owner = null)
+        {
+            return ShowOnUiThreadAsync(() => UpdateDialog.Show(owner ?? ResolveOwner(), availableVersion));
+        }
+
         private static Window? ResolveOwner()
         {
             return Application.Current?.MainWindow;
@@ -98,8 +98,8 @@ namespace SCLOCVerse.Services.Common
         {
             return buttons switch
             {
-                MessageBoxButton.YesNo or MessageBoxButton.YesNoCancel => "РџС–РґС‚РІРµСЂРґР¶РµРЅРЅСЏ",
-                _ => "РџРѕРІС–РґРѕРјР»РµРЅРЅСЏ"
+                MessageBoxButton.YesNo or MessageBoxButton.YesNoCancel => "Підтвердження",
+                _ => "Повідомлення"
             };
         }
 

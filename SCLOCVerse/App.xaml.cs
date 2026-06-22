@@ -20,7 +20,7 @@ namespace SCLOCVerse
         {
             base.OnStartup(e);
 
-            // РџРµСЂРµРІС–СЂРєР° single instance С‡РµСЂРµР· Р»РѕРєР°Р»СЊРЅРёР№ Mutex.
+            // Перевірка single instance через локальний Mutex.
             bool createdNew;
             try
             {
@@ -28,8 +28,8 @@ namespace SCLOCVerse
             }
             catch (AbandonedMutexException)
             {
-                // РџРѕРїРµСЂРµРґРЅС–Р№ РµРєР·РµРјРїР»СЏСЂ Р°РІР°СЂС–Р№РЅРѕ Р·Р°РІРµСЂС€РёРІСЃСЏ, mutex Р·РІС–Р»СЊРЅРµРЅРѕ.
-                // РџРѕС‚РѕС‡РЅРёР№ РїСЂРѕС†РµСЃ СЃС‚Р°С” РїРµСЂС€РёРј РµРєР·РµРјРїР»СЏСЂРѕРј.
+                // Попередній екземпляр аварійно завершився, mutex звільнено.
+                // Поточний процес стає першим екземпляром.
                 createdNew = true;
                 _singleInstanceMutex = new Mutex(true, SingleInstanceMutexName, out _);
             }
@@ -43,7 +43,7 @@ namespace SCLOCVerse
                 {
                     Type = DialogType.Info,
                     Title = "SCLOC-Verse",
-                    Message = "РџСЂРѕРіСЂР°РјР° РІР¶Рµ Р·Р°РїСѓС‰РµРЅР°. Р’Рё РјРѕР¶РµС‚Рµ РјР°С‚Рё Р»РёС€Рµ РѕРґРёРЅ Р°РєС‚РёРІРЅРёР№ РµРєР·РµРјРїР»СЏСЂ.",
+                    Message = "Програма вже запущена. Ви можете мати лише один активний екземпляр.",
                     Buttons = MessageBoxButton.OK
                 });
 
@@ -51,7 +51,7 @@ namespace SCLOCVerse
                 return;
             }
 
-            // РђРІС‚РѕРјР°С‚РёС‡РЅР° РјС–РіСЂР°С†С–СЏ User Settings РїС–СЃР»СЏ РѕРЅРѕРІР»РµРЅРЅСЏ РІРµСЂСЃС–С—.
+            // Автоматична міграція User Settings після оновлення версії.
             MigrateSettingsIfNeeded();
 
             var compositionRoot = new AppCompositionRoot();
@@ -68,17 +68,17 @@ namespace SCLOCVerse
             if (string.Equals(lastAppVersion, currentVersion, StringComparison.OrdinalIgnoreCase))
                 return;
 
-            // РЎРїСЂРѕР±Р° СЃС‚Р°РЅРґР°СЂС‚РЅРѕС— РјС–РіСЂР°С†С–С— Application Settings.
+            // Спроба стандартної міграції Application Settings.
             try
             {
                 Settings.Default.Upgrade();
             }
             catch
             {
-                // Р†РіРЅРѕСЂСѓС”РјРѕ РїРѕРјРёР»РєРё РјС–РіСЂР°С†С–С—, С‰РѕР± РЅРµ Р±Р»РѕРєСѓРІР°С‚Рё Р·Р°РїСѓСЃРє РґРѕРґР°С‚РєР°.
+                // Ігноруємо помилки міграції, щоб не блокувати запуск додатка.
             }
 
-            // Р“Р°СЂР°РЅС‚СѓС”РјРѕ Р·РЅР°С‡РµРЅРЅСЏ Р·Р° Р·Р°РјРѕРІС‡СѓРІР°РЅРЅСЏРј РґР»СЏ РєР°РЅР°Р»Сѓ РѕРЅРѕРІР»РµРЅСЊ.
+            // Гарантуємо значення за замовчуванням для каналу оновлень.
             if (string.IsNullOrWhiteSpace(Settings.Default.UpdateChannel))
             {
                 Settings.Default.UpdateChannel = "Stable";
@@ -105,7 +105,7 @@ namespace SCLOCVerse
             }
             catch
             {
-                // Р†РіРЅРѕСЂСѓС”РјРѕ РїРѕРјРёР»РєРё РїСЂРё Р·РІС–Р»СЊРЅРµРЅРЅС– mutex.
+                // Ігноруємо помилки при звільненні mutex.
             }
 
             _singleInstanceMutex?.Dispose();

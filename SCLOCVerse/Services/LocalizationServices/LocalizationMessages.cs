@@ -5,50 +5,50 @@ namespace SCLOCVerse.Services.LocalizationServices
     internal static class LocalizationMessages
     {
         internal static string ReleaseNotFound(string environmentName)
-            => $"РќРµ РІРґР°Р»РѕСЃСЏ Р·РЅР°Р№С‚Рё СЂРµР»С–Р· Р· С„Р°Р№Р»РѕРј Р»РѕРєР°Р»С–Р·Р°С†С–С— РґР»СЏ {environmentName}.";
+            => $"Не вдалося знайти реліз з файлом локалізації для {environmentName}.";
 
         internal static string AssetMissing(string? releaseTag, string fileName)
-            => $"Р РµР»С–Р· {releaseTag ?? "Р±РµР· РЅР°Р·РІРё"} РЅРµ РјС–СЃС‚РёС‚СЊ С„Р°Р№Р»Сѓ {fileName}.";
+            => $"Реліз {releaseTag ?? "без назви"} не містить файлу {fileName}.";
 
         internal static string InstallCompleted(string environmentName, string? releaseTag, bool userCfgCreated, bool updated)
         {
             if (updated)
             {
                 return userCfgCreated
-                    ? $"Р›РѕРєР°Р»С–Р·Р°С†С–СЋ РґР»СЏ {environmentName} РІСЃС‚Р°РЅРѕРІР»РµРЅРѕ Р· СЂРµР»С–Р·Сѓ {releaseTag ?? "РЅРµРІС–РґРѕРјРѕРіРѕ"}. Р¤Р°Р№Р» user.cfg СЃС‚РІРѕСЂРµРЅРѕ."
-                    : $"Р›РѕРєР°Р»С–Р·Р°С†С–СЋ РґР»СЏ {environmentName} РѕРЅРѕРІР»РµРЅРѕ Р· СЂРµР»С–Р·Сѓ {releaseTag ?? "РЅРµРІС–РґРѕРјРѕРіРѕ"}.";
+                    ? $"Локалізацію для {environmentName} встановлено з релізу {releaseTag ?? "невідомого"}. Файл user.cfg створено."
+                    : $"Локалізацію для {environmentName} оновлено з релізу {releaseTag ?? "невідомого"}.";
             }
 
             return userCfgCreated
-                ? $"Р›РѕРєР°Р»С–Р·Р°С†С–СЏ РґР»СЏ {environmentName} РІР¶Рµ РІС–РґРїРѕРІС–РґР°Р»Р° СЂРµР»С–Р·Сѓ {releaseTag ?? "РЅРµРІС–РґРѕРјРѕРјСѓ"}. Р¤Р°Р№Р» user.cfg СЃС‚РІРѕСЂРµРЅРѕ."
-                : $"Р›РѕРєР°Р»С–Р·Р°С†С–СЏ РґР»СЏ {environmentName} РІР¶Рµ РІС–РґРїРѕРІС–РґР°Р»Р° СЂРµР»С–Р·Сѓ {releaseTag ?? "РЅРµРІС–РґРѕРјРѕРјСѓ"}.";
+                ? $"Локалізація для {environmentName} вже відповідала релізу {releaseTag ?? "невідомому"}. Файл user.cfg створено."
+                : $"Локалізація для {environmentName} вже відповідала релізу {releaseTag ?? "невідомому"}.";
         }
 
         internal static string DeleteAll(string environmentName)
-            => $"Р¤Р°Р№Р»Рё Р»РѕРєР°Р»С–Р·Р°С†С–С— РґР»СЏ {environmentName} РІРёРґР°Р»РµРЅРѕ.";
+            => $"Файли локалізації для {environmentName} видалено.";
 
         internal static string DeleteUserCfg(string environmentName)
-            => $"Р¤Р°Р№Р» user.cfg РґР»СЏ {environmentName} РІРёРґР°Р»РµРЅРѕ.";
+            => $"Файл user.cfg для {environmentName} видалено.";
 
         internal static string DeleteGlobalIni(string environmentName)
-            => $"Р¤Р°Р№Р» global.ini РґР»СЏ {environmentName} РІРёРґР°Р»РµРЅРѕ.";
+            => $"Файл global.ini для {environmentName} видалено.";
 
         internal static string DeleteMissing(string environmentName)
-            => $"Р¤Р°Р№Р»Рё Р»РѕРєР°Р»С–Р·Р°С†С–С— РґР»СЏ {environmentName} РЅРµ Р·РЅР°Р№РґРµРЅРѕ.";
+            => $"Файли локалізації для {environmentName} не знайдено.";
 
         internal static string HttpError(HttpStatusCode statusCode)
-            => $"РџРѕРјРёР»РєР° Р·Р°РїРёС‚Сѓ РґРѕ GitHub: {(int)statusCode} {statusCode}.";
+            => $"Помилка запиту до GitHub: {(int)statusCode} {statusCode}.";
 
         internal static string InvalidContentType(string mediaType)
-            => $"РћС‚СЂРёРјР°РЅРѕ РЅРµРїС–РґС‚СЂРёРјСѓРІР°РЅРёР№ С‚РёРї РІРјС–СЃС‚Сѓ: {mediaType}.";
+            => $"Отримано непідтримуваний тип вмісту: {mediaType}.";
 
         internal static string ReleaseParseError()
-            => "РќРµ РІРґР°Р»РѕСЃСЏ РѕР±СЂРѕР±РёС‚Рё РІС–РґРїРѕРІС–РґСЊ GitHub С–Р· СЂРµР»С–Р·Р°РјРё.";
+            => "Не вдалося обробити відповідь GitHub із релізами.";
 
         internal static string FileLockedFailure()
-            => "РќРµ РІРґР°Р»РѕСЃСЏ Р·Р°РІРµСЂС€РёС‚Рё РѕРЅРѕРІР»РµРЅРЅСЏ С‡РµСЂРµР· С‚РёРјС‡Р°СЃРѕРІРµ Р±Р»РѕРєСѓРІР°РЅРЅСЏ С„Р°Р№Р»Сѓ. РЎРїСЂРѕР±СѓР№С‚Рµ С‰Рµ СЂР°Р·.";
+            => "Не вдалося завершити оновлення через тимчасове блокування файлу. Спробуйте ще раз.";
 
         internal static string InstallInProgress()
-            => "РћРЅРѕРІР»РµРЅРЅСЏ Р»РѕРєР°Р»С–Р·Р°С†С–С— РІР¶Рµ РІРёРєРѕРЅСѓС”С‚СЊСЃСЏ. Р”РѕС‡РµРєР°Р№С‚РµСЃСЏ Р·Р°РІРµСЂС€РµРЅРЅСЏ РїРѕС‚РѕС‡РЅРѕРіРѕ РїСЂРѕС†РµСЃСѓ.";
+            => "Оновлення локалізації вже виконується. Дочекайтеся завершення поточного процесу.";
     }
 }

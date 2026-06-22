@@ -4,15 +4,15 @@
         xmlns:controls="clr-namespace:SCLOCVerse.Controls"
         Background="Transparent">
 
-    <!-- ===== Р Р•РЎРЈР РЎР Р”Р›РЇ РљРќРћРџРћРљ ===== -->
+    <!-- ===== РЕСУРСИ ДЛЯ КНОПОК ===== -->
     <Canvas.Resources>
-        <!-- Р‘Р°Р·РѕРІС– РєРѕР»СЊРѕСЂРё -->
+        <!-- Базові кольори -->
         <SolidColorBrush x:Key="BtnFill"        Color="#30546E"/>
         <SolidColorBrush x:Key="BtnFillHover"   Color="#3A6682"/>
         <SolidColorBrush x:Key="BtnStroke"      Color="#8DD0FF"/>
         <SolidColorBrush x:Key="BtnShadow"      Color="#000000"/>
 
-        <!-- РЎРїС–Р»СЊРЅРёР№ СЃС‚РёР»СЊ РґС–Р№РѕРІРѕС— РєРЅРѕРїРєРё Р· СЂР°РјРєРѕСЋ С– Р°РЅС–РјР°С†С–С”СЋ РЅР°С‚РёСЃРєР°РЅРЅСЏ -->
+        <!-- Спільний стиль дійової кнопки з рамкою і анімацією натискання -->
         <Style x:Key="ActionButton" TargetType="Button">
             <Setter Property="Width" Value="150"/>
             <Setter Property="Height" Value="40"/>
@@ -24,14 +24,14 @@
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <!-- Р’РµСЃСЊ РєРѕРЅС‚РµРЅС‚ Сѓ РєРѕСЂРµРЅС– РґР»СЏ Р°РЅС–РјР°С†С–С— Scale -->
+                        <!-- Весь контент у корені для анімації Scale -->
                         <Grid x:Name="Root" RenderTransformOrigin="0.5,0.5">
                             <Grid.RenderTransform>
-                                <!-- РјР°СЃС€С‚Р°Р±СѓС”РјРѕ РІРµСЃСЊ Grid РїСЂРё РЅР°С‚РёСЃРєР°РЅРЅС– -->
+                                <!-- масштабуємо весь Grid при натисканні -->
                                 <ScaleTransform x:Name="PressScale" ScaleX="1" ScaleY="1"/>
                             </Grid.RenderTransform>
 
-                            <!-- РўС–РЅСЊ РїС–Рґ РєРЅРѕРїРєРѕСЋ -->
+                            <!-- Тінь під кнопкою -->
                             <Grid.Effect>
                                 <DropShadowEffect Color="{Binding Color, Source={StaticResource BtnShadow}}"
                                                   BlurRadius="12"
@@ -39,13 +39,13 @@
                                                   Opacity="0.45"/>
                             </Grid.Effect>
 
-                            <!-- Р¤РћРќ С‚Р° Р“РµРѕРјРµС‚СЂС–СЏ РєРЅРѕРїРѕРє-->
+                            <!-- ФОН та Геометрія кнопок-->
                             <Path x:Name="BtnBg"
                                   Fill="{TemplateBinding Background}"
                                   Stretch="Fill" SnapsToDevicePixels="True"
                                   Data="M 5,0 L 95,0 A 6,6 0 0 1 100,6 L 100,30 L 95,40 L 5,40 A 6,6 0 0 1 0,34 L 0,10 Z"/>
 
-                            <!-- Р РђРњРљРђ -->
+                            <!-- РАМКА -->
                             <Path x:Name="BtnStroke"
                                   Stroke="{StaticResource BtnStroke}"
                                   StrokeThickness="1"
@@ -56,25 +56,25 @@
                                   Stretch="Fill" SnapsToDevicePixels="True"
                                   Data="M 5,0 L 95,0 A 5.5,5.5 0 0 1 100,5.5 L 100,30 L 95,40 L 5,40 A 5.5,5.5 0 0 1 0,34.5 L 0,10 Z"/>
 
-                            <!-- РўРµРєСЃС‚ -->
+                            <!-- Текст -->
                             <ContentPresenter HorizontalAlignment="Center"
                                               VerticalAlignment="Center"/>
                         </Grid>
 
-                        <!-- РўР РР“Р•Р Р РЎРўРђРќР†Р’ -->
+                        <!-- ТРИГЕРИ СТАНІВ -->
                         <ControlTemplate.Triggers>
-                            <!-- РќР°РІРµРґРµРЅРЅСЏ: Р»РµРіРєРµ РїС–РґСЃРІС–С‡РµРЅРЅСЏ -->
+                            <!-- Наведення: легке підсвічення -->
                             <Trigger Property="IsMouseOver" Value="True">
                                 <Setter TargetName="BtnBg" Property="Fill" Value="{StaticResource BtnFillHover}"/>
                                 <Setter TargetName="BtnStroke" Property="StrokeThickness" Value="2.6"/>
                             </Trigger>
 
-                            <!-- РќР°С‚РёСЃРЅРµРЅРЅСЏ: РјвЂ™СЏРєРµ СЃС‚РёСЃРєР°РЅРЅСЏ Р· Р°РЅС–РјР°С†С–С”СЋ -->
+                            <!-- Натиснення: м’яке стискання з анімацією -->
                             <Trigger Property="IsPressed" Value="True">
                                 <Trigger.EnterActions>
                                     <BeginStoryboard>
                                         <Storyboard>
-                                            <!-- СЃС‚РёСЃРєР°С”РјРѕ РґРѕ 0.97 -->
+                                            <!-- стискаємо до 0.97 -->
                                             <DoubleAnimation Storyboard.TargetName="PressScale"
                                                              Storyboard.TargetProperty="ScaleX"
                                                              To="0.97" Duration="0:0:0.06" />
@@ -87,7 +87,7 @@
                                 <Trigger.ExitActions>
                                     <BeginStoryboard>
                                         <Storyboard>
-                                            <!-- РїРѕРІРµСЂС‚Р°С”РјРѕ 1.00 -->
+                                            <!-- повертаємо 1.00 -->
                                             <DoubleAnimation Storyboard.TargetName="PressScale"
                                                              Storyboard.TargetProperty="ScaleX"
                                                              To="1" Duration="0:0:0.08" />
@@ -99,7 +99,7 @@
                                 </Trigger.ExitActions>
                             </Trigger>
 
-                            <!-- Р’РёРјРєРЅРµРЅРѕ -->
+                            <!-- Вимкнено -->
                             <Trigger Property="IsEnabled" Value="False">
                                 <Setter Property="Opacity" Value="0.55"/>
                             </Trigger>
@@ -110,9 +110,9 @@
         </Style>
     </Canvas.Resources>
 
-    <!-- Р—Р°РіРѕР»РѕРІРѕРє СЃРµРєС†С–С— -->
+    <!-- Заголовок секції -->
     <Grid Width="{Binding ActualWidth, RelativeSource={RelativeSource AncestorType=Canvas}}">
-        <TextBlock Text="Р’СЃС‚Р°РЅРѕРІР»РµРЅРЅСЏ Р»РѕРєР°Р»С–Р·Р°С†С–С—"
+        <TextBlock Text="Встановлення локалізації"
                    FontFamily="Arial"
                    Foreground="White"
                    FontSize="20"
@@ -121,12 +121,12 @@
                    Margin="0,20,0,0"/>
     </Grid>
 
-    <!-- РЎРµР»РµРєС‚РѕСЂ СЃРµСЂРµРґРѕРІРёС‰Р° -->
+    <!-- Селектор середовища -->
     <controls:EnvironmentSelector x:Name="EnvSelector"
                                   Canvas.Left="475"
                                   Canvas.Top="60"/>
 
-    <!-- РљРЅРѕРїРєР° РїРѕРІРµСЂРЅРµРЅРЅСЏ РЅР° РіРѕР»РѕРІРЅСѓ (Р·Р°Р»РёС€РёРІ СЏРє Р±СѓР»Рѕ) -->
+    <!-- Кнопка повернення на головну (залишив як було) -->
     <Button x:Name="BtnReturnHome"
             Canvas.Top="240" Canvas.Right="910"
             Width="40" Height="100"
@@ -169,16 +169,16 @@
         </Button.Template>
     </Button>
 
-    <!-- РљРќРћРџРљР Р”Р†Р™ Р—Р† РЎРџР†Р›Р¬РќРРњ РЎРўРР›Р•Рњ -->
+    <!-- КНОПКИ ДІЙ ЗІ СПІЛЬНИМ СТИЛЕМ -->
     <Button x:Name="BtnInstall"
             Style="{StaticResource ActionButton}"
-            Content="Р’СЃС‚Р°РЅРѕРІРёС‚Рё"
+            Content="Встановити"
             Canvas.Left="770"
             Canvas.Top="88"/>
 
     <Button x:Name="BtnLocalisationDelete"
             Style="{StaticResource ActionButton}"
-            Content="Р’РёРґР°Р»РёС‚Рё"
+            Content="Видалити"
             Canvas.Left="770"
             Canvas.Top="150"/>
 

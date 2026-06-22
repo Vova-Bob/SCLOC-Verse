@@ -73,10 +73,11 @@ namespace SCLOCVerse.Windows
             }
             catch (Exception ex)
             {
-                await _dialogService.ShowErrorAsync(
-                    $"РќРµ РІРґР°Р»РѕСЃСЏ Р·Р°РІР°РЅС‚Р°Р¶РёС‚Рё СЃРїРёСЃРѕРє РІРµСЂСЃС–Р№: {ex.Message}",
-                    "РџРѕРјРёР»РєР°",
-                    this).ConfigureAwait(true);
+                MessageBox.Show(
+                    $"Не вдалося завантажити список версій: {ex.Message}",
+                    "Помилка",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Error);
 
                 VersionsGrid.ItemsSource = Array.Empty<VersionManagerItem>();
             }
@@ -97,7 +98,7 @@ namespace SCLOCVerse.Windows
                 ReleaseUrl = $"https://github.com/{_owner}/{_repo}/releases/tag/{release.TagName}",
                 IsInstalled = isInstalled,
                 HasDetails = !string.IsNullOrWhiteSpace(release.Body) && release.Body.Length > shortDescription.Length,
-                StatusText = isInstalled ? "Р’СЃС‚Р°РЅРѕРІР»РµРЅРѕ" : "Р’СЃС‚Р°РЅРѕРІРёС‚Рё",
+                StatusText = isInstalled ? "Встановлено" : "Встановити",
                 StatusColor = isInstalled ? "#4CAF50" : "#2196F3",
                 Release = release,
                 Channel = GetChannel(release)
@@ -134,7 +135,7 @@ namespace SCLOCVerse.Windows
 
         private void VersionsGrid_MouseDoubleClick(object sender, MouseButtonEventArgs e)
         {
-            // Р†РіРЅРѕСЂСѓС”РјРѕ РїРѕРґРІС–Р№РЅРёР№ РєР»С–Рє вЂ” РІРёРєРѕСЂРёСЃС‚РѕРІСѓС”РјРѕ Р»РёС€Рµ СЏРІРЅСѓ РєРЅРѕРїРєСѓ Р’СЃС‚Р°РЅРѕРІРёС‚Рё
+            // Ігноруємо подвійний клік — використовуємо лише явну кнопку Встановити
         }
 
         private void InstallButton_Click(object sender, RoutedEventArgs e)
@@ -159,10 +160,11 @@ namespace SCLOCVerse.Windows
                 }
                 catch (Exception ex)
                 {
-                    await _dialogService.ShowErrorAsync(
-                        $"РќРµ РІРґР°Р»РѕСЃСЏ РІС–РґРєСЂРёС‚Рё РїРѕСЃРёР»Р°РЅРЅСЏ: {ex.Message}",
-                        "РџРѕРјРёР»РєР°",
-                        this).ConfigureAwait(true);
+                    MessageBox.Show(
+                        $"Не вдалося відкрити посилання: {ex.Message}",
+                        "Помилка",
+                        MessageBoxButton.OK,
+                        MessageBoxImage.Error);
                 }
             }
         }

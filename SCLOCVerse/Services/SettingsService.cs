@@ -55,7 +55,7 @@ namespace SCLOCVerse.Services
             var normalized = Path.GetFullPath(path);
             if (!Directory.Exists(normalized))
             {
-                Debug.WriteLine($"[SettingsService] Р†РіРЅРѕСЂСѓС”РјРѕ РЅРµРІР°Р»С–РґРЅРёР№ С€Р»СЏС…: {normalized}");
+                Debug.WriteLine($"[SettingsService] Ігноруємо невалідний шлях: {normalized}");
                 return false;
             }
 

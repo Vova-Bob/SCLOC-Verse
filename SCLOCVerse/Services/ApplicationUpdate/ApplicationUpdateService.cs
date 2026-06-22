@@ -82,7 +82,7 @@ namespace SCLOCVerse.Services.ApplicationUpdate
                         string.Empty,
                         string.Empty,
                         channel,
-                        "РќРµ Р·РЅР°Р№РґРµРЅРѕ СЂРµР»С–Р·С–РІ Р· С–РЅСЃС‚Р°Р»СЏС‚РѕСЂРѕРј РґР»СЏ РїРѕС‚РѕС‡РЅРѕРіРѕ РєР°РЅР°Р»Сѓ.");
+                        "Не знайдено релізів з інсталятором для поточного каналу.");
                 }
 
                 var latestVersion = VersionParser.Parse(latestRelease.TagName);
@@ -90,8 +90,8 @@ namespace SCLOCVerse.Services.ApplicationUpdate
 
                 var status = isUpdateAvailable ? UpdateCheckStatus.UpdateAvailable : UpdateCheckStatus.UpToDate;
                 var message = isUpdateAvailable
-                    ? $"Р”РѕСЃС‚СѓРїРЅР° РЅРѕРІР° РІРµСЂСЃС–СЏ: {latestVersion}."
-                    : "Р’Рё РІРёРєРѕСЂРёСЃС‚РѕРІСѓС”С‚Рµ Р°РєС‚СѓР°Р»СЊРЅСѓ РІРµСЂСЃС–СЋ.";
+                    ? $"Доступна нова версія: {latestVersion}."
+                    : "Ви використовуєте актуальну версію.";
 
                 var expectedChecksum = await ResolveExpectedChecksumAsync(
                     installerAsset,
@@ -111,15 +111,15 @@ namespace SCLOCVerse.Services.ApplicationUpdate
             }
             catch (HttpRequestException)
             {
-                return CreateFailureResult("РџРѕРјРёР»РєР° Р·'С”РґРЅР°РЅРЅСЏ Р· СЃРµСЂРІРµСЂРѕРј РѕРЅРѕРІР»РµРЅСЊ.");
+                return CreateFailureResult("Помилка з'єднання з сервером оновлень.");
             }
             catch (ArgumentException)
             {
-                return CreateFailureResult("РџРѕРјРёР»РєР° РѕР±СЂРѕР±РєРё РґР°РЅРёС… РѕРЅРѕРІР»РµРЅРЅСЏ.");
+                return CreateFailureResult("Помилка обробки даних оновлення.");
             }
             catch
             {
-                return CreateFailureResult("РќРµРІС–РґРѕРјР° РїРѕРјРёР»РєР° РїС–Рґ С‡Р°СЃ РїРµСЂРµРІС–СЂРєРё РѕРЅРѕРІР»РµРЅРЅСЏ.");
+                return CreateFailureResult("Невідома помилка під час перевірки оновлення.");
             }
         }
 

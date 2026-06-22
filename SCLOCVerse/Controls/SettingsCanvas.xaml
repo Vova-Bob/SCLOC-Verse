@@ -3,21 +3,21 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Background="Transparent">
 
-    <!-- ============== Р Р•РЎРЈР РЎР (Р°РІС‚РѕРЅРѕРјРЅРёР№ С„Р°Р№Р») ============== -->
+    <!-- ============== РЕСУРСИ (автономний файл) ============== -->
     <Canvas.Resources>
-        <!-- Р‘Р°Р·РѕРІС– РєРѕР»СЊРѕСЂРё -->
+        <!-- Базові кольори -->
         <SolidColorBrush x:Key="BtnFill"        Color="#30546E"/>
         <SolidColorBrush x:Key="BtnFillHover"   Color="#3A6682"/>
         <SolidColorBrush x:Key="BtnStroke"      Color="#8DD0FF"/>
         <SolidColorBrush x:Key="BtnShadow"      Color="#000000"/>
 
-        <!-- РљРѕР»СЊРѕСЂРё РґР»СЏ СЂРµР¶РёРјС–РІ РђРІС‚РѕРїРѕС€СѓРєСѓ -->
+        <!-- Кольори для режимів Автопошуку -->
         <SolidColorBrush x:Key="AutoFill"        Color="#30546E"/>
         <SolidColorBrush x:Key="AutoFillHover"   Color="#3A6682"/>
         <SolidColorBrush x:Key="ResetFill"       Color="#7E2D2D"/>
         <SolidColorBrush x:Key="ResetFillHover"  Color="#933838"/>
 
-        <!-- РЎРїС–Р»СЊРЅРёР№ СЃС‚РёР»СЊ РґС–Р№РѕРІРѕС— РєРЅРѕРїРєРё (СЃРїСЂРѕС‰РµРЅРёР№ С€Р°Р±Р»РѕРЅ, Р±РµР· С‚СЂРёРіРµСЂС–РІ СѓСЃРµСЂРµРґРёРЅС–) -->
+        <!-- Спільний стиль дійової кнопки (спрощений шаблон, без тригерів усередині) -->
         <Style x:Key="ActionButton" TargetType="{x:Type Button}">
             <Setter Property="Width" Value="150"/>
             <Setter Property="Height" Value="40"/>
@@ -35,18 +35,18 @@
                                 <ScaleTransform x:Name="PressScale" ScaleX="1" ScaleY="1"/>
                             </Grid.RenderTransform>
 
-                            <!-- С‚С–РЅСЊ (С„С–РєСЃРѕРІР°РЅРёР№ РєРѕР»С–СЂ, Р±РµР· РїСЂРёРІвЂ™СЏР·РѕРє, С‰РѕР± СѓРЅРёРєРЅСѓС‚Рё UnsetValue) -->
+                            <!-- тінь (фіксований колір, без прив’язок, щоб уникнути UnsetValue) -->
                             <Grid.Effect>
                                 <DropShadowEffect Color="Black" BlurRadius="12" ShadowDepth="6" Opacity="0.45"/>
                             </Grid.Effect>
 
-                            <!-- С„РѕРЅ Р±РµСЂРµ РєРѕР»С–СЂ С–Р· Background РєРЅРѕРїРєРё -->
+                            <!-- фон бере колір із Background кнопки -->
                             <Path x:Name="BtnBg"
                                   Fill="{TemplateBinding Background}"
                                   Stretch="Fill" SnapsToDevicePixels="True"
                                   Data="M 5,0 L 95,0 A 6,6 0 0 1 100,6 L 100,30 L 95,40 L 5,40 A 6,6 0 0 1 0,34 L 0,10 Z"/>
 
-                            <!-- СЂР°РјРєР° -->
+                            <!-- рамка -->
                             <Path x:Name="BtnStrokePath"
                                   Stroke="{StaticResource BtnStroke}"
                                   StrokeThickness="1"
@@ -60,7 +60,7 @@
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Grid>
 
-                        <!-- Р»РёС€Рµ Р°РЅС–РјР°С†С–СЏ РЅР°С‚РёСЃРєР°РЅРЅСЏ/РІРёРјРєРЅРµРЅРЅСЏ -->
+                        <!-- лише анімація натискання/вимкнення -->
                         <ControlTemplate.Triggers>
                             <Trigger Property="IsPressed" Value="True">
                                 <Trigger.EnterActions>
@@ -97,7 +97,7 @@
                 </Setter.Value>
             </Setter>
 
-            <!-- РҐРѕРІРµСЂ-РµС„РµРєС‚ С‡РµСЂРµР· СЃС‚РёР»СЊ (С„РѕРЅ в†’ BtnFillHover) -->
+            <!-- Ховер-ефект через стиль (фон → BtnFillHover) -->
             <Style.Triggers>
                 <Trigger Property="IsMouseOver" Value="True">
                     <Setter Property="Background" Value="{StaticResource BtnFillHover}"/>
@@ -105,7 +105,7 @@
             </Style.Triggers>
         </Style>
 
-        <!-- РЎС‚РёР»СЊ РєРЅРѕРїРєРё РїРѕРІРµСЂРЅРµРЅРЅСЏ -->
+        <!-- Стиль кнопки повернення -->
         <Style x:Key="ReturnButton" TargetType="{x:Type Button}">
             <Setter Property="Width" Value="50"/>
             <Setter Property="Height" Value="100"/>
@@ -180,98 +180,13 @@
             </Setter>
         </Style>
 
-        <!-- РЎС‚РёР»СЊ РґР»СЏ ComboBox РєР°РЅР°Р»Сѓ РѕРЅРѕРІР»РµРЅРЅСЏ -->
-        <Style x:Key="UpdateChannelComboBoxStyle" TargetType="{x:Type ComboBox}">
-            <Setter Property="Foreground" Value="White"/>
-            <Setter Property="Background" Value="#0C1A2A"/>
-            <Setter Property="BorderBrush" Value="#2478A9"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="Padding" Value="6,2"/>
-            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
-            <Setter Property="VerticalContentAlignment" Value="Center"/>
-
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="{x:Type ComboBox}">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-
-                            <Border x:Name="Border"
-                                    Grid.ColumnSpan="2"
-                                    Background="{TemplateBinding Background}"
-                                    BorderBrush="{TemplateBinding BorderBrush}"
-                                    BorderThickness="{TemplateBinding BorderThickness}"
-                                    CornerRadius="6"/>
-
-                            <ContentPresenter x:Name="ContentSite"
-                                              Grid.Column="0"
-                                              Margin="{TemplateBinding Padding}"
-                                              VerticalAlignment="Center"
-                                              Content="{Binding SelectedItem, RelativeSource={RelativeSource TemplatedParent}}"
-                                              ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
-                                              ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}"/>
-
-                            <ToggleButton x:Name="ToggleButton"
-                                          Grid.Column="1"
-                                          Width="20" Height="20"
-                                          Margin="0,0,4,0"
-                                          Background="Transparent"
-                                          BorderBrush="{x:Null}"
-                                          Focusable="False"
-                                          IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}">
-                                <Path x:Name="Arrow"
-                                      Data="M0,3 L6,9 L12,3"
-                                      Stroke="#A7C6E7"
-                                      StrokeThickness="2"
-                                      HorizontalAlignment="Center"
-                                      VerticalAlignment="Center">
-                                    <Path.RenderTransform>
-                                        <RotateTransform CenterX="6" CenterY="6"/>
-                                    </Path.RenderTransform>
-                                </Path>
-                            </ToggleButton>
-
-                            <Popup x:Name="PART_Popup"
-                                   Placement="Bottom"
-                                   IsOpen="{TemplateBinding IsDropDownOpen}"
-                                   PopupAnimation="Fade"
-                                   AllowsTransparency="True">
-                                <Border Background="#0C1A2A"
-                                        BorderBrush="#2478A9"
-                                        BorderThickness="1"
-                                        CornerRadius="6"
-                                        MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource Mode=FindAncestor, AncestorType={x:Type ComboBox}}}">
-                                    <ScrollViewer>
-                                        <StackPanel IsItemsHost="True"/>
-                                    </ScrollViewer>
-                                </Border>
-                            </Popup>
-                        </Grid>
-
-                        <ControlTemplate.Triggers>
-                            <Trigger SourceName="ToggleButton" Property="IsChecked" Value="True">
-                                <Setter TargetName="Arrow" Property="RenderTransform">
-                                    <Setter.Value>
-                                        <RotateTransform Angle="180" CenterX="6" CenterY="6"/>
-                                    </Setter.Value>
-                                </Setter>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
-        <!-- РЎС‚РёР»СЊ РґР»СЏ РђРІС‚РѕРїРѕС€СѓРєСѓ/РЎРєРёРЅСѓС‚Рё: С‚РѕР№ СЃР°РјРёР№ С€Р°Р±Р»РѕРЅ, С–РЅС€С– РєРѕР»СЊРѕСЂРё -->
+        <!-- Стиль для Автопошуку/Скинути: той самий шаблон, інші кольори -->
         <Style x:Key="AutoSearchButton" TargetType="{x:Type Button}" BasedOn="{StaticResource ActionButton}">
             <Style.Triggers>
-                <Trigger Property="Content" Value="РђРІС‚РѕРїРѕС€СѓРє">
+                <Trigger Property="Content" Value="Автопошук">
                     <Setter Property="Background" Value="{StaticResource AutoFill}"/>
                 </Trigger>
-                <Trigger Property="Content" Value="РЎРєРёРЅСѓС‚Рё">
+                <Trigger Property="Content" Value="Скинути">
                     <Setter Property="Background" Value="{StaticResource ResetFill}"/>
                 </Trigger>
             </Style.Triggers>
@@ -308,19 +223,19 @@
                             <MultiTrigger>
                                 <MultiTrigger.Conditions>
                                     <Condition Property="IsMouseOver" Value="True"/>
-                                    <Condition Property="Content" Value="РђРІС‚РѕРїРѕС€СѓРє"/>
+                                    <Condition Property="Content" Value="Автопошук"/>
                                 </MultiTrigger.Conditions>
                                 <Setter TargetName="BtnBg" Property="Fill" Value="{StaticResource AutoFillHover}"/>
                             </MultiTrigger>
                             <MultiTrigger>
                                 <MultiTrigger.Conditions>
                                     <Condition Property="IsMouseOver" Value="True"/>
-                                    <Condition Property="Content" Value="РЎРєРёРЅСѓС‚Рё"/>
+                                    <Condition Property="Content" Value="Скинути"/>
                                 </MultiTrigger.Conditions>
                                 <Setter TargetName="BtnBg" Property="Fill" Value="{StaticResource ResetFillHover}"/>
                             </MultiTrigger>
 
-                            <!-- Pressed Р°РЅС–РјР°С†С–СЏ -->
+                            <!-- Pressed анімація -->
                             <Trigger Property="IsPressed" Value="True">
                                 <Trigger.EnterActions>
                                     <BeginStoryboard>
@@ -347,9 +262,9 @@
 
     </Canvas.Resources>
 
-    <!-- Р—Р°РіРѕР»РѕРІРѕРє -->
+    <!-- Заголовок -->
     <Grid Width="{Binding ActualWidth, RelativeSource={RelativeSource AncestorType={x:Type Canvas}}}">
-        <TextBlock Text="РќР°Р»Р°С€С‚СѓРІР°РЅРЅСЏ"
+        <TextBlock Text="Налаштування"
                    FontFamily="Arial"
                    Foreground="White"
                    FontSize="20"
@@ -358,7 +273,7 @@
                    Margin="0,20,0,0"/>
     </Grid>
 
-    <!-- РљРЅРѕРїРєР° РїРѕРІРµСЂРЅРµРЅРЅСЏ -->
+    <!-- Кнопка повернення -->
     <Button x:Name="BtnReturn"
             Style="{StaticResource ReturnButton}"
             Canvas.Top="240"
@@ -367,28 +282,28 @@
             HorizontalAlignment="Left"
             VerticalAlignment="Center"/>
 
-    <!-- РљРЅРѕРїРєР° РџСЂРѕРІС–РґРЅРёРє -->
+    <!-- Кнопка Провідник -->
     <Button x:Name="BtnSelectFolder"
             Style="{StaticResource ActionButton}"
-            Content="РџСЂРѕРІС–РґРЅРёРє"
+            Content="Провідник"
             Canvas.Left="70" Canvas.Top="87"
             Width="106" Height="40" HorizontalAlignment="Left" VerticalAlignment="Center"/>
 
-    <!-- РљРЅРѕРїРєР° РђРІС‚РѕРїРѕС€СѓРє/РЎРєРёРЅСѓС‚Рё (С–РґРµРЅС‚РёС‡РЅРёР№ С€Р°Р±Р»РѕРЅ/РґРёР·Р°Р№РЅ РґРѕ "РџСЂРѕРІС–РґРЅРёРє") -->
+    <!-- Кнопка Автопошук/Скинути (ідентичний шаблон/дизайн до "Провідник") -->
     <Button x:Name="BtnAutoSearch"
             Style="{StaticResource AutoSearchButton}"
-            Content="РђРІС‚РѕРїРѕС€СѓРє"
+            Content="Автопошук"
             Canvas.Left="183" Canvas.Top="87"
             Width="103" Height="40" HorizontalAlignment="Left" VerticalAlignment="Top"/>
 
-    <!-- РљРЅРѕРїРєР° РћС‡РёСЃС‚РёС‚Рё РєРµС€ -->
+    <!-- Кнопка Очистити кеш -->
     <Button x:Name="BtnResetCash"
             Style="{StaticResource ActionButton}"
-            Content="РћС‡РёСЃС‚РёС‚Рё РєРµС€"
+            Content="Очистити кеш"
             Canvas.Left="72" Canvas.Top="157"
             Width="205" Height="40"/>
 
-    <!-- РџРѕР»Рµ РІРёР±СЂР°РЅРѕРіРѕ С€Р»СЏС…Сѓ -->
+    <!-- Поле вибраного шляху -->
     <Border Canvas.Left="295" Canvas.Top="88"
             Width="595" Height="40"
             CornerRadius="6"
@@ -408,27 +323,20 @@
                  TextAlignment="Left" Margin="1,0,-1,0" RenderTransformOrigin="0.501,0.477"/>
     </Border>
 
-    <!-- РљР°РЅР°Р» РѕРЅРѕРІР»РµРЅРЅСЏ -->
-    <TextBlock Canvas.Left="70" Canvas.Top="505" Text="РљР°РЅР°Р» РѕРЅРѕРІР»РµРЅРЅСЏ:" Foreground="White" FontSize="14"/>
-    <ComboBox x:Name="UpdateChannelComboBox"
-               Style="{StaticResource UpdateChannelComboBoxStyle}"
-               Canvas.Left="220"
-               Canvas.Top="502"
-               Width="150"
-               Height="28"
-               DisplayMemberPath="DisplayName"
-               SelectedValuePath="Value"/>
+    <!-- Канал оновлення -->
+    <TextBlock Canvas.Left="70" Canvas.Top="505" Text="Канал оновлення:" Foreground="White" FontSize="14"/>
+    <ComboBox x:Name="UpdateChannelComboBox" Canvas.Left="220" Canvas.Top="502" Width="150" Height="28" DisplayMemberPath="DisplayName" SelectedValuePath="Value"/>
 
-    <!-- РљРЅРѕРїРєР° РјРµРЅРµРґР¶РµСЂР° РІРµСЂСЃС–Р№ -->
+    <!-- Кнопка менеджера версій -->
     <Button x:Name="UpdateHistoryButton"
             Style="{StaticResource ActionButton}"
-            Content="РњРµРЅРµРґР¶РµСЂ РІРµСЂСЃС–Р№"
+            Content="Менеджер версій"
             Canvas.Left="400"
             Canvas.Top="502"
             Width="170"
             Height="28"/>
 
-    <!-- README Р±Р»РѕРє -->
+    <!-- README блок -->
     <Border Canvas.Left="70" Canvas.Top="220"
             Width="820" Height="270"
             CornerRadius="8"

@@ -26,7 +26,7 @@ namespace SCLOCVerse.Services.LiaServices
                     false,
                     null,
                     latestVersion,
-                    "Р“РѕР»РѕСЃРѕРІРёР№ Р°СЃРёСЃС‚РµРЅС‚ Р›.Р†.Рђ РЅРµ РІСЃС‚Р°РЅРѕРІР»РµРЅРѕ.",
+                    "Голосовий асистент Л.І.А не встановлено.",
                     LiaStatusColor.Red);
             }
 
@@ -37,7 +37,7 @@ namespace SCLOCVerse.Services.LiaServices
                     false,
                     installedVersion,
                     null,
-                    $"Р’СЃС‚Р°РЅРѕРІР»РµРЅР° РІРµСЂСЃС–СЏ Р›.Р†.Рђ: {installedVersion}. РќРµ РІРґР°Р»РѕСЃСЏ РїРµСЂРµРІС–СЂРёС‚Рё РѕРЅРѕРІР»РµРЅРЅСЏ.",
+                    $"Встановлена версія Л.І.А: {installedVersion}. Не вдалося перевірити оновлення.",
                     LiaStatusColor.Orange);
             }
 
@@ -48,7 +48,7 @@ namespace SCLOCVerse.Services.LiaServices
                     true,
                     installedVersion,
                     latestVersion,
-                    $"Р”РѕСЃС‚СѓРїРЅРµ РѕРЅРѕРІР»РµРЅРЅСЏ РІРµСЂСЃС–С— {latestVersion}. Р’СЃС‚Р°РЅРѕРІР»РµРЅРѕ: {installedVersion}",
+                    $"Доступне оновлення версії {latestVersion}. Встановлено: {installedVersion}",
                     LiaStatusColor.Red);
             }
 
@@ -57,7 +57,7 @@ namespace SCLOCVerse.Services.LiaServices
                 false,
                 installedVersion,
                 latestVersion,
-                $"Р’СЃС‚Р°РЅРѕРІР»РµРЅР° Р°РєС‚СѓР°Р»СЊРЅР° РІРµСЂСЃС–СЏ Р›.Р†.Рђ: {installedVersion}",
+                $"Встановлена актуальна версія Л.І.А: {installedVersion}",
                 LiaStatusColor.Green);
         }
 
@@ -68,29 +68,29 @@ namespace SCLOCVerse.Services.LiaServices
         {
             var release = await GetLatestReleaseAsync(cancellationToken).ConfigureAwait(false);
             var installerAsset = SelectInstallerAsset(release.Assets)
-                ?? throw new InvalidOperationException("РЈ СЂРµР»С–Р·С– РЅРµ Р·РЅР°Р№РґРµРЅРѕ С–РЅСЃС‚Р°Р»СЏС‚РѕСЂ Р›.Р†.Рђ.");
+                ?? throw new InvalidOperationException("У релізі не знайдено інсталятор Л.І.А.");
             var certificateAsset = SelectCertificateAsset(release.Assets);
 
             Directory.CreateDirectory(AppSettings.UpdatesDirectory);
 
-            onProgress?.Invoke($"Р—РЅР°Р№РґРµРЅРѕ СЂРµР»С–Р·: {release.TagName ?? release.Name ?? "РЅРµРІС–РґРѕРјРѕ"}");
+            onProgress?.Invoke($"Знайдено реліз: {release.TagName ?? release.Name ?? "невідомо"}");
             var installerPath = await EnsureAssetDownloadedAsync(installerAsset, progress, cancellationToken).ConfigureAwait(false);
             string? certificatePath = null;
 
             if (certificateAsset != null)
             {
-                onProgress?.Invoke("Р—Р°РІР°РЅС‚Р°Р¶РµРЅРЅСЏ СЃРµСЂС‚РёС„С–РєР°С‚Р°...");
+                onProgress?.Invoke("Завантаження сертифіката...");
                 certificatePath = await EnsureAssetDownloadedAsync(certificateAsset, null, cancellationToken).ConfigureAwait(false);
             }
 
-            onProgress?.Invoke("Р—Р°РїСѓСЃРє С–РЅСЃС‚Р°Р»СЏС†С–С— Р›.Р†.Рђ...");
+            onProgress?.Invoke("Запуск інсталяції Л.І.А...");
             await RunInstallerScriptAsync(installerPath, certificatePath, cancellationToken).ConfigureAwait(false);
-            onProgress?.Invoke("Р†РЅСЃС‚Р°Р»СЏС†С–СЋ Р·Р°РІРµСЂС€РµРЅРѕ.");
+            onProgress?.Invoke("Інсталяцію завершено.");
         }
 
         public async Task UninstallAsync(Action<string>? onProgress = null, CancellationToken cancellationToken = default)
         {
-            onProgress?.Invoke("Р’РёРґР°Р»РµРЅРЅСЏ Р›.Р†.Рђ...");
+            onProgress?.Invoke("Видалення Л.І.А...");
 
             var script = $$"""
                 $ErrorActionPreference = 'Stop'
@@ -111,13 +111,13 @@ namespace SCLOCVerse.Services.LiaServices
             if (result.ExitCode != 0)
                 throw new InvalidOperationException(result.Error.Trim());
 
-            onProgress?.Invoke("Р›.Р†.Рђ РІРёРґР°Р»РµРЅРѕ.");
+            onProgress?.Invoke("Л.І.А видалено.");
         }
 
         private static async Task<GitHubRelease> GetLatestReleaseAsync(CancellationToken cancellationToken)
         {
             var release = await TryGetLatestReleaseAsync(cancellationToken).ConfigureAwait(false);
-            return release ?? throw new InvalidOperationException("РќРµ РІРґР°Р»РѕСЃСЏ РѕС‚СЂРёРјР°С‚Рё РѕСЃС‚Р°РЅРЅС–Р№ СЂРµР»С–Р· Р· GitHub.");
+            return release ?? throw new InvalidOperationException("Не вдалося отримати останній реліз з GitHub.");
         }
 
         private static async Task<GitHubRelease?> TryGetLatestReleaseAsync(CancellationToken cancellationToken)
@@ -194,102 +194,25 @@ namespace SCLOCVerse.Services.LiaServices
 
         private static async Task RunInstallerScriptAsync(string installerPath, string? certificatePath, CancellationToken cancellationToken)
         {
-            // РЎРµСЂС‚РёС„С–РєР°С‚ Р›.Р†.Рђ вЂ” self-signed (CN=Alexuбєћ). AppX Deployment Service РїСЂР°С†СЋС”
-            // СЏРє LocalSystem С– Р±Р°С‡РёС‚СЊ Р»РёС€Рµ РјР°С€РёРЅРЅС– СЃС…РѕРІРёС‰Р° СЃРµСЂС‚РёС„С–РєР°С‚С–РІ. Р†РјРїРѕСЂС‚ Сѓ
-            // CurrentUser\TrustedPeople РїСЂРёР·РІРѕРґРёС‚СЊ РґРѕ 0x800B0109 (CERT_E_UNTRUSTEDROOT)
-            // РЅР° РµС‚Р°РїС– Add-AppxPackage. РўРѕРјСѓ СЃРµСЂС‚РёС„С–РєР°С‚ С–РјРїРѕСЂС‚СѓС”С‚СЊСЃСЏ Р· elevation Сѓ
-            // LocalMachine\Root С‚Р° LocalMachine\TrustedPeople вЂ” СЏРє РІ РµС‚Р°Р»РѕРЅРЅРѕРјСѓ
-            // СЃРєСЂРёРїС‚С– Р°РІС‚РѕСЂР° First_Install_LIA_Voice_Assistent.bat.
-            if (!string.IsNullOrWhiteSpace(certificatePath) && File.Exists(certificatePath))
-            {
-                await InstallCertificateElevatedAsync(certificatePath, cancellationToken).ConfigureAwait(false);
-            }
-
-            var result = await RunPowerShellAsync(BuildInstallerScript(installerPath), cancellationToken).ConfigureAwait(false);
+            var result = await RunPowerShellAsync(BuildInstallerScript(installerPath, certificatePath), cancellationToken).ConfigureAwait(false);
 
             if (result.ExitCode != 0)
                 throw new InvalidOperationException(string.IsNullOrWhiteSpace(result.Error) ? result.Output.Trim() : result.Error.Trim());
         }
 
-        private static async Task InstallCertificateElevatedAsync(string certificatePath, CancellationToken cancellationToken)
-        {
-            Directory.CreateDirectory(AppSettings.UpdatesDirectory);
-            var scriptPath = Path.Combine(AppSettings.UpdatesDirectory, $"lia-cert-{Guid.NewGuid():N}.ps1");
-            var logPath = Path.Combine(AppSettings.UpdatesDirectory, $"lia-cert-{Guid.NewGuid():N}.log");
-
-            var escapedCertificatePath = EscapePowerShellString(certificatePath);
-            var escapedLogPath = EscapePowerShellString(logPath);
-
-            // certutil Р±РµР· РїСЂР°РїРѕСЂС†СЏ -user РїРёС€Рµ Сѓ СЃС…РѕРІРёС‰Р° LocalMachine, С‰Рѕ РІРёРјР°РіР°С”
-            // РїСЂР°РІ Р°РґРјС–РЅС–СЃС‚СЂР°С‚РѕСЂР°. РџСЂРѕС†РµСЃ Р·Р°РїСѓСЃРєР°С”С‚СЊСЃСЏ Р· Verb=runas (UAC).
-            var script = $$"""
-                $ErrorActionPreference = 'Stop'
-                $certificatePath = '{{escapedCertificatePath}}'
-                $logPath = '{{escapedLogPath}}'
-
-                certutil.exe -addstore -f Root $certificatePath *>> $logPath
-                $rootExit = $LASTEXITCODE
-
-                certutil.exe -addstore -f TrustedPeople $certificatePath *>> $logPath
-                $peopleExit = $LASTEXITCODE
-
-                if ($rootExit -ne 0 -or $peopleExit -ne 0) {
-                    exit 1
-                }
-                """;
-
-            await File.WriteAllTextAsync(scriptPath, script, new UTF8Encoding(false), cancellationToken).ConfigureAwait(false);
-
-            try
-            {
-                using var process = new Process
-                {
-                    StartInfo = new ProcessStartInfo
-                    {
-                        FileName = "powershell.exe",
-                        Arguments = $"-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File \"{scriptPath}\"",
-                        UseShellExecute = true,
-                        Verb = "runas",
-                        WindowStyle = ProcessWindowStyle.Hidden
-                    }
-                };
-
-                try
-                {
-                    process.Start();
-                }
-                catch (System.ComponentModel.Win32Exception)
-                {
-                    // РљРѕСЂРёСЃС‚СѓРІР°С‡ СЃРєР°СЃСѓРІР°РІ UAC-Р·Р°РїРёС‚ РЅР° РїС–РґРІРёС‰РµРЅРЅСЏ РїСЂРёРІС–Р»РµС—РІ.
-                    throw new InvalidOperationException("Р†РјРїРѕСЂС‚ СЃРµСЂС‚РёС„С–РєР°С‚Р° СЃРєР°СЃРѕРІР°РЅРѕ: РїРѕС‚СЂС–Р±РЅС– РїСЂР°РІР° Р°РґРјС–РЅС–СЃС‚СЂР°С‚РѕСЂР°.");
-                }
-
-                await process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
-
-                if (process.ExitCode != 0)
-                {
-                    var log = File.Exists(logPath)
-                        ? await File.ReadAllTextAsync(logPath, cancellationToken).ConfigureAwait(false)
-                        : string.Empty;
-
-                    throw new InvalidOperationException(
-                        $"РќРµ РІРґР°Р»РѕСЃСЏ С–РјРїРѕСЂС‚СѓРІР°С‚Рё СЃРµСЂС‚РёС„С–РєР°С‚ Р›.Р†.Рђ (РєРѕРґ {process.ExitCode}). {log.Trim()}");
-                }
-            }
-            finally
-            {
-                try { File.Delete(scriptPath); } catch { }
-                try { File.Delete(logPath); } catch { }
-            }
-        }
-
-        private static string BuildInstallerScript(string installerPath)
+        private static string BuildInstallerScript(string installerPath, string? certificatePath)
         {
             var escapedInstallerPath = EscapePowerShellString(installerPath);
+            var escapedCertificatePath = EscapePowerShellString(certificatePath ?? string.Empty);
 
             return $$"""
                 $ErrorActionPreference = 'Stop'
                 $installerPath = '{{escapedInstallerPath}}'
+                $certificatePath = '{{escapedCertificatePath}}'
+
+                if ($certificatePath -and (Test-Path -LiteralPath $certificatePath)) {
+                    Import-Certificate -FilePath $certificatePath -CertStoreLocation Cert:\CurrentUser\TrustedPeople | Out-Null
+                }
 
                 $extension = [System.IO.Path]::GetExtension($installerPath).ToLowerInvariant()
                 if ($extension -eq '.appinstaller') {
@@ -351,7 +274,7 @@ namespace SCLOCVerse.Services.LiaServices
         private static HttpClient CreateHttpClient()
         {
             var client = new HttpClient();
-            client.DefaultRequestHeaders.UserAgent.ParseAdd("SCLOC-Verse-LIA-Installer/1.0");
+            client.DefaultRequestHeaders.UserAgent.ParseAdd("SCLOCVerse-LIA-Installer/1.0");
             client.DefaultRequestHeaders.Accept.ParseAdd("application/vnd.github+json");
             return client;
         }

@@ -77,7 +77,7 @@ namespace SCLOCVerse.Services.Cache
                 if (!inspection.HasCache)
                 {
                     if (scenario == CleanupScenario.Manual)
-                        await ShowToastAsync("РљРµС€ СѓР¶Рµ РїРѕСЂРѕР¶РЅС–Р№.").ConfigureAwait(false);
+                        await ShowToastAsync("Кеш уже порожній.").ConfigureAwait(false);
 
                     return;
                 }
@@ -85,28 +85,28 @@ namespace SCLOCVerse.Services.Cache
                 if (inspection.LatestTooLarge)
                 {
                     var message = BuildLatestTooLargeMessage(inspection);
-                    var result = await ShowDialogAsync(message, "РћС‡РёС‰РµРЅРЅСЏ РєРµС€Сѓ", MessageBoxButton.YesNo, MessageBoxImage.Warning).ConfigureAwait(false);
+                    var result = await ShowDialogAsync(message, "Очищення кешу", MessageBoxButton.YesNo, MessageBoxImage.Warning).ConfigureAwait(false);
                     if (result == MessageBoxResult.Yes)
                     {
                         await _cleaner.ClearAllAsync(inspection, cancellationToken).ConfigureAwait(false);
-                        await ShowToastAsync("РљРµС€ С€РµР№РґРµСЂС–РІ РѕС‡РёС‰РµРЅРѕ.").ConfigureAwait(false);
+                        await ShowToastAsync("Кеш шейдерів очищено.").ConfigureAwait(false);
                     }
 
                     return;
                 }
 
                 var generalMessage = BuildGeneralPrompt(inspection);
-                var generalResult = await ShowDialogAsync(generalMessage, "РћС‡РёС‰РµРЅРЅСЏ РєРµС€Сѓ", MessageBoxButton.YesNoCancel, MessageBoxImage.Question).ConfigureAwait(false);
+                var generalResult = await ShowDialogAsync(generalMessage, "Очищення кешу", MessageBoxButton.YesNoCancel, MessageBoxImage.Question).ConfigureAwait(false);
 
                 switch (generalResult)
                 {
                     case MessageBoxResult.Yes:
                         await _cleaner.ClearOldAsync(inspection, cancellationToken).ConfigureAwait(false);
-                        await ShowToastAsync("РЎС‚Р°СЂС– РєРµС€С– РІРёРґР°Р»РµРЅРѕ.").ConfigureAwait(false);
+                        await ShowToastAsync("Старі кеші видалено.").ConfigureAwait(false);
                         break;
                     case MessageBoxResult.No:
                         await _cleaner.ClearAllAsync(inspection, cancellationToken).ConfigureAwait(false);
-                        await ShowToastAsync("РљРµС€ С€РµР№РґРµСЂС–РІ РѕС‡РёС‰РµРЅРѕ.").ConfigureAwait(false);
+                        await ShowToastAsync("Кеш шейдерів очищено.").ConfigureAwait(false);
                         break;
                 }
             }
@@ -116,7 +116,7 @@ namespace SCLOCVerse.Services.Cache
             }
             catch (Exception ex)
             {
-                await ShowDialogAsync($"РќРµ РІРґР°Р»РѕСЃСЏ РІРёРєРѕРЅР°С‚Рё РѕС‡РёС‰РµРЅРЅСЏ РєРµС€Сѓ.\n{ex.Message}", "РџРѕРјРёР»РєР°", MessageBoxButton.OK, MessageBoxImage.Error).ConfigureAwait(false);
+                await ShowDialogAsync($"Не вдалося виконати очищення кешу.\n{ex.Message}", "Помилка", MessageBoxButton.OK, MessageBoxImage.Error).ConfigureAwait(false);
             }
         }
 
@@ -124,33 +124,33 @@ namespace SCLOCVerse.Services.Cache
         {
             var latest = inspection.Latest;
             if (latest == null)
-                return "РћСЃС‚Р°РЅРЅС–Р№ РєРµС€ РЅРµ Р·РЅР°Р№РґРµРЅРѕ.";
+                return "Останній кеш не знайдено.";
 
             var builder = new StringBuilder();
-            builder.AppendLine("РћСЃС‚Р°РЅРЅС–Р№ РєРµС€ С€РµР№РґРµСЂС–РІ Р·Р°РЅР°РґС‚Рѕ РІРµР»РёРєРёР№.");
-            builder.AppendLine($"{latest.DisplayName}: {FormatBytes(latest.SizeBytes)} (РїРѕСЂС–Рі {FormatBytes(inspection.Options.LatestOkBytes)}).");
+            builder.AppendLine("Останній кеш шейдерів занадто великий.");
+            builder.AppendLine($"{latest.DisplayName}: {FormatBytes(latest.SizeBytes)} (поріг {FormatBytes(inspection.Options.LatestOkBytes)}).");
             builder.AppendLine();
-            builder.AppendLine("РћС‡РёСЃС‚РёС‚Рё РІРµСЃСЊ РєРµС€ С€РµР№РґРµСЂС–РІ?");
+            builder.AppendLine("Очистити весь кеш шейдерів?");
             return builder.ToString();
         }
 
         private string BuildGeneralPrompt(ShaderCacheInspection inspection)
         {
             var builder = new StringBuilder();
-            builder.AppendLine("Р—РЅР°Р№РґРµРЅРѕ РєРµС€С– С€РµР№РґРµСЂС–РІ Star Citizen.");
-            builder.AppendLine($"Р—Р°РіР°Р»СЊРЅРёР№ СЂРѕР·РјС–СЂ: {FormatBytes(inspection.TotalBytes)}.");
+            builder.AppendLine("Знайдено кеші шейдерів Star Citizen.");
+            builder.AppendLine($"Загальний розмір: {FormatBytes(inspection.TotalBytes)}.");
 
             if (inspection.Latest != null)
-                builder.AppendLine($"РћСЃС‚Р°РЅРЅС–Р№ РєРµС€ ({inspection.Latest.DisplayName}): {FormatBytes(inspection.Latest.SizeBytes)}.");
+                builder.AppendLine($"Останній кеш ({inspection.Latest.DisplayName}): {FormatBytes(inspection.Latest.SizeBytes)}.");
 
             if (inspection.HasOlder)
             {
                 var older = inspection.Entries
                     .Where(e => !ReferenceEquals(e, inspection.Latest))
-                    .Select(e => $"вЂў {e.DisplayName} - {FormatBytes(e.SizeBytes)}");
+                    .Select(e => $"• {e.DisplayName} - {FormatBytes(e.SizeBytes)}");
 
                 builder.AppendLine();
-                builder.AppendLine("РЎС‚Р°СЂС– РєРµС€С–:");
+                builder.AppendLine("Старі кеші:");
                 foreach (var line in older)
                     builder.AppendLine(line);
             }
@@ -159,16 +159,16 @@ namespace SCLOCVerse.Services.Cache
             {
                 var big = inspection.Entries
                     .Where(e => e.SizeBytes > inspection.Options.BigDirectoryBytes)
-                    .Select(e => $"вЂў {e.DisplayName} - {FormatBytes(e.SizeBytes)}");
+                    .Select(e => $"• {e.DisplayName} - {FormatBytes(e.SizeBytes)}");
 
                 builder.AppendLine();
-                builder.AppendLine($"РџР°РїРєРё РїРѕРЅР°Рґ {FormatBytes(inspection.Options.BigDirectoryBytes)}:");
+                builder.AppendLine($"Папки понад {FormatBytes(inspection.Options.BigDirectoryBytes)}:");
                 foreach (var line in big)
                     builder.AppendLine(line);
             }
 
             builder.AppendLine();
-            builder.AppendLine("РћР±РµСЂС–С‚СЊ, С‰Рѕ РѕС‡РёСЃС‚РёС‚Рё:");
+            builder.AppendLine("Оберіть, що очистити:");
             return builder.ToString();
         }
 
@@ -201,10 +201,10 @@ namespace SCLOCVerse.Services.Cache
         private static string FormatBytes(long bytes)
         {
             if (bytes <= 0)
-                return "0 Р‘";
+                return "0 Б";
 
             double size = bytes;
-            var units = new[] { "Р‘", "РљР‘", "РњР‘", "Р“Р‘", "РўР‘" };
+            var units = new[] { "Б", "КБ", "МБ", "ГБ", "ТБ" };
             var unitIndex = 0;
             while (size >= 1024 && unitIndex < units.Length - 1)
             {
