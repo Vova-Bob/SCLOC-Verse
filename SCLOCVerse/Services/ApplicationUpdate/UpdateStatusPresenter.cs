@@ -35,17 +35,17 @@ namespace SCLOCVerse.Services.ApplicationUpdate
         {
             EnsurePanelVisible();
             _currentVersionTextBlock.Text = currentVersion.ToString();
-            _availableVersionTextBlock.Text = "вЂ”";
-            _statusTextBlock.Text = "РџРµСЂРµРІС–СЂСЏС”РјРѕ РѕРЅРѕРІР»РµРЅРЅСЏ...";
+            _availableVersionTextBlock.Text = "—";
+            _statusTextBlock.Text = "Перевіряємо оновлення...";
             _statusTextBlock.Foreground = Brushes.LightSlateGray;
         }
 
         public async Task ShowUpToDateAsync(UpdateCheckResult result)
         {
             EnsurePanelVisible();
-            _currentVersionTextBlock.Text = result.CurrentVersion?.ToString() ?? "вЂ”";
-            _availableVersionTextBlock.Text = result.LatestVersion?.ToString() ?? "вЂ”";
-            _statusTextBlock.Text = "РђРєС‚СѓР°Р»СЊРЅР° РІРµСЂСЃС–СЏ";
+            _currentVersionTextBlock.Text = result.CurrentVersion?.ToString() ?? "—";
+            _availableVersionTextBlock.Text = result.LatestVersion?.ToString() ?? "—";
+            _statusTextBlock.Text = "Актуальна версія";
             _statusTextBlock.Foreground = Brushes.LimeGreen;
 
             await Task.Delay(UpdateConstants.UpdatePanelAutoHideDelay).ConfigureAwait(true);
@@ -55,18 +55,18 @@ namespace SCLOCVerse.Services.ApplicationUpdate
         public void ShowUpdateAvailable(UpdateCheckResult result)
         {
             EnsurePanelVisible();
-            _currentVersionTextBlock.Text = result.CurrentVersion?.ToString() ?? "вЂ”";
-            _availableVersionTextBlock.Text = result.LatestVersion?.ToString() ?? "вЂ”";
-            _statusTextBlock.Text = $"Р”РѕСЃС‚СѓРїРЅР° РІРµСЂСЃС–СЏ {result.LatestVersion}";
+            _currentVersionTextBlock.Text = result.CurrentVersion?.ToString() ?? "—";
+            _availableVersionTextBlock.Text = result.LatestVersion?.ToString() ?? "—";
+            _statusTextBlock.Text = $"Доступна версія {result.LatestVersion}";
             _statusTextBlock.Foreground = Brushes.Orange;
         }
 
         public async Task ShowUpdateCancelledAsync(UpdateCheckResult result)
         {
             EnsurePanelVisible();
-            _currentVersionTextBlock.Text = result.CurrentVersion?.ToString() ?? "вЂ”";
-            _availableVersionTextBlock.Text = result.LatestVersion?.ToString() ?? "вЂ”";
-            _statusTextBlock.Text = "РћРЅРѕРІР»РµРЅРЅСЏ СЃРєР°СЃРѕРІР°РЅРѕ";
+            _currentVersionTextBlock.Text = result.CurrentVersion?.ToString() ?? "—";
+            _availableVersionTextBlock.Text = result.LatestVersion?.ToString() ?? "—";
+            _statusTextBlock.Text = "Оновлення скасовано";
             _statusTextBlock.Foreground = Brushes.Gray;
 
             await Task.Delay(UpdateConstants.UpdatePanelAutoHideDelay).ConfigureAwait(true);
@@ -76,14 +76,14 @@ namespace SCLOCVerse.Services.ApplicationUpdate
         public void ShowCheckFailed(UpdateCheckResult result)
         {
             EnsurePanelVisible();
-            _statusTextBlock.Text = "РџРѕРјРёР»РєР° РїРµСЂРµРІС–СЂРєРё";
+            _statusTextBlock.Text = "Помилка перевірки";
             _statusTextBlock.Foreground = Brushes.Red;
         }
 
         public void ShowChannelNotFound(UpdateCheckResult result)
         {
             EnsurePanelVisible();
-            _statusTextBlock.Text = "РљР°РЅР°Р» РѕРЅРѕРІР»РµРЅСЊ РЅРµ Р·РЅР°Р№РґРµРЅРѕ";
+            _statusTextBlock.Text = "Канал оновлень не знайдено";
             _statusTextBlock.Foreground = Brushes.Gray;
         }
 

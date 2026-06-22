@@ -1,18 +1,18 @@
-﻿<Canvas x:Class="SCLOCVerse.Controls.HomeCanvas"
+<Canvas x:Class="SCLOCVerse.Controls.HomeCanvas"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Background="Transparent">
 
-    <!-- ===== Р Р•РЎРЈР РЎР ===== -->
+    <!-- ===== РЕСУРСИ ===== -->
     <Canvas.Resources>
-        <!-- Р‘Р°Р·РѕРІС– РєРѕР»СЊРѕСЂРё РєР°СЂС‚РѕРє -->
+        <!-- Базові кольори карток -->
         <SolidColorBrush x:Key="CardFill" Color="#1F3C4C"/>
         <SolidColorBrush x:Key="CardFillHover" Color="#385565"/>
         <SolidColorBrush x:Key="CardBorder" Color="#4A90E2"/>
         <SolidColorBrush x:Key="CardShadow" Color="#000000"/>
 
 
-        <!-- РЎС‚РёР»СЊ РєР°СЂС‚РєРё -->
+        <!-- Стиль картки -->
         <Style x:Key="CardStyle" TargetType="Border">
             <Setter Property="CornerRadius" Value="12"/>
             <Setter Property="BorderBrush" Value="{StaticResource CardBorder}"/>
@@ -51,7 +51,7 @@
             </Style.Triggers>
         </Style>
 
-        <!-- Р“РѕСЂРёР·РѕРЅС‚Р°Р»СЊРЅР° ScrollBar -->
+        <!-- Горизонтальна ScrollBar -->
         <Style TargetType="ScrollBar">
             <Setter Property="Orientation" Value="Horizontal"/>
             <Setter Property="Height" Value="10"/>
@@ -85,9 +85,9 @@
 
     </Canvas.Resources>
 
-    <!-- Р—Р°РіРѕР»РѕРІРєРё -->
+    <!-- Заголовки -->
     <TextBlock Canvas.Left="30" Canvas.Top="30" Foreground="White" FontSize="22" FontWeight="Bold">
-        Р›Р°СЃРєР°РІРѕ РїСЂРѕСЃРёРјРѕ РґРѕ SCLOC-Verse!
+        Ласкаво просимо до SCLOC-Verse!
     </TextBlock>
     <TextBlock Canvas.Left="30"
            Canvas.Top="70"
@@ -96,11 +96,11 @@
            Opacity="0.8"
            Width="900"
            TextWrapping="Wrap">
-    РўСѓС‚ РІРё РјРѕР¶РµС‚Рµ РІСЃС‚Р°РЅРѕРІРёС‚Рё СѓРєСЂР°С—РЅСЃСЊРєСѓ Р»РѕРєР°Р»С–Р·Р°С†С–СЋ С‚Р° РіРѕР»РѕСЃРѕРІРёР№ Р°СЃРёСЃС‚РµРЅС‚.
-    РўР°РєРѕР¶ РґРѕ РІР°С€РёС… РїРѕСЃР»СѓРі СЃРїС–Р»СЊРЅРѕС‚Рё РіСЂР°РІС†С–РІ С‚Р° РєРѕСЂРёСЃРЅС– С–РЅСЃС‚СЂСѓРјРµРЅС‚Рё РґР»СЏ РєРѕРјС„РѕСЂС‚РЅРѕС— РіСЂРё!
+    Тут ви можете встановити українську локалізацію та голосовий асистент.
+    Також до ваших послуг спільноти гравців та корисні інструменти для комфортної гри!
     </TextBlock>
 
-    <!-- РџР°РЅРµР»СЊ РѕРЅРѕРІР»РµРЅРЅСЏ -->
+    <!-- Панель оновлення -->
     <StackPanel x:Name="UpdatePanel" Canvas.Left="700" Canvas.Top="30" Width="220" Opacity="1" Visibility="Visible">
         <StackPanel.Resources>
             <Storyboard x:Key="HideUpdatePanelStoryboard">
@@ -118,21 +118,21 @@
                 BorderThickness="1"
                 Padding="15">
             <StackPanel>
-                <TextBlock Text="РћРЅРѕРІР»РµРЅРЅСЏ РїСЂРѕРіСЂР°РјРё" Foreground="White" FontSize="18" FontWeight="Bold" Margin="0,0,0,12"/>
+                <TextBlock Text="Оновлення програми" Foreground="White" FontSize="18" FontWeight="Bold" Margin="0,0,0,12"/>
 
-                <TextBlock Text="Р’РµСЂСЃС–СЏ:" Foreground="#CCCCCC" FontSize="12"/>
-                <TextBlock x:Name="CurrentVersionTextBlock" Text="вЂ”" Foreground="White" FontSize="13" Margin="0,0,0,10"/>
+                <TextBlock Text="Версія:" Foreground="#CCCCCC" FontSize="12"/>
+                <TextBlock x:Name="CurrentVersionTextBlock" Text="—" Foreground="White" FontSize="13" Margin="0,0,0,10"/>
 
-                <TextBlock Text="Р”РѕСЃС‚СѓРїРЅР° РІРµСЂСЃС–СЏ:" Foreground="#CCCCCC" FontSize="12"/>
-                <TextBlock x:Name="AvailableVersionTextBlock" Text="вЂ”" Foreground="White" FontSize="13" Margin="0,0,0,10"/>
+                <TextBlock Text="Доступна версія:" Foreground="#CCCCCC" FontSize="12"/>
+                <TextBlock x:Name="AvailableVersionTextBlock" Text="—" Foreground="White" FontSize="13" Margin="0,0,0,10"/>
 
-                <TextBlock Text="РЎС‚Р°С‚СѓСЃ:" Foreground="#CCCCCC" FontSize="12"/>
-                <TextBlock x:Name="UpdateStatusTextBlock" Text="РџРµСЂРµРІС–СЂСЏС”РјРѕ РѕРЅРѕРІР»РµРЅРЅСЏ..." TextWrapping="Wrap" Foreground="White" FontSize="13" Margin="0,0,0,0"/>
+                <TextBlock Text="Статус:" Foreground="#CCCCCC" FontSize="12"/>
+                <TextBlock x:Name="UpdateStatusTextBlock" Text="Перевіряємо оновлення..." TextWrapping="Wrap" Foreground="White" FontSize="13" Margin="0,0,0,0"/>
             </StackPanel>
         </Border>
     </StackPanel>
 
-    <!-- РљРѕРЅС‚РµР№РЅРµСЂ РґР»СЏ СЃР»Р°Р№РґРµСЂР° -->
+    <!-- Контейнер для слайдера -->
     <Grid x:Name="ScrollContainer" Canvas.Bottom="10" Height="400" HorizontalAlignment="Center" ClipToBounds="True">
         <ScrollViewer x:Name="SliderScroll"
                       HorizontalScrollBarVisibility="Auto"
@@ -141,7 +141,7 @@
                       Padding="0,0,0,5">
             <StackPanel x:Name="SliderPanel" Orientation="Horizontal" VerticalAlignment="Bottom">
 
-                <!-- РљР°СЂС‚РєР° 1 -->
+                <!-- Картка 1 -->
                 <Border Style="{StaticResource CardStyle}" Margin="5" MouseLeftButtonUp="YouTubeCard_Click">
                     <Grid Margin="5,0,0,0">
                         <Grid.ColumnDefinitions>
@@ -149,21 +149,21 @@
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
 
-                        <!-- РўРµРєСЃС‚РѕРІР° С‡Р°СЃС‚РёРЅР° Р·Р»С–РІР° -->
+                        <!-- Текстова частина зліва -->
                         <StackPanel Grid.Column="0" VerticalAlignment="Center" HorizontalAlignment="Center">
-                            <TextBlock Text="Р“РѕР»РѕСЃРѕРІРёР№ Р°СЃРёСЃС‚РµРЅС‚ Р›.Р†.Рђ"
+                            <TextBlock Text="Голосовий асистент Л.І.А"
                                        Foreground="White"
                                        FontWeight="Bold"
                                        FontSize="16"
                                        Margin="0,0,0,5"
                                        TextWrapping="Wrap"/>
-                            <TextBlock Text="Р”РµРјРѕРЅСЃС‚СЂР°С†С–СЏ РјРѕР¶Р»РёРІРѕСЃС‚РµР№"
+                            <TextBlock Text="Демонстрація можливостей"
                                        Foreground="#CCCCCC"
                                        FontSize="14"
                                        TextWrapping="Wrap"/>
                         </StackPanel>
 
-                        <!-- РџСЂР°РІР° С‡Р°СЃС‚РёРЅР° Р· РєР°СЂС‚РёРЅРєРѕСЋ -->
+                        <!-- Права частина з картинкою -->
                         <Grid Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center">
                             <Image Source="/Images/Lia.png"
                                    Width="190"
@@ -175,39 +175,39 @@
                     </Grid>
                 </Border>
 
-                <!-- РљР°СЂС‚РєР° 2 -->
+                <!-- Картка 2 -->
                 <Border Style="{StaticResource CardStyle}" Width="300" Margin="10,0" MouseLeftButtonUp="Card2_Click">
                     <Grid Margin="5">
                         <Grid.RowDefinitions>
-                            <!-- Р СЏРґРѕРє РґР»СЏ Р·Р°РіРѕР»РѕРІРєСѓ -->
+                            <!-- Рядок для заголовку -->
                             <RowDefinition Height="Auto"/>
-                            <!-- Р СЏРґРѕРє РґР»СЏ РѕСЃРЅРѕРІРЅРѕРіРѕ РєРѕРЅС‚РµРЅС‚Сѓ -->
+                            <!-- Рядок для основного контенту -->
                             <RowDefinition Height="*"/>
                         </Grid.RowDefinitions>
 
-                        <!-- РћСЃРЅРѕРІРЅРёР№ РєРѕРЅС‚РµРЅС‚: С‚РµРєСЃС‚ Р·Р»С–РІР°, РєР°СЂС‚РёРЅРєР° СЃРїСЂР°РІР° -->
+                        <!-- Основний контент: текст зліва, картинка справа -->
                         <Grid Grid.Row="1">
                             <Grid.ColumnDefinitions>
-                                <!-- Р›С–РІР° РєРѕР»РѕРЅРєР°: 2/3 С€РёСЂРёРЅРё -->
+                                <!-- Ліва колонка: 2/3 ширини -->
                                 <ColumnDefinition Width="1.5*" />
-                                <!-- РџСЂР°РІР° РєРѕР»РѕРЅРєР°: 1/3 С€РёСЂРёРЅРё -->
+                                <!-- Права колонка: 1/3 ширини -->
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
 
-                            <!-- Р›С–РІРёР№ С‚РµРєСЃС‚РѕРІРёР№ Р±Р»РѕРє Р· С„РѕРЅРѕРј -->
+                            <!-- Лівий текстовий блок з фоном -->
                             <Border Grid.Column="0"
                                     Background="#247CB7"
                                     CornerRadius="5"
                                     Padding="5">
                                 <TextBlock TextWrapping="Wrap" HorizontalAlignment="Center" VerticalAlignment="Bottom" Foreground="White" FontSize="13">                                    
-                                    РњРё вЂ” С†Рµ СЃРїС–Р»СЊРЅРѕС‚Р° РіСЂР°РІС†С–РІ
-                                    Р—РѕСЂСЏРЅРёР№ РіСЂРѕРјР°РґСЏРЅРёРЅ С‚Р° С–РЅС€РёС…
-                                    РєРѕРѕРїРµСЂР°С‚РёРІРЅРёС… РєС–Р±РµСЂ СЂРѕР·РІР°Рі. 
-                                    РњРё Р·Р°РІР¶РґРё СЂР°РґС– Р·РЅР°Р№РѕРјСЃС‚РІСѓ Р· РЅРѕРІРёРјРё
-                                    РїРѕР±СЂР°С‚РёРјР°РјРё С‚Р° Р»СЋРґСЏРј СЏРєС– Р°СЃРѕС†С–СЋСЋС‚СЊ
-                                    СЃРµР±Рµ Р· РЈРєСЂР°С—РЅРѕСЋ, С– РїСЂРѕРїРѕРЅСѓС”РјРѕ С—Рј РјС–СЃС†Рµ
-                                    СЃРµСЂРµРґ РЅР°СЃ, Р° С‚Р°РєРѕР¶ СѓСЃС–Р»СЏРєСѓ РјРѕР¶Р»РёРІСѓ
-                                    РїС–РґС‚СЂРёРјРєСѓ Сѓ РїСЂРѕС”РєС‚С–.
+                                    Ми — це спільнота гравців
+                                    Зоряний громадянин та інших
+                                    кооперативних кібер розваг. 
+                                    Ми завжди раді знайомству з новими
+                                    побратимами та людям які асоціюють
+                                    себе з Україною, і пропонуємо їм місце
+                                    серед нас, а також усіляку можливу
+                                    підтримку у проєкті.
                                 </TextBlock>
                             </Border>
 
@@ -220,7 +220,7 @@
                                    VerticalAlignment="Top"
                                    Margin="0,10,0,0"/>
 
-                            <!-- РџСЂР°РІР° РєР°СЂС‚РёРЅРєР° РїРѕ РїСЂР°РІРѕРјСѓ РєСЂР°СЋ -->
+                            <!-- Права картинка по правому краю -->
                             <Image Grid.Column="1"
                                    Source="/Images/USF-logo.png"
                                    Width="100"
@@ -232,7 +232,7 @@
                     </Grid>
                 </Border>
 
-                <!-- РљР°СЂС‚РєР° 3 -->
+                <!-- Картка 3 -->
                 <Border Style="{StaticResource CardStyle}" Width="300" Margin="10,0" MouseLeftButtonUp="Card3_Click">
                     <Grid Margin="5">
                         <Grid.RowDefinitions>
@@ -240,30 +240,30 @@
                             <RowDefinition Height="*"/>
                         </Grid.RowDefinitions>
 
-                        <!-- РћСЃРЅРѕРІРЅРёР№ РєРѕРЅС‚РµРЅС‚: С‚РµРєСЃС‚ Р·Р»С–РІР°, РєР°СЂС‚РёРЅРєР° СЃРїСЂР°РІР° -->
+                        <!-- Основний контент: текст зліва, картинка справа -->
                         <Grid Grid.Row="1">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="1.5*"/>
                             </Grid.ColumnDefinitions>
 
-                            <!-- Р›С–РІРёР№ С‚РµРєСЃС‚РѕРІРёР№ Р±Р»РѕРє Р· С„РѕРЅРѕРј -->
+                            <!-- Лівий текстовий блок з фоном -->
                             <Border Grid.Column="0"
                                     Background="#247CB7"
                                     CornerRadius="5"
                                     Padding="5"
                                     VerticalAlignment="Stretch">
-                                <!-- Р’РёРєРѕСЂРёСЃС‚РѕРІСѓС”РјРѕ Grid, С‰РѕР± СЂРѕР·С‚СЏРіСѓРІР°Р»РѕСЃСЊ -->
+                                <!-- Використовуємо Grid, щоб розтягувалось -->
                                 <Grid>
                                     <Grid.RowDefinitions>
                                         <RowDefinition Height="Auto"/>
-                                        <!-- Р—Р°РіРѕР»РѕРІРѕРє -->
+                                        <!-- Заголовок -->
                                         <RowDefinition Height="Auto"/>
-                                        <!-- РЎРїРёСЃРѕРє -->
+                                        <!-- Список -->
                                     </Grid.RowDefinitions>
 
                                     <TextBlock Grid.Row="0"
-                                               Text="Discord РЎРїС–Р»СЊРЅРѕС‚Рё"
+                                               Text="Discord Спільноти"
                                                Foreground="White"
                                                FontWeight="Bold"
                                                FontSize="14"
@@ -278,16 +278,16 @@
                                                LineHeight="18"
                                                VerticalAlignment="Center"
                                                HorizontalAlignment="Center">
-                                        <Run Text="вЂў Р°РєС‚РёРІРЅР° СЃРїС–Р»СЊРЅРѕС‚Р°"/><LineBreak/>
-                                        <Run Text="вЂў РїРѕСЃС‚С–Р№РЅС– С–РІРµРЅС‚Рё"/><LineBreak/>
-                                        <Run Text="вЂў РїС–РґС‚СЂРёРјРєР° РЅРѕРІР°С‡РєС–РІ"/><LineBreak/>
-                                        <Run Text="вЂў РєРѕСЂРїРѕСЂР°С‚РёРІРЅС– РјС–СЃС–С—"/><LineBreak/>
-                                        <Run Text="вЂў Р·Р°С†С–РєР°РІР»РµРЅРЅСЏ"/>
+                                        <Run Text="• активна спільнота"/><LineBreak/>
+                                        <Run Text="• постійні івенти"/><LineBreak/>
+                                        <Run Text="• підтримка новачків"/><LineBreak/>
+                                        <Run Text="• корпоративні місії"/><LineBreak/>
+                                        <Run Text="• зацікавлення"/>
                                     </TextBlock>
                                 </Grid>
                             </Border>
 
-                            <!-- РџСЂР°РІР° РєР°СЂС‚РёРЅРєР° -->
+                            <!-- Права картинка -->
                             <Image Grid.Column="1"
                                    Source="/Images/Discord.png"
                                    Width="160"
@@ -299,7 +299,7 @@
                     </Grid>
                 </Border>
                 
-                <!-- РљР°СЂС‚РєР° 4 -->
+                <!-- Картка 4 -->
                 <Border Style="{StaticResource CardStyle}" Margin="5" MouseLeftButtonUp="Card4_Click">
                     <Grid Margin="5,0,0,0">
                         <Grid.ColumnDefinitions>
@@ -307,7 +307,7 @@
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
 
-                        <!-- РўРµРєСЃС‚РѕРІР° С‡Р°СЃС‚РёРЅР° Р·Р»С–РІР° -->
+                        <!-- Текстова частина зліва -->
                         <StackPanel Grid.Column="0" VerticalAlignment="Center" HorizontalAlignment="Center">
                             <TextBlock Text="UA Community"
                                        Foreground="White"
@@ -317,7 +317,7 @@
                                        TextWrapping="Wrap"/>                          
                         </StackPanel>
 
-                        <!-- РџСЂР°РІР° С‡Р°СЃС‚РёРЅР° Р· РєР°СЂС‚РёРЅРєРѕСЋ -->
+                        <!-- Права частина з картинкою -->
                         <Grid Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center">
                             <Image Source="/Images/SC_UA_Community.png"
                                    Width="190"
@@ -329,7 +329,7 @@
                     </Grid>
                 </Border>
 
-                <!-- РљР°СЂС‚РєР° 5 -->
+                <!-- Картка 5 -->
                 <Border Style="{StaticResource CardStyle}" Margin="5" MouseLeftButtonUp="Card5_Click">
                     <Grid Margin="5,0,0,0">
                         <Grid.ColumnDefinitions>
@@ -337,9 +337,9 @@
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
 
-                        <!-- РўРµРєСЃС‚РѕРІР° С‡Р°СЃС‚РёРЅР° Р·Р»С–РІР° -->
+                        <!-- Текстова частина зліва -->
                         <StackPanel Grid.Column="0" VerticalAlignment="Center" HorizontalAlignment="Center">
-                            <TextBlock Text="DPS РєР°Р»СЊРєСѓР»СЏС‚РѕСЂ"
+                            <TextBlock Text="DPS калькулятор"
                         Foreground="White"
                         FontWeight="Bold"
                         FontSize="16"
@@ -347,7 +347,7 @@
                         TextWrapping="Wrap"/>
                         </StackPanel>
 
-                        <!-- РџСЂР°РІР° С‡Р°СЃС‚РёРЅР° Р· РєР°СЂС‚РёРЅРєРѕСЋ -->
+                        <!-- Права частина з картинкою -->
                         <Grid Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center">
                             <Image Source="/Images/made_by_community.png"
                                    Width="150"
@@ -360,24 +360,24 @@
                     </Grid>
                 </Border>
 
-                <!-- РљР°СЂС‚РєР° 6 -->
+                <!-- Картка 6 -->
                 <Border Style="{StaticResource CardStyle}" Margin="10,0" MouseLeftButtonUp="Card6_Click">
                     <StackPanel Margin="15">
-                        <TextBlock Text="Р”РµРјРѕРЅСЃС‚СЂР°С†С–Р№РЅР° РєР°СЂС‚РєР° 6" Foreground="White" TextWrapping="Wrap"/>
+                        <TextBlock Text="Демонстраційна картка 6" Foreground="White" TextWrapping="Wrap"/>
                     </StackPanel>
                 </Border>
 
-                <!-- РљР°СЂС‚РєР° 7 -->
+                <!-- Картка 7 -->
                 <Border Style="{StaticResource CardStyle}" Margin="10,0" MouseLeftButtonUp="Card7_Click">
                     <StackPanel Margin="15">
-                        <TextBlock Text="Р”РµРјРѕРЅСЃС‚СЂР°С†С–Р№РЅР° РєР°СЂС‚РєР° 7" Foreground="White" TextWrapping="Wrap"/>
+                        <TextBlock Text="Демонстраційна картка 7" Foreground="White" TextWrapping="Wrap"/>
                     </StackPanel>
                 </Border>
 
-                <!-- РљР°СЂС‚РєР° 8 -->
+                <!-- Картка 8 -->
                 <Border Style="{StaticResource CardStyle}" Margin="10,0" MouseLeftButtonUp="Card8_Click">
                     <StackPanel Margin="15">
-                        <TextBlock Text="Р”РµРјРѕРЅСЃС‚СЂР°С†С–Р№РЅР° РєР°СЂС‚РєР° 8" Foreground="White" TextWrapping="Wrap"/>
+                        <TextBlock Text="Демонстраційна картка 8" Foreground="White" TextWrapping="Wrap"/>
                     </StackPanel>
                 </Border>
 
