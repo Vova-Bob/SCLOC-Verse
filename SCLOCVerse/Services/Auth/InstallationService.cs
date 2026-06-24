@@ -16,6 +16,8 @@ namespace SCLOCVerse.Services.Auth
         private readonly Supabase.Client _supabase;
         private readonly string _installId;
 
+        public string InstallId => _installId;
+
         public InstallationService(ISupabaseClientFactory clientFactory)
         {
             _supabase = clientFactory?.CreateClient() ?? throw new ArgumentNullException(nameof(clientFactory));

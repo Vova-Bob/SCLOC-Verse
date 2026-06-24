@@ -68,6 +68,8 @@ namespace SCLOCVerse.Composition
             _authCompositionRoot = new AuthCompositionRoot(supabaseUrl, supabaseAnonKey);
         }
 
+        public AuthCompositionRoot AuthCompositionRoot => _authCompositionRoot;
+
         public MainWindow CreateMainWindow()
         {
             var searchFolder = new SearchFolder(_folderSearchService, _settingsService);

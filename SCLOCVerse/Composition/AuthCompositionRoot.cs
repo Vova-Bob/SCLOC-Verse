@@ -8,12 +8,13 @@ namespace SCLOCVerse.Composition
     /// <summary>
     /// Композиція всіх залежностей аутентифікації.
     /// </summary>
-    public sealed class AuthCompositionRoot
+    public sealed class AuthCompositionRoot : IDisposable
     {
         private readonly ISupabaseClientFactory _clientFactory;
         private readonly ISecureSessionStorage _secureStorage;
         private readonly ILoopbackCallbackListener _callbackListener;
         private readonly IInstallationService _installationService;
+        private readonly ISessionTrackerService _sessionTrackerService;
         private readonly IAuthService _authService;
 
         public AuthCompositionRoot(string supabaseUrl, string supabaseAnonKey)
@@ -23,11 +24,20 @@ namespace SCLOCVerse.Composition
             _callbackListener = new LoopbackCallbackListener();
             _installationService = new InstallationService(_clientFactory);
             var guildSyncService = new DiscordGuildSyncService(_clientFactory);
-            _authService = new AuthService(_clientFactory, _secureStorage, _callbackListener, _installationService, guildSyncService);
+            _sessionTrackerService = new SessionTrackerService(_clientFactory, _installationService);
+            _authService = new AuthService(_clientFactory, _secureStorage, _callbackListener, _installationService, guildSyncService, _sessionTrackerService);
         }
 
         public IAuthService AuthService => _authService;
 
         public IAuthStatusProvider AuthStatusProvider => _authService;
+
+        public ISessionTrackerService SessionTrackerService => _sessionTrackerService;
+
+        public void Dispose()
+        {
+            if (_authService is IDisposable disposable)
+                disposable.Dispose();
+        }
     }
 }

@@ -21,6 +21,7 @@ namespace SCLOCVerse.Services.Auth
         private readonly ILoopbackCallbackListener _callbackListener;
         private readonly IInstallationService _installationService;
         private readonly IDiscordGuildSyncService _guildSyncService;
+        private readonly ISessionTrackerService _sessionTracker;
         private readonly SemaphoreSlim _refreshLock = new(1, 1);
         private bool _disposed;
 
@@ -29,13 +30,15 @@ namespace SCLOCVerse.Services.Auth
             ISecureSessionStorage secureStorage,
             ILoopbackCallbackListener callbackListener,
             IInstallationService installationService,
-            IDiscordGuildSyncService guildSyncService)
+            IDiscordGuildSyncService guildSyncService,
+            ISessionTrackerService sessionTracker)
         {
             _supabase = clientFactory?.CreateClient() ?? throw new ArgumentNullException(nameof(clientFactory));
             _secureStorage = secureStorage ?? throw new ArgumentNullException(nameof(secureStorage));
             _callbackListener = callbackListener ?? throw new ArgumentNullException(nameof(callbackListener));
             _installationService = installationService ?? throw new ArgumentNullException(nameof(installationService));
             _guildSyncService = guildSyncService ?? throw new ArgumentNullException(nameof(guildSyncService));
+            _sessionTracker = sessionTracker ?? throw new ArgumentNullException(nameof(sessionTracker));
 
             _supabase.Auth.AddStateChangedListener(OnAuthStateChanged);
         }
@@ -97,6 +100,7 @@ namespace SCLOCVerse.Services.Auth
                 await SyncProfileAsync(session).ConfigureAwait(false);
                 await _installationService.SyncCurrentInstallationAsync(cancellationToken).ConfigureAwait(false);
                 await SyncGuildsAsync(session, cancellationToken).ConfigureAwait(false);
+                await _sessionTracker.StartSessionAsync(cancellationToken).ConfigureAwait(false);
 
                 return new AuthResult.Success(Profile!);
             }
@@ -157,6 +161,7 @@ namespace SCLOCVerse.Services.Auth
 
                     // Синхронізація Discord-гільдій теж best-effort: не ламає restore.
                     await SyncGuildsAsync(savedSession, cancellationToken).ConfigureAwait(false);
+                    await _sessionTracker.StartSessionAsync(cancellationToken).ConfigureAwait(false);
 
                     return true;
                 }
@@ -179,7 +184,8 @@ namespace SCLOCVerse.Services.Auth
         {
             try
             {
-                await _supabase.Auth.SignOut().ConfigureAwait(false);
+                await _sessionTracker.EndSessionAsync(cancellationToken).ConfigureAwait(false);
+                await _supabase.Auth.SignOut(Supabase.Gotrue.Constants.SignOutScope.Global).ConfigureAwait(false);
             }
             catch (Exception ex)
             {

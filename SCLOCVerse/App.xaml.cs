@@ -15,6 +15,7 @@ namespace SCLOCVerse
     {
         private static Mutex? _singleInstanceMutex;
         private const string SingleInstanceMutexName = "SCLOCVerse_SingleInstanceMutex";
+        private AppCompositionRoot? _compositionRoot;
 
         protected override void OnStartup(StartupEventArgs e)
         {
@@ -54,8 +55,8 @@ namespace SCLOCVerse
             // Автоматична міграція User Settings після оновлення версії.
             MigrateSettingsIfNeeded();
 
-            var compositionRoot = new AppCompositionRoot();
-            var window = compositionRoot.CreateMainWindow();
+            _compositionRoot = new AppCompositionRoot();
+            var window = _compositionRoot.CreateMainWindow();
             MainWindow = window;
             window.Show();
         }
@@ -99,6 +100,15 @@ namespace SCLOCVerse
 
         protected override void OnExit(ExitEventArgs e)
         {
+            try
+            {
+                _compositionRoot?.AuthCompositionRoot?.SessionTrackerService?.EndSessionAsync(CancellationToken.None).GetAwaiter().GetResult();
+            }
+            catch
+            {
+                // Не блокуємо вихід при помилках телеметрії.
+            }
+
             try
             {
                 _singleInstanceMutex?.ReleaseMutex();

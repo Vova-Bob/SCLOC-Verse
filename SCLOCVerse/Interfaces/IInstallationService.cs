@@ -8,6 +8,11 @@ namespace SCLOCVerse.Interfaces
     /// </summary>
     public interface IInstallationService
     {
+        /// <summary>
+        /// Унікальний ідентифікатор поточної інсталяції.
+        /// </summary>
+        string InstallId { get; }
+
         Task SyncCurrentInstallationAsync(CancellationToken cancellationToken = default);
     }
 }
