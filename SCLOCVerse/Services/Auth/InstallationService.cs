@@ -31,50 +31,30 @@ namespace SCLOCVerse.Services.Auth
             if (!Guid.TryParse(userIdString, out var userId))
                 return;
 
-            var response = await _supabase
-                .From<AppInstallation>()
-                .Where(x => x.UserId == userId && x.InstallId == _installId)
-                .Get(cancellationToken)
-                .ConfigureAwait(false);
-
             var now = DateTimeOffset.UtcNow;
             var appVersion = GetCurrentAppVersion();
 
-            if (response.Models.Count == 0)
+            var installation = new AppInstallation
             {
-                var installation = new AppInstallation
-                {
-                    Id = Guid.NewGuid(),
-                    UserId = userId,
-                    InstallId = _installId,
-                    AppVersion = appVersion,
-                    Platform = "Windows",
-                    MachineId = Environment.MachineName,
-                    OsVersion = Environment.OSVersion.VersionString,
-                    FirstSeen = now,
-                    LastSeen = now,
-                    CreatedAt = now,
-                    IsActive = true
-                };
+                Id = Guid.NewGuid(),
+                UserId = userId,
+                InstallId = _installId,
+                AppVersion = appVersion,
+                Platform = "Windows",
+                MachineId = Environment.MachineName,
+                OsVersion = Environment.OSVersion.VersionString,
+                FirstSeen = now,
+                LastSeen = now,
+                CreatedAt = now,
+                IsActive = true
+            };
 
-                await _supabase
-                    .From<AppInstallation>()
-                    .Insert(installation, cancellationToken: cancellationToken)
-                    .ConfigureAwait(false);
-            }
-            else
-            {
-                var installation = response.Models[0];
-                installation.LastSeen = now;
-                installation.AppVersion = appVersion;
-                installation.OsVersion = Environment.OSVersion.VersionString;
-                installation.IsActive = true;
-
-                await _supabase
-                    .From<AppInstallation>()
-                    .Update(installation, cancellationToken: cancellationToken)
-                    .ConfigureAwait(false);
-            }
+            // Upsert за бізнес-ключем (user_id, install_id). Якщо запис існує —
+            // оновлюємо service-поля; якщо ні — створюємо новий.
+            await _supabase
+                .From<AppInstallation>()
+                .Upsert(installation, cancellationToken: cancellationToken)
+                .ConfigureAwait(false);
         }
 
         private static string GetOrCreateInstallId()

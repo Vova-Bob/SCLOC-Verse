@@ -1,17 +1,25 @@
 using SCLOCVerse.Interfaces;
+using Supabase.Gotrue;
+using Supabase.Gotrue.Interfaces;
 using System;
 using System.IO;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 
 namespace SCLOCVerse.Services.Auth
 {
     /// <summary>
-    /// Безпечне сховище refresh token через DPAPI для поточного користувача.
+    /// Безпечне сховище сесії через DPAPI для поточного користувача.
+    /// Реалізує вбудований інтерфейс persistence Supabase Gotrue.
     /// </summary>
-    public sealed class SecureSessionStorage : ISecureSessionStorage
+    public sealed class SecureSessionStorage : ISecureSessionStorage, IGotrueSessionPersistence<Session>
     {
         private readonly string _filePath;
+        private static readonly JsonSerializerOptions JsonOptions = new()
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+        };
 
         public SecureSessionStorage()
         {
@@ -24,17 +32,18 @@ namespace SCLOCVerse.Services.Auth
             _filePath = Path.Combine(directory, ".auth");
         }
 
-        public void SaveRefreshToken(string refreshToken)
+        public void SaveSession(Session session)
         {
-            if (refreshToken == null)
-                throw new ArgumentNullException(nameof(refreshToken));
+            if (session == null)
+                throw new ArgumentNullException(nameof(session));
 
-            var bytes = Encoding.UTF8.GetBytes(refreshToken);
+            var json = JsonSerializer.Serialize(session, JsonOptions);
+            var bytes = Encoding.UTF8.GetBytes(json);
             var protectedBytes = ProtectedData.Protect(bytes, null, DataProtectionScope.CurrentUser);
             File.WriteAllBytes(_filePath, protectedBytes);
         }
 
-        public string? LoadRefreshToken()
+        public Session? LoadSession()
         {
             if (!File.Exists(_filePath))
                 return null;
@@ -43,13 +52,36 @@ namespace SCLOCVerse.Services.Auth
             {
                 var protectedBytes = File.ReadAllBytes(_filePath);
                 var bytes = ProtectedData.Unprotect(protectedBytes, null, DataProtectionScope.CurrentUser);
-                return Encoding.UTF8.GetString(bytes);
+                var json = Encoding.UTF8.GetString(bytes);
+                return JsonSerializer.Deserialize<Session>(json, JsonOptions);
             }
             catch (Exception)
             {
-                DeleteRefreshToken();
+                DestroySession();
                 return null;
             }
+        }
+
+        public void DestroySession()
+        {
+            DeleteRefreshToken();
+        }
+
+        public void SaveRefreshToken(string refreshToken)
+        {
+            // Legacy/compat: зберігаємо тільки refresh token у вигляді JSON-об'єкта,
+            // щоб старі методи могли бути викликані без повної сесії.
+            if (refreshToken == null)
+                throw new ArgumentNullException(nameof(refreshToken));
+
+            var session = new Session { RefreshToken = refreshToken };
+            SaveSession(session);
+        }
+
+        public string? LoadRefreshToken()
+        {
+            var session = LoadSession();
+            return session?.RefreshToken;
         }
 
         public void DeleteRefreshToken()

@@ -116,8 +116,8 @@ namespace SCLOCVerse.Services.Auth
 
         public async Task<bool> TryRestoreSessionAsync(CancellationToken cancellationToken = default)
         {
-            var refreshToken = _secureStorage.LoadRefreshToken();
-            if (string.IsNullOrWhiteSpace(refreshToken))
+            var savedSession = _secureStorage.LoadSession();
+            if (savedSession == null || string.IsNullOrWhiteSpace(savedSession.RefreshToken))
                 return false;
 
             try
@@ -125,10 +125,9 @@ namespace SCLOCVerse.Services.Auth
                 await _refreshLock.WaitAsync(cancellationToken).ConfigureAwait(false);
                 try
                 {
-                    // Спочатку завантажуємо збережену сесію в Gotrue.
-                    _supabase.Auth.LoadSession();
+                    // Завантажуємо збережену сесію з persistence та оновлюємо access token.
+                    var session = await _supabase.Auth.RetrieveSessionAsync().ConfigureAwait(false);
 
-                    var session = await _supabase.Auth.RefreshSession().ConfigureAwait(false);
                     if (session == null)
                     {
                         _secureStorage.DeleteRefreshToken();

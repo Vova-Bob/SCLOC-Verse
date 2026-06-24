@@ -512,7 +512,14 @@ namespace SCLOCVerse
 
         private void Account_Click(object sender, RoutedEventArgs e)
         {
-            AccountDialog.Show(this, _authService);
+            try
+            {
+                AccountDialog.Show(this, _authService);
+            }
+            catch (Exception ex)
+            {
+                System.Windows.MessageBox.Show($"Account_Click error: {ex}", "Debug", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
 
         private async Task RestoreAuthSessionAsync()

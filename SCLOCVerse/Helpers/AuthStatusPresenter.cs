@@ -55,26 +55,44 @@ namespace SCLOCVerse.Helpers
 
             if (state == AuthState.SignedIn && profile != null)
             {
-                var image = new Image
+                var avatarSource = LoadAvatar(profile.AvatarUrl);
+                if (avatarSource != null)
                 {
-                    Width = 28,
-                    Height = 28,
-                    Stretch = Stretch.UniformToFill,
-                    Source = LoadAvatar(profile.AvatarUrl)
-                };
-
-                // Кругла маска через OpacityMask.
-                image.OpacityMask = new VisualBrush
-                {
-                    Visual = new Ellipse
+                    var image = new Image
                     {
                         Width = 28,
                         Height = 28,
-                        Fill = Brushes.Black
-                    }
-                };
+                        Stretch = Stretch.UniformToFill,
+                        Source = avatarSource
+                    };
 
-                _accountButton.Content = image;
+                    // Кругла маска через OpacityMask.
+                    image.OpacityMask = new VisualBrush
+                    {
+                        Visual = new Ellipse
+                        {
+                            Width = 28,
+                            Height = 28,
+                            Fill = Brushes.Black
+                        }
+                    };
+
+                    _accountButton.Content = image;
+                }
+                else
+                {
+                    // Fallback: ініціали користувача, якщо аватар недоступний.
+                    _accountButton.Content = new TextBlock
+                    {
+                        Text = GetInitials(profile.DisplayName),
+                        Foreground = Brushes.White,
+                        FontSize = 12,
+                        FontWeight = FontWeights.Bold,
+                        VerticalAlignment = VerticalAlignment.Center,
+                        HorizontalAlignment = HorizontalAlignment.Center
+                    };
+                }
+
                 _accountButton.ToolTip = profile.DisplayName;
             }
             else
@@ -88,6 +106,22 @@ namespace SCLOCVerse.Helpers
                     HorizontalAlignment = HorizontalAlignment.Center
                 };
             }
+        }
+
+        private static string GetInitials(string? displayName)
+        {
+            if (string.IsNullOrWhiteSpace(displayName))
+                return "?";
+
+            var parts = displayName.Split(new[] { ' ', '_' }, StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length == 0)
+                return displayName[..1].ToUpperInvariant();
+
+            var initials = parts[0][..1];
+            if (parts.Length > 1)
+                initials += parts[^1][..1];
+
+            return initials.ToUpperInvariant();
         }
 
         private static ImageSource? LoadAvatar(string? url)

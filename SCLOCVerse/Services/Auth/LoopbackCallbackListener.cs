@@ -204,11 +204,21 @@ namespace SCLOCVerse.Services.Auth
 body { font-family: Arial, sans-serif; background: #0f2c3e; color: #fff; text-align: center; padding-top: 80px; }
 h1 { color: #6db9f8; }
 p { opacity: 0.8; }
+button { margin-top: 20px; padding: 10px 20px; font-size: 16px; background: #6db9f8; color: #0f2c3e; border: none; border-radius: 5px; cursor: pointer; }
 </style>
 </head>
 <body>
 <h1>Вхід успішний</h1>
 <p>Можете закрити це вікно та повернутися до SCLOC-Verse.</p>
+<button id='closeBtn' onclick='closeWindow()'>Закрити вкладку</button>
+<script>
+function closeWindow() {
+    window.open('', '_self').close();
+    window.close();
+}
+// Автоматична спроба закрити вкладку після завантаження.
+setTimeout(closeWindow, 500);
+</script>
 </body>
 </html>";
         }
