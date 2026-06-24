@@ -82,10 +82,16 @@ namespace SCLOCVerse.Services.Auth
                     return new AuthResult.Cancelled();
 
                 var code = GetQueryParameter(callbackUrl, "code");
-                var error = GetQueryParameter(callbackUrl, "error_description") ?? GetQueryParameter(callbackUrl, "error");
+                var errorCode = GetQueryParameter(callbackUrl, "error");
+                var errorDescription = GetQueryParameter(callbackUrl, "error_description");
 
-                if (!string.IsNullOrWhiteSpace(error))
-                    return new AuthResult.Failure(error);
+                // Відмова користувача від авторизації — не є помилкою, повертаємо Cancelled,
+                // щоб UI не показував діалогове вікно з помилкою.
+                if (string.Equals(errorCode, "access_denied", StringComparison.OrdinalIgnoreCase))
+                    return new AuthResult.Cancelled();
+
+                if (!string.IsNullOrWhiteSpace(errorCode) || !string.IsNullOrWhiteSpace(errorDescription))
+                    return new AuthResult.Failure(errorDescription ?? errorCode ?? "Помилка авторизації");
 
                 if (string.IsNullOrWhiteSpace(code))
                     return new AuthResult.Failure("Авторизаційний код відсутній.");

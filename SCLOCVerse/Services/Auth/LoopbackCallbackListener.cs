@@ -138,14 +138,19 @@ namespace SCLOCVerse.Services.Auth
         private static string BuildResponseHtml(Uri? requestUrl)
         {
             if (requestUrl == null)
-                return BuildErrorHtml("Unknown error");
+                return BuildErrorHtml("Невідома помилка");
 
             var code = GetQueryParameter(requestUrl, "code");
-            var error = GetQueryParameter(requestUrl, "error_description") ?? GetQueryParameter(requestUrl, "error");
+            var errorCode = GetQueryParameter(requestUrl, "error");
+            var errorDescription = GetQueryParameter(requestUrl, "error_description");
 
-            return !string.IsNullOrWhiteSpace(code)
-                ? BuildSuccessHtml()
-                : BuildErrorHtml(error ?? "Unknown error");
+            if (!string.IsNullOrWhiteSpace(code))
+                return BuildSuccessHtml();
+
+            if (string.Equals(errorCode, "access_denied", StringComparison.OrdinalIgnoreCase))
+                return BuildCancelledHtml();
+
+            return BuildErrorHtml(errorDescription ?? errorCode ?? "Невідома помилка");
         }
 
         private static string? GetQueryParameter(Uri url, string key)
@@ -208,6 +213,26 @@ p { opacity: 0.8; }
 </head>
 <body>
 <h1>Вхід успішний</h1>
+<p>Можете закрити це вікно та повернутися до SCLOC-Verse.</p>
+</body>
+</html>";
+        }
+
+        private static string BuildCancelledHtml()
+        {
+            return @"<!DOCTYPE html>
+<html>
+<head>
+<meta charset='utf-8'>
+<title>SCLOC-Verse — Вхід</title>
+<style>
+body { font-family: Arial, sans-serif; background: #0f2c3e; color: #fff; text-align: center; padding-top: 80px; }
+h1 { color: #6db9f8; }
+p { opacity: 0.8; }
+</style>
+</head>
+<body>
+<h1>Вхід скасовано</h1>
 <p>Можете закрити це вікно та повернутися до SCLOC-Verse.</p>
 </body>
 </html>";
