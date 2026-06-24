@@ -187,24 +187,65 @@
                 </StackPanel>
 
                 <StackPanel x:Name="SignedInPanel">
-                    <Image x:Name="AvatarImage"
-                           Width="64"
-                           Height="64"
-                           HorizontalAlignment="Center"
-                           Margin="0,0,0,12"/>
+                    <!-- Аватар із fallback на ініціали -->
+                    <Grid Width="72" Height="72" HorizontalAlignment="Center" Margin="0,0,0,12">
+                        <Border Width="72" Height="72" CornerRadius="36" Background="{StaticResource DialogButtonFill}">
+                            <TextBlock x:Name="InitialsText"
+                                       Text="?"
+                                       FontFamily="Segoe UI"
+                                       FontSize="26"
+                                       FontWeight="Bold"
+                                       Foreground="White"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"/>
+                        </Border>
+                        <Image x:Name="AvatarImage"
+                               Width="72"
+                               Height="72"
+                               ImageFailed="AvatarImage_ImageFailed">
+                            <Image.Clip>
+                                <EllipseGeometry Center="36,36" RadiusX="36" RadiusY="36"/>
+                            </Image.Clip>
+                        </Image>
+                    </Grid>
 
+                    <!-- Основне ім'я (global_name) -->
                     <TextBlock x:Name="UsernameText"
                                FontFamily="Arial"
                                FontSize="18"
                                FontWeight="Bold"
                                Foreground="{StaticResource DialogText}"
                                TextAlignment="Center"
-                               Margin="0,0,0,4"/>
+                               TextTrimming="CharacterEllipsis"
+                               Margin="12,0,12,4"/>
 
-                    <TextBlock x:Name="StatusText"
+                    <!-- Бейдж «Discord» -->
+                    <Border CornerRadius="10"
+                             Background="#1F3D54"
+                             Padding="10,4"
+                             HorizontalAlignment="Center"
+                             Margin="0,0,0,6">
+                        <StackPanel Orientation="Horizontal">
+                            <Image Source="/SCLOCVerse;component/Images/Discord.png"
+                                   Width="16"
+                                   Height="16"
+                                   RenderOptions.BitmapScalingMode="HighQuality"
+                                   VerticalAlignment="Center"/>
+                            <TextBlock Text="Discord"
+                                       FontFamily="Segoe UI"
+                                       FontSize="12"
+                                       FontWeight="SemiBold"
+                                       Foreground="{StaticResource DialogAccent}"
+                                       VerticalAlignment="Center"
+                                       Margin="6,0,0,0"/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Дата реєстрації -->
+                    <TextBlock x:Name="JoinedText"
                                FontFamily="Segoe UI"
-                               FontSize="12"
-                               Foreground="{StaticResource DialogAccent}"
+                               FontSize="11"
+                               Foreground="{StaticResource DialogBodyText}"
                                TextAlignment="Center"
                                Margin="0,0,0,16"/>
 

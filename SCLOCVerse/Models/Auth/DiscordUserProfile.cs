@@ -1,3 +1,5 @@
+using System;
+
 namespace SCLOCVerse.Models.Auth
 {
     /// <summary>
@@ -5,12 +7,18 @@ namespace SCLOCVerse.Models.Auth
     /// </summary>
     public sealed class DiscordUserProfile
     {
-        public DiscordUserProfile(string id, string? username, string? globalName, string? avatarUrl)
+        public DiscordUserProfile(
+            string id,
+            string? username,
+            string? globalName,
+            string? avatarUrl,
+            DateTime? joinedAt)
         {
-            Id = id ?? throw new System.ArgumentNullException(nameof(id));
+            Id = id ?? throw new ArgumentNullException(nameof(id));
             Username = username;
             GlobalName = globalName;
             AvatarUrl = avatarUrl;
+            JoinedAt = joinedAt;
         }
 
         public string Id { get; }
@@ -21,6 +29,14 @@ namespace SCLOCVerse.Models.Auth
 
         public string? AvatarUrl { get; }
 
+        /// <summary>
+        /// Дата реєстрації акаунта (auth.users.created_at).
+        /// </summary>
+        public DateTime? JoinedAt { get; }
+
+        /// <summary>
+        /// Основне ім'я для UI: display name (global_name), або логін, або id.
+        /// </summary>
         public string DisplayName => !string.IsNullOrWhiteSpace(GlobalName)
             ? GlobalName
             : (!string.IsNullOrWhiteSpace(Username) ? Username : Id);

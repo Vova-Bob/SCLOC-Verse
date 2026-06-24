@@ -227,16 +227,27 @@ namespace SCLOCVerse.Services.Auth
 
         private async Task SyncProfileAsync(Session session)
         {
-            if (session.User != null)
+            // Профіль беремо з авторитетного GetUser(accessToken): свіжий об'єкт із сервера
+            // не пошкоджується серіалізацією сесії (вкладений custom_claims.global_name
+            // інакше перетворюється на порожній масив при restore).
+            User? user = null;
+            var accessToken = _supabase.Auth.CurrentSession?.AccessToken ?? session.AccessToken;
+            if (!string.IsNullOrWhiteSpace(accessToken))
             {
-                Profile = DiscordUserProfileMapper.Map(session.User);
+                try
+                {
+                    user = await _supabase.Auth.GetUser(accessToken).ConfigureAwait(false);
+                }
+                catch (Exception ex)
+                {
+                    LogError("GetUser for profile failed", ex);
+                }
             }
-            else
-            {
-                var accessToken = session.AccessToken ?? string.Empty;
-                var user = await _supabase.Auth.GetUser(accessToken).ConfigureAwait(false);
-                Profile = user != null ? DiscordUserProfileMapper.Map(user) : null;
-            }
+
+            // Fallback на дані сесії, якщо мережевий запит не вдався.
+            user ??= session.User;
+
+            Profile = user != null ? DiscordUserProfileMapper.Map(user) : null;
 
             SetState(Profile != null ? AuthState.SignedIn : AuthState.Error);
         }

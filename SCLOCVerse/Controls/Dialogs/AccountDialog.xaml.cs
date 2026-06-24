@@ -52,9 +52,12 @@ namespace SCLOCVerse.Controls.Dialogs
             {
                 case AuthState.SignedIn:
                     SignedInPanel.Visibility = Visibility.Visible;
-                    UsernameText.Text = profile?.DisplayName ?? "—";
-                    StatusText.Text = "Ви увійшли через Discord";
-                    AvatarImage.Source = LoadAvatar(profile?.AvatarUrl);
+
+                    var displayName = profile?.DisplayName ?? "—";
+                    UsernameText.Text = displayName;
+                    InitialsText.Text = GetInitials(displayName);
+                    ApplyAvatar(profile?.AvatarUrl);
+                    JoinedText.Text = FormatJoined(profile?.JoinedAt);
                     break;
 
                 case AuthState.SigningIn:
@@ -149,6 +152,64 @@ namespace SCLOCVerse.Controls.Dialogs
             catch (Exception)
             {
                 return null;
+            }
+        }
+
+        private void ApplyAvatar(string? url)
+        {
+            var source = LoadAvatar(url);
+            if (source != null)
+            {
+                AvatarImage.Source = source;
+                AvatarImage.Visibility = Visibility.Visible;
+            }
+            else
+            {
+                // Аватар недоступний — показуємо ініціали, заховані під зображенням.
+                AvatarImage.Source = null;
+                AvatarImage.Visibility = Visibility.Collapsed;
+            }
+        }
+
+        private void AvatarImage_ImageFailed(object sender, System.Windows.ExceptionRoutedEventArgs e)
+        {
+            AvatarImage.Source = null;
+            AvatarImage.Visibility = Visibility.Collapsed;
+        }
+
+        private static string GetInitials(string? displayName)
+        {
+            if (string.IsNullOrWhiteSpace(displayName))
+                return "?";
+
+            var parts = displayName.Split(new[] { ' ', '_', '|', '-' }, StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length == 0)
+                return displayName[..1].ToUpperInvariant();
+
+            var initials = parts[0][..1];
+            if (parts.Length > 1)
+                initials += parts[^1][..1];
+
+            return initials.ToUpperInvariant();
+        }
+
+        private static string FormatJoined(DateTime? joinedAt)
+        {
+            if (joinedAt == null)
+                return string.Empty;
+
+            try
+            {
+                var culture = new System.Globalization.CultureInfo("uk-UA");
+                var formatted = joinedAt.Value.ToString("MMMM yyyy", culture);
+                if (formatted.Length > 0)
+                    formatted = char.ToUpper(formatted[0], culture) + formatted[1..];
+
+                return $"У системі з {formatted}";
+            }
+            catch
+            {
+                return string.Empty;
             }
         }
     }
