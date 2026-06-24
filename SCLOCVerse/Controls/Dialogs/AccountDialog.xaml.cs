@@ -9,8 +9,8 @@ namespace SCLOCVerse.Controls.Dialogs
 {
     public partial class AccountDialog : Window
     {
-        private readonly IAuthService _authService;
-        private readonly CancellationTokenSource _cts = new();
+    private readonly IAuthService _authService;
+    private CancellationTokenSource _cts = new();
 
         public AccountDialog(IAuthService authService)
         {
@@ -74,6 +74,11 @@ namespace SCLOCVerse.Controls.Dialogs
 
         private async void SignInButton_Click(object sender, RoutedEventArgs e)
         {
+            // Перестворюємо CancellationTokenSource перед кожним входом,
+            // щоб скасування попередньої не блокувало наступні спроби.
+            _cts?.Dispose();
+            _cts = new CancellationTokenSource();
+
             SignedOutPanel.Visibility = Visibility.Collapsed;
             SigningInPanel.Visibility = Visibility.Visible;
 

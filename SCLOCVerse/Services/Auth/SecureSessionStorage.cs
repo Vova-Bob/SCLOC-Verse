@@ -69,13 +69,25 @@ namespace SCLOCVerse.Services.Auth
 
         public void SaveRefreshToken(string refreshToken)
         {
-            // Legacy/compat: зберігаємо тільки refresh token у вигляді JSON-об'єкта,
-            // щоб старі методи могли бути викликані без повної сесії.
             if (refreshToken == null)
                 throw new ArgumentNullException(nameof(refreshToken));
 
-            var session = new Session { RefreshToken = refreshToken };
-            SaveSession(session);
+            // Завантажуємо поточну повну сесію з файлу.
+            var session = LoadSession();
+
+            if (session != null)
+            {
+                // Оновлюємо refresh token, зберігаючи інші поля сесії.
+                session.RefreshToken = refreshToken;
+                SaveSession(session);
+            }
+            else
+            {
+                // Fallback для рідкісного випадку, коли Gotrue викликає SaveRefreshToken
+                // без попередньої LoadSession або SaveSession.
+                var newSession = new Session { RefreshToken = refreshToken };
+                SaveSession(newSession);
+            }
         }
 
         public string? LoadRefreshToken()
