@@ -88,17 +88,7 @@ namespace SCLOCVerse.Services.Auth
                 var session = await _supabase.Auth.ExchangeCodeForSession(pkceVerifier, code).ConfigureAwait(false);
 
                 if (session == null)
-                {
-                    AuthForensics.Log("SignIn", "ExchangeCodeForSession returned NULL");
                     return new AuthResult.Failure("Не вдалося обміняти код на сесію.");
-                }
-
-                // FORENSICS: фіксуємо значення об'єкта Session після ExchangeCodeForSession.
-                AuthForensics.Log("SignIn",
-                    $"session OK; AccessTokenLen={session.AccessToken?.Length ?? -1}; " +
-                    $"RefreshTokenLen={session.RefreshToken?.Length ?? -1}; " +
-                    $"ExpiresIn={session.ExpiresIn}; TokenType={session.TokenType}; " +
-                    $"UserNull={session.User == null}; ProviderTokenNull={session.ProviderToken == null}");
 
                 SaveSession(session);
                 await SyncProfileAsync(session).ConfigureAwait(false);
@@ -126,11 +116,11 @@ namespace SCLOCVerse.Services.Auth
 
         public async Task<bool> TryRestoreSessionAsync(CancellationToken cancellationToken = default)
         {
-            AuthForensics.Log("TryRestoreSession", "enter");
             var savedSession = _secureStorage.LoadSession();
-            AuthForensics.Log("TryRestoreSession",
-                $"LoadSession -> {(savedSession == null ? "NULL" : $"session; refreshLen={savedSession.RefreshToken?.Length ?? -1}")}");
-            if (savedSession == null || string.IsNullOrWhiteSpace(savedSession.RefreshToken))
+
+            // Потребуємо access token: без нього клієнт не зможе виконати жодного запиту,
+            // а restore через єдиний refresh token у цій версії Gotrue ненадійний.
+            if (savedSession == null || string.IsNullOrWhiteSpace(savedSession.AccessToken))
                 return false;
 
             try
@@ -138,19 +128,28 @@ namespace SCLOCVerse.Services.Auth
                 await _refreshLock.WaitAsync(cancellationToken).ConfigureAwait(false);
                 try
                 {
-                    // Завантажуємо збережену сесію з persistence та оновлюємо access token.
-                    var session = await _supabase.Auth.RetrieveSessionAsync().ConfigureAwait(false);
+                    // Гідратуємо клієнт збереженими токенами напряму.
+                    // RetrieveSessionAsync() у цій версії Gotrue повертає null при restore
+                    // і раніше призводив до деструктивного видалення .auth.
+                    await _supabase.Auth.SetSession(
+                        savedSession.AccessToken!,
+                        savedSession.RefreshToken ?? string.Empty,
+                        true).ConfigureAwait(false);
 
-                    if (session == null)
+                    // Профіль відновлюємо з повної збереженої сесії (містить User),
+                    // щоб UI показував аватар навіть без мережевого запиту.
+                    await SyncProfileAsync(savedSession).ConfigureAwait(false);
+
+                    // Синхронізацію інсталяції не вважаємо критичною для restore:
+                    // її збій не повинен скидати відновлений профіль.
+                    try
                     {
-                        _secureStorage.DeleteRefreshToken();
-                        SetState(AuthState.SignedOut);
-                        return false;
+                        await _installationService.SyncCurrentInstallationAsync(cancellationToken).ConfigureAwait(false);
                     }
-
-                    SaveSession(session);
-                    await SyncProfileAsync(session).ConfigureAwait(false);
-                    await _installationService.SyncCurrentInstallationAsync(cancellationToken).ConfigureAwait(false);
+                    catch (Exception syncEx)
+                    {
+                        LogError("Installation sync during restore failed", syncEx);
+                    }
 
                     return true;
                 }
@@ -161,8 +160,9 @@ namespace SCLOCVerse.Services.Auth
             }
             catch (Exception ex)
             {
+                // Не знищуємо .auth при мережевих/транзитних помилках:
+                // сесія може бути валідною, а збій — тимчасовим.
                 LogError("TryRestoreSession failed", ex);
-                _secureStorage.DeleteRefreshToken();
                 SetState(AuthState.SignedOut);
                 return false;
             }
@@ -199,30 +199,10 @@ namespace SCLOCVerse.Services.Auth
 
         private void SaveSession(Session session)
         {
-            var hasRefresh = !string.IsNullOrWhiteSpace(session.RefreshToken);
-            AuthForensics.Log("AuthService.SaveSession",
-                $"enter; hasRefreshToken={hasRefresh}; refreshLen={session.RefreshToken?.Length ?? -1}");
-
             // Зберігаємо повну сесію, щоб при наступному запуску можна було
             // відновити access token без обов'язкового мережевого запиту.
-            if (hasRefresh)
-            {
-                AuthForensics.Log("AuthService.SaveSession", "calling _secureStorage.SaveSession");
-                try
-                {
-                    _secureStorage.SaveSession(session);
-                    AuthForensics.Log("AuthService.SaveSession", "_secureStorage.SaveSession returned OK");
-                }
-                catch (Exception ex)
-                {
-                    AuthForensics.Log("AuthService.SaveSession", $"THREW: {ex.GetType().Name}: {ex.Message}");
-                    throw;
-                }
-            }
-            else
-            {
-                AuthForensics.Log("AuthService.SaveSession", "SKIPPED (no refresh token)");
-            }
+            if (!string.IsNullOrWhiteSpace(session.RefreshToken))
+                _secureStorage.SaveSession(session);
         }
 
         private async Task SyncProfileAsync(Session session)
@@ -243,12 +223,9 @@ namespace SCLOCVerse.Services.Auth
 
         private void OnAuthStateChanged(object sender, GotrueConstants.AuthState stateChanged)
         {
-            AuthForensics.Log("OnAuthStateChanged", $"state={stateChanged}");
-
             // Обробляємо тільки вихід з системи.
             if (stateChanged == GotrueConstants.AuthState.SignedOut)
             {
-                AuthForensics.Log("OnAuthStateChanged", "SignedOut received -> deleting .auth");
                 Profile = null;
                 _secureStorage.DeleteRefreshToken();
                 SetState(AuthState.SignedOut);
