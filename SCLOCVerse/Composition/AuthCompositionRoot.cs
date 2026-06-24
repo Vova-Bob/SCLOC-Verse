@@ -22,7 +22,8 @@ namespace SCLOCVerse.Composition
             _clientFactory = new SupabaseClientFactory(supabaseUrl, supabaseAnonKey, _secureStorage);
             _callbackListener = new LoopbackCallbackListener();
             _installationService = new InstallationService(_clientFactory);
-            _authService = new AuthService(_clientFactory, _secureStorage, _callbackListener, _installationService);
+            var guildSyncService = new DiscordGuildSyncService(_clientFactory);
+            _authService = new AuthService(_clientFactory, _secureStorage, _callbackListener, _installationService, guildSyncService);
         }
 
         public IAuthService AuthService => _authService;

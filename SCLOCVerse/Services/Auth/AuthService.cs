@@ -20,6 +20,7 @@ namespace SCLOCVerse.Services.Auth
         private readonly ISecureSessionStorage _secureStorage;
         private readonly ILoopbackCallbackListener _callbackListener;
         private readonly IInstallationService _installationService;
+        private readonly IDiscordGuildSyncService _guildSyncService;
         private readonly SemaphoreSlim _refreshLock = new(1, 1);
         private bool _disposed;
 
@@ -27,12 +28,14 @@ namespace SCLOCVerse.Services.Auth
             ISupabaseClientFactory clientFactory,
             ISecureSessionStorage secureStorage,
             ILoopbackCallbackListener callbackListener,
-            IInstallationService installationService)
+            IInstallationService installationService,
+            IDiscordGuildSyncService guildSyncService)
         {
             _supabase = clientFactory?.CreateClient() ?? throw new ArgumentNullException(nameof(clientFactory));
             _secureStorage = secureStorage ?? throw new ArgumentNullException(nameof(secureStorage));
             _callbackListener = callbackListener ?? throw new ArgumentNullException(nameof(callbackListener));
             _installationService = installationService ?? throw new ArgumentNullException(nameof(installationService));
+            _guildSyncService = guildSyncService ?? throw new ArgumentNullException(nameof(guildSyncService));
 
             _supabase.Auth.AddStateChangedListener(OnAuthStateChanged);
         }
@@ -60,7 +63,7 @@ namespace SCLOCVerse.Services.Auth
                     {
                         FlowType = GotrueConstants.OAuthFlowType.PKCE,
                         RedirectTo = redirectUri.ToString(),
-                        Scopes = "identify"
+                        Scopes = "identify guilds"
                     }).ConfigureAwait(false);
 
                 if (state?.Uri == null)
@@ -93,6 +96,7 @@ namespace SCLOCVerse.Services.Auth
                 SaveSession(session);
                 await SyncProfileAsync(session).ConfigureAwait(false);
                 await _installationService.SyncCurrentInstallationAsync(cancellationToken).ConfigureAwait(false);
+                await SyncGuildsAsync(session, cancellationToken).ConfigureAwait(false);
 
                 return new AuthResult.Success(Profile!);
             }
@@ -151,6 +155,9 @@ namespace SCLOCVerse.Services.Auth
                         LogError("Installation sync during restore failed", syncEx);
                     }
 
+                    // Синхронізація Discord-гільдій теж best-effort: не ламає restore.
+                    await SyncGuildsAsync(savedSession, cancellationToken).ConfigureAwait(false);
+
                     return true;
                 }
                 finally
@@ -203,6 +210,19 @@ namespace SCLOCVerse.Services.Auth
             // відновити access token без обов'язкового мережевого запиту.
             if (!string.IsNullOrWhiteSpace(session.RefreshToken))
                 _secureStorage.SaveSession(session);
+        }
+
+        // Синхронізація Discord-гільдій не повинна ламати логін/restore: ізольований best-effort.
+        private async Task SyncGuildsAsync(Session session, CancellationToken cancellationToken)
+        {
+            try
+            {
+                await _guildSyncService.SyncUserGuildsAsync(session, cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                LogError("Discord guild sync failed", ex);
+            }
         }
 
         private async Task SyncProfileAsync(Session session)
