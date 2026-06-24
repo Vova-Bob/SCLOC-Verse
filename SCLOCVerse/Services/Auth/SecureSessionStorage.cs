@@ -37,10 +37,27 @@ namespace SCLOCVerse.Services.Auth
             if (session == null)
                 throw new ArgumentNullException(nameof(session));
 
-            var json = JsonSerializer.Serialize(session, JsonOptions);
-            var bytes = Encoding.UTF8.GetBytes(json);
-            var protectedBytes = ProtectedData.Protect(bytes, null, DataProtectionScope.CurrentUser);
-            File.WriteAllBytes(_filePath, protectedBytes);
+            AuthForensics.Log("Storage.SaveSession", $"enter; path={_filePath}");
+
+            try
+            {
+                var json = JsonSerializer.Serialize(session, JsonOptions);
+                AuthForensics.Log("Storage.SaveSession", $"serialize OK; jsonLen={json.Length}");
+
+                var bytes = Encoding.UTF8.GetBytes(json);
+                AuthForensics.Log("Storage.SaveSession", $"getbytes OK; byteLen={bytes.Length}");
+
+                var protectedBytes = ProtectedData.Protect(bytes, null, DataProtectionScope.CurrentUser);
+                AuthForensics.Log("Storage.SaveSession", $"protect OK; protectedLen={protectedBytes.Length}");
+
+                File.WriteAllBytes(_filePath, protectedBytes);
+                AuthForensics.Log("Storage.SaveSession", $"write OK; fileExists={File.Exists(_filePath)}");
+            }
+            catch (Exception ex)
+            {
+                AuthForensics.Log("Storage.SaveSession", $"THREW at: {ex.GetType().Name}: {ex.Message}");
+                throw;
+            }
         }
 
         public Session? LoadSession()
