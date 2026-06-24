@@ -41,5 +41,11 @@ namespace SCLOCVerse.Models.Auth
 
         [Supabase.Postgrest.Attributes.Column("is_active")]
         public bool IsActive { get; set; } = true;
+
+        [Supabase.Postgrest.Attributes.Column("updated_at")]
+        public DateTimeOffset? UpdatedAt { get; set; }
+
+        [Supabase.Postgrest.Attributes.Column("last_session_at")]
+        public DateTimeOffset? LastSessionAt { get; set; }
     }
 }

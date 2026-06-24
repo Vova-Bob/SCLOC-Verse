@@ -32,6 +32,8 @@ namespace SCLOCVerse.Services.Auth
             if (!Guid.TryParse(userIdString, out var userId))
                 return;
 
+
+
             var now = DateTimeOffset.UtcNow;
             var appVersion = GetCurrentAppVersion();
 
@@ -44,14 +46,14 @@ namespace SCLOCVerse.Services.Auth
                 Platform = "Windows",
                 MachineId = Environment.MachineName,
                 OsVersion = Environment.OSVersion.VersionString,
-                FirstSeen = now,
                 LastSeen = now,
-                CreatedAt = now,
+                UpdatedAt = now,
                 IsActive = true
             };
 
-            // Upsert за бізнес-ключем install_id. Одна інсталяція відповідає
-            // одному рядку; користувач може мати багато інсталяцій.
+            // Upsert за бізнес-ключем install_id. first_seen та created_at
+            // не передаються з C# — вони заповнюються DEFAULT now() при INSERT
+            // і не змінюються при UPDATE.
             await _supabase
                 .From<AppInstallation>()
                 .Upsert(
