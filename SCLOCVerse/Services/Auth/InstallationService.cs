@@ -50,13 +50,13 @@ namespace SCLOCVerse.Services.Auth
                 IsActive = true
             };
 
-            // Upsert за бізнес-ключем (user_id, install_id). Якщо запис існує —
-            // оновлюємо service-поля; якщо ні — створюємо новий.
+            // Upsert за бізнес-ключем install_id. Одна інсталяція відповідає
+            // одному рядку; користувач може мати багато інсталяцій.
             await _supabase
                 .From<AppInstallation>()
                 .Upsert(
                     installation,
-                    new QueryOptions { OnConflict = "user_id,install_id" },
+                    new QueryOptions { OnConflict = "install_id" },
                     cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
         }
