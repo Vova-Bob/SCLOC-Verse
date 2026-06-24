@@ -1,6 +1,7 @@
 using SCLOCVerse.Interfaces;
 using SCLOCVerse.Models.Auth;
 using Supabase;
+using Supabase.Postgrest;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
@@ -12,7 +13,7 @@ namespace SCLOCVerse.Services.Auth
     /// </summary>
     public sealed class InstallationService : IInstallationService
     {
-        private readonly Client _supabase;
+        private readonly Supabase.Client _supabase;
         private readonly string _installId;
 
         public InstallationService(ISupabaseClientFactory clientFactory)
@@ -53,7 +54,10 @@ namespace SCLOCVerse.Services.Auth
             // оновлюємо service-поля; якщо ні — створюємо новий.
             await _supabase
                 .From<AppInstallation>()
-                .Upsert(installation, cancellationToken: cancellationToken)
+                .Upsert(
+                    installation,
+                    new QueryOptions { OnConflict = "user_id,install_id" },
+                    cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
         }
 
