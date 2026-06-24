@@ -1,0 +1,236 @@
+<Window x:Class="SCLOCVerse.Controls.Dialogs.AccountDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        Width="420"
+        Height="Auto"
+        SizeToContent="Height"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        ResizeMode="NoResize"
+        Background="Transparent"
+        ShowInTaskbar="False"
+        WindowStartupLocation="CenterOwner"
+        SnapsToDevicePixels="True"
+        TextOptions.TextFormattingMode="Display">
+
+    <Window.Resources>
+        <SolidColorBrush x:Key="DialogBackground" Color="#0A1D29"/>
+        <SolidColorBrush x:Key="DialogHeader" Color="#0F2C3E"/>
+        <SolidColorBrush x:Key="DialogBorder" Color="#6DB9F8"/>
+        <SolidColorBrush x:Key="DialogAccent" Color="#8DD0FF"/>
+        <SolidColorBrush x:Key="DialogButtonFill" Color="#30546E"/>
+        <SolidColorBrush x:Key="DialogButtonHover" Color="#3A6682"/>
+        <SolidColorBrush x:Key="DialogDestructiveFill" Color="#9D4D52"/>
+        <SolidColorBrush x:Key="DialogDestructiveHover" Color="#B8545A"/>
+        <SolidColorBrush x:Key="DialogText" Color="White"/>
+        <SolidColorBrush x:Key="DialogBodyText" Color="#C7DDF0"/>
+
+        <Style x:Key="AccountButtonStyle" TargetType="{x:Type Button}">
+            <Setter Property="Height" Value="36"/>
+            <Setter Property="Margin" Value="8,0,0,0"/>
+            <Setter Property="FontFamily" Value="Segoe UI"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Foreground" Value="{StaticResource DialogText}"/>
+            <Setter Property="Background" Value="{StaticResource DialogButtonFill}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource DialogAccent}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type Button}">
+                        <Border x:Name="ButtonBorder"
+                                 Background="{TemplateBinding Background}"
+                                 BorderBrush="{TemplateBinding BorderBrush}"
+                                 BorderThickness="{TemplateBinding BorderThickness}"
+                                 CornerRadius="6"
+                                 Padding="14,0"
+                                 SnapsToDevicePixels="True">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ButtonBorder" Property="Background" Value="{StaticResource DialogButtonHover}"/>
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="ButtonBorder" Property="RenderTransform">
+                                    <Setter.Value>
+                                        <ScaleTransform ScaleX="0.97" ScaleY="0.97"/>
+                                    </Setter.Value>
+                                </Setter>
+                                <Setter TargetName="ButtonBorder" Property="RenderTransformOrigin" Value="0.5,0.5"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.55"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="DestructiveAccountButtonStyle" TargetType="{x:Type Button}" BasedOn="{StaticResource AccountButtonStyle}">
+            <Setter Property="Background" Value="{StaticResource DialogDestructiveFill}"/>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="{StaticResource DialogDestructiveHover}"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+    </Window.Resources>
+
+    <Border CornerRadius="10"
+             BorderBrush="{StaticResource DialogBorder}"
+             BorderThickness="1"
+             Background="{StaticResource DialogBackground}"
+             SnapsToDevicePixels="True">
+        <Border.Effect>
+            <DropShadowEffect Color="Black"
+                               BlurRadius="22"
+                               ShadowDepth="0"
+                               Opacity="0.75"/>
+        </Border.Effect>
+
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <!-- Заголовок -->
+            <Border Grid.Row="0"
+                     Background="{StaticResource DialogHeader}"
+                     CornerRadius="9,9,0,0"
+                     Height="42"
+                     MouseDown="TitleBar_MouseDown">
+                <Grid>
+                    <TextBlock x:Name="TitleText"
+                               Text="Обліковий запис"
+                               FontFamily="Arial"
+                               FontSize="18"
+                               FontWeight="Bold"
+                               Foreground="{StaticResource DialogText}"
+                               VerticalAlignment="Center"
+                               HorizontalAlignment="Center"/>
+
+                    <Button HorizontalAlignment="Right"
+                            VerticalAlignment="Center"
+                            Width="32"
+                            Height="28"
+                            Margin="0,0,6,0"
+                            Background="Transparent"
+                            BorderThickness="0"
+                            Click="CloseButton_Click"
+                            ToolTip="Закрити">
+                        <Button.Style>
+                            <Style TargetType="{x:Type Button}">
+                                <Setter Property="Template">
+                                    <Setter.Value>
+                                        <ControlTemplate TargetType="{x:Type Button}">
+                                            <Border x:Name="Border"
+                                                     Background="{TemplateBinding Background}"
+                                                     CornerRadius="4">
+                                                <TextBlock x:Name="Icon"
+                                                           FontFamily="Segoe MDL2 Assets"
+                                                           FontSize="14"
+                                                           Text="&#xE8BB;"
+                                                           Foreground="White"
+                                                           HorizontalAlignment="Center"
+                                                           VerticalAlignment="Center"/>
+                                            </Border>
+                                            <ControlTemplate.Triggers>
+                                                <Trigger Property="IsMouseOver" Value="True">
+                                                    <Setter TargetName="Border" Property="Background" Value="#FFFF4C4C"/>
+                                                </Trigger>
+                                                <Trigger Property="IsPressed" Value="True">
+                                                    <Setter TargetName="Border" Property="Background" Value="#FFB20000"/>
+                                                </Trigger>
+                                            </ControlTemplate.Triggers>
+                                        </ControlTemplate>
+                                    </Setter.Value>
+                                </Setter>
+                            </Style>
+                        </Button.Style>
+                    </Button>
+                </Grid>
+            </Border>
+
+            <!-- Розділювальна лінія -->
+            <Border Grid.Row="1"
+                     Height="1"
+                     Background="{StaticResource DialogBorder}"
+                     Opacity="0.65"/>
+
+            <!-- Вміст -->
+            <StackPanel Grid.Row="2" Margin="24,18,24,18">
+                <StackPanel x:Name="SignedOutPanel">
+                    <TextBlock Text="Увійдіть через Discord, щоб синхронізувати налаштування між пристроями."
+                               FontFamily="Segoe UI"
+                               FontSize="14"
+                               Foreground="{StaticResource DialogBodyText}"
+                               TextWrapping="Wrap"
+                               TextAlignment="Center"
+                               Margin="0,0,0,16"/>
+
+                    <Button x:Name="SignInButton"
+                            Content="Увійти через Discord"
+                            Style="{StaticResource AccountButtonStyle}"
+                            Click="SignInButton_Click"
+                            HorizontalAlignment="Center"
+                            Margin="0,0,0,0"/>
+                </StackPanel>
+
+                <StackPanel x:Name="SignedInPanel">
+                    <Image x:Name="AvatarImage"
+                           Width="64"
+                           Height="64"
+                           HorizontalAlignment="Center"
+                           Margin="0,0,0,12"/>
+
+                    <TextBlock x:Name="UsernameText"
+                               FontFamily="Arial"
+                               FontSize="18"
+                               FontWeight="Bold"
+                               Foreground="{StaticResource DialogText}"
+                               TextAlignment="Center"
+                               Margin="0,0,0,4"/>
+
+                    <TextBlock x:Name="StatusText"
+                               FontFamily="Segoe UI"
+                               FontSize="12"
+                               Foreground="{StaticResource DialogAccent}"
+                               TextAlignment="Center"
+                               Margin="0,0,0,16"/>
+
+                    <Button x:Name="SignOutButton"
+                            Content="Вийти"
+                            Style="{StaticResource DestructiveAccountButtonStyle}"
+                            Click="SignOutButton_Click"
+                            HorizontalAlignment="Center"/>
+                </StackPanel>
+
+                <StackPanel x:Name="SigningInPanel">
+                    <TextBlock Text="Відкриваємо браузер для входу через Discord..."
+                               FontFamily="Segoe UI"
+                               FontSize="14"
+                               Foreground="{StaticResource DialogBodyText}"
+                               TextWrapping="Wrap"
+                               TextAlignment="Center"
+                               Margin="0,0,0,16"/>
+
+                    <Button x:Name="CancelSignInButton"
+                            Content="Скасувати"
+                            Style="{StaticResource AccountButtonStyle}"
+                            Click="CancelSignInButton_Click"
+                            HorizontalAlignment="Center"/>
+                </StackPanel>
+            </StackPanel>
+
+        </Grid>
+    </Border>
+</Window>

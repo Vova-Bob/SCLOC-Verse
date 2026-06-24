@@ -1,4 +1,4 @@
-﻿using SCLOCVerse.Helpers;
+using SCLOCVerse.Helpers;
 using SCLOCVerse.Interfaces;
 using SCLOCVerse.Services;
 using SCLOCVerse.Services.ApplicationUpdate;
@@ -29,6 +29,7 @@ namespace SCLOCVerse.Composition
         private readonly IUpdateVerifier _updateVerifier;
         private readonly IGitHubReleaseClient _gitHubReleaseClient;
         private readonly IDialogService _dialogService;
+        private readonly AuthCompositionRoot _authCompositionRoot;
 
         public AppCompositionRoot()
         {
@@ -61,6 +62,10 @@ namespace SCLOCVerse.Composition
             _updateVerifier = new UpdateVerifier();
             _gitHubReleaseClient = gitHubClient;
             _dialogService = new DialogService(Dispatcher.CurrentDispatcher);
+
+            var supabaseUrl = GetSupabaseUrl();
+            var supabaseAnonKey = GetSupabaseAnonKey();
+            _authCompositionRoot = new AuthCompositionRoot(supabaseUrl, supabaseAnonKey);
         }
 
         public MainWindow CreateMainWindow()
@@ -88,7 +93,35 @@ namespace SCLOCVerse.Composition
                 _updateHistoryService,
                 _updateVerifier,
                 _gitHubReleaseClient,
-                _dialogService);
+                _dialogService,
+                _authCompositionRoot.AuthService,
+                _authCompositionRoot.AuthStatusProvider);
+        }
+
+        private static string GetSupabaseUrl()
+        {
+            var value = System.Environment.GetEnvironmentVariable("SCLOCVERSE_SUPABASE_URL");
+            if (!string.IsNullOrWhiteSpace(value))
+                return value;
+
+            value = SCLOCVerse.Properties.SupabaseConfig.DefaultUrl;
+            if (!string.IsNullOrWhiteSpace(value))
+                return value;
+
+            return "https://placeholder.supabase.co";
+        }
+
+        private static string GetSupabaseAnonKey()
+        {
+            var value = System.Environment.GetEnvironmentVariable("SCLOCVERSE_SUPABASE_ANON_KEY");
+            if (!string.IsNullOrWhiteSpace(value))
+                return value;
+
+            value = SCLOCVerse.Properties.SupabaseConfig.DefaultAnonKey;
+            if (!string.IsNullOrWhiteSpace(value))
+                return value;
+
+            return "placeholder-anon-key";
         }
     }
 }

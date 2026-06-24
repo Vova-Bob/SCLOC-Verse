@@ -41,6 +41,9 @@ namespace SCLOCVerse
         private readonly IUpdateVerifier _updateVerifier;
         private readonly IGitHubReleaseClient _gitHubReleaseClient;
         private readonly IDialogService _dialogService;
+        private readonly IAuthService _authService;
+        private readonly IAuthStatusProvider _authStatusProvider;
+        private readonly AuthStatusPresenter _authStatusPresenter;
         private readonly UpdateStatusPresenter _updateStatusPresenter;
         private bool _showGameFolderToast = true;
         private DateTime? _suppressStartupUpdateCheckUntil;
@@ -69,7 +72,7 @@ namespace SCLOCVerse
         private readonly UpdateCheckerService _updateCheckerService;
         private readonly CleanupController _cacheCleanupController;
 
-        public MainWindow(MainWindowViewModel viewModel, IWindowHelper windowHelper, ILocalizationInstaller localizationInstaller, IReadmeService readmeService,     IUpdater updater, UpdateCheckerService updateCheckerService, IApplicationUpdateService applicationUpdateService, IBackgroundUpdateMonitor backgroundUpdateMonitor, IUpdateChannelService updateChannelService, IApplicationVersionProvider applicationVersionProvider, IUpdateDownloader updateDownloader, IUpdateInstaller updateInstaller, IUpdateHistoryService updateHistoryService, IUpdateVerifier updateVerifier, IGitHubReleaseClient gitHubReleaseClient, IDialogService dialogService)
+        public MainWindow(MainWindowViewModel viewModel, IWindowHelper windowHelper, ILocalizationInstaller localizationInstaller, IReadmeService readmeService,     IUpdater updater, UpdateCheckerService updateCheckerService, IApplicationUpdateService applicationUpdateService, IBackgroundUpdateMonitor backgroundUpdateMonitor, IUpdateChannelService updateChannelService, IApplicationVersionProvider applicationVersionProvider, IUpdateDownloader updateDownloader, IUpdateInstaller updateInstaller, IUpdateHistoryService updateHistoryService, IUpdateVerifier updateVerifier, IGitHubReleaseClient gitHubReleaseClient, IDialogService dialogService, IAuthService authService, IAuthStatusProvider authStatusProvider)
         {
             InitializeComponent();
 
@@ -89,6 +92,8 @@ namespace SCLOCVerse
             _updateVerifier = updateVerifier;
             _gitHubReleaseClient = gitHubReleaseClient;
             _dialogService = dialogService;
+            _authService = authService;
+            _authStatusProvider = authStatusProvider;
 
             _toastService = new ToastService(AppToast.ToastBorder, AppToast.ToastText);
             _linkService = new LinkService(_toastService);
@@ -107,6 +112,7 @@ namespace SCLOCVerse
             _canvasManager = new CanvasManager(this);
             _buttonStateManager = new ButtonStateManager(BtnLocalization, BtnAssistant, BtnSettings, BtnSelectFolder);
             _buttonHelper = new ButtonHelper();
+            _authStatusPresenter = new AuthStatusPresenter(BtnAccount, _authStatusProvider);
 
             DataContext = _viewModel;
             DefaultPathText = TxtSelectedPath.Text;
@@ -163,7 +169,8 @@ namespace SCLOCVerse
             {
                 UpdateLiaVersionAsync(),
                 _viewModel.InitializeAsync(),
-                UpdateGameFolderUiAsync(_viewModel.GameFolder)
+                UpdateGameFolderUiAsync(_viewModel.GameFolder),
+                RestoreAuthSessionAsync()
             };
 
             await Task.WhenAll(tasks).ConfigureAwait(true);
@@ -502,6 +509,23 @@ namespace SCLOCVerse
 
         private void Minimize_Click(object sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;
         private void Close_Click(object sender, RoutedEventArgs e) => Close();
+
+        private void Account_Click(object sender, RoutedEventArgs e)
+        {
+            AccountDialog.Show(this, _authService);
+        }
+
+        private async Task RestoreAuthSessionAsync()
+        {
+            try
+            {
+                await _authService.TryRestoreSessionAsync(CancellationToken.None).ConfigureAwait(true);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[RestoreAuthSessionAsync] {ex}");
+            }
+        }
         private void About_Click(object sender, RoutedEventArgs e)
         {
             var version = _applicationVersionProvider.GetCurrentVersion().ToString();
