@@ -1,7 +1,6 @@
 using SCLOCVerse.Interfaces;
 using SCLOCVerse.Models.Auth;
 using Supabase;
-using Supabase.Postgrest;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
@@ -34,35 +33,65 @@ namespace SCLOCVerse.Services.Auth
             if (!Guid.TryParse(userIdString, out var userId))
                 return;
 
-
-
             var now = DateTimeOffset.UtcNow;
             var appVersion = GetCurrentAppVersion();
+            var platform = "Windows";
+            var machineId = Environment.MachineName;
+            var osVersion = Environment.OSVersion.VersionString;
 
-            var installation = new AppInstallation
-            {
-                Id = Guid.NewGuid(),
-                UserId = userId,
-                InstallId = _installId,
-                AppVersion = appVersion,
-                Platform = "Windows",
-                MachineId = Environment.MachineName,
-                OsVersion = Environment.OSVersion.VersionString,
-                LastSeen = now,
-                UpdatedAt = now,
-                IsActive = true
-            };
-
-            // Upsert за бізнес-ключем install_id. first_seen та created_at
-            // не передаються з C# — вони заповнюються DEFAULT now() при INSERT
-            // і не змінюються при UPDATE.
-            await _supabase
+            // Перевіряємо, чи існує рядок для цього install_id.
+            var response = await _supabase
                 .From<AppInstallation>()
-                .Upsert(
-                    installation,
-                    new QueryOptions { OnConflict = "install_id" },
-                    cancellationToken: cancellationToken)
+                .Filter("install_id", Supabase.Postgrest.Constants.Operator.Equals, _installId)
+                .Get(cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
+
+            var existing = response.Models.FirstOrDefault();
+
+            if (existing == null)
+            {
+                // INSERT: перший вхід для цієї інсталяції — first_seen/created_at
+                // фіксуються раз і назавжди.
+                var installation = new AppInstallation
+                {
+                    UserId = userId,
+                    InstallId = _installId,
+                    AppVersion = appVersion,
+                    Platform = platform,
+                    MachineId = machineId,
+                    OsVersion = osVersion,
+                    FirstSeen = now,
+                    CreatedAt = now,
+                    LastSeen = now,
+                    UpdatedAt = now,
+                    IsActive = true
+                };
+
+                await _supabase
+                    .From<AppInstallation>()
+                    .Insert(installation, cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
+            }
+            else
+            {
+                // UPDATE: оновлюємо лише змінні поля.
+                // first_seen/created_at не передаються — залишаються незмінними.
+#pragma warning disable CS8603
+                await _supabase
+                    .From<AppInstallation>()
+                    .Filter("install_id", Supabase.Postgrest.Constants.Operator.Equals, _installId)
+                    .Set(i => i.UserId, userId)
+                    .Set(i => i.AppVersion, appVersion)
+                    .Set(i => i.Platform, platform)
+                    .Set(i => i.MachineId, machineId)
+                    .Set(i => i.OsVersion, osVersion)
+                    .Set(i => i.LastSeen, now)
+                    .Set(i => i.UpdatedAt, now)
+                    .Set(i => i.IsActive, true)
+                    .Update(cancellationToken: cancellationToken)
+                    .ConfigureAwait(false);
+#pragma warning restore CS8603
+            }
         }
 
         private static string GetOrCreateInstallId()

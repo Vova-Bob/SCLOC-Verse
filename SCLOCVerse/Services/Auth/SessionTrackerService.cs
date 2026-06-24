@@ -90,20 +90,18 @@ namespace SCLOCVerse.Services.Auth
 
         private async Task UpdateInstallationActivityAsync(Guid userId, DateTimeOffset now, CancellationToken cancellationToken)
         {
-            var installation = new AppInstallation
-            {
-                InstallId = _installId,
-                UserId = userId,
-                LastSessionAt = now,
-                LastSeen = now,
-                UpdatedAt = now,
-                IsActive = true
-            };
-
+            // Partial UPDATE: оновлюємо лише телеметричні поля активності,
+            // не чіпаючи app_version, platform, machine_id, os_version, first_seen, created_at.
+#pragma warning disable CS8603
             await _supabase
                 .From<AppInstallation>()
-                .Upsert(installation, new QueryOptions { OnConflict = "install_id" }, cancellationToken: cancellationToken)
+                .Filter("install_id", Supabase.Postgrest.Constants.Operator.Equals, _installId)
+                .Set(i => i.LastSessionAt, now)
+                .Set(i => i.LastSeen, now)
+                .Set(i => i.UpdatedAt, now)
+                .Update(cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
+#pragma warning restore CS8603
         }
 
         private static string? GetCurrentAppVersion()
