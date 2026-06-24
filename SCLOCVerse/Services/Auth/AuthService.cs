@@ -186,8 +186,10 @@ namespace SCLOCVerse.Services.Auth
 
         private void SaveSession(Session session)
         {
+            // Зберігаємо повну сесію, щоб при наступному запуску можна було
+            // відновити access token без обов'язкового мережевого запиту.
             if (!string.IsNullOrWhiteSpace(session.RefreshToken))
-                _secureStorage.SaveRefreshToken(session.RefreshToken);
+                _secureStorage.SaveSession(session);
         }
 
         private async Task SyncProfileAsync(Session session)
