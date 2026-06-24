@@ -80,7 +80,8 @@ namespace SCLOCVerse.Services.Auth
 #pragma warning disable CS8603
             await _supabase
                 .From<AppSession>()
-                .Where(s => s.InstallId == _installId && s.EndedAt == null)
+                .Filter("install_id", Supabase.Postgrest.Constants.Operator.Equals, _installId)
+                .Filter("ended_at", Supabase.Postgrest.Constants.Operator.Is, "null")
                 .Set(s => s.EndedAt, now)
                 .Update(cancellationToken: cancellationToken)
                 .ConfigureAwait(false);
