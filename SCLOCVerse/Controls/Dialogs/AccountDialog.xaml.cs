@@ -2,11 +2,8 @@ using SCLOCVerse.Interfaces;
 using SCLOCVerse.Models.Auth;
 using System;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
 
 namespace SCLOCVerse.Controls.Dialogs
 {
@@ -79,15 +76,22 @@ namespace SCLOCVerse.Controls.Dialogs
 
             var result = await _authService.SignInAsync(_cts.Token).ConfigureAwait(true);
 
-            if (result is AuthResult.Failure failure)
+            switch (result)
             {
-                ShowError(failure.Message);
+                case AuthResult.Success success:
+                    UpdateVisibility(AuthState.SignedIn, success.Profile);
+                    Close();
+                    return;
+
+                case AuthResult.Failure failure:
+                    ShowError(failure.Message);
+                    break;
+
+                case AuthResult.Cancelled:
+                    break;
             }
 
             UpdateVisibility(_authService.State, _authService.Profile);
-
-            if (_authService.State == AuthState.SignedIn)
-                Close();
         }
 
         private async void SignOutButton_Click(object sender, RoutedEventArgs e)
@@ -102,9 +106,9 @@ namespace SCLOCVerse.Controls.Dialogs
             UpdateVisibility(_authService.State, _authService.Profile);
         }
 
-        private void TitleBar_MouseDown(object sender, MouseButtonEventArgs e)
+        private void TitleBar_MouseDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
         {
-            if (e.ChangedButton == MouseButton.Left)
+            if (e.ChangedButton == System.Windows.Input.MouseButton.Left)
                 DragMove();
         }
 
@@ -113,11 +117,11 @@ namespace SCLOCVerse.Controls.Dialogs
             Close();
         }
 
-        protected override void OnKeyDown(KeyEventArgs e)
+        protected override void OnKeyDown(System.Windows.Input.KeyEventArgs e)
         {
             base.OnKeyDown(e);
 
-            if (e.Key == Key.Escape)
+            if (e.Key == System.Windows.Input.Key.Escape)
                 Close();
         }
 
@@ -133,14 +137,14 @@ namespace SCLOCVerse.Controls.Dialogs
             MessageBox.Show(message, "Помилка входу", MessageBoxButton.OK, MessageBoxImage.Error);
         }
 
-        private static ImageSource? LoadAvatar(string? url)
+        private static System.Windows.Media.ImageSource? LoadAvatar(string? url)
         {
             if (string.IsNullOrWhiteSpace(url))
                 return null;
 
             try
             {
-                return new BitmapImage(new Uri(url));
+                return new System.Windows.Media.Imaging.BitmapImage(new Uri(url));
             }
             catch (Exception)
             {

@@ -39,7 +39,7 @@ namespace SCLOCVerse.Services.Auth
                 _listener.Prefixes.Add(prefix);
                 _listener.Start();
 
-                _ = ListenAsync(_cts.Token);
+                _ = ListenAsync(_cts.Token, _callbackTcs);
 
                 return new Uri(prefix);
             }
@@ -51,11 +51,12 @@ namespace SCLOCVerse.Services.Auth
 
         public async Task<Uri?> WaitForCallbackAsync(CancellationToken cancellationToken = default)
         {
-            if (_callbackTcs == null)
+            var tcs = _callbackTcs;
+            if (tcs == null)
                 throw new InvalidOperationException("Listener has not been started.");
 
-            using var registration = cancellationToken.Register(() => _callbackTcs.TrySetResult(null));
-            return await _callbackTcs.Task.ConfigureAwait(false);
+            using var registration = cancellationToken.Register(() => tcs.TrySetResult(null));
+            return await tcs.Task.ConfigureAwait(false);
         }
 
         public async Task StopAsync()
@@ -93,13 +94,16 @@ namespace SCLOCVerse.Services.Auth
             _lock.Dispose();
         }
 
-        private async Task ListenAsync(CancellationToken cancellationToken)
+        private async Task ListenAsync(CancellationToken cancellationToken, TaskCompletionSource<Uri?> tcs)
         {
-            var listener = _listener;
-            var tcs = _callbackTcs;
+            HttpListener? listener;
 
-            if (listener == null || tcs == null)
-                return;
+            lock (_lock)
+            {
+                listener = _listener;
+                if (listener == null || tcs != _callbackTcs)
+                    return;
+            }
 
             try
             {

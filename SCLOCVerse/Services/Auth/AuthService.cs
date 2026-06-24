@@ -102,6 +102,7 @@ namespace SCLOCVerse.Services.Auth
             }
             catch (Exception ex)
             {
+                LogError("SignIn failed", ex);
                 return new AuthResult.Failure($"Помилка входу: {ex.Message}");
             }
             finally
@@ -124,6 +125,9 @@ namespace SCLOCVerse.Services.Auth
                 await _refreshLock.WaitAsync(cancellationToken).ConfigureAwait(false);
                 try
                 {
+                    // Спочатку завантажуємо збережену сесію в Gotrue.
+                    _supabase.Auth.LoadSession();
+
                     var session = await _supabase.Auth.RefreshSession().ConfigureAwait(false);
                     if (session == null)
                     {
@@ -143,8 +147,9 @@ namespace SCLOCVerse.Services.Auth
                     _refreshLock.Release();
                 }
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                LogError("TryRestoreSession failed", ex);
                 _secureStorage.DeleteRefreshToken();
                 SetState(AuthState.SignedOut);
                 return false;
@@ -157,9 +162,9 @@ namespace SCLOCVerse.Services.Auth
             {
                 await _supabase.Auth.SignOut().ConfigureAwait(false);
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                // Ігноруємо помилки серверного logout.
+                LogError("SignOut server call failed", ex);
             }
             finally
             {
@@ -228,9 +233,9 @@ namespace SCLOCVerse.Services.Auth
                     UseShellExecute = true
                 });
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                // Якщо не вдалося відкрити браузер, користувач може відкрити URL вручну.
+                LogError("OpenBrowser failed", ex);
             }
         }
 
@@ -239,6 +244,11 @@ namespace SCLOCVerse.Services.Auth
             var query = HttpUtility.ParseQueryString(url.Query);
             var value = query.Get(key);
             return string.IsNullOrWhiteSpace(value) ? null : value;
+        }
+
+        private static void LogError(string message, Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[AuthService] {message}: {ex}");
         }
     }
 }

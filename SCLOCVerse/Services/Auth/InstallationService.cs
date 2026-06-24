@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 namespace SCLOCVerse.Services.Auth
 {
     /// <summary>
-    /// Синхронізує метадані поточної інсталяції в таблиці public.installations.
+    /// Синхронізує метадані поточної інсталяції в таблиці public.app_installations.
     /// </summary>
     public sealed class InstallationService : IInstallationService
     {
@@ -32,38 +32,46 @@ namespace SCLOCVerse.Services.Auth
                 return;
 
             var response = await _supabase
-                .From<InstallationInfo>()
+                .From<AppInstallation>()
                 .Where(x => x.UserId == userId && x.InstallId == _installId)
                 .Get(cancellationToken)
                 .ConfigureAwait(false);
 
             var now = DateTimeOffset.UtcNow;
+            var appVersion = GetCurrentAppVersion();
 
             if (response.Models.Count == 0)
             {
-                var installation = new InstallationInfo
+                var installation = new AppInstallation
                 {
                     Id = Guid.NewGuid(),
                     UserId = userId,
                     InstallId = _installId,
-                    DeviceName = Environment.MachineName,
-                    LastSeenAt = now,
-                    CreatedAt = now
+                    AppVersion = appVersion,
+                    Platform = "Windows",
+                    MachineId = Environment.MachineName,
+                    OsVersion = Environment.OSVersion.VersionString,
+                    FirstSeen = now,
+                    LastSeen = now,
+                    CreatedAt = now,
+                    IsActive = true
                 };
 
                 await _supabase
-                    .From<InstallationInfo>()
+                    .From<AppInstallation>()
                     .Insert(installation, cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
             }
             else
             {
                 var installation = response.Models[0];
-                installation.LastSeenAt = now;
-                installation.DeviceName = Environment.MachineName;
+                installation.LastSeen = now;
+                installation.AppVersion = appVersion;
+                installation.OsVersion = Environment.OSVersion.VersionString;
+                installation.IsActive = true;
 
                 await _supabase
-                    .From<InstallationInfo>()
+                    .From<AppInstallation>()
                     .Update(installation, cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
             }
@@ -89,6 +97,19 @@ namespace SCLOCVerse.Services.Auth
             var newId = Guid.NewGuid().ToString("N");
             System.IO.File.WriteAllText(filePath, newId);
             return newId;
+        }
+
+        private static string? GetCurrentAppVersion()
+        {
+            try
+            {
+                var version = System.Reflection.Assembly.GetEntryAssembly()?.GetName().Version;
+                return version?.ToString();
+            }
+            catch
+            {
+                return null;
+            }
         }
     }
 }
