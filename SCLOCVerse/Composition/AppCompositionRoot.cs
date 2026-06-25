@@ -12,7 +12,7 @@ using System.Windows.Threading;
 
 namespace SCLOCVerse.Composition
 {
-    public class AppCompositionRoot
+    public class AppCompositionRoot : IDisposable
     {
         private readonly IIgnoreRulesProvider _ignoreRulesProvider;
         private readonly IFolderSearchService _folderSearchService;
@@ -66,6 +66,16 @@ namespace SCLOCVerse.Composition
             var supabaseUrl = GetSupabaseUrl();
             var supabaseAnonKey = GetSupabaseAnonKey();
             _authCompositionRoot = new AuthCompositionRoot(supabaseUrl, supabaseAnonKey);
+        }
+
+        public void Dispose()
+        {
+            // Спочатку зупиняємо фоновий монітор, щоб його DispatcherTimer
+            // не утримував Dispatcher і MainWindow живим.
+            if (_backgroundUpdateMonitor is IDisposable backgroundMonitor)
+                backgroundMonitor.Dispose();
+
+            _authCompositionRoot?.Dispose();
         }
 
         public AuthCompositionRoot AuthCompositionRoot => _authCompositionRoot;

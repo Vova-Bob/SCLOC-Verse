@@ -38,6 +38,11 @@ namespace SCLOCVerse.Composition
         {
             if (_authService is IDisposable disposable)
                 disposable.Dispose();
+
+            // SupabaseClientFactory тримає єдиний Supabase.Client —
+            // диспозим його окремо, щоб зупинити TokenRefresh timer.
+            if (_clientFactory is IDisposable factoryDisposable)
+                factoryDisposable.Dispose();
         }
     }
 }

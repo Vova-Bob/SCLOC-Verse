@@ -100,13 +100,26 @@ namespace SCLOCVerse
 
         protected override void OnExit(ExitEventArgs e)
         {
+            // Спочатку звільняємо всі фонові ресурси: таймери, HttpListener,
+            // Supabase refresh timer тощо. Інакше Dispatcher залишиться живим
+            // і OnExit зависне на мережевих викликах.
             try
             {
-                _compositionRoot?.AuthCompositionRoot?.SessionTrackerService?.EndSessionAsync(CancellationToken.None).GetAwaiter().GetResult();
+                _compositionRoot?.Dispose();
             }
             catch
             {
-                // Не блокуємо вихід при помилках телеметрії.
+                // Не блокуємо вихід при помилках dispose.
+            }
+
+            try
+            {
+                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+                _compositionRoot?.AuthCompositionRoot?.SessionTrackerService?.EndSessionAsync(cts.Token).GetAwaiter().GetResult();
+            }
+            catch
+            {
+                // Не блокуємо вихід при помилках телеметрії або таймауті.
             }
 
             try

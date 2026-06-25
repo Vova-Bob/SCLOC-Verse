@@ -211,9 +211,19 @@ namespace SCLOCVerse.Services.Auth
                 return;
 
             _disposed = true;
-            _supabase.Auth.RemoveStateChangedListener(OnAuthStateChanged);
+
+            try
+            {
+                _supabase.Auth.RemoveStateChangedListener(OnAuthStateChanged);
+            }
+            catch
+            {
+                // Ігноруємо помилки при відписці під час shutdown.
+            }
+
             _callbackListener.Dispose();
             _refreshLock.Dispose();
+            _supabase.Auth.Shutdown();
         }
 
         private void SaveSession(Session session)

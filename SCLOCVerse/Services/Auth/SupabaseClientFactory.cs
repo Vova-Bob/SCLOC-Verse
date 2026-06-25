@@ -7,13 +7,14 @@ namespace SCLOCVerse.Services.Auth
     /// <summary>
     /// Створює єдиний спільний Supabase клієнт для всіх сервісів аутентифікації.
     /// </summary>
-    public sealed class SupabaseClientFactory : ISupabaseClientFactory
+    public sealed class SupabaseClientFactory : ISupabaseClientFactory, IDisposable
     {
         private readonly string _url;
         private readonly string _anonKey;
         private readonly ISecureSessionStorage _sessionStorage;
         private Client? _client;
         private readonly object _lock = new();
+        private bool _disposed;
 
         public SupabaseClientFactory(string url, string anonKey, ISecureSessionStorage sessionStorage)
         {
@@ -43,6 +44,23 @@ namespace SCLOCVerse.Services.Auth
                 _client.Auth.SetPersistence(_sessionStorage);
                 return _client;
             }
+        }
+
+        public void Dispose()
+        {
+            if (_disposed)
+                return;
+
+            _disposed = true;
+
+            Client? client;
+            lock (_lock)
+            {
+                client = _client;
+                _client = null;
+            }
+
+            client?.Auth.Shutdown();
         }
     }
 }
