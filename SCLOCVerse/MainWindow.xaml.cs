@@ -566,7 +566,7 @@ namespace SCLOCVerse
             AuthGateHost.Visibility = Visibility.Visible;
             MainContentContainer.Visibility = Visibility.Collapsed;
             MenuPanel.IsEnabled = false;
-            BtnAccount.IsEnabled = false;
+            BtnAccount.Visibility = Visibility.Collapsed;
         }
 
         private async Task ShowMainUiModeAsync()
@@ -579,7 +579,7 @@ namespace SCLOCVerse
             AuthGateHost.Visibility = Visibility.Collapsed;
             MainContentContainer.Visibility = Visibility.Visible;
             MenuPanel.IsEnabled = true;
-            BtnAccount.IsEnabled = true;
+            BtnAccount.Visibility = Visibility.Visible;
             _canvasManager.ShowCanvas("home");
         }
 
