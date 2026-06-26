@@ -44,14 +44,25 @@ namespace SCLOCVerse.Windows
             CloseButton.Click += CloseButton_Click;
         }
 
-        private async void UpdateHistoryWindow_Loaded(object sender, RoutedEventArgs e)
+        private void TitleBar_MouseDown(object sender, MouseButtonEventArgs e)
         {
-            await LoadVersionsAsync().ConfigureAwait(true);
+            if (e.ChangedButton == MouseButton.Left)
+                DragMove();
+        }
+
+        private void WindowCloseButton_Click(object sender, RoutedEventArgs e)
+        {
+            Close();
         }
 
         private void CloseButton_Click(object sender, RoutedEventArgs e)
         {
             Close();
+        }
+
+        private async void UpdateHistoryWindow_Loaded(object sender, RoutedEventArgs e)
+        {
+            await LoadVersionsAsync().ConfigureAwait(true);
         }
 
         private async Task LoadVersionsAsync()
