@@ -39,6 +39,11 @@
 
 ## Безпека
 
-- Роль `cc_readonly` створюється в окремій міграції (ADR-008) **після** Integration PASS.
-- Вона має доступ тільки до схеми `control_center`.
-- Жодних прав на `public`, `auth`, `analytics`, `storage`.
+- Роль `cc_readonly` створюється міграцією `20250626000002_control_center_readonly_role.sql`.
+- Вона має доступ тільки до схеми `control_center`:
+  - `USAGE` на схему;
+  - `SELECT` на всі поточні та майбутні View/таблиці схеми.
+- Жодних прав на `public`, `auth`, `analytics`, `storage` або інші схеми.
+- Пароль `cc_readonly` задається власником проєкту через Supabase Dashboard і передається
+  в Control Center через server-side секрети (User Secrets / Docker secret / ENV).
+- Пароль ніколи не зберігається в репозиторії SCLOC-Verse чи Control Center.
