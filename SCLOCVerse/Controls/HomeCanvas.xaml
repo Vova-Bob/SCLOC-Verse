@@ -319,7 +319,7 @@
 
                         <!-- Права частина з картинкою -->
                         <Grid Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center">
-                            <Image Source="/Images/SC_UA_Community.png"
+                            <Image Source="/Images/community_logo.png"
                                    Width="190"
                                    Height="190"
                                    Stretch="Uniform"

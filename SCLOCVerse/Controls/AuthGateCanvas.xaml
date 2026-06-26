@@ -35,7 +35,7 @@
             <!-- Логотип -->
             <Image Grid.Row="0"
                    Source="/Images/sclocverse_logo.png"
-                   Width="180" Height="180"
+                   Width="240" Height="240"
                    HorizontalAlignment="Center"
                    VerticalAlignment="Bottom"
                    Margin="0,0,0,20"
