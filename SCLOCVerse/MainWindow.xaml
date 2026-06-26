@@ -196,7 +196,7 @@
         <Border Background="#0F2C3E" Height="40" VerticalAlignment="Top" MouseDown="TitleBar_MouseDown">
             <Grid>
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="8,0,0,0" Cursor="Hand" MouseLeftButtonUp="About_Click">
-                    <Image Source="/Images/community_logo.png" Width="24" Height="24" RenderOptions.BitmapScalingMode="HighQuality"/>
+                    <Image Source="/Images/sclocverse_logo.png" Width="30" Height="30" RenderOptions.BitmapScalingMode="HighQuality"/>
                     <TextBlock Text="SCLOC-Verse"
                                Foreground="White" FontWeight="Bold" FontSize="16" FontFamily="Arial Black"
                                VerticalAlignment="Center" Margin="6,0,0,0"/>
@@ -360,7 +360,7 @@
         </Grid>
 
         <Image Source="/Images/community_logo.png"
-               Width="70" Height="70"
+               Width="90" Height="90"
                HorizontalAlignment="Right" VerticalAlignment="Bottom"
                Margin="5,0,15,8" Opacity="0.9" RenderOptions.BitmapScalingMode="HighQuality">
             <Image.Effect>
