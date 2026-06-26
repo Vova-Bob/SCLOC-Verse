@@ -35,6 +35,20 @@ Scope `identify` повертає базовий профіль Discord-кори
 | `email` | Не використовується для авторизації, відновлення доступу, підтримки, сповіщень, Cloud Sync, Premium чи Beta. Збільшує обсяг персональних даних без продуктової цінності. |
 | `guilds` | Поточна версія продукту не використовує список Discord-спільнот. Future Capability для Community Center, яка вимагає окремого Product Review. |
 
+### Примітка щодо email
+
+Код SCLOC-Verse запитує у Discord лише `identify` scope. Однак Supabase GoTrue для вбудованого Discord provider формує OAuth URL з додатковим `email` scope:
+
+```
+scope=email+identify+identify
+```
+
+Це технічна особливість Supabase: вона додає email до запиту, але завдяки увімкненій опції `EXTERNAL_DISCORD_EMAIL_OPTIONAL` аутентифікація успішна навіть якщо email відсутній.
+
+**SCLOC-Verse не зберігає email, не відображає email і не використовує email у жодній функції продукту.**
+
+Email може бути присутній у `auth.users` таблиці Supabase як наслідок OAuth exchange, але SCLOC-Verse не звертається до нього.
+
 ## Дані, що збираються
 
 ### Identity Layer
@@ -81,9 +95,11 @@ Scope `identify` повертає базовий профіль Discord-кори
 
 Повернутися до питання додаткових OAuth scopes лише після появи функціональності, яка об'єктивно їх потребує.
 
-### Email scope
+### Email
 
-Може бути повернений лише після впровадження:
+SCLOC-Verse не зберігає email і не використовує його в жодній функції. Email може проходити через Supabase OAuth exchange як наслідок вбудованого Discord provider, але продукт його ігнорує.
+
+Email може бути повернений лише після впровадження:
 
 - відновлення доступу до SCLOC Account;
 - сповіщень користувачу;
@@ -112,24 +128,36 @@ Scope `identify` повертає базовий профіль Discord-кори
 
 Процедура видалення акаунта описується в майбутньому публічному `PRIVACY.md`.
 
-## Аудит OAuth payload
+## Результати аудиту OAuth payload
 
-Після зміни scope на `identify` потрібно провести тестову авторизацію та зафіксувати фактичні поля, що повертає Discord.
+### Фактичний OAuth URL
 
-Результати аудиту додаються в цей розділ.
+Перевірено через Playwright після зміни коду SCLOC-Verse на `Scopes = "identify"`:
 
-### Очікувані поля після scope `identify`
+```
+https://discord.com/oauth2/authorize?client_id=1519140665940770946
+&response_type=code
+&redirect_uri=https%3A%2F%2Fnrytczdbhehiotflaagl.supabase.co%2Fauth%2Fv1%2Fcallback
+&scope=email+identify+identify
+&state=...
+```
 
-- `id`
-- `username`
-- `global_name`
-- `avatar`
-- `discriminator` (може бути відсутній для нових акаунтів)
+### Спостереження
 
-### Поля, яких не повинно бути
+- Код SCLOC-Verse запитує `identify`.
+- Supabase GoTrue додає `email` до OAuth URL за технологічною необхідністю вбудованого провайдера.
+- Опція `EXTERNAL_DISCORD_EMAIL_OPTIONAL` увімкнена в Supabase Dashboard.
+- Аутентифікація працює навіть без email в обліковому записі Discord.
 
-- `email`
-- `guilds`
+### Дані SCLOC-Verse
+
+| Поле | Статус |
+|---|---|
+| `id` | Використовується |
+| `username` / `global_name` | Використовується |
+| `avatar_url` | Використовується |
+| `email` | **Не використовується** |
+| `guilds` | **Не використовується** |
 
 ## Відповідальність
 
