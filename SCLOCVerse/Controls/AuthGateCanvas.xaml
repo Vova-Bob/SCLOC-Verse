@@ -4,6 +4,81 @@
         Background="Transparent"
         Opacity="0">
 
+    <Canvas.Resources>
+        <!-- Шаблон кнопки входу через Discord з бігучим голубим ободком -->
+        <ControlTemplate x:Key="DiscordSignInButtonTemplate" TargetType="Button">
+            <Grid>
+                <Border x:Name="GlowBorder"
+                         CornerRadius="12"
+                         BorderThickness="2"
+                         SnapsToDevicePixels="True">
+                    <Border.BorderBrush>
+                        <LinearGradientBrush x:Name="GlowBorderBrush" StartPoint="0,0" EndPoint="1,0" SpreadMethod="Repeat">
+                            <GradientStop Color="#6DB9F8" Offset="0.0"/>
+                            <GradientStop Color="#2D9CFF" Offset="0.5"/>
+                            <GradientStop Color="#6DB9F8" Offset="1.0"/>
+                            <LinearGradientBrush.RelativeTransform>
+                                <TranslateTransform X="0"/>
+                            </LinearGradientBrush.RelativeTransform>
+                        </LinearGradientBrush>
+                    </Border.BorderBrush>
+                    <Border.Background>
+                        <LinearGradientBrush x:Name="GlowBackgroundBrush" StartPoint="0,0" EndPoint="1,0" SpreadMethod="Repeat">
+                            <GradientStop Color="#002D9CFF" Offset="0.0"/>
+                            <GradientStop Color="#006DB9F8" Offset="0.5"/>
+                            <GradientStop Color="#002D9CFF" Offset="1.0"/>
+                            <LinearGradientBrush.RelativeTransform>
+                                <TranslateTransform X="0"/>
+                            </LinearGradientBrush.RelativeTransform>
+                        </LinearGradientBrush>
+                    </Border.Background>
+                    <Border.Triggers>
+                        <EventTrigger RoutedEvent="Border.Loaded">
+                            <BeginStoryboard>
+                                <Storyboard RepeatBehavior="Forever">
+                                    <DoubleAnimation
+                                        Storyboard.TargetName="GlowBorderBrush"
+                                        Storyboard.TargetProperty="(LinearGradientBrush.RelativeTransform).(TranslateTransform.X)"
+                                        From="0" To="1"
+                                        Duration="0:0:2"
+                                        RepeatBehavior="Forever"/>
+                                    <DoubleAnimation
+                                        Storyboard.TargetName="GlowBackgroundBrush"
+                                        Storyboard.TargetProperty="(LinearGradientBrush.RelativeTransform).(TranslateTransform.X)"
+                                        From="0" To="1"
+                                        Duration="0:0:2"
+                                        RepeatBehavior="Forever"/>
+                                </Storyboard>
+                            </BeginStoryboard>
+                        </EventTrigger>
+                    </Border.Triggers>
+
+                    <Border CornerRadius="10"
+                             Background="#5865F2"
+                             BorderThickness="0"
+                             Margin="2"
+                             SnapsToDevicePixels="True">
+                        <ContentPresenter HorizontalAlignment="Center"
+                                          VerticalAlignment="Center"
+                                          Margin="4,0"/>
+                    </Border>
+                </Border>
+            </Grid>
+
+            <ControlTemplate.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter TargetName="GlowBorder" Property="BorderThickness" Value="3"/>
+                </Trigger>
+                <Trigger Property="IsPressed" Value="True">
+                    <Setter TargetName="GlowBorder" Property="BorderThickness" Value="1"/>
+                </Trigger>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter TargetName="GlowBorder" Property="Opacity" Value="0.55"/>
+                </Trigger>
+            </ControlTemplate.Triggers>
+        </ControlTemplate>
+    </Canvas.Resources>
+
     <Canvas.Triggers>
         <EventTrigger RoutedEvent="Canvas.Loaded">
             <BeginStoryboard>
@@ -86,20 +161,9 @@
                         FontWeight="Bold"
                         BorderThickness="0"
                         Cursor="Hand"
-                        Opacity="0">
-                    <Button.Style>
-                        <Style TargetType="Button">
-                            <Style.Triggers>
-                                <Trigger Property="IsMouseOver" Value="True">
-                                    <Setter Property="Background" Value="#4752C4"/>
-                                </Trigger>
-                                <Trigger Property="IsPressed" Value="True">
-                                    <Setter Property="Background" Value="#3C45A5"/>
-                                </Trigger>
-                            </Style.Triggers>
-                        </Style>
-                    </Button.Style>
-                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                        Opacity="0"
+                        Template="{StaticResource DiscordSignInButtonTemplate}">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
                         <TextBlock Text="&#xE774;" FontFamily="Segoe MDL2 Assets" FontSize="18" Margin="0,0,10,0"/>
                         <TextBlock Text="Увійти через Discord" VerticalAlignment="Center"/>
                     </StackPanel>
