@@ -34,14 +34,15 @@
 
             <!-- Логотип -->
             <Image Grid.Row="0"
-                   Source="/Images/community_logo.png"
-                   Width="80" Height="80"
+                   Source="/Images/sclocverse_logo.png"
+                   Width="180" Height="180"
                    HorizontalAlignment="Center"
                    VerticalAlignment="Bottom"
                    Margin="0,0,0,20"
+                   Stretch="Uniform"
                    RenderOptions.BitmapScalingMode="HighQuality">
                 <Image.Effect>
-                    <DropShadowEffect Color="#6DB9F8" BlurRadius="20" ShadowDepth="0" Opacity="0.6"/>
+                    <DropShadowEffect Color="#6DB9F8" BlurRadius="24" ShadowDepth="0" Opacity="0.6"/>
                 </Image.Effect>
             </Image>
 
