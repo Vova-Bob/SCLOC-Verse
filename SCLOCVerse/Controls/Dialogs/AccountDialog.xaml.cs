@@ -105,7 +105,9 @@ namespace SCLOCVerse.Controls.Dialogs
         private async void SignOutButton_Click(object sender, RoutedEventArgs e)
         {
             await _authService.SignOutAsync(_cts.Token).ConfigureAwait(true);
-            UpdateVisibility(_authService.State, _authService.Profile);
+            // Закриваємо діалог після виходу — MainWindow через StatusChanged
+            // автоматично поверне користувача в Auth Gate.
+            Dispatcher.Invoke(Close);
         }
 
         private void CancelSignInButton_Click(object sender, RoutedEventArgs e)

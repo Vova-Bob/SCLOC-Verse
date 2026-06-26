@@ -297,6 +297,9 @@ namespace SCLOCVerse.Services.Auth
 
         private void SetState(AuthState state)
         {
+            if (State == state)
+                return;
+
             var previousState = State;
             State = state;
             LogStateTransition(previousState, state);
