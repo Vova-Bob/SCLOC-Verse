@@ -4,6 +4,8 @@ using Supabase;
 using Supabase.Gotrue;
 using System;
 using System.Diagnostics;
+using System.IO;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Web;
@@ -281,8 +283,11 @@ namespace SCLOCVerse.Services.Auth
 
         private void OnAuthStateChanged(object sender, GotrueConstants.AuthState stateChanged)
         {
-            // Обробляємо тільки вихід з системи.
-            if (stateChanged == GotrueConstants.AuthState.SignedOut)
+            // Обробляємо тільки явний вихід з системи.
+            // Supabase може надіслати SignedOut під час ініціалізації, перш ніж
+            // ми встигнемо відновити сесію через TryRestoreSessionAsync.
+            // Такий початковий SignedOut не повинен скидати State з Checking.
+            if (stateChanged == GotrueConstants.AuthState.SignedOut && State != AuthState.Checking)
             {
                 Profile = null;
                 _secureStorage.DeleteRefreshToken();
@@ -292,8 +297,34 @@ namespace SCLOCVerse.Services.Auth
 
         private void SetState(AuthState state)
         {
+            var previousState = State;
             State = state;
+            LogStateTransition(previousState, state);
             StatusChanged?.Invoke(this, EventArgs.Empty);
+        }
+
+        private void LogStateTransition(AuthState from, AuthState to)
+        {
+            var caller = new System.Diagnostics.StackTrace(2, false)?.GetFrame(0)?.GetMethod()?.Name ?? "unknown";
+            var message = $"[AuthState] {DateTime.Now:HH:mm:ss.fff} {from} -> {to} ({caller})";
+            System.Diagnostics.Debug.WriteLine(message);
+            AppendStateLog(message);
+        }
+
+        private static void AppendStateLog(string message)
+        {
+            try
+            {
+                var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+                var directory = Path.Combine(localAppData, "SCLOCVerse");
+                Directory.CreateDirectory(directory);
+                var logPath = Path.Combine(directory, "auth-state.log");
+                File.AppendAllText(logPath, message + Environment.NewLine, Encoding.UTF8);
+            }
+            catch
+            {
+                // Ігноруємо помилки запису логу, щоб не ламати основний функціонал.
+            }
         }
 
         private static void OpenBrowser(string url)
