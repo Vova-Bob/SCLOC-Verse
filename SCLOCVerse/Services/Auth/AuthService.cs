@@ -66,7 +66,7 @@ namespace SCLOCVerse.Services.Auth
                     {
                         FlowType = GotrueConstants.OAuthFlowType.PKCE,
                         RedirectTo = redirectUri.ToString(),
-                        Scopes = "identify guilds"
+                        Scopes = "identify"
                     }).ConfigureAwait(false);
 
                 if (state?.Uri == null)
@@ -105,7 +105,6 @@ namespace SCLOCVerse.Services.Auth
                 SaveSession(session);
                 await SyncProfileAsync(session).ConfigureAwait(false);
                 await _installationService.SyncCurrentInstallationAsync(cancellationToken).ConfigureAwait(false);
-                await SyncGuildsAsync(session, cancellationToken).ConfigureAwait(false);
                 await _sessionTracker.StartSessionAsync(cancellationToken).ConfigureAwait(false);
 
                 return new AuthResult.Success(Profile!);
@@ -165,8 +164,9 @@ namespace SCLOCVerse.Services.Auth
                         LogError("Installation sync during restore failed", syncEx);
                     }
 
-                    // Синхронізація Discord-гільдій теж best-effort: не ламає restore.
-                    await SyncGuildsAsync(savedSession, cancellationToken).ConfigureAwait(false);
+                    // Синхронізацію Discord-гільдій тимчасово відключено відповідно до рішення
+                    // про мінімізацію даних (identify scope). Сервіс залишається в композиції
+                    // як Future Capability для Community Center.
                     await _sessionTracker.StartSessionAsync(cancellationToken).ConfigureAwait(false);
 
                     return true;
