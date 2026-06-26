@@ -429,13 +429,22 @@
         <Grid HorizontalAlignment="Center" VerticalAlignment="Center"
               Width="950" Height="550" Margin="90,0,0,50">
             <Border Background="#30000000" CornerRadius="10" BorderBrush="#6DB9F8" BorderThickness="1"/>
-            <controls:HomeCanvas x:Name="CanvasHome" Visibility="Visible"/>
-            <controls:LocalizationCanvas x:Name="CanvasLocalization" Visibility="Collapsed"/>
-            <controls:AssistantCanvas x:Name="CanvasAssistant" Visibility="Collapsed"/>
-            <controls:SettingsCanvas x:Name="CanvasSettings" Visibility="Collapsed"/>
+
+            <!-- Основний інтерфейс -->
+            <Grid x:Name="MainContentContainer">
+                <controls:HomeCanvas x:Name="CanvasHome" Visibility="Visible"/>
+                <controls:LocalizationCanvas x:Name="CanvasLocalization" Visibility="Collapsed"/>
+                <controls:AssistantCanvas x:Name="CanvasAssistant" Visibility="Collapsed"/>
+                <controls:SettingsCanvas x:Name="CanvasSettings" Visibility="Collapsed"/>
+            </Grid>
+
+            <!-- Auth Gate host -->
+            <Border x:Name="AuthGateHost"
+                   Background="Transparent"
+                   Visibility="Visible"/>
         </Grid>
 
-        <StackPanel Orientation="Vertical" Margin="6,48,0,0" HorizontalAlignment="Left" Width="100">
+        <StackPanel Orientation="Vertical" Margin="6,48,0,0" HorizontalAlignment="Left" Width="100" x:Name="MenuPanel">
             <Button x:Name="BtnLocalization" Style="{StaticResource MenuTileButton}" Click="Localization_Click" Width="90">
                 <StackPanel Orientation="Vertical" HorizontalAlignment="Center">
                     <TextBlock Text="UA" FontSize="20" TextAlignment="Center"/>

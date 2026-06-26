@@ -40,6 +40,8 @@ namespace SCLOCVerse.Services.Auth
             _guildSyncService = guildSyncService ?? throw new ArgumentNullException(nameof(guildSyncService));
             _sessionTracker = sessionTracker ?? throw new ArgumentNullException(nameof(sessionTracker));
 
+            // Початковий стан: перевірка сесії ще не виконана.
+            State = AuthState.Checking;
             _supabase.Auth.AddStateChangedListener(OnAuthStateChanged);
         }
 

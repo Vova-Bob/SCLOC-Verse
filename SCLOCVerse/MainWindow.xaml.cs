@@ -3,6 +3,7 @@ using SCLOCVerse.Controls.Dialogs;
 using SCLOCVerse.Helpers;
 using SCLOCVerse.Interfaces;
 using SCLOCVerse.Models.ApplicationUpdate;
+using SCLOCVerse.Models.Auth;
 using SCLOCVerse.Models.LiaModels;
 using SCLOCVerse.Services;
 using SCLOCVerse.Services.ApplicationUpdate;
@@ -114,6 +115,10 @@ namespace SCLOCVerse
             _buttonHelper = new ButtonHelper();
             _authStatusPresenter = new AuthStatusPresenter(BtnAccount, _authStatusProvider);
 
+            // Auth Gate створюється програмно, оскільки потребує IAuthService через DI.
+            var authGate = new AuthGateCanvas(_authService);
+            AuthGateHost.Child = authGate;
+
             DataContext = _viewModel;
             DefaultPathText = TxtSelectedPath.Text;
 
@@ -134,6 +139,7 @@ namespace SCLOCVerse
             CanvasSettings.UpdateHistoryButtonControl.Click += UpdateHistoryButton_Click;
 
             Loaded += MainWindow_Loaded;
+            _authService.StatusChanged += OnAuthStatusChanged;
             EnvSelector.GearClicked += EnvSelector_GearClicked;
             EnvSelector.SelectedEnvironmentChanged += (s, e) =>
             {
@@ -164,7 +170,10 @@ namespace SCLOCVerse
             CanvasHome.LinkService = _linkService;
             BtnAutoSearch.ApplyTemplate();
             BtnAutoSearch.IsEnabled = true;
-            _canvasManager.ShowCanvas("home");
+
+            // Спочатку показуємо Auth Gate і перевіряємо сесію.
+            // Перехід у Main UI відбудеться через OnAuthStatusChanged, якщо сесію відновлено.
+            UpdateAppMode(_authService.State);
             var tasks = new Task[]
             {
                 UpdateLiaVersionAsync(),
@@ -514,12 +523,52 @@ namespace SCLOCVerse
         {
             try
             {
+                if (_authService.State != AuthState.SignedIn)
+                    return;
+
                 AccountDialog.Show(this, _authService);
             }
             catch (Exception ex)
             {
                 System.Windows.MessageBox.Show($"Account_Click error: {ex}", "Debug", MessageBoxButton.OK, MessageBoxImage.Error);
             }
+        }
+
+        private void OnAuthStatusChanged(object? sender, EventArgs e)
+        {
+            Dispatcher.Invoke(() => UpdateAppMode(_authService.State));
+        }
+
+        /// <summary>
+        /// Перемикає застосунок між Auth Gate Mode та Main UI Mode залежно від AuthState.
+        /// </summary>
+        private void UpdateAppMode(AuthState state)
+        {
+            if (state == AuthState.SignedIn)
+            {
+                ShowMainUiMode();
+            }
+            else
+            {
+                ShowAuthGateMode();
+            }
+        }
+
+        private void ShowAuthGateMode()
+        {
+            AuthGateHost.Visibility = Visibility.Visible;
+            MainContentContainer.Visibility = Visibility.Collapsed;
+            MenuPanel.IsEnabled = false;
+            BtnAccount.IsEnabled = false;
+        }
+
+        private void ShowMainUiMode()
+        {
+            AuthGateHost.Visibility = Visibility.Collapsed;
+            MainContentContainer.Visibility = Visibility.Visible;
+            MenuPanel.IsEnabled = true;
+            BtnAccount.IsEnabled = true;
+            _canvasManager.ShowCanvas("home");
         }
 
         private async Task RestoreAuthSessionAsync()

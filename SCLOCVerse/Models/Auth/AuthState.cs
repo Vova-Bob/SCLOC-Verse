@@ -5,6 +5,7 @@ namespace SCLOCVerse.Models.Auth
     /// </summary>
     public enum AuthState
     {
+        Checking,
         SignedOut,
         SigningIn,
         SignedIn,

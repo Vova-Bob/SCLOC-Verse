@@ -1,0 +1,140 @@
+<Canvas x:Class="SCLOCVerse.Controls.AuthGateCanvas"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Background="Transparent">
+
+    <Border Canvas.Left="0" Canvas.Top="0"
+            Width="950" Height="550"
+            Background="#CC0A1D29"
+            CornerRadius="12"
+            BorderBrush="#6DB9F8"
+            BorderThickness="1">
+
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <!-- Логотип -->
+            <Image Grid.Row="0"
+                   Source="/Images/community_logo.png"
+                   Width="80" Height="80"
+                   HorizontalAlignment="Center"
+                   VerticalAlignment="Bottom"
+                   Margin="0,0,0,20"
+                   RenderOptions.BitmapScalingMode="HighQuality">
+                <Image.Effect>
+                    <DropShadowEffect Color="#6DB9F8" BlurRadius="20" ShadowDepth="0" Opacity="0.6"/>
+                </Image.Effect>
+            </Image>
+
+            <!-- Заголовок -->
+            <TextBlock Grid.Row="1"
+                       x:Name="TitleText"
+                       Text="SCLOC Account"
+                       Foreground="White"
+                       FontSize="28"
+                       FontWeight="Bold"
+                       FontFamily="Arial Black"
+                       HorizontalAlignment="Center"
+                       Margin="0,0,0,10"/>
+
+            <!-- Опис -->
+            <TextBlock Grid.Row="2"
+                       x:Name="DescriptionText"
+                       Text="Увійдіть через Discord, щоб створити SCLOC Account.&#x0A;Це дасть вам доступ до синхронізації, підтримки та майбутніх функцій."
+                       Foreground="#CCCCCC"
+                       FontSize="14"
+                       TextWrapping="Wrap"
+                       TextAlignment="Center"
+                       MaxWidth="600"
+                       HorizontalAlignment="Center"
+                       Margin="0,0,0,30"/>
+
+            <!-- Панель кнопок / індикаторів -->
+            <StackPanel Grid.Row="3"
+                        x:Name="ActionPanel"
+                        Orientation="Vertical"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Top">
+
+                <Button x:Name="SignInButton"
+                        Click="SignInButton_Click"
+                        Width="260"
+                        Height="44"
+                        Background="#5865F2"
+                        Foreground="White"
+                        FontSize="14"
+                        FontWeight="Bold"
+                        BorderThickness="0"
+                        Cursor="Hand">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                        <TextBlock Text="&#xE774;" FontFamily="Segoe MDL2 Assets" FontSize="18" Margin="0,0,10,0"/>
+                        <TextBlock Text="Увійти через Discord" VerticalAlignment="Center"/>
+                    </StackPanel>
+                </Button>
+
+                <Button x:Name="CancelButton"
+                        Click="CancelButton_Click"
+                        Width="260"
+                        Height="36"
+                        Margin="0,10,0,0"
+                        Background="Transparent"
+                        Foreground="#CCCCCC"
+                        FontSize="13"
+                        BorderThickness="1"
+                        BorderBrush="#4A90E2"
+                        Cursor="Hand"
+                        Visibility="Collapsed"
+                        Content="Скасувати"/>
+
+                <Button x:Name="RetryButton"
+                        Click="RetryButton_Click"
+                        Width="260"
+                        Height="44"
+                        Margin="0,10,0,0"
+                        Background="#E36D3A"
+                        Foreground="White"
+                        FontSize="14"
+                        FontWeight="Bold"
+                        BorderThickness="0"
+                        Cursor="Hand"
+                        Visibility="Collapsed"
+                        Content="Спробувати ще раз"/>
+            </StackPanel>
+
+            <!-- Індикатор завантаження -->
+            <StackPanel Grid.Row="3"
+                        x:Name="LoadingPanel"
+                        Orientation="Vertical"
+                        HorizontalAlignment="Center"
+                        VerticalAlignment="Top"
+                        Visibility="Collapsed">
+                <TextBlock x:Name="LoadingText"
+                           Text="Перевіряємо сесію..."
+                           Foreground="#6DB9F8"
+                           FontSize="14"
+                           HorizontalAlignment="Center"
+                           Margin="0,0,0,15"/>
+                <ProgressBar Width="200" Height="4" IsIndeterminate="True" Foreground="#6DB9F8" Background="#1F3C4C"/>
+            </StackPanel>
+
+            <!-- Повідомлення про помилку -->
+            <TextBlock Grid.Row="4"
+                       x:Name="ErrorText"
+                       Foreground="#FF6B6B"
+                       FontSize="13"
+                       TextWrapping="Wrap"
+                       TextAlignment="Center"
+                       MaxWidth="600"
+                       HorizontalAlignment="Center"
+                       VerticalAlignment="Top"
+                       Margin="0,20,0,0"
+                       Visibility="Collapsed"/>
+        </Grid>
+    </Border>
+</Canvas>
