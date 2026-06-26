@@ -2,6 +2,7 @@
 using SCLOCVerse.Controls.Dialogs;
 using SCLOCVerse.Services.ApplicationUpdate;
 using System;
+using System.Diagnostics;
 using System.Reflection;
 using System.Threading;
 using System.Windows;
@@ -114,12 +115,23 @@ namespace SCLOCVerse
 
             try
             {
-                using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
-                _compositionRoot?.AuthCompositionRoot?.SessionTrackerService?.EndSessionAsync(cts.Token).GetAwaiter().GetResult();
+                if (_compositionRoot?.AuthCompositionRoot?.SessionTrackerService is { } sessionTracker)
+                {
+                    using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+                    // EndSessionAsync виконує мережевий виклик Supabase Postgrest. На UI-потоці з
+                    // DispatcherSynchronizationContext це sync-over-async deadlock (MakeRequest<T>
+                    // усередині Postgrest не має ConfigureAwait(false)). Винесення на threadpool
+                    // прибирає SynchronizationContext → дедлок неможливий. GetResult() чекає
+                    // завершення телеметрії (≤3с за CTS), щоб надійно зафіксувати ended_at.
+                    Task.Run(async () => await sessionTracker.EndSessionAsync(cts.Token))
+                        .GetAwaiter()
+                        .GetResult();
+                }
             }
-            catch
+            catch (Exception ex)
             {
-                // Не блокуємо вихід при помилках телеметрії або таймауті.
+                // Не блокуємо вихід при помилках телеметрії або таймауті, але фіксуємо причину.
+                Debug.WriteLine($"[App.OnExit] EndSessionAsync failed: {ex}");
             }
 
             try
