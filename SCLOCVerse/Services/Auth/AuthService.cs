@@ -136,7 +136,10 @@ namespace SCLOCVerse.Services.Auth
             // Потребуємо access token: без нього клієнт не зможе виконати жодного запиту,
             // а restore через єдиний refresh token у цій версії Gotrue ненадійний.
             if (savedSession == null || string.IsNullOrWhiteSpace(savedSession.AccessToken))
+            {
+                SetState(AuthState.SignedOut);
                 return false;
+            }
 
             try
             {
@@ -183,7 +186,7 @@ namespace SCLOCVerse.Services.Auth
                 // Не знищуємо .auth при мережевих/транзитних помилках:
                 // сесія може бути валідною, а збій — тимчасовим.
                 LogError("TryRestoreSession failed", ex);
-                SetState(AuthState.SignedOut);
+                SetState(AuthState.Error);
                 return false;
             }
         }
