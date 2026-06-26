@@ -542,11 +542,11 @@ namespace SCLOCVerse
         /// <summary>
         /// Перемикає застосунок між Auth Gate Mode та Main UI Mode залежно від AuthState.
         /// </summary>
-        private void UpdateAppMode(AuthState state)
+        private async void UpdateAppMode(AuthState state)
         {
             if (state == AuthState.SignedIn)
             {
-                ShowMainUiMode();
+                await ShowMainUiModeAsync();
             }
             else
             {
@@ -562,8 +562,13 @@ namespace SCLOCVerse
             BtnAccount.IsEnabled = false;
         }
 
-        private void ShowMainUiMode()
+        private async Task ShowMainUiModeAsync()
         {
+            if (AuthGateHost.Child is AuthGateCanvas authGate)
+            {
+                await authGate.FadeOutAsync(300).ConfigureAwait(true);
+            }
+
             AuthGateHost.Visibility = Visibility.Collapsed;
             MainContentContainer.Visibility = Visibility.Visible;
             MenuPanel.IsEnabled = true;
