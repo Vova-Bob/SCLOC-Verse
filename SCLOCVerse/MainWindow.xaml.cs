@@ -556,6 +556,13 @@ namespace SCLOCVerse
 
         private void ShowAuthGateMode()
         {
+            // Скидаємо Opacity Auth Gate, оскільки попередній fade out міг залишити його 0.
+            if (AuthGateHost.Child is AuthGateCanvas authGate)
+            {
+                authGate.Opacity = 1;
+                authGate.BeginAnimation(OpacityProperty, null);
+            }
+
             AuthGateHost.Visibility = Visibility.Visible;
             MainContentContainer.Visibility = Visibility.Collapsed;
             MenuPanel.IsEnabled = false;
