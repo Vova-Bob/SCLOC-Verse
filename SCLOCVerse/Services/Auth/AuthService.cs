@@ -4,8 +4,6 @@ using Supabase;
 using Supabase.Gotrue;
 using System;
 using System.Diagnostics;
-using System.IO;
-using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Web;
@@ -309,25 +307,7 @@ namespace SCLOCVerse.Services.Auth
         private void LogStateTransition(AuthState from, AuthState to)
         {
             var caller = new System.Diagnostics.StackTrace(2, false)?.GetFrame(0)?.GetMethod()?.Name ?? "unknown";
-            var message = $"[AuthState] {DateTime.Now:HH:mm:ss.fff} {from} -> {to} ({caller})";
-            System.Diagnostics.Debug.WriteLine(message);
-            AppendStateLog(message);
-        }
-
-        private static void AppendStateLog(string message)
-        {
-            try
-            {
-                var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-                var directory = Path.Combine(localAppData, "SCLOCVerse");
-                Directory.CreateDirectory(directory);
-                var logPath = Path.Combine(directory, "auth-state.log");
-                File.AppendAllText(logPath, message + Environment.NewLine, Encoding.UTF8);
-            }
-            catch
-            {
-                // Ігноруємо помилки запису логу, щоб не ламати основний функціонал.
-            }
+            System.Diagnostics.Debug.WriteLine($"[AuthState] {DateTime.Now:HH:mm:ss.fff} {from} -> {to} ({caller})");
         }
 
         private static void OpenBrowser(string url)

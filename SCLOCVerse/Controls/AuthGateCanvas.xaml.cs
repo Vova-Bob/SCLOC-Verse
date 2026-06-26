@@ -91,6 +91,12 @@ namespace SCLOCVerse.Controls
                 ? Visibility.Visible
                 : Visibility.Collapsed;
 
+            // Під час перевірки сесії показуємо нейтральний текст замість CTA.
+            TitleText.Text = "SCLOC Account";
+            DescriptionText.Text = _authService.State == AuthState.SigningIn
+                ? "Відкриваємо Discord для входу..."
+                : "Перевіряємо ваш обліковий запис...";
+
             if (animate)
                 AnimateOpacity(LoadingPanel, 0, 1, 250);
             else
