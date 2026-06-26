@@ -28,7 +28,7 @@ Uninstallable=yes
 CreateUninstallRegKey=yes
 
 [Languages]
-Name: "english"; MessagesFile: "compiler:Default.isl"
+Name: "ukrainian"; MessagesFile: "compiler:Languages\Ukrainian.isl"
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
