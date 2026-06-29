@@ -21,10 +21,10 @@ namespace SCLOCVerse.Controls
 
         // ---- LED ----
         private const int LedCount = 5;
-        private const double LedDiameter = 28;
-        private const double LedSpacing = 26;
-        private const double LedTop = 150;
-        private const double LedLabelTop = 184;
+        private const double LedDiameter = 32;
+        private const double LedSpacing = 30;
+        private const double LedTop = 146;
+        private const double LedLabelTop = 190;
 
         // ---- Text positions ----
         private const double StatusTop = 28;
@@ -102,7 +102,7 @@ namespace SCLOCVerse.Controls
                 double left = startX + i * (LedDiameter + LedSpacing);
                 light.Left = left;
                 light.Top = LedTop;
-                light.LabelLeft = left - 12;
+                light.LabelLeft = left - 14;
             }
         }
 
