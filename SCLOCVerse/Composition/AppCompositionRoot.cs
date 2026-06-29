@@ -4,6 +4,7 @@ using SCLOCVerse.Services;
 using SCLOCVerse.Services.ApplicationUpdate;
 using SCLOCVerse.Services.Common;
 using SCLOCVerse.Services.HangarTimer;
+using SCLOCVerse.Services.InputSystem;
 using SCLOCVerse.Services.LiaServices;
 using SCLOCVerse.Services.LocalizationServices;
 using SCLOCVerse.ViewModels;
@@ -13,7 +14,7 @@ using System.Windows.Threading;
 
 namespace SCLOCVerse.Composition
 {
-    public class AppCompositionRoot : IDisposable
+    public partial class AppCompositionRoot : IDisposable
     {
         private readonly IIgnoreRulesProvider _ignoreRulesProvider;
         private readonly IFolderSearchService _folderSearchService;
@@ -35,7 +36,8 @@ namespace SCLOCVerse.Composition
         private readonly IHangarSettingsService _hangarSettingsService;
         private readonly IHangarStartTimeProvider _hangarStartTimeProvider;
         private readonly IHangarOverlayService _hangarOverlayService;
-        private readonly IHangarHotkeyService _hangarHotkeyService;
+        private readonly IHotkeyBackend _hotkeyBackend;
+        private readonly IHotkeyService _hotkeyService;
         private readonly IHangarTimerService _hangarTimerService;
 
         public AppCompositionRoot()
@@ -56,12 +58,13 @@ namespace SCLOCVerse.Composition
             _hangarSettingsService = new HangarSettingsService();
             _hangarStartTimeProvider = new HangarStartTimeProvider(httpClient, _hangarSettingsService);
             _hangarOverlayService = new HangarOverlayService(_hangarSettingsService);
-            _hangarHotkeyService = new HangarHotkeyService();
+            _hotkeyBackend = CreateHotkeyBackend();
+            _hotkeyService = new HotkeyService(_hotkeyBackend);
             _hangarTimerService = new HangarTimerService(
                 _hangarStartTimeProvider,
                 _hangarOverlayService,
                 _hangarSettingsService,
-                _hangarHotkeyService);
+                _hotkeyService);
 
             _applicationUpdateService = new ApplicationUpdateService(
                 "Vova-Bob",
@@ -101,7 +104,7 @@ namespace SCLOCVerse.Composition
         public AuthCompositionRoot AuthCompositionRoot => _authCompositionRoot;
 
         public IHangarTimerService HangarTimerService => _hangarTimerService;
-        public IHangarHotkeyService HangarHotkeyService => _hangarHotkeyService;
+        public IHotkeyService HotkeyService => _hotkeyService;
 
         public MainWindow CreateMainWindow()
         {
@@ -132,7 +135,7 @@ namespace SCLOCVerse.Composition
                 _authCompositionRoot.AuthService,
                 _authCompositionRoot.AuthStatusProvider,
                 _hangarTimerService,
-                _hangarHotkeyService);
+                _hotkeyService);
         }
 
         private static string GetSupabaseUrl()

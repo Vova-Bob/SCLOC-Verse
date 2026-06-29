@@ -9,6 +9,7 @@ using SCLOCVerse.Services;
 using SCLOCVerse.Services.ApplicationUpdate;
 using SCLOCVerse.Services.Cache;
 using SCLOCVerse.Windows;
+using SCLOCVerse.Services.InputSystem;
 using SCLOCVerse.Services.LiaServices;
 using SCLOCVerse.ViewModels;
 using System.IO;
@@ -48,7 +49,8 @@ namespace SCLOCVerse
         private readonly AuthStatusPresenter _authStatusPresenter;
         private readonly UpdateStatusPresenter _updateStatusPresenter;
         private readonly IHangarTimerService _hangarTimerService;
-        private readonly IHangarHotkeyService _hangarHotkeyService;
+        private readonly IHotkeyService _hotkeyService;
+        private IHotkeyMessageSource? _hotkeyMessageSource;
         private bool _showGameFolderToast = true;
         private DateTime? _suppressStartupUpdateCheckUntil;
         private EnvironmentSelector EnvSelector => CanvasLocalization.EnvironmentSelector;
@@ -76,7 +78,7 @@ namespace SCLOCVerse
         private readonly UpdateCheckerService _updateCheckerService;
         private readonly CleanupController _cacheCleanupController;
 
-        public MainWindow(MainWindowViewModel viewModel, IWindowHelper windowHelper, ILocalizationInstaller localizationInstaller, IReadmeService readmeService,     IUpdater updater, UpdateCheckerService updateCheckerService, IApplicationUpdateService applicationUpdateService, IBackgroundUpdateMonitor backgroundUpdateMonitor, IUpdateChannelService updateChannelService, IApplicationVersionProvider applicationVersionProvider, IUpdateDownloader updateDownloader, IUpdateInstaller updateInstaller, IUpdateHistoryService updateHistoryService, IUpdateVerifier updateVerifier, IGitHubReleaseClient gitHubReleaseClient, IDialogService dialogService, IAuthService authService, IAuthStatusProvider authStatusProvider, IHangarTimerService hangarTimerService, IHangarHotkeyService hangarHotkeyService)
+        public MainWindow(MainWindowViewModel viewModel, IWindowHelper windowHelper, ILocalizationInstaller localizationInstaller, IReadmeService readmeService,     IUpdater updater, UpdateCheckerService updateCheckerService, IApplicationUpdateService applicationUpdateService, IBackgroundUpdateMonitor backgroundUpdateMonitor, IUpdateChannelService updateChannelService, IApplicationVersionProvider applicationVersionProvider, IUpdateDownloader updateDownloader, IUpdateInstaller updateInstaller, IUpdateHistoryService updateHistoryService, IUpdateVerifier updateVerifier, IGitHubReleaseClient gitHubReleaseClient, IDialogService dialogService, IAuthService authService, IAuthStatusProvider authStatusProvider, IHangarTimerService hangarTimerService, IHotkeyService hotkeyService)
         {
             InitializeComponent();
 
@@ -99,7 +101,7 @@ namespace SCLOCVerse
             _authService = authService;
             _authStatusProvider = authStatusProvider;
             _hangarTimerService = hangarTimerService;
-            _hangarHotkeyService = hangarHotkeyService;
+            _hotkeyService = hotkeyService;
 
             _toastService = new ToastService(AppToast.ToastBorder, AppToast.ToastText);
             _linkService = new LinkService(_toastService);
@@ -173,7 +175,8 @@ namespace SCLOCVerse
             MainGrid.MouseLeave += (s, e2) => _windowHelper.HandleMouseLeave(this, bgImage, MainGrid);
 
             var helper = new WindowInteropHelper(this);
-            _hangarHotkeyService.Register(helper.EnsureHandle());
+            _hotkeyMessageSource = new WpfMessageSource(this);
+            _hotkeyService.InitializeBackend(_hotkeyMessageSource);
 
             _readmeService.LoadReadme(this);
             CanvasHome.ToastService = _toastService;

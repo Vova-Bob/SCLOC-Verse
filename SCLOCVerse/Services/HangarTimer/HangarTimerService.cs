@@ -1,5 +1,6 @@
 using SCLOCVerse.Controls;
 using SCLOCVerse.Interfaces;
+using SCLOCVerse.Services.InputSystem;
 using System.Windows;
 
 namespace SCLOCVerse.Services.HangarTimer
@@ -13,24 +14,22 @@ namespace SCLOCVerse.Services.HangarTimer
         private readonly IHangarStartTimeProvider _startTimeProvider;
         private readonly IHangarOverlayService _overlayService;
         private readonly IHangarSettingsService _settingsService;
-        private readonly IHangarHotkeyService _hotkeyService;
+        private readonly IHotkeyService _hotkeyService;
 
         private long _cycleStartMs = -1;
-        private bool _hotkeysSubscribed;
 
         public HangarTimerService(
             IHangarStartTimeProvider startTimeProvider,
             IHangarOverlayService overlayService,
             IHangarSettingsService settingsService,
-            IHangarHotkeyService hotkeyService)
+            IHotkeyService hotkeyService)
         {
             _startTimeProvider = startTimeProvider;
             _overlayService = overlayService;
             _settingsService = settingsService;
             _hotkeyService = hotkeyService;
 
-            _hotkeyService.ActionRequested += OnHotkeyActionRequested;
-            _hotkeysSubscribed = true;
+            RegisterHotkeys();
         }
 
         public async Task ToggleOverlayAsync(CancellationToken cancellationToken = default)
@@ -93,24 +92,8 @@ namespace SCLOCVerse.Services.HangarTimer
             }
         }
 
-        public void RegisterHotkeys(IntPtr windowHandle)
-        {
-            _hotkeyService.Register(windowHandle);
-        }
-
-        public void UnregisterHotkeys()
-        {
-            _hotkeyService.Unregister();
-        }
-
         public void Dispose()
         {
-            if (_hotkeysSubscribed)
-            {
-                _hotkeyService.ActionRequested -= OnHotkeyActionRequested;
-                _hotkeysSubscribed = false;
-            }
-
             _hotkeyService.Dispose();
             _overlayService.Close();
         }
@@ -124,58 +107,159 @@ namespace SCLOCVerse.Services.HangarTimer
             return DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
         }
 
-        private void OnHotkeyActionRequested(object? sender, HangarHotkeyAction e)
+        private void RegisterHotkeys()
         {
-            switch (e)
+            _hotkeyService.Register(new HotkeyDefinition
             {
-                case HangarHotkeyAction.ToggleOverlay:
-                    _ = ToggleOverlayAsync();
-                    break;
-                case HangarHotkeyAction.ToggleClickThrough:
-                    if (_overlayService is HangarOverlayService svcClick)
-                        svcClick.ToggleClickThrough();
-                    break;
-                case HangarHotkeyAction.BeginTemporaryDrag:
-                    if (_overlayService is HangarOverlayService svcDrag)
-                        svcDrag.BeginTemporaryDrag();
-                    break;
-                case HangarHotkeyAction.SetStartNow:
+                Id = HotkeyIds.HangarToggleOverlay,
+                DefaultGesture = new HotkeyGesture(HotkeyModifiers.None, HotkeyKey.F6),
+                Description = "Показати/приховати Hangar overlay",
+                Handler = async ct => await ToggleOverlayAsync(ct).ConfigureAwait(false)
+            });
+
+            _hotkeyService.Register(new HotkeyDefinition
+            {
+                Id = HotkeyIds.HangarToggleClickThrough,
+                DefaultGesture = new HotkeyGesture(HotkeyModifiers.Shift, HotkeyKey.F8),
+                Description = "Перемкнути кліки крізь Hangar overlay",
+                Handler = ct =>
+                {
+                    if (_overlayService is HangarOverlayService svc)
+                        svc.ToggleClickThrough();
+                    return ValueTask.CompletedTask;
+                }
+            });
+
+            _hotkeyService.Register(new HotkeyDefinition
+            {
+                Id = HotkeyIds.HangarBeginTemporaryDrag,
+                DefaultGesture = new HotkeyGesture(HotkeyModifiers.Control, HotkeyKey.F8),
+                Description = "Тимчасово перетягувати Hangar overlay",
+                Handler = ct =>
+                {
+                    if (_overlayService is HangarOverlayService svc)
+                        svc.BeginTemporaryDrag();
+                    return ValueTask.CompletedTask;
+                }
+            });
+
+            _hotkeyService.Register(new HotkeyDefinition
+            {
+                Id = HotkeyIds.HangarSetStartNow,
+                DefaultGesture = new HotkeyGesture(HotkeyModifiers.Control | HotkeyModifiers.Shift, HotkeyKey.F7),
+                Description = "Почати Hangar цикл зараз",
+                Handler = ct =>
+                {
                     SetStartNow();
-                    break;
-                case HangarHotkeyAction.PromptManualStart:
+                    return ValueTask.CompletedTask;
+                }
+            });
+
+            _hotkeyService.Register(new HotkeyDefinition
+            {
+                Id = HotkeyIds.HangarPromptManualStart,
+                DefaultGesture = new HotkeyGesture(HotkeyModifiers.Shift, HotkeyKey.F7),
+                Description = "Ввести час старту Hangar циклу",
+                Handler = ct =>
+                {
                     PromptManualStart();
-                    break;
-                case HangarHotkeyAction.ForceSync:
-                    _ = ForceSyncAsync();
-                    break;
-                case HangarHotkeyAction.ClearOverrideAndSync:
-                    _ = ClearOverrideAndSyncAsync();
-                    break;
-                case HangarHotkeyAction.ScaleDown:
-                    if (_overlayService is HangarOverlayService svcScaleDown)
-                        svcScaleDown.ScaleDown();
-                    break;
-                case HangarHotkeyAction.ScaleUp:
-                    if (_overlayService is HangarOverlayService svcScaleUp)
-                        svcScaleUp.ScaleUp();
-                    break;
-                case HangarHotkeyAction.ScaleReset:
-                    if (_overlayService is HangarOverlayService svcScaleReset)
-                        svcScaleReset.ScaleReset();
-                    break;
-                case HangarHotkeyAction.OpacityDown:
-                    if (_overlayService is HangarOverlayService svcOpacityDown)
-                        svcOpacityDown.OpacityDown();
-                    break;
-                case HangarHotkeyAction.OpacityUp:
-                    if (_overlayService is HangarOverlayService svcOpacityUp)
-                        svcOpacityUp.OpacityUp();
-                    break;
-                case HangarHotkeyAction.OpacityReset:
-                    if (_overlayService is HangarOverlayService svcOpacityReset)
-                        svcOpacityReset.OpacityReset();
-                    break;
-            }
+                    return ValueTask.CompletedTask;
+                }
+            });
+
+            _hotkeyService.Register(new HotkeyDefinition
+            {
+                Id = HotkeyIds.HangarForceSync,
+                DefaultGesture = new HotkeyGesture(HotkeyModifiers.None, HotkeyKey.F9),
+                Description = "Синхронізувати Hangar цикл з URL",
+                Handler = async ct => await ForceSyncAsync(ct).ConfigureAwait(false)
+            });
+
+            _hotkeyService.Register(new HotkeyDefinition
+            {
+                Id = HotkeyIds.HangarClearOverrideAndSync,
+                DefaultGesture = new HotkeyGesture(HotkeyModifiers.Shift, HotkeyKey.F9),
+                Description = "Стерти оверрайд Hangar і синхронізувати",
+                Handler = async ct => await ClearOverrideAndSyncAsync(ct).ConfigureAwait(false)
+            });
+
+            _hotkeyService.Register(new HotkeyDefinition
+            {
+                Id = HotkeyIds.HangarScaleDown,
+                DefaultGesture = new HotkeyGesture(HotkeyModifiers.Control, HotkeyKey.OemMinus),
+                Description = "Зменшити масштаб Hangar overlay",
+                Handler = ct =>
+                {
+                    if (_overlayService is HangarOverlayService svc)
+                        svc.ScaleDown();
+                    return ValueTask.CompletedTask;
+                }
+            });
+
+            _hotkeyService.Register(new HotkeyDefinition
+            {
+                Id = HotkeyIds.HangarScaleUp,
+                DefaultGesture = new HotkeyGesture(HotkeyModifiers.Control, HotkeyKey.OemPlus),
+                Description = "Збільшити масштаб Hangar overlay",
+                Handler = ct =>
+                {
+                    if (_overlayService is HangarOverlayService svc)
+                        svc.ScaleUp();
+                    return ValueTask.CompletedTask;
+                }
+            });
+
+            _hotkeyService.Register(new HotkeyDefinition
+            {
+                Id = HotkeyIds.HangarScaleReset,
+                DefaultGesture = new HotkeyGesture(HotkeyModifiers.Control, HotkeyKey.D0),
+                Description = "Скинути масштаб Hangar overlay",
+                Handler = ct =>
+                {
+                    if (_overlayService is HangarOverlayService svc)
+                        svc.ScaleReset();
+                    return ValueTask.CompletedTask;
+                }
+            });
+
+            _hotkeyService.Register(new HotkeyDefinition
+            {
+                Id = HotkeyIds.HangarOpacityDown,
+                DefaultGesture = new HotkeyGesture(HotkeyModifiers.Control | HotkeyModifiers.Alt, HotkeyKey.OemMinus),
+                Description = "Зменшити прозорість Hangar overlay",
+                Handler = ct =>
+                {
+                    if (_overlayService is HangarOverlayService svc)
+                        svc.OpacityDown();
+                    return ValueTask.CompletedTask;
+                }
+            });
+
+            _hotkeyService.Register(new HotkeyDefinition
+            {
+                Id = HotkeyIds.HangarOpacityUp,
+                DefaultGesture = new HotkeyGesture(HotkeyModifiers.Control | HotkeyModifiers.Alt, HotkeyKey.OemPlus),
+                Description = "Збільшити прозорість Hangar overlay",
+                Handler = ct =>
+                {
+                    if (_overlayService is HangarOverlayService svc)
+                        svc.OpacityUp();
+                    return ValueTask.CompletedTask;
+                }
+            });
+
+            _hotkeyService.Register(new HotkeyDefinition
+            {
+                Id = HotkeyIds.HangarOpacityReset,
+                DefaultGesture = new HotkeyGesture(HotkeyModifiers.Control | HotkeyModifiers.Alt, HotkeyKey.D0),
+                Description = "Скинути прозорість Hangar overlay",
+                Handler = ct =>
+                {
+                    if (_overlayService is HangarOverlayService svc)
+                        svc.OpacityReset();
+                    return ValueTask.CompletedTask;
+                }
+            });
         }
     }
 }
