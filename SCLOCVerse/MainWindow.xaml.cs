@@ -15,6 +15,7 @@ using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Navigation;
 
@@ -46,6 +47,8 @@ namespace SCLOCVerse
         private readonly IAuthStatusProvider _authStatusProvider;
         private readonly AuthStatusPresenter _authStatusPresenter;
         private readonly UpdateStatusPresenter _updateStatusPresenter;
+        private readonly IHangarTimerService _hangarTimerService;
+        private readonly IHangarHotkeyService _hangarHotkeyService;
         private bool _showGameFolderToast = true;
         private DateTime? _suppressStartupUpdateCheckUntil;
         private EnvironmentSelector EnvSelector => CanvasLocalization.EnvironmentSelector;
@@ -73,7 +76,7 @@ namespace SCLOCVerse
         private readonly UpdateCheckerService _updateCheckerService;
         private readonly CleanupController _cacheCleanupController;
 
-        public MainWindow(MainWindowViewModel viewModel, IWindowHelper windowHelper, ILocalizationInstaller localizationInstaller, IReadmeService readmeService,     IUpdater updater, UpdateCheckerService updateCheckerService, IApplicationUpdateService applicationUpdateService, IBackgroundUpdateMonitor backgroundUpdateMonitor, IUpdateChannelService updateChannelService, IApplicationVersionProvider applicationVersionProvider, IUpdateDownloader updateDownloader, IUpdateInstaller updateInstaller, IUpdateHistoryService updateHistoryService, IUpdateVerifier updateVerifier, IGitHubReleaseClient gitHubReleaseClient, IDialogService dialogService, IAuthService authService, IAuthStatusProvider authStatusProvider)
+        public MainWindow(MainWindowViewModel viewModel, IWindowHelper windowHelper, ILocalizationInstaller localizationInstaller, IReadmeService readmeService,     IUpdater updater, UpdateCheckerService updateCheckerService, IApplicationUpdateService applicationUpdateService, IBackgroundUpdateMonitor backgroundUpdateMonitor, IUpdateChannelService updateChannelService, IApplicationVersionProvider applicationVersionProvider, IUpdateDownloader updateDownloader, IUpdateInstaller updateInstaller, IUpdateHistoryService updateHistoryService, IUpdateVerifier updateVerifier, IGitHubReleaseClient gitHubReleaseClient, IDialogService dialogService, IAuthService authService, IAuthStatusProvider authStatusProvider, IHangarTimerService hangarTimerService, IHangarHotkeyService hangarHotkeyService)
         {
             InitializeComponent();
 
@@ -95,6 +98,8 @@ namespace SCLOCVerse
             _dialogService = dialogService;
             _authService = authService;
             _authStatusProvider = authStatusProvider;
+            _hangarTimerService = hangarTimerService;
+            _hangarHotkeyService = hangarHotkeyService;
 
             _toastService = new ToastService(AppToast.ToastBorder, AppToast.ToastText);
             _linkService = new LinkService(_toastService);
@@ -114,6 +119,7 @@ namespace SCLOCVerse
             _buttonStateManager = new ButtonStateManager(BtnLocalization, BtnAssistant, BtnSettings, BtnScTools, BtnSelectFolder);
             _buttonHelper = new ButtonHelper();
             _authStatusPresenter = new AuthStatusPresenter(BtnAccount, _authStatusProvider);
+            CanvasScTools.SetHangarTimerService(_hangarTimerService);
 
             // Auth Gate створюється програмно, оскільки потребує IAuthService через DI.
             var authGate = new AuthGateCanvas(_authService);
@@ -165,6 +171,10 @@ namespace SCLOCVerse
             _windowHelper.ApplyWindowRoundCorners(this);
             MainGrid.MouseMove += (s, e2) => _windowHelper.HandleMouseMove(this, bgImage, e2.GetPosition(MainGrid), MainGrid);
             MainGrid.MouseLeave += (s, e2) => _windowHelper.HandleMouseLeave(this, bgImage, MainGrid);
+
+            var helper = new WindowInteropHelper(this);
+            _hangarHotkeyService.Register(helper.EnsureHandle());
+
             _readmeService.LoadReadme(this);
             CanvasHome.ToastService = _toastService;
             CanvasHome.LinkService = _linkService;

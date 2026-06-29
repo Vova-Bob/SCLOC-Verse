@@ -1,9 +1,14 @@
 <Canvas x:Class="SCLOCVerse.Controls.ScToolsCanvas"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:cv="clr-namespace:SCLOCVerse.Helpers.Converters"
         Background="Transparent">
 
     <Canvas.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVisibility"/>
+        <cv:NullToBooleanConverter x:Key="NullToBoolean"/>
+        <cv:ActionToButtonStyleConverter x:Key="ActionToButtonStyleConverter"/>
+
         <!-- Базові кольори карток -->
         <SolidColorBrush x:Key="CardFill" Color="#1F3C4C"/>
         <SolidColorBrush x:Key="CardFillHover" Color="#385565"/>
@@ -49,7 +54,43 @@
             </Style.Triggers>
         </Style>
 
-        <!-- Стиль неактивної кнопки картки -->
+        <!-- Стиль кнопки картки інструменту -->
+        <Style x:Key="ToolCardButton" TargetType="Button">
+            <Setter Property="Width" Value="120"/>
+            <Setter Property="Height" Value="32"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Background" Value="#30546E"/>
+            <Setter Property="BorderBrush" Value="#8DD0FF"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="6">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="#3A6682"/>
+                    <Setter Property="BorderThickness" Value="2"/>
+                </Trigger>
+                <Trigger Property="IsPressed" Value="True">
+                    <Setter Property="Background" Value="#274A60"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Стиль неактивної кнопки картки-заповнювача -->
         <Style x:Key="ToolPlaceholderButton" TargetType="Button">
             <Setter Property="Width" Value="120"/>
             <Setter Property="Height" Value="32"/>
@@ -76,6 +117,7 @@
                 </Setter.Value>
             </Setter>
         </Style>
+
     </Canvas.Resources>
 
     <!-- Заголовок -->
@@ -158,10 +200,12 @@
 
                         <!-- Кнопка -->
                         <Button Grid.Row="2"
-                                Style="{StaticResource ToolPlaceholderButton}"
+                                Style="{Binding LaunchAction, Converter={StaticResource ActionToButtonStyleConverter}, ConverterParameter={x:Reference Name=ToolsList}}"
                                 Content="{Binding ButtonText}"
                                 HorizontalAlignment="Center"
-                                VerticalAlignment="Bottom"/>
+                                VerticalAlignment="Bottom"
+                                IsEnabled="{Binding LaunchAction, Converter={StaticResource NullToBoolean}}"
+                                Click="ToolButton_Click"/>
                     </Grid>
                 </Border>
             </DataTemplate>

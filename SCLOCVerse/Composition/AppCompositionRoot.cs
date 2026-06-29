@@ -3,6 +3,7 @@ using SCLOCVerse.Interfaces;
 using SCLOCVerse.Services;
 using SCLOCVerse.Services.ApplicationUpdate;
 using SCLOCVerse.Services.Common;
+using SCLOCVerse.Services.HangarTimer;
 using SCLOCVerse.Services.LiaServices;
 using SCLOCVerse.Services.LocalizationServices;
 using SCLOCVerse.ViewModels;
@@ -31,6 +32,12 @@ namespace SCLOCVerse.Composition
         private readonly IDialogService _dialogService;
         private readonly AuthCompositionRoot _authCompositionRoot;
 
+        private readonly IHangarSettingsService _hangarSettingsService;
+        private readonly IHangarStartTimeProvider _hangarStartTimeProvider;
+        private readonly IHangarOverlayService _hangarOverlayService;
+        private readonly IHangarHotkeyService _hangarHotkeyService;
+        private readonly IHangarTimerService _hangarTimerService;
+
         public AppCompositionRoot()
         {
             _ignoreRulesProvider = new IgnoreRulesProvider();
@@ -45,6 +52,16 @@ namespace SCLOCVerse.Composition
             var httpClient = new HttpClient();
             var gitHubClient = new GitHubReleaseClient(httpClient, UpdateConstants.UserAgent);
             var updateCacheService = new UpdateCacheService();
+
+            _hangarSettingsService = new HangarSettingsService();
+            _hangarStartTimeProvider = new HangarStartTimeProvider(httpClient, _hangarSettingsService);
+            _hangarOverlayService = new HangarOverlayService(_hangarSettingsService);
+            _hangarHotkeyService = new HangarHotkeyService();
+            _hangarTimerService = new HangarTimerService(
+                _hangarStartTimeProvider,
+                _hangarOverlayService,
+                _hangarSettingsService,
+                _hangarHotkeyService);
 
             _applicationUpdateService = new ApplicationUpdateService(
                 "Vova-Bob",
@@ -76,9 +93,15 @@ namespace SCLOCVerse.Composition
                 backgroundMonitor.Dispose();
 
             _authCompositionRoot?.Dispose();
+
+            if (_hangarTimerService is IDisposable hangarDisposable)
+                hangarDisposable.Dispose();
         }
 
         public AuthCompositionRoot AuthCompositionRoot => _authCompositionRoot;
+
+        public IHangarTimerService HangarTimerService => _hangarTimerService;
+        public IHangarHotkeyService HangarHotkeyService => _hangarHotkeyService;
 
         public MainWindow CreateMainWindow()
         {
@@ -107,7 +130,9 @@ namespace SCLOCVerse.Composition
                 _gitHubReleaseClient,
                 _dialogService,
                 _authCompositionRoot.AuthService,
-                _authCompositionRoot.AuthStatusProvider);
+                _authCompositionRoot.AuthStatusProvider,
+                _hangarTimerService,
+                _hangarHotkeyService);
         }
 
         private static string GetSupabaseUrl()
