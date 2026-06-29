@@ -3,6 +3,7 @@ using System;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Media.Effects;
 using System.Windows.Threading;
 
 namespace SCLOCVerse.Controls
@@ -92,10 +93,11 @@ namespace SCLOCVerse.Controls
 
             int activeCount = progress switch
             {
-                < 0.25 => 1,
-                < 0.50 => 2,
-                < 0.75 => 3,
-                _ => 4
+                < 0.20 => 1,
+                < 0.40 => 2,
+                < 0.60 => 3,
+                < 0.80 => 4,
+                _ => 5
             };
 
             SetLedState(activeCount);
@@ -103,13 +105,36 @@ namespace SCLOCVerse.Controls
 
         private void SetLedState(int activeCount)
         {
-            var activeBrush = new SolidColorBrush(Color.FromRgb(109, 185, 248)); // #6DB9F8
-            var inactiveBrush = new SolidColorBrush(Color.FromRgb(42, 74, 94));    // #2A4A5E
+            var activeBrush = new SolidColorBrush(Color.FromRgb(80, 200, 80));   // зелений
+            var inactiveBrush = new SolidColorBrush(Color.FromRgb(30, 30, 30));  // темно-сірий
+            var glow = new SolidColorBrush(Color.FromArgb(150, 80, 200, 80));
 
-            Led1.Fill = activeCount >= 1 ? activeBrush : inactiveBrush;
-            Led2.Fill = activeCount >= 2 ? activeBrush : inactiveBrush;
-            Led3.Fill = activeCount >= 3 ? activeBrush : inactiveBrush;
-            Led4.Fill = activeCount >= 4 ? activeBrush : inactiveBrush;
+            SetLedFill(Led1, activeCount >= 1, activeBrush, inactiveBrush, glow);
+            SetLedFill(Led2, activeCount >= 2, activeBrush, inactiveBrush, glow);
+            SetLedFill(Led3, activeCount >= 3, activeBrush, inactiveBrush, glow);
+            SetLedFill(Led4, activeCount >= 4, activeBrush, inactiveBrush, glow);
+            SetLedFill(Led5, activeCount >= 5, activeBrush, inactiveBrush, glow);
+        }
+
+        private static void SetLedFill(Ellipse led, bool active, Brush activeBrush, Brush inactiveBrush, Brush glowBrush)
+        {
+            led.Fill = active ? activeBrush : inactiveBrush;
+            led.Stroke = active ? glowBrush : new SolidColorBrush(Color.FromRgb(58, 90, 112));
+
+            if (active)
+            {
+                led.Effect = new DropShadowEffect
+                {
+                    Color = ((SolidColorBrush)glowBrush).Color,
+                    BlurRadius = 8,
+                    ShadowDepth = 0,
+                    Opacity = 0.7
+                };
+            }
+            else
+            {
+                led.Effect = null;
+            }
         }
 
         private void OpenOverlayButton_Click(object sender, RoutedEventArgs e)
