@@ -1,4 +1,4 @@
-using SCLOCVerse.Services.InputSystem;
+﻿using SCLOCVerse.Services.InputSystem;
 using System;
 
 namespace SCLOCVerse.Composition
@@ -10,10 +10,12 @@ namespace SCLOCVerse.Composition
     {
         /// <summary>
         /// Створює бекенд гарячих клавіш відповідно до конфігурації.
+        /// Environment variable має пріоритет над налаштуваннями застосунку.
         /// </summary>
         private static IHotkeyBackend CreateHotkeyBackend()
         {
             var backendName = Environment.GetEnvironmentVariable("SCLOCVERSE_HOTKEY_BACKEND")
+                ?? Settings.Default.InputSystemBackend
                 ?? "RawInput";
 
             var diagnosticsEnabled = IsHotkeyDiagnosticsEnabled();
@@ -28,15 +30,15 @@ namespace SCLOCVerse.Composition
 
         /// <summary>
         /// Визначає, чи увімкнено діагностичне журналювання гарячих клавіш.
+        /// Environment variable має пріоритет над налаштуваннями застосунку.
         /// </summary>
         private static bool IsHotkeyDiagnosticsEnabled()
         {
-            var value = Environment.GetEnvironmentVariable("SCLOCVERSE_HOTKEY_DIAGNOSTICS");
+            var envValue = Environment.GetEnvironmentVariable("SCLOCVERSE_HOTKEY_DIAGNOSTICS");
+            if (!string.IsNullOrWhiteSpace(envValue))
+                return bool.TryParse(envValue, out var result) && result;
 
-            if (string.IsNullOrWhiteSpace(value))
-                return false;
-
-            return bool.TryParse(value, out var result) && result;
+            return Settings.Default.InputSystemDiagnostics;
         }
     }
 }

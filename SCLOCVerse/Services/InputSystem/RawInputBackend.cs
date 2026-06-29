@@ -2,7 +2,6 @@ using SCLOCVerse.Services.InputSystem.Diagnostics;
 using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
-using System.Windows.Input;
 
 namespace SCLOCVerse.Services.InputSystem
 {
@@ -168,10 +167,7 @@ namespace SCLOCVerse.Services.InputSystem
 
             int firstResult = GetRawInputData(hRawInput, RawInputCommand.Input, IntPtr.Zero, ref size, headerSize);
             if (firstResult != 0 && firstResult != -1)
-            {
-                LogDiagnostics("ProcessRawInput", $"GetRawInputData query failed result={firstResult}");
                 return null;
-            }
 
             if (size == 0)
                 return null;
@@ -181,33 +177,28 @@ namespace SCLOCVerse.Services.InputSystem
             {
                 int readResult = GetRawInputData(hRawInput, RawInputCommand.Input, buffer, ref size, headerSize);
                 if (readResult != size)
-                {
-                    LogDiagnostics("ProcessRawInput", $"GetRawInputData read mismatch read={readResult} expected={size}");
                     return null;
-                }
 
                 var raw = Marshal.PtrToStructure<RawInput>(buffer);
                 var keyboard = raw.Keyboard;
                 var key = (HotkeyKey)keyboard.VKey;
 
+                // Ігноруємо клавіші, які не входять до набору гарячих клавіш SCLOC-Verse.
+                // Це запобігає обробці та журналюванню звичайного введення (паролі, повідомлення тощо).
+                if (!IsKnownHotkeyKey(key))
+                {
+                    LogDiagnostics("IgnoredKey", $"VKey={keyboard.VKey}");
+                    return null;
+                }
+
                 // Flags == 0 або 2 — keydown; 1 або 3 — keyup.
                 bool isKeyDown = (keyboard.Flags & 1) == 0;
                 bool isKeyUp = (keyboard.Flags & 1) != 0;
-
-                LogDiagnostics(
-                    "RawKeyboard",
-                    $"VKey={keyboard.VKey} MakeCode={keyboard.MakeCode} Flags={keyboard.Flags} Message={keyboard.Message} Key={key} Down={isKeyDown}");
 
                 lock (_sync)
                 {
                     if (_disposed)
                         return null;
-
-                    if (IsModifierKey(key))
-                    {
-                        UpdateModifierState(key, isKeyDown);
-                        return null;
-                    }
 
                     if (isKeyUp)
                     {
@@ -217,16 +208,12 @@ namespace SCLOCVerse.Services.InputSystem
                         var upGesture = new HotkeyGesture(upModifiers, key);
                         KeyUp?.Invoke(this, upGesture);
 
-                        LogDiagnostics("KeyUp", $"{upGesture}");
                         return null;
                     }
 
                     // Auto-repeat: клавіша вже натиснута і приходить ще одна подія keydown.
                     if (_pressedKeys.Contains(key))
-                    {
-                        LogDiagnostics("AutoRepeat", $"Ignored repeated {key}");
                         return null;
-                    }
 
                     _pressedKeys.Add(key);
                 }
@@ -234,7 +221,7 @@ namespace SCLOCVerse.Services.InputSystem
                 var modifiers = GetCurrentModifiers();
                 var gesture = new HotkeyGesture(modifiers, key);
 
-                LogDiagnostics("GestureDetected", $"{gesture}");
+                LogDiagnostics("GestureDetected", $"VKey={keyboard.VKey} gesture={gesture}");
                 return gesture;
             }
             finally
@@ -243,36 +230,9 @@ namespace SCLOCVerse.Services.InputSystem
             }
         }
 
-        private static bool IsModifierKey(HotkeyKey key)
+        private static bool IsKnownHotkeyKey(HotkeyKey key)
         {
-            var vk = (uint)key;
-            return vk == VirtualKeyShift
-                || vk == VirtualKeyControl
-                || vk == VirtualKeyAlt
-                || vk == VirtualKeyLeftShift
-                || vk == VirtualKeyRightShift
-                || vk == VirtualKeyLeftControl
-                || vk == VirtualKeyRightControl
-                || vk == VirtualKeyLeftAlt
-                || vk == VirtualKeyRightAlt
-                || vk == VirtualKeyLeftWin
-                || vk == VirtualKeyRightWin;
-        }
-
-        private void UpdateModifierState(HotkeyKey key, bool isDown)
-        {
-            var vk = (uint)key;
-            HotkeyModifiers modifier = vk switch
-            {
-                VirtualKeyShift or VirtualKeyLeftShift or VirtualKeyRightShift => HotkeyModifiers.Shift,
-                VirtualKeyControl or VirtualKeyLeftControl or VirtualKeyRightControl => HotkeyModifiers.Control,
-                VirtualKeyAlt or VirtualKeyLeftAlt or VirtualKeyRightAlt => HotkeyModifiers.Alt,
-                VirtualKeyLeftWin or VirtualKeyRightWin => HotkeyModifiers.Win,
-                _ => HotkeyModifiers.None
-            };
-
-            // Модифікатори відстежуємо через GetAsyncKeyState, тому тут не зберігаємо внутрішній стан.
-            LogDiagnostics("Modifier", $"key={key} down={isDown} mapped={modifier}");
+            return Enum.IsDefined(typeof(HotkeyKey), key);
         }
 
         private static HotkeyModifiers GetCurrentModifiers()

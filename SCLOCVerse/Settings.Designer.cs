@@ -130,5 +130,29 @@ namespace SCLOCVerse {
                 this["HangarCycleStartOverride"] = value;
             }
         }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("RawInput")]
+        public string InputSystemBackend {
+            get {
+                return ((string)(this["InputSystemBackend"]));
+            }
+            set {
+                this["InputSystemBackend"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool InputSystemDiagnostics {
+            get {
+                return ((bool)(this["InputSystemDiagnostics"]));
+            }
+            set {
+                this["InputSystemDiagnostics"] = value;
+            }
+        }
     }
 }
