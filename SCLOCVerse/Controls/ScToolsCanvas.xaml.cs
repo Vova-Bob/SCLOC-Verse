@@ -11,18 +11,6 @@ namespace SCLOCVerse.Controls
     {
         private IHangarTimerService? _hangarTimerService;
 
-        /// <summary>
-        /// Модель картки інструменту для легкого розширення списку в майбутньому.
-        /// </summary>
-        public class ToolCard
-        {
-            public string Icon { get; set; } = string.Empty;
-            public string Title { get; set; } = string.Empty;
-            public string Description { get; set; } = string.Empty;
-            public string ButtonText { get; set; } = string.Empty;
-            public Action? LaunchAction { get; set; }
-        }
-
         public ScToolsCanvas()
         {
             InitializeComponent();
@@ -41,27 +29,22 @@ namespace SCLOCVerse.Controls
                 PopulateTools();
         }
 
-        private void ToolButton_Click(object sender, System.Windows.RoutedEventArgs e)
-        {
-            if (sender is Button button && button.DataContext is ToolCard card)
-                card.LaunchAction?.Invoke();
-        }
-
         private void PopulateTools()
         {
-            var tools = new ObservableCollection<ToolCard>
+            var cards = new ObservableCollection<HangarTimerCard>
             {
-                new ToolCard
-                {
-                    Icon = "\uE7C4",
-                    Title = "Hangar Timer",
-                    Description = "Оверлей циклу Executive Hangar із таймером та LED-індикаторами.",
-                    ButtonText = "Запустити",
-                    LaunchAction = () => _hangarTimerService?.ToggleOverlayAsync()
-                }
+                CreateHangarTimerCard()
             };
 
-            ToolsList.ItemsSource = tools;
+            ToolsList.ItemsSource = cards;
+        }
+
+        private HangarTimerCard CreateHangarTimerCard()
+        {
+            var card = new HangarTimerCard();
+            if (_hangarTimerService != null)
+                card.SetHangarTimerService(_hangarTimerService);
+            return card;
         }
     }
 }

@@ -6,6 +6,16 @@ namespace SCLOCVerse.Interfaces
     public interface IHangarTimerService
     {
         /// <summary>
+        /// Чи відкритий overlay зараз.
+        /// </summary>
+        bool IsOverlayOpen { get; }
+
+        /// <summary>
+        /// Авторитетний час старту поточного циклу в мілісекундах UTC, або null, якщо ще не встановлено.
+        /// </summary>
+        long? CycleStartMs { get; }
+
+        /// <summary>
         /// Перемкнути видимість overlay. При першому виклику виконується синхронізація часу.
         /// </summary>
         Task ToggleOverlayAsync(CancellationToken cancellationToken = default);

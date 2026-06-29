@@ -18,6 +18,12 @@ namespace SCLOCVerse.Services.HangarTimer
 
         private long _cycleStartMs = -1;
 
+        /// <inheritdoc/>
+        public bool IsOverlayOpen => _overlayService.IsOpen;
+
+        /// <inheritdoc/>
+        public long? CycleStartMs => _cycleStartMs > 0 ? _cycleStartMs : null;
+
         public HangarTimerService(
             IHangarStartTimeProvider startTimeProvider,
             IHangarOverlayService overlayService,

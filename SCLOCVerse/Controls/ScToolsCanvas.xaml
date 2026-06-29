@@ -2,7 +2,8 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:cv="clr-namespace:SCLOCVerse.Helpers.Converters"
-        Background="Transparent">
+    xmlns:controls="clr-namespace:SCLOCVerse.Controls"
+         Background="Transparent">
 
     <Canvas.Resources>
         <BooleanToVisibilityConverter x:Key="BoolToVisibility"/>
@@ -145,10 +146,10 @@
 
     <!-- Контейнер для списку інструментів -->
     <ItemsControl x:Name="ToolsList"
-                   Canvas.Left="70"
-                   Canvas.Top="120"
-                   Width="820"
-                   Height="370">
+                    Canvas.Left="70"
+                    Canvas.Top="120"
+                    Width="820"
+                    Height="370">
         <ItemsControl.ItemsPanel>
             <ItemsPanelTemplate>
                 <WrapPanel Orientation="Horizontal"/>
@@ -157,57 +158,7 @@
 
         <ItemsControl.ItemTemplate>
             <DataTemplate>
-                <Border Style="{StaticResource ToolCardStyle}"
-                         Width="240"
-                         Height="160"
-                         Margin="10">
-                    <Grid Margin="15">
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="*"/>
-                            <RowDefinition Height="Auto"/>
-                        </Grid.RowDefinitions>
-
-                        <!-- Іконка -->
-                        <TextBlock Grid.Row="0"
-                                   Text="{Binding Icon}"
-                                   FontFamily="Segoe MDL2 Assets"
-                                   FontSize="40"
-                                   Foreground="#6DB9F8"
-                                   HorizontalAlignment="Center"
-                                   Margin="0,0,0,8">
-                            <TextBlock.Effect>
-                                <DropShadowEffect BlurRadius="6" ShadowDepth="0" Opacity="0.6"/>
-                            </TextBlock.Effect>
-                        </TextBlock>
-
-                        <!-- Текст -->
-                        <StackPanel Grid.Row="1"
-                                     HorizontalAlignment="Center"
-                                     VerticalAlignment="Center">
-                            <TextBlock Text="{Binding Title}"
-                                       Foreground="White"
-                                       FontWeight="Bold"
-                                       FontSize="16"
-                                       TextAlignment="Center"
-                                       Margin="0,0,0,6"/>
-                            <TextBlock Text="{Binding Description}"
-                                       Foreground="#CCCCCC"
-                                       FontSize="13"
-                                       TextWrapping="Wrap"
-                                       TextAlignment="Center"/>
-                        </StackPanel>
-
-                        <!-- Кнопка -->
-                        <Button Grid.Row="2"
-                                Style="{Binding LaunchAction, Converter={StaticResource ActionToButtonStyleConverter}, ConverterParameter={x:Reference Name=ToolsList}}"
-                                Content="{Binding ButtonText}"
-                                HorizontalAlignment="Center"
-                                VerticalAlignment="Bottom"
-                                IsEnabled="{Binding LaunchAction, Converter={StaticResource NullToBoolean}}"
-                                Click="ToolButton_Click"/>
-                    </Grid>
-                </Border>
+                <controls:HangarTimerCard/>
             </DataTemplate>
         </ItemsControl.ItemTemplate>
     </ItemsControl>
