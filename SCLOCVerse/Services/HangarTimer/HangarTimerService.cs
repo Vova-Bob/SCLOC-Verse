@@ -41,12 +41,19 @@ namespace SCLOCVerse.Services.HangarTimer
                 return;
             }
 
-            var start = await ResolveCycleStartAsync(forceRemote: false, cancellationToken).ConfigureAwait(false);
-            if (!start.HasValue)
-                return;
+            // Показуємо оверлей одразу з локальним часом, щоб уникнути затримки на першому запуску.
+            if (_cycleStartMs <= 0)
+                _cycleStartMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
 
-            _cycleStartMs = start.Value;
             _overlayService.Show(_cycleStartMs);
+
+            // Синхронізуємо час у фоні та оновлюємо оверлей, якщо отримано нове значення.
+            var start = await ResolveCycleStartAsync(forceRemote: false, cancellationToken).ConfigureAwait(false);
+            if (start.HasValue && start.Value != _cycleStartMs)
+            {
+                _cycleStartMs = start.Value;
+                _overlayService.UpdateCycleStart(_cycleStartMs);
+            }
         }
 
         public async Task ForceSyncAsync(CancellationToken cancellationToken = default)
