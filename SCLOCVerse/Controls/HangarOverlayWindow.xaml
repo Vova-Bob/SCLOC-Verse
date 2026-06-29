@@ -9,7 +9,7 @@
         Topmost="True"
         ResizeMode="NoResize"
         ShowInTaskbar="False"
-        Background="Transparent"
+        Background="#FF121212"
         Width="820"
         Height="280"
         UseLayoutRounding="True"
