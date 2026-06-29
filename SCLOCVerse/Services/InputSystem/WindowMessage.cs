@@ -1,9 +1,18 @@
-using System;
-
 namespace SCLOCVerse.Services.InputSystem
 {
     /// <summary>
-    /// Абстракція над повідомленням вікна. Ізолює бекенд від Win32 API.
+    /// Повідомлення Windows, які обробляє підсистема вводу.
     /// </summary>
-    public readonly record struct WindowMessage(int Message, IntPtr WParam, IntPtr LParam);
+    public static class WindowMessage
+    {
+        /// <summary>
+        /// WM_HOTKEY.
+        /// </summary>
+        public const int WmHotkey = 0x0312;
+
+        /// <summary>
+        /// WM_INPUT.
+        /// </summary>
+        public const int WmInput = 0x00FF;
+    }
 }

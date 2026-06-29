@@ -1,3 +1,4 @@
+using SCLOCVerse.Services.InputSystem.Diagnostics;
 using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
@@ -38,6 +39,10 @@ namespace SCLOCVerse.Services.InputSystem
 
             _messageSource = messageSource ?? throw new ArgumentNullException(nameof(messageSource));
             _messageSource.AddHook(WndProc);
+
+            InputDiagnostics.Write(
+                "RegisterHotkeyBackend",
+                $"Initialize HWND=0x{_messageSource.Handle:X}");
         }
 
         /// <inheritdoc/>
@@ -53,7 +58,12 @@ namespace SCLOCVerse.Services.InputSystem
                 if (_messageSource != null)
                 {
                     foreach (var id in _idToGesture.Keys)
-                        UnregisterHotKey(_messageSource.Handle, id);
+                    {
+                        bool result = UnregisterHotKey(_messageSource.Handle, id);
+                        InputDiagnostics.Write(
+                            "RegisterHotkeyBackend",
+                            $"Dispose UnregisterHotKey id={id} result={result}");
+                    }
 
                     _messageSource.RemoveHook(WndProc);
                     _messageSource = null;
@@ -84,12 +94,25 @@ namespace SCLOCVerse.Services.InputSystem
                 uint modifiers = ToNativeModifiers(gesture.Modifiers);
                 uint vk = (uint)gesture.Key;
 
+                InputDiagnostics.Write(
+                    "RegisterHotkeyBackend",
+                    $"TryRegister gesture={gesture} id={id} modifiers={modifiers} vk={vk}");
+
                 if (RegisterHotKey(_messageSource.Handle, id, modifiers, vk))
                 {
                     _idToGesture[id] = gesture;
                     _gestureToId[gesture] = id;
+
+                    InputDiagnostics.Write(
+                        "RegisterHotkeyBackend",
+                        $"TryRegister SUCCESS gesture={gesture} id={id}");
+
                     return true;
                 }
+
+                InputDiagnostics.Write(
+                    "RegisterHotkeyBackend",
+                    $"TryRegister FAILED gesture={gesture} id={id} Win32Error={InputDiagnostics.GetWin32Error()}");
 
                 return false;
             }
@@ -105,7 +128,11 @@ namespace SCLOCVerse.Services.InputSystem
                 if (_messageSource == null || !_gestureToId.TryGetValue(gesture, out int id))
                     return;
 
-                UnregisterHotKey(_messageSource.Handle, id);
+                bool result = UnregisterHotKey(_messageSource.Handle, id);
+                InputDiagnostics.Write(
+                    "RegisterHotkeyBackend",
+                    $"Unregister gesture={gesture} id={id} result={result} Win32Error={InputDiagnostics.GetWin32Error()}");
+
                 _idToGesture.Remove(id);
                 _gestureToId.Remove(gesture);
             }
@@ -134,12 +161,26 @@ namespace SCLOCVerse.Services.InputSystem
 
             int id = wParam.ToInt32();
 
+            InputDiagnostics.Write(
+                "RegisterHotkeyBackend",
+                $"WndProc WM_HOTKEY id={id} wParam=0x{wParam:X} lParam=0x{lParam:X}");
+
             lock (_sync)
             {
                 if (_idToGesture.TryGetValue(id, out var gesture))
                 {
+                    InputDiagnostics.Write(
+                        "RegisterHotkeyBackend",
+                        $"WM_HOTKEY MATCH gesture={gesture}");
+
                     GestureDetected?.Invoke(this, gesture);
                     handled = true;
+                }
+                else
+                {
+                    InputDiagnostics.Write(
+                        "RegisterHotkeyBackend",
+                        $"WM_HOTKEY UNKNOWN id={id}");
                 }
             }
 
@@ -156,10 +197,10 @@ namespace SCLOCVerse.Services.InputSystem
             return result;
         }
 
-        [DllImport("user32.dll")]
+        [DllImport("user32.dll", SetLastError = true)]
         private static extern bool RegisterHotKey(IntPtr hWnd, int id, uint fsModifiers, uint vk);
 
-        [DllImport("user32.dll")]
+        [DllImport("user32.dll", SetLastError = true)]
         private static extern bool UnregisterHotKey(IntPtr hWnd, int id);
     }
 }
