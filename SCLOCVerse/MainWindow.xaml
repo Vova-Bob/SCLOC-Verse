@@ -369,7 +369,7 @@
         </Image>
 
         <!-- Ліва декоративна панель + відділення діагоналі -->
-        <Grid VerticalAlignment="Top" HorizontalAlignment="Left" Width="152" Height="470" Margin="0,40,0,0" IsHitTestVisible="False">
+        <Grid VerticalAlignment="Top" HorizontalAlignment="Left" Width="152" Height="510" Margin="0,40,0,0" IsHitTestVisible="False">
             <!-- База -->
             <Path Fill="#0A1D29" StrokeThickness="0" Stretch="Fill" Margin="0,0,35,-25">
                 <Path.Data>
