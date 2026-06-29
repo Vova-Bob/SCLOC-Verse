@@ -79,7 +79,7 @@
     </Canvas.Resources>
 
     <!-- Заголовок -->
-    <Grid Width="{Binding ActualWidth, RelativeSource={RelativeSource AncestorType=Canvas}}">
+    <Grid Width="{Binding ActualWidth, RelativeSource={RelativeSource AncestorType=Canvas}}"
           HorizontalAlignment="Center">
         <TextBlock Text="Інструменти SC"
                    FontFamily="Arial"
