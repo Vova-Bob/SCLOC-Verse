@@ -78,6 +78,9 @@ namespace SCLOCVerse.Models.HangarTimer
     {
         private HangarLightState _state;
         private string _label = string.Empty;
+        private double _left;
+        private double _top;
+        private double _labelLeft;
 
         public HangarLightState State
         {
@@ -89,6 +92,24 @@ namespace SCLOCVerse.Models.HangarTimer
         {
             get => _label;
             set => Set(ref _label, value);
+        }
+
+        public double Left
+        {
+            get => _left;
+            set => Set(ref _left, value);
+        }
+
+        public double Top
+        {
+            get => _top;
+            set => Set(ref _top, value);
+        }
+
+        public double LabelLeft
+        {
+            get => _labelLeft;
+            set => Set(ref _labelLeft, value);
         }
 
         public event PropertyChangedEventHandler? PropertyChanged;

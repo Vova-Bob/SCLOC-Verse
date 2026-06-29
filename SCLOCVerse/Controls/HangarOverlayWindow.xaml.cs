@@ -1,20 +1,38 @@
-using SCLOCVerse.Helpers.Converters;
 using SCLOCVerse.Interfaces;
 using SCLOCVerse.Models.HangarTimer;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Interop;
-using System.Windows.Media;
 
 namespace SCLOCVerse.Controls
 {
     /// <summary>
-    /// WPF overlay вікно Hangar Timer. Code-behind містить лише WinAPI, drag та життєвий цикл вікна.
-    /// Вся бізнес-логіка — у HangarOverlayService.
+    /// WPF overlay вікно Hangar Timer. Code-behind містить лише WinAPI, drag, життєвий цикл вікна
+    /// та координати/розміри, що відповідають оригінальному WinForms Overlay.
     /// </summary>
     public partial class HangarOverlayWindow : Window
     {
+        // ---- Base canvas size (1:1 з оригінальним WinForms) ----
+        private const double BaseWidth = 820;
+        private const double BaseHeight = 280;
+        private const double CardMargin = 12;
+        private const double CardCornerRadius = 14;
+
+        // ---- LED ----
+        private const int LedCount = 5;
+        private const double LedDiameter = 28;
+        private const double LedSpacing = 26;
+        private const double LedTop = 150;
+        private const double LedLabelTop = 184;
+
+        // ---- Text positions ----
+        private const double StatusTop = 28;
+        private const double TimerTop = 82;
+        private const double HotkeysLeft = 16;
+        private const double HotkeysTop = 256;
+
+        // ---- Win32 ----
         private const int GwlExStyle = -20;
         private const int WsExLayered = 0x80000;
         private const int WsExTransparent = 0x20;
@@ -69,12 +87,29 @@ namespace SCLOCVerse.Controls
             MouseLeftButtonUp += OnMouseLeftButtonUp;
 
             _state.PropertyChanged += OnStatePropertyChanged;
+
+            InitializeLedPositions();
+        }
+
+        private void InitializeLedPositions()
+        {
+            double rowWidth = LedCount * LedDiameter + (LedCount - 1) * LedSpacing;
+            double startX = (BaseWidth - rowWidth) / 2;
+
+            for (int i = 0; i < _state.Lights.Length; i++)
+            {
+                var light = _state.Lights[i];
+                double left = startX + i * (LedDiameter + LedSpacing);
+                light.Left = left;
+                light.Top = LedTop;
+                light.LabelLeft = left - 12;
+            }
         }
 
         private void OnSourceInitialized(object? sender, EventArgs e)
         {
             var helper = new WindowInteropHelper(this);
-            var handle = helper.EnsureHandle();
+            helper.EnsureHandle();
             ApplyClickThrough(_clickThrough);
         }
 
@@ -102,6 +137,9 @@ namespace SCLOCVerse.Controls
         {
             if (e.PropertyName == nameof(HangarTimerState.Opacity))
                 Opacity = _state.Opacity;
+
+            if (e.PropertyName == nameof(HangarTimerState.Scale))
+                ApplyWindowScale();
         }
 
         // ===== Drag =====
@@ -188,6 +226,7 @@ namespace SCLOCVerse.Controls
 
             Left = x;
             Top = y;
+            ApplyWindowScale();
             ClampPosition();
         }
 
@@ -198,14 +237,17 @@ namespace SCLOCVerse.Controls
             _settingsService.SetOverlayOpacity(_state.Opacity);
         }
 
+        private void ApplyWindowScale()
+        {
+            Width = BaseWidth * _state.Scale;
+            Height = BaseHeight * _state.Scale;
+        }
+
         private void ClampPosition()
         {
             var screen = SystemParameters.WorkArea;
-            var scaledWidth = Width * _state.Scale;
-            var scaledHeight = Height * _state.Scale;
-
-            Left = Math.Max(screen.Left, Math.Min(screen.Right - scaledWidth, Left));
-            Top = Math.Max(screen.Top, Math.Min(screen.Bottom - scaledHeight, Top));
+            Left = Math.Max(screen.Left, Math.Min(screen.Right - Width, Left));
+            Top = Math.Max(screen.Top, Math.Min(screen.Bottom - Height, Top));
         }
     }
 }

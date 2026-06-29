@@ -10,6 +10,7 @@
         ResizeMode="NoResize"
         ShowInTaskbar="False"
         Background="#FF121212"
+        Opacity="{Binding Opacity}"
         Width="820"
         Height="280"
         UseLayoutRounding="True"
@@ -22,90 +23,91 @@
         <cv:PhaseToTextConverter x:Key="PhaseToText"/>
         <cv:LightStateToBrushConverter x:Key="LightStateToBrush"/>
         <cv:EmptyStringToVisibilityConverter x:Key="EmptyToVisibility"/>
-
-        <Style x:Key="LedEllipse" TargetType="Ellipse">
-            <Setter Property="Width" Value="28"/>
-            <Setter Property="Height" Value="28"/>
-            <Setter Property="Stroke" Value="#5A7A7A7A"/>
-            <Setter Property="StrokeThickness" Value="1"/>
-        </Style>
     </Window.Resources>
 
-    <Border x:Name="RootBorder"
-           CornerRadius="14"
-           Padding="12"
-           Background="{Binding Phase, Converter={StaticResource PhaseToBackground}}"
-           BorderBrush="{Binding Phase, Converter={StaticResource PhaseToBorder}}"
-           BorderThickness="1">
+    <Viewbox Stretch="Fill">
+        <Canvas Width="820" Height="280">
 
-        <Border.RenderTransform>
-            <ScaleTransform ScaleX="{Binding Scale}" ScaleY="{Binding Scale}"/>
-        </Border.RenderTransform>
-
-        <Grid Width="796" Height="256">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="*"/>
-                <RowDefinition Height="Auto"/>
-            </Grid.RowDefinitions>
+            <!-- Декоративна card -->
+            <Border Canvas.Left="12"
+                   Canvas.Top="12"
+                   Width="796"
+                   Height="256"
+                   CornerRadius="14"
+                   Background="{Binding Phase, Converter={StaticResource PhaseToBackground}}"
+                   BorderBrush="{Binding Phase, Converter={StaticResource PhaseToBorder}}"
+                   BorderThickness="1"/>
 
             <!-- Статус -->
-            <TextBlock Grid.Row="0"
+            <TextBlock Canvas.Left="0"
+                       Canvas.Top="28"
+                       Width="820"
+                       Height="36"
                        Text="{Binding StatusMessage}"
                        FontFamily="Segoe UI Semibold"
                        FontSize="22"
                        Foreground="{Binding Phase, Converter={StaticResource PhaseToText}}"
-                       HorizontalAlignment="Center"
-                       Margin="0,16,0,0"/>
+                       TextAlignment="Center"
+                       VerticalAlignment="Top"/>
 
             <!-- Таймер -->
-            <TextBlock Grid.Row="1"
+            <TextBlock Canvas.Left="0"
+                       Canvas.Top="82"
+                       Width="820"
+                       Height="40"
                        Text="{Binding StatusLine}"
                        FontFamily="Consolas"
                        FontSize="28"
                        FontWeight="Bold"
                        Foreground="#B4C8C8C8"
-                       HorizontalAlignment="Center"
-                       Margin="0,14,0,0"/>
+                       TextAlignment="Center"
+                       VerticalAlignment="Top"/>
 
             <!-- LED індикатори -->
-            <ItemsControl Grid.Row="2"
-                          ItemsSource="{Binding Lights}"
-                          HorizontalAlignment="Center"
-                          VerticalAlignment="Center">
+            <ItemsControl ItemsSource="{Binding Lights}">
                 <ItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
-                        <StackPanel Orientation="Horizontal"/>
+                        <Canvas/>
                     </ItemsPanelTemplate>
                 </ItemsControl.ItemsPanel>
 
                 <ItemsControl.ItemTemplate>
                     <DataTemplate DataType="{x:Type hm:HangarLightViewModel}">
-                        <StackPanel Orientation="Vertical"
-                                     Margin="13,0">
-                            <Ellipse Style="{StaticResource LedEllipse}"
-                                     Fill="{Binding State, Converter={StaticResource LightStateToBrush}}"/>
-                            <TextBlock Text="{Binding Label}"
-                                       FontFamily="Consolas"
-                                       FontSize="12"
-                                       Foreground="#C8DCDCDC"
-                                       HorizontalAlignment="Center"
-                                       Visibility="{Binding Label, Converter={StaticResource EmptyToVisibility}}"/>
-                        </StackPanel>
+                        <Canvas>
+                            <Ellipse Canvas.Left="{Binding Left}"
+                                    Canvas.Top="{Binding Top}"
+                                    Width="28"
+                                    Height="28"
+                                    Fill="{Binding State, Converter={StaticResource LightStateToBrush}}"
+                                    Stroke="#5A7A7A7A"
+                                    StrokeThickness="1"/>
+                            <TextBlock Canvas.Left="{Binding LabelLeft}"
+                                      Canvas.Top="184"
+                                      Width="52"
+                                      Height="20"
+                                      Text="{Binding Label}"
+                                      FontFamily="Consolas"
+                                      FontSize="12"
+                                      Foreground="#C8DCDCDC"
+                                      TextAlignment="Center"
+                                      VerticalAlignment="Top"
+                                      Visibility="{Binding Label, Converter={StaticResource EmptyToVisibility}}"/>
+                        </Canvas>
                     </DataTemplate>
                 </ItemsControl.ItemTemplate>
             </ItemsControl>
 
             <!-- Підказка гарячих клавіш -->
-            <TextBlock Grid.Row="3"
+            <TextBlock Canvas.Left="16"
+                       Canvas.Top="256"
                        Text="F6: показ/приховати • Ctrl+Shift+F7: старт зараз • Shift+F7: ввести час • F9: синхр. з URL • Shift+F9: стерти оверрайд+синхр. • Shift+F8: кліки крізь • Ctrl+F8: тимчас. перетягування • Ctrl+–/=/0: масштаб • Ctrl+Alt+–/=/0: прозорість • Esc: закрити"
                        FontFamily="Segoe UI"
                        FontSize="9"
                        Foreground="#78C8C8C8"
                        TextWrapping="Wrap"
-                       Margin="4,0,4,4"/>
-        </Grid>
-    </Border>
+                       Width="788"/>
+
+        </Canvas>
+    </Viewbox>
 
 </Window>
