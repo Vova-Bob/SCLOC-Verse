@@ -625,9 +625,9 @@ namespace SCLOCVerse
 
         private void ScTools_Click(object sender, RoutedEventArgs e)
         {
+            _canvasManager.SwitchCanvas(CanvasScTools);
             _buttonStateManager.SetActive("sctools");
             isSettingButtonClicked = false;
-            // TODO: перейти на CanvasScTools після створення сторінки.
         }
 
         private void LocalisationSettings_Click(object sender, RoutedEventArgs e)

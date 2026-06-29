@@ -1,0 +1,171 @@
+<Canvas x:Class="SCLOCVerse.Controls.ScToolsCanvas"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Background="Transparent">
+
+    <Canvas.Resources>
+        <!-- Базові кольори карток -->
+        <SolidColorBrush x:Key="CardFill" Color="#1F3C4C"/>
+        <SolidColorBrush x:Key="CardFillHover" Color="#385565"/>
+        <SolidColorBrush x:Key="CardBorder" Color="#4A90E2"/>
+        <SolidColorBrush x:Key="CardShadow" Color="#000000"/>
+
+        <!-- Стиль картки інструменту -->
+        <Style x:Key="ToolCardStyle" TargetType="Border">
+            <Setter Property="CornerRadius" Value="12"/>
+            <Setter Property="BorderBrush" Value="{StaticResource CardBorder}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Background" Value="{StaticResource CardFill}"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="RenderTransformOrigin" Value="0.5,0.5"/>
+            <Setter Property="RenderTransform">
+                <Setter.Value>
+                    <ScaleTransform ScaleX="1" ScaleY="1"/>
+                </Setter.Value>
+            </Setter>
+            <Setter Property="Effect">
+                <Setter.Value>
+                    <DropShadowEffect Color="#000000" BlurRadius="8" ShadowDepth="4" Opacity="0.4"/>
+                </Setter.Value>
+            </Setter>
+
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="{StaticResource CardFillHover}"/>
+                    <Setter Property="BorderThickness" Value="2"/>
+                    <Setter Property="Effect">
+                        <Setter.Value>
+                            <DropShadowEffect Color="#000000" BlurRadius="8" ShadowDepth="4" Opacity="0.4"/>
+                        </Setter.Value>
+                    </Setter>
+                </Trigger>
+                <Trigger Property="IsMouseCaptured" Value="True">
+                    <Setter Property="RenderTransform">
+                        <Setter.Value>
+                            <ScaleTransform ScaleX="0.97" ScaleY="0.97"/>
+                        </Setter.Value>
+                    </Setter>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Стиль неактивної кнопки картки -->
+        <Style x:Key="ToolPlaceholderButton" TargetType="Button">
+            <Setter Property="Width" Value="120"/>
+            <Setter Property="Height" Value="32"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Background" Value="#30546E"/>
+            <Setter Property="BorderBrush" Value="#8DD0FF"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Cursor" Value="Arrow"/>
+            <Setter Property="IsEnabled" Value="False"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="6"
+                                Opacity="0.6">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Canvas.Resources>
+
+    <!-- Заголовок -->
+    <Grid Width="{Binding ActualWidth, RelativeSource={RelativeSource AncestorType=Canvas}}">
+          HorizontalAlignment="Center">
+        <TextBlock Text="Інструменти SC"
+                   FontFamily="Arial"
+                   Foreground="White"
+                   FontSize="22"
+                   FontWeight="Bold"
+                   HorizontalAlignment="Center"
+                   Margin="0,25,0,0"/>
+    </Grid>
+
+    <!-- Опис -->
+    <TextBlock Canvas.Left="70"
+               Canvas.Top="70"
+               Foreground="White"
+               FontSize="15"
+               Opacity="0.85"
+               Width="820"
+               TextWrapping="Wrap">
+        Тут зібрані корисні інструменти спільноти SCLOC-Verse, які допомагають зробити гру у Star Citizen зручнішою.
+    </TextBlock>
+
+    <!-- Контейнер для списку інструментів -->
+    <ItemsControl x:Name="ToolsList"
+                   Canvas.Left="70"
+                   Canvas.Top="120"
+                   Width="820"
+                   Height="370">
+        <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate>
+                <WrapPanel Orientation="Horizontal"/>
+            </ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+
+        <ItemsControl.ItemTemplate>
+            <DataTemplate>
+                <Border Style="{StaticResource ToolCardStyle}"
+                         Width="240"
+                         Height="160"
+                         Margin="10">
+                    <Grid Margin="15">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+
+                        <!-- Іконка -->
+                        <TextBlock Grid.Row="0"
+                                   Text="{Binding Icon}"
+                                   FontFamily="Segoe MDL2 Assets"
+                                   FontSize="40"
+                                   Foreground="#6DB9F8"
+                                   HorizontalAlignment="Center"
+                                   Margin="0,0,0,8">
+                            <TextBlock.Effect>
+                                <DropShadowEffect BlurRadius="6" ShadowDepth="0" Opacity="0.6"/>
+                            </TextBlock.Effect>
+                        </TextBlock>
+
+                        <!-- Текст -->
+                        <StackPanel Grid.Row="1"
+                                     HorizontalAlignment="Center"
+                                     VerticalAlignment="Center">
+                            <TextBlock Text="{Binding Title}"
+                                       Foreground="White"
+                                       FontWeight="Bold"
+                                       FontSize="16"
+                                       TextAlignment="Center"
+                                       Margin="0,0,0,6"/>
+                            <TextBlock Text="{Binding Description}"
+                                       Foreground="#CCCCCC"
+                                       FontSize="13"
+                                       TextWrapping="Wrap"
+                                       TextAlignment="Center"/>
+                        </StackPanel>
+
+                        <!-- Кнопка -->
+                        <Button Grid.Row="2"
+                                Style="{StaticResource ToolPlaceholderButton}"
+                                Content="{Binding ButtonText}"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Bottom"/>
+                    </Grid>
+                </Border>
+            </DataTemplate>
+        </ItemsControl.ItemTemplate>
+    </ItemsControl>
+
+</Canvas>

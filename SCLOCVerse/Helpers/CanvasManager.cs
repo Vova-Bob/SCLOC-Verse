@@ -22,6 +22,7 @@ namespace SCLOCVerse.Helpers
             if (_window.CanvasLocalization.Visibility == Visibility.Visible) return _window.CanvasLocalization;
             if (_window.CanvasAssistant.Visibility == Visibility.Visible) return _window.CanvasAssistant;
             if (_window.CanvasSettings.Visibility == Visibility.Visible) return _window.CanvasSettings;
+            if (_window.CanvasScTools.Visibility == Visibility.Visible) return _window.CanvasScTools;
             return null;
         }
         public void SwitchCanvas(Canvas showCanvas, double durationSeconds = 0.3)
@@ -60,6 +61,7 @@ namespace SCLOCVerse.Helpers
             _window.CanvasLocalization.Visibility = Visibility.Collapsed;
             _window.CanvasAssistant.Visibility = Visibility.Collapsed;
             _window.CanvasSettings.Visibility = Visibility.Collapsed;
+            _window.CanvasScTools.Visibility = Visibility.Collapsed;
 
             switch (which.ToLower())
             {
@@ -78,6 +80,10 @@ namespace SCLOCVerse.Helpers
                 case "settings":
                     _window.CanvasSettings.Visibility = Visibility.Visible;
                     _currentCanvas = _window.CanvasSettings;
+                    break;
+                case "sctools":
+                    _window.CanvasScTools.Visibility = Visibility.Visible;
+                    _currentCanvas = _window.CanvasScTools;
                     break;
                 default:
                     _window.CanvasHome.Visibility = Visibility.Visible;

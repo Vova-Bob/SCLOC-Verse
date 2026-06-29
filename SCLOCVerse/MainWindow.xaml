@@ -436,6 +436,7 @@
                 <controls:LocalizationCanvas x:Name="CanvasLocalization" Visibility="Collapsed"/>
                 <controls:AssistantCanvas x:Name="CanvasAssistant" Visibility="Collapsed"/>
                 <controls:SettingsCanvas x:Name="CanvasSettings" Visibility="Collapsed"/>
+                <controls:ScToolsCanvas x:Name="CanvasScTools" Visibility="Collapsed"/>
             </Grid>
 
             <!-- Auth Gate host -->
