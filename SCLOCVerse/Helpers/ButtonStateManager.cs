@@ -8,15 +8,17 @@ namespace SCLOCVerse.Helpers
         private readonly Button btnLocalization;
         private readonly Button btnAssistant;
         private readonly Button btnSettings;
+        private readonly Button btnScTools;
         private readonly Button btnSelectFolder;
 
         public ButtonStateManager(
-            Button loc, Button asst, Button set,
+            Button loc, Button asst, Button set, Button scTools,
             Button selectFolder)
         {
             btnLocalization = loc;
             btnAssistant = asst;
             btnSettings = set;
+            btnScTools = scTools;
             btnSelectFolder = selectFolder;
         }
 
@@ -26,12 +28,14 @@ namespace SCLOCVerse.Helpers
             btnLocalization.Tag = null;
             btnAssistant.Tag = null;
             btnSettings.Tag = null;
+            btnScTools.Tag = null;
 
             switch (active)
             {
                 case "localization": btnLocalization.Tag = "Active"; break;
                 case "assistant": btnAssistant.Tag = "Active"; break;
                 case "settings": btnSettings.Tag = "Active"; break;
+                case "sctools": btnScTools.Tag = "Active"; break;
             }
         }
 

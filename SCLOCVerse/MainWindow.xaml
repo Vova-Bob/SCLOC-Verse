@@ -369,7 +369,7 @@
         </Image>
 
         <!-- Ліва декоративна панель + відділення діагоналі -->
-        <Grid VerticalAlignment="Top" HorizontalAlignment="Left" Width="152" Height="385" Margin="0,40,0,0" IsHitTestVisible="False">
+        <Grid VerticalAlignment="Top" HorizontalAlignment="Left" Width="152" Height="470" Margin="0,40,0,0" IsHitTestVisible="False">
             <!-- База -->
             <Path Fill="#0A1D29" StrokeThickness="0" Stretch="Fill" Margin="0,0,35,-25">
                 <Path.Data>
@@ -465,6 +465,13 @@
                         <StaticResource ResourceKey="IconShadow"/>
                     </TextBlock.Effect>
                 </TextBlock>
+            </Button>
+
+            <Button x:Name="BtnScTools" Style="{StaticResource MenuTileButton}" Margin="0,10,0,0" Click="ScTools_Click" Width="90">
+                <StackPanel Orientation="Vertical" HorizontalAlignment="Center">
+                    <TextBlock Text="SC" FontSize="20" FontWeight="Black" TextAlignment="Center"/>
+                    <TextBlock Text="ІНСТРУМЕНТИ" FontSize="10" Margin="0,2,0,0" Opacity="0.9" TextAlignment="Center"/>
+                </StackPanel>
             </Button>
         </StackPanel>
 

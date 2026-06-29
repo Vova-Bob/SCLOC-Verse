@@ -111,7 +111,7 @@ namespace SCLOCVerse
             _cacheCleanupController = new CleanupController(inspector, cleaner, _toastService, Dispatcher);
 
             _canvasManager = new CanvasManager(this);
-            _buttonStateManager = new ButtonStateManager(BtnLocalization, BtnAssistant, BtnSettings, BtnSelectFolder);
+            _buttonStateManager = new ButtonStateManager(BtnLocalization, BtnAssistant, BtnSettings, BtnScTools, BtnSelectFolder);
             _buttonHelper = new ButtonHelper();
             _authStatusPresenter = new AuthStatusPresenter(BtnAccount, _authStatusProvider);
 
@@ -621,6 +621,13 @@ namespace SCLOCVerse
             _canvasManager.SwitchCanvas(CanvasSettings);
             _buttonStateManager.SetActive("settings");
             isSettingButtonClicked = true;
+        }
+
+        private void ScTools_Click(object sender, RoutedEventArgs e)
+        {
+            _buttonStateManager.SetActive("sctools");
+            isSettingButtonClicked = false;
+            // TODO: перейти на CanvasScTools після створення сторінки.
         }
 
         private void LocalisationSettings_Click(object sender, RoutedEventArgs e)
