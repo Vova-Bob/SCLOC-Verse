@@ -18,13 +18,13 @@ namespace SCLOCVerse.Helpers.Converters
             {
                 return phase switch
                 {
-                    HangarCyclePhase.Open => new SolidColorBrush(Color.FromArgb(30, 35, 120, 35)),
-                    HangarCyclePhase.Closed => new SolidColorBrush(Color.FromArgb(30, 120, 35, 35)),
-                    HangarCyclePhase.Resetting => new SolidColorBrush(Color.FromArgb(40, 120, 120, 20)),
-                    _ => new SolidColorBrush(Color.FromArgb(30, 80, 80, 80))
+                    HangarCyclePhase.Open => new SolidColorBrush(Color.FromArgb(190, 35, 120, 35)),
+                    HangarCyclePhase.Closed => new SolidColorBrush(Color.FromArgb(190, 120, 35, 35)),
+                    HangarCyclePhase.Resetting => new SolidColorBrush(Color.FromArgb(200, 120, 120, 20)),
+                    _ => new SolidColorBrush(Color.FromArgb(190, 80, 80, 80))
                 };
             }
-            return new SolidColorBrush(Color.FromArgb(30, 80, 80, 80));
+            return new SolidColorBrush(Color.FromArgb(190, 80, 80, 80));
         }
 
         public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
@@ -43,13 +43,13 @@ namespace SCLOCVerse.Helpers.Converters
             {
                 return phase switch
                 {
-                    HangarCyclePhase.Open => new SolidColorBrush(Color.FromArgb(80, 160, 90, 0)),
-                    HangarCyclePhase.Closed => new SolidColorBrush(Color.FromArgb(140, 60, 60, 60)),
-                    HangarCyclePhase.Resetting => new SolidColorBrush(Color.FromArgb(60, 160, 80, 0)),
-                    _ => new SolidColorBrush(Color.FromArgb(100, 100, 100, 100))
+                    HangarCyclePhase.Open => new SolidColorBrush(Color.FromArgb(240, 160, 90, 0)),
+                    HangarCyclePhase.Closed => new SolidColorBrush(Color.FromArgb(240, 60, 60, 60)),
+                    HangarCyclePhase.Resetting => new SolidColorBrush(Color.FromArgb(240, 160, 80, 0)),
+                    _ => new SolidColorBrush(Color.FromArgb(240, 100, 100, 100))
                 };
             }
-            return new SolidColorBrush(Color.FromArgb(100, 100, 100, 100));
+            return new SolidColorBrush(Color.FromArgb(240, 100, 100, 100));
         }
 
         public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
@@ -68,13 +68,13 @@ namespace SCLOCVerse.Helpers.Converters
             {
                 return phase switch
                 {
-                    HangarCyclePhase.Open => new SolidColorBrush(Color.FromArgb(140, 220, 140, 220)),
-                    HangarCyclePhase.Closed => new SolidColorBrush(Color.FromArgb(220, 120, 120, 120)),
-                    HangarCyclePhase.Resetting => new SolidColorBrush(Color.FromArgb(220, 200, 80, 0)),
-                    _ => new SolidColorBrush(Color.FromArgb(180, 180, 180, 180))
+                    HangarCyclePhase.Open => new SolidColorBrush(Color.FromArgb(255, 220, 140, 220)),
+                    HangarCyclePhase.Closed => new SolidColorBrush(Color.FromArgb(255, 120, 120, 120)),
+                    HangarCyclePhase.Resetting => new SolidColorBrush(Color.FromArgb(255, 200, 80, 0)),
+                    _ => new SolidColorBrush(Color.FromArgb(255, 180, 180, 180))
                 };
             }
-            return new SolidColorBrush(Color.FromArgb(180, 180, 180, 180));
+            return new SolidColorBrush(Color.FromArgb(255, 180, 180, 180));
         }
 
         public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
