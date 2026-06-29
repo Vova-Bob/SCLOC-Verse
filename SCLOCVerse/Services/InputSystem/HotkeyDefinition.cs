@@ -43,7 +43,7 @@ namespace SCLOCVerse.Services.InputSystem
         public int Priority { get; init; }
 
         /// <summary>
-        /// Опис гарячої клавіші для відображення в UI.
+        /// Опис гарячої клавіші для відображення в UI налаштувань.
         /// </summary>
         public string? Description { get; init; }
 
@@ -51,6 +51,12 @@ namespace SCLOCVerse.Services.InputSystem
         /// Чи відображати гарячу клавішу в UI налаштувань.
         /// </summary>
         public bool VisibleInUi { get; init; } = true;
+
+        /// <summary>
+        /// Чи ігнорувати авто-повтор при утриманні клавіші.
+        /// Рекомендується для коротких дій на зразок відкриття overlay.
+        /// </summary>
+        public bool SuppressAutoRepeat { get; init; } = true;
 
         /// <summary>
         /// Повертає активний жест гарячої клавіші.

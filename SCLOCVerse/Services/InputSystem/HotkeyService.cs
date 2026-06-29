@@ -1,3 +1,4 @@
+using SCLOCVerse.Services.InputSystem.Diagnostics;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -13,18 +14,22 @@ namespace SCLOCVerse.Services.InputSystem
     public sealed class HotkeyService : IHotkeyService
     {
         private readonly IHotkeyBackend _backend;
+        private readonly bool _diagnosticsEnabled;
         private readonly object _sync = new();
         private readonly Dictionary<HotkeyId, HotkeyDefinition> _definitionsById = new();
         private readonly Dictionary<HotkeyGesture, List<HotkeyDefinition>> _definitionsByGesture = new();
+        private readonly HashSet<HotkeyId> _lastPressedIds = new();
         private bool _disposed;
 
         /// <summary>
         /// Створює сервіс гарячих клавіш із заданим бекендом.
         /// </summary>
-        public HotkeyService(IHotkeyBackend backend)
+        public HotkeyService(IHotkeyBackend backend, bool enableDiagnostics = false)
         {
             _backend = backend ?? throw new ArgumentNullException(nameof(backend));
+            _diagnosticsEnabled = enableDiagnostics;
             _backend.GestureDetected += OnGestureDetected;
+            _backend.KeyUp += OnKeyUp;
         }
 
         /// <inheritdoc/>
@@ -157,6 +162,7 @@ namespace SCLOCVerse.Services.InputSystem
             }
 
             _backend.GestureDetected -= OnGestureDetected;
+            _backend.KeyUp -= OnKeyUp;
             _backend.Dispose();
 
             LogEvent("HotkeyService disposed");
@@ -173,7 +179,7 @@ namespace SCLOCVerse.Services.InputSystem
             _backend.Initialize(messageSource);
             LogEvent($"Backend initialized: {_backend.GetType().Name}");
 
-            // Реєструємо всі поточні жести в бекенді.
+            // Реєструємо всі поточні жести в бекендах, які потребують явної реєстрації.
             lock (_sync)
             {
                 if (_backend is RegisterHotkeyBackend registerBackend)
@@ -187,6 +193,7 @@ namespace SCLOCVerse.Services.InputSystem
         private void OnGestureDetected(object? sender, HotkeyGesture gesture)
         {
             HotkeyDefinition? target;
+            bool alreadyPressed;
 
             lock (_sync)
             {
@@ -200,13 +207,55 @@ namespace SCLOCVerse.Services.InputSystem
                     .Where(d => d.Enabled)
                     .OrderByDescending(d => d.Priority)
                     .FirstOrDefault();
+
+                if (target == null)
+                    return;
+
+                alreadyPressed = _lastPressedIds.Contains(target.Id);
+
+                if (target.SuppressAutoRepeat && alreadyPressed)
+                {
+                    LogDiagnostics("AutoRepeatSuppressed", $"id={target.Id} gesture={gesture}");
+                    return;
+                }
+
+                _lastPressedIds.Add(target.Id);
             }
 
-            if (target == null)
-                return;
-
             LogEvent($"Спрацьовує гаряча клавіша {target.Id}");
+            LogDiagnostics("HandlerInvoked", $"id={target.Id} gesture={gesture}");
             _ = ExecuteHandlerSafelyAsync(target.Handler);
+        }
+
+        // Метод викликається з бекенду при key-up, якщо бекенд підтримує це.
+        // RegisterHotKey не надсилає key-up; RawInput обробляє його всередині себе.
+        internal void NotifyKeyUp(HotkeyGesture gesture)
+        {
+            lock (_sync)
+            {
+                if (!_definitionsByGesture.TryGetValue(gesture, out var list))
+                    return;
+
+                foreach (var definition in list)
+                    _lastPressedIds.Remove(definition.Id);
+            }
+        }
+
+        private void OnKeyUp(object? sender, HotkeyGesture gesture)
+        {
+            lock (_sync)
+            {
+                if (_disposed)
+                    return;
+
+                if (!_definitionsByGesture.TryGetValue(gesture, out var list))
+                    return;
+
+                foreach (var definition in list)
+                    _lastPressedIds.Remove(definition.Id);
+            }
+
+            LogDiagnostics("KeyUp", $"gesture={gesture}");
         }
 
         private static async Task ExecuteHandlerSafelyAsync(Func<CancellationToken, ValueTask> handler)
@@ -229,6 +278,12 @@ namespace SCLOCVerse.Services.InputSystem
         private static void LogEvent(string message)
         {
             System.Diagnostics.Debug.WriteLine($"[HotkeyService] {DateTime.Now:HH:mm:ss.fff} {message}");
+        }
+
+        private void LogDiagnostics(string source, string message)
+        {
+            if (_diagnosticsEnabled)
+                InputDiagnostics.Write($"HotkeyService.{source}", message);
         }
     }
 }

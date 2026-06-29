@@ -14,13 +14,29 @@ namespace SCLOCVerse.Composition
         private static IHotkeyBackend CreateHotkeyBackend()
         {
             var backendName = Environment.GetEnvironmentVariable("SCLOCVERSE_HOTKEY_BACKEND")
-                ?? "RegisterHotKey";
+                ?? "RawInput";
+
+            var diagnosticsEnabled = IsHotkeyDiagnosticsEnabled();
 
             return backendName switch
             {
-                "RawInput" => new RawInputBackend(),
-                _ => new RegisterHotkeyBackend()
+                "RegisterHotKey" => new RegisterHotkeyBackend(),
+                "RawInput" => new RawInputBackend(diagnosticsEnabled),
+                _ => new RawInputBackend(diagnosticsEnabled)
             };
+        }
+
+        /// <summary>
+        /// Визначає, чи увімкнено діагностичне журналювання гарячих клавіш.
+        /// </summary>
+        private static bool IsHotkeyDiagnosticsEnabled()
+        {
+            var value = Environment.GetEnvironmentVariable("SCLOCVERSE_HOTKEY_DIAGNOSTICS");
+
+            if (string.IsNullOrWhiteSpace(value))
+                return false;
+
+            return bool.TryParse(value, out var result) && result;
         }
     }
 }

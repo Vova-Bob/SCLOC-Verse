@@ -22,5 +22,11 @@ namespace SCLOCVerse.Services.InputSystem
         /// Подія, яка виникає коли бекенд виявив жест гарячої клавіші.
         /// </summary>
         event EventHandler<HotkeyGesture>? GestureDetected;
+
+        /// <summary>
+        /// Подія, яка виникає коли клавіша, що утворює жест, була відпущена.
+        /// Може не генеруватися бекендами, які не підтримують відстеження key-up.
+        /// </summary>
+        event EventHandler<HotkeyGesture>? KeyUp;
     }
 }
