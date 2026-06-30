@@ -223,20 +223,6 @@ namespace SCLOCVerse.Services.InputSystem
             _ = ExecuteHandlerSafelyAsync(target.Handler);
         }
 
-        // Метод викликається з бекенду при key-up, якщо бекенд підтримує це.
-        // RegisterHotKey не надсилає key-up; RawInput обробляє його всередині себе.
-        internal void NotifyKeyUp(HotkeyGesture gesture)
-        {
-            lock (_lock)
-            {
-                if (!_definitionsByGesture.TryGetValue(gesture, out var list))
-                    return;
-
-                foreach (var definition in list)
-                    _lastPressedIds.Remove(definition.Id);
-            }
-        }
-
         private void OnKeyUp(object? sender, HotkeyGesture gesture)
         {
             lock (_lock)

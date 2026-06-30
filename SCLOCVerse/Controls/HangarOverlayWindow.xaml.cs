@@ -120,6 +120,10 @@ namespace SCLOCVerse.Controls
 
         private void OnClosing(object? sender, System.ComponentModel.CancelEventArgs e)
         {
+            // Відписуємося від long-lived стану до того, як вікно стане недоступним.
+            // Інакше _state.PropertyChanged утримуватиме закрите вікно від посилання (витік).
+            _state.PropertyChanged -= OnStatePropertyChanged;
+
             SavePersistedState();
             _onClose();
         }
