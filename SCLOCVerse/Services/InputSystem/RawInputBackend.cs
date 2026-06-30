@@ -9,7 +9,7 @@ namespace SCLOCVerse.Services.InputSystem
     /// Основний бекенд гарячих клавіш SCLOC-Verse на основі Raw Input.
     /// Отримує WM_INPUT незалежно від фокусу вікна через RIDEV_INPUTSINK.
     /// </summary>
-    public sealed class RawInputBackend : IHotkeyBackend
+    public sealed class RawInputBackend : IHotkeyBackend, IKeyStateBackend
     {
         private const int WmInput = 0x00FF;
         private const ushort UsagePageKeyboard = 0x01;

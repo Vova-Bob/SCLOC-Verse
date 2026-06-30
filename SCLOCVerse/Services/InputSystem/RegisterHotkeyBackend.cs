@@ -29,9 +29,6 @@ namespace SCLOCVerse.Services.InputSystem
         public event EventHandler<HotkeyGesture>? GestureDetected;
 
         /// <inheritdoc/>
-        public event EventHandler<HotkeyGesture>? KeyUp;
-
-        /// <inheritdoc/>
         public void Initialize(IHotkeyMessageSource messageSource)
         {
             ObjectDisposedException.ThrowIf(_disposed, this);

@@ -29,7 +29,12 @@ namespace SCLOCVerse.Services.InputSystem
             _backend = backend ?? throw new ArgumentNullException(nameof(backend));
             _diagnosticsEnabled = enableDiagnostics;
             _backend.GestureDetected += OnGestureDetected;
-            _backend.KeyUp += OnKeyUp;
+
+            // Key-up підтримують лише бекенди, що реалізують IKeyStateBackend (Raw Input).
+            // RegisterHotKey не здатен повідомляти про відпускання клавіші, тому цей інтерфейс
+            // не реалізує — фіктивної події KeyUp більше немає, що й усуває попередження CS0067.
+            if (_backend is IKeyStateBackend keyState)
+                keyState.KeyUp += OnKeyUp;
         }
 
         /// <inheritdoc/>
@@ -157,7 +162,8 @@ namespace SCLOCVerse.Services.InputSystem
 
                 _disposed = true;
                 _backend.GestureDetected -= OnGestureDetected;
-                _backend.KeyUp -= OnKeyUp;
+                if (_backend is IKeyStateBackend keyState)
+                    keyState.KeyUp -= OnKeyUp;
                 _backend.Dispose();
             }
 
