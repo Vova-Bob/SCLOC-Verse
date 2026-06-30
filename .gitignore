@@ -27,6 +27,12 @@ mojibake-findings-*.txt
 *.clean.xaml
 *.clean.json
 
+# Intermediate dev artifacts (icon/asset drafts, superseded scripts)
+/SCLOCVerse/Images/draw_hangar_icon.py
+/SCLOCVerse/Images/draw_hangar_icon_v[1-3].py
+/SCLOCVerse/Images/smallLogo-removebg-preview.png
+/Scripts/MojibakeScanner.ps1
+
 # Local IDE artifacts
 .groupedtimelineinclude
 
