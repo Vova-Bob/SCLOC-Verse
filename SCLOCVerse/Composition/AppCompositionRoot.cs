@@ -96,10 +96,15 @@ namespace SCLOCVerse.Composition
             if (_backgroundUpdateMonitor is IDisposable backgroundMonitor)
                 backgroundMonitor.Dispose();
 
-            _authCompositionRoot?.Dispose();
+            // Закриваємо overlay перед hotkey і WpfMessageSource, щоб вікно не
+            // залишалося на екрані, якщо процес продовжує завершення.
+            if (_hangarOverlayService is IDisposable overlayDisposable)
+                overlayDisposable.Dispose();
 
             if (_hangarTimerService is IDisposable hangarDisposable)
                 hangarDisposable.Dispose();
+
+            _authCompositionRoot?.Dispose();
         }
 
         public AuthCompositionRoot AuthCompositionRoot => _authCompositionRoot;

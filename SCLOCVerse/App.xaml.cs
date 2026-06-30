@@ -59,6 +59,11 @@ namespace SCLOCVerse
             _compositionRoot = new AppCompositionRoot();
             var window = _compositionRoot.CreateMainWindow();
             MainWindow = window;
+
+            // Закриття головного вікна має завершувати застосунок, навіть якщо
+            // відкритий Hangar overlay. OnExit закриє overlay через Dispose.
+            ShutdownMode = ShutdownMode.OnMainWindowClose;
+
             window.Show();
         }
 

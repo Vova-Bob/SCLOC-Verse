@@ -159,11 +159,10 @@ namespace SCLOCVerse.Services.InputSystem
                     return;
 
                 _disposed = true;
+                _backend.GestureDetected -= OnGestureDetected;
+                _backend.KeyUp -= OnKeyUp;
+                _backend.Dispose();
             }
-
-            _backend.GestureDetected -= OnGestureDetected;
-            _backend.KeyUp -= OnKeyUp;
-            _backend.Dispose();
 
             LogEvent("HotkeyService disposed");
         }

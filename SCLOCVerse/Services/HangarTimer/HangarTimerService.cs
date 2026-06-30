@@ -38,6 +38,8 @@ namespace SCLOCVerse.Services.HangarTimer
             return HangarCycleCalculator.Compute(start.Value);
         }
 
+        private bool _disposed;
+
         public HangarTimerService(
             IHangarStartTimeProvider startTimeProvider,
             IHangarOverlayService overlayService,
@@ -131,8 +133,14 @@ namespace SCLOCVerse.Services.HangarTimer
 
         public void Dispose()
         {
+            if (_disposed)
+                return;
+
+            _disposed = true;
             _hotkeyService.Dispose();
-            _overlayService.Close();
+
+            if (_overlayService is IDisposable overlayDisposable)
+                overlayDisposable.Dispose();
         }
 
         private async Task<long?> ResolveCycleStartAsync(bool forceRemote, CancellationToken cancellationToken)

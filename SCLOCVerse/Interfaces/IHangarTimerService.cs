@@ -5,7 +5,7 @@ namespace SCLOCVerse.Interfaces
     /// <summary>
     /// Координатор модуля Hangar Timer.
     /// </summary>
-    public interface IHangarTimerService
+    public interface IHangarTimerService : IDisposable
     {
         /// <summary>
         /// Подія, що спрацьовує коли авторитетний час старту циклу змінився.

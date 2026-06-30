@@ -11,7 +11,7 @@ namespace SCLOCVerse.Services.HangarTimer
     /// Містить масштаб, прозорість та координацію з вікном.
     /// Логіка циклу винесена у HangarCycleCalculator.
     /// </summary>
-    public class HangarOverlayService : IHangarOverlayService
+    public class HangarOverlayService : IHangarOverlayService, IDisposable
     {
         private const int BaseWidth = 820;
         private const int BaseHeight = 280;
@@ -30,6 +30,7 @@ namespace SCLOCVerse.Services.HangarTimer
 
         private HangarOverlayWindow? _window;
         private long _cycleStartMs;
+        private bool _disposed;
 
         public HangarOverlayService(IHangarSettingsService settingsService)
         {
@@ -47,6 +48,9 @@ namespace SCLOCVerse.Services.HangarTimer
 
         public void Show(long cycleStartMs)
         {
+            if (_disposed)
+                throw new ObjectDisposedException(nameof(HangarOverlayService));
+
             if (_window != null)
             {
                 _window.Activate();
@@ -63,11 +67,17 @@ namespace SCLOCVerse.Services.HangarTimer
 
         public void Hide()
         {
+            if (_disposed)
+                throw new ObjectDisposedException(nameof(HangarOverlayService));
+
             _window?.Hide();
         }
 
         public void Toggle(long cycleStartMs)
         {
+            if (_disposed)
+                throw new ObjectDisposedException(nameof(HangarOverlayService));
+
             if (_window == null)
             {
                 Show(cycleStartMs);
@@ -82,19 +92,58 @@ namespace SCLOCVerse.Services.HangarTimer
 
         public void Close()
         {
+            _timer.Stop();
             _window?.Close();
+        }
+
+        public void Dispose()
+        {
+            if (_disposed)
+                return;
+
+            _disposed = true;
+            _timer.Stop();
+
+            if (_window == null)
+                return;
+
+            var window = _window;
+            _window = null;
+
+            if (Application.Current?.Dispatcher != null)
+            {
+                try
+                {
+                    Application.Current.Dispatcher.Invoke(() => window.Close(), DispatcherPriority.Send);
+                }
+                catch
+                {
+                    // Ігноруємо помилки Dispatcher під час виходу.
+                }
+            }
+            else
+            {
+                try { window.Close(); }
+                catch { /* ігноруємо */ }
+            }
         }
 
         public Window? GetWindow() => _window;
 
         public void UpdateCycleStart(long cycleStartMs)
         {
+            if (_disposed)
+                throw new ObjectDisposedException(nameof(HangarOverlayService));
+
             _cycleStartMs = cycleStartMs;
             UpdateModel();
         }
 
         public void SetStartNow()
         {
+            if (_disposed)
+                throw new ObjectDisposedException(nameof(HangarOverlayService));
+
             var ms = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
             _cycleStartMs = ms;
             UpdateModel();
@@ -102,47 +151,74 @@ namespace SCLOCVerse.Services.HangarTimer
 
         public void PromptManualStart(long manualStartMs)
         {
+            if (_disposed)
+                throw new ObjectDisposedException(nameof(HangarOverlayService));
+
             _cycleStartMs = manualStartMs;
             UpdateModel();
         }
 
         public void ToggleClickThrough()
         {
+            if (_disposed)
+                throw new ObjectDisposedException(nameof(HangarOverlayService));
+
             _window?.ToggleClickThrough();
         }
 
         public void BeginTemporaryDrag()
         {
+            if (_disposed)
+                throw new ObjectDisposedException(nameof(HangarOverlayService));
+
             _window?.BeginTemporaryDragMode();
         }
 
         public void ScaleDown()
         {
+            if (_disposed)
+                throw new ObjectDisposedException(nameof(HangarOverlayService));
+
             SetScale(Math.Max(ScaleMin, Math.Round(_state.Scale - ScaleStep, 2)));
         }
 
         public void ScaleUp()
         {
+            if (_disposed)
+                throw new ObjectDisposedException(nameof(HangarOverlayService));
+
             SetScale(Math.Min(ScaleMax, Math.Round(_state.Scale + ScaleStep, 2)));
         }
 
         public void ScaleReset()
         {
+            if (_disposed)
+                throw new ObjectDisposedException(nameof(HangarOverlayService));
+
             SetScale(1.0);
         }
 
         public void OpacityDown()
         {
+            if (_disposed)
+                throw new ObjectDisposedException(nameof(HangarOverlayService));
+
             _state.Opacity = Clamp(_state.Opacity - OpacityStep, OpacityMin, OpacityMax);
         }
 
         public void OpacityUp()
         {
+            if (_disposed)
+                throw new ObjectDisposedException(nameof(HangarOverlayService));
+
             _state.Opacity = Clamp(_state.Opacity + OpacityStep, OpacityMin, OpacityMax);
         }
 
         public void OpacityReset()
         {
+            if (_disposed)
+                throw new ObjectDisposedException(nameof(HangarOverlayService));
+
             _state.Opacity = 0.92;
         }
 
