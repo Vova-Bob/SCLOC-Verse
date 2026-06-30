@@ -27,8 +27,8 @@ namespace SCLOCVerse.Services.InputSystem
         private const int VirtualKeyLeftWin = 0x5B;
         private const int VirtualKeyRightWin = 0x5C;
 
-        private readonly object _sync = new();
-        private readonly HashSet<HotkeyKey> _pressedKeys = new();
+        private readonly Lock _lock = new();
+        private readonly HashSet<HotkeyKey> _pressedKeys = [];
 
         private IHotkeyMessageSource? _messageSource;
         private bool _disposed;
@@ -55,8 +55,7 @@ namespace SCLOCVerse.Services.InputSystem
         /// <inheritdoc/>
         public void Initialize(IHotkeyMessageSource messageSource)
         {
-            if (_disposed)
-                throw new ObjectDisposedException(nameof(RawInputBackend));
+            ObjectDisposedException.ThrowIf(_disposed, this);
 
             if (_messageSource != null)
                 return;
@@ -75,7 +74,7 @@ namespace SCLOCVerse.Services.InputSystem
 
             _disposed = true;
 
-            lock (_sync)
+            lock (_lock)
             {
                 if (_messageSource != null)
                 {
@@ -105,7 +104,7 @@ namespace SCLOCVerse.Services.InputSystem
             };
 
             uint size = (uint)Marshal.SizeOf<RawInputDevice>();
-            bool result = RegisterRawInputDevices(new[] { device }, 1, size);
+            bool result = RegisterRawInputDevices([device], 1, size);
             int error = Marshal.GetLastWin32Error();
 
             LogDiagnostics(
@@ -127,7 +126,7 @@ namespace SCLOCVerse.Services.InputSystem
             };
 
             uint size = (uint)Marshal.SizeOf<RawInputDevice>();
-            bool result = RegisterRawInputDevices(new[] { device }, 1, size);
+            bool result = RegisterRawInputDevices([device], 1, size);
             int error = Marshal.GetLastWin32Error();
 
             LogDiagnostics(
@@ -148,7 +147,7 @@ namespace SCLOCVerse.Services.InputSystem
                 "WM_INPUT",
                 $"gesture={gesture.Value} wParam=0x{wParam:X} lParam=0x{lParam:X}");
 
-            lock (_sync)
+            lock (_lock)
             {
                 if (_disposed || _messageSource == null)
                     return IntPtr.Zero;
@@ -195,7 +194,7 @@ namespace SCLOCVerse.Services.InputSystem
                 bool isKeyDown = (keyboard.Flags & 1) == 0;
                 bool isKeyUp = (keyboard.Flags & 1) != 0;
 
-                lock (_sync)
+                lock (_lock)
                 {
                     if (_disposed)
                         return null;

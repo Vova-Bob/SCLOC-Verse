@@ -15,10 +15,10 @@ namespace SCLOCVerse.Services.InputSystem
     {
         private readonly IHotkeyBackend _backend;
         private readonly bool _diagnosticsEnabled;
-        private readonly object _sync = new();
-        private readonly Dictionary<HotkeyId, HotkeyDefinition> _definitionsById = new();
-        private readonly Dictionary<HotkeyGesture, List<HotkeyDefinition>> _definitionsByGesture = new();
-        private readonly HashSet<HotkeyId> _lastPressedIds = new();
+        private readonly Lock _lock = new();
+        private readonly Dictionary<HotkeyId, HotkeyDefinition> _definitionsById = [];
+        private readonly Dictionary<HotkeyGesture, List<HotkeyDefinition>> _definitionsByGesture = [];
+        private readonly HashSet<HotkeyId> _lastPressedIds = [];
         private bool _disposed;
 
         /// <summary>
@@ -41,10 +41,9 @@ namespace SCLOCVerse.Services.InputSystem
             if (definition == null)
                 throw new ArgumentNullException(nameof(definition));
 
-            lock (_sync)
+            lock (_lock)
             {
-                if (_disposed)
-                    throw new ObjectDisposedException(nameof(HotkeyService));
+                ObjectDisposedException.ThrowIf(_disposed, this);
 
                 var gesture = definition.EffectiveGesture;
 
@@ -87,7 +86,7 @@ namespace SCLOCVerse.Services.InputSystem
 
                 if (!_definitionsByGesture.TryGetValue(gesture, out var list))
                 {
-                    list = new List<HotkeyDefinition>();
+                    list = [];
                     _definitionsByGesture[gesture] = list;
 
                     // Реєструємо новий жест у бекенді лише коли він з'являється вперше.
@@ -104,10 +103,9 @@ namespace SCLOCVerse.Services.InputSystem
         /// <inheritdoc/>
         public void Unregister(HotkeyId id)
         {
-            lock (_sync)
+            lock (_lock)
             {
-                if (_disposed)
-                    throw new ObjectDisposedException(nameof(HotkeyService));
+                ObjectDisposedException.ThrowIf(_disposed, this);
 
                 if (!_definitionsById.TryGetValue(id, out var definition))
                 {
@@ -130,17 +128,16 @@ namespace SCLOCVerse.Services.InputSystem
                 }
 
                 _definitionsById.Remove(id);
-                LogEvent($"Скасовано реєстрацію гарячої клавіші {id}");
+                LogEvent($"Скасовано реєстрацію гарячої клавішу {id}");
             }
         }
 
         /// <inheritdoc/>
         public void SetEnabled(HotkeyId id, bool enabled)
         {
-            lock (_sync)
+            lock (_lock)
             {
-                if (_disposed)
-                    throw new ObjectDisposedException(nameof(HotkeyService));
+                ObjectDisposedException.ThrowIf(_disposed, this);
 
                 if (!_definitionsById.TryGetValue(id, out var definition))
                     return;
@@ -153,7 +150,7 @@ namespace SCLOCVerse.Services.InputSystem
         /// <inheritdoc/>
         public void Dispose()
         {
-            lock (_sync)
+            lock (_lock)
             {
                 if (_disposed)
                     return;
@@ -179,7 +176,7 @@ namespace SCLOCVerse.Services.InputSystem
             LogEvent($"Backend initialized: {_backend.GetType().Name}");
 
             // Реєструємо всі поточні жести в бекендах, які потребують явної реєстрації.
-            lock (_sync)
+            lock (_lock)
             {
                 if (_backend is RegisterHotkeyBackend registerBackend)
                 {
@@ -194,7 +191,7 @@ namespace SCLOCVerse.Services.InputSystem
             HotkeyDefinition? target;
             bool alreadyPressed;
 
-            lock (_sync)
+            lock (_lock)
             {
                 if (_disposed)
                     return;
@@ -230,7 +227,7 @@ namespace SCLOCVerse.Services.InputSystem
         // RegisterHotKey не надсилає key-up; RawInput обробляє його всередині себе.
         internal void NotifyKeyUp(HotkeyGesture gesture)
         {
-            lock (_sync)
+            lock (_lock)
             {
                 if (!_definitionsByGesture.TryGetValue(gesture, out var list))
                     return;
@@ -242,7 +239,7 @@ namespace SCLOCVerse.Services.InputSystem
 
         private void OnKeyUp(object? sender, HotkeyGesture gesture)
         {
-            lock (_sync)
+            lock (_lock)
             {
                 if (_disposed)
                     return;

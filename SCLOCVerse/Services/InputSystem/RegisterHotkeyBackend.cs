@@ -15,9 +15,9 @@ namespace SCLOCVerse.Services.InputSystem
         private const int MinId = 0x0000;
         private const int MaxId = 0xBFFF;
 
-        private readonly object _sync = new();
-        private readonly Dictionary<int, HotkeyGesture> _idToGesture = new();
-        private readonly Dictionary<HotkeyGesture, int> _gestureToId = new();
+        private readonly Lock _lock = new();
+        private readonly Dictionary<int, HotkeyGesture> _idToGesture = [];
+        private readonly Dictionary<HotkeyGesture, int> _gestureToId = [];
         private IHotkeyMessageSource? _messageSource;
         private bool _disposed;
         private int _nextId = MinId;
@@ -34,8 +34,7 @@ namespace SCLOCVerse.Services.InputSystem
         /// <inheritdoc/>
         public void Initialize(IHotkeyMessageSource messageSource)
         {
-            if (_disposed)
-                throw new ObjectDisposedException(nameof(RegisterHotkeyBackend));
+            ObjectDisposedException.ThrowIf(_disposed, this);
 
             if (_messageSource != null)
                 return;
@@ -56,7 +55,7 @@ namespace SCLOCVerse.Services.InputSystem
 
             _disposed = true;
 
-            lock (_sync)
+            lock (_lock)
             {
                 if (_messageSource != null)
                 {
@@ -85,7 +84,7 @@ namespace SCLOCVerse.Services.InputSystem
         /// </summary>
         internal bool TryRegister(HotkeyGesture gesture)
         {
-            lock (_sync)
+            lock (_lock)
             {
                 if (_messageSource == null || _gestureToId.ContainsKey(gesture))
                     return false;
@@ -126,7 +125,7 @@ namespace SCLOCVerse.Services.InputSystem
         /// </summary>
         internal void Unregister(HotkeyGesture gesture)
         {
-            lock (_sync)
+            lock (_lock)
             {
                 if (_messageSource == null || !_gestureToId.TryGetValue(gesture, out int id))
                     return;
@@ -168,7 +167,7 @@ namespace SCLOCVerse.Services.InputSystem
                 "RegisterHotkeyBackend",
                 $"WndProc WM_HOTKEY id={id} wParam=0x{wParam:X} lParam=0x{lParam:X}");
 
-            lock (_sync)
+            lock (_lock)
             {
                 if (_idToGesture.TryGetValue(id, out var gesture))
                 {
