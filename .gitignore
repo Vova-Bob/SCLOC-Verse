@@ -17,6 +17,9 @@
 # Installer output
 Installer/Output/
 
+# Working screenshots (development artifacts, not for public release)
+/screenshot_*.png
+
 # Forensic / audit artifacts (temporary, must never be public)
 a3f2884-*
 mojibake-findings-*.txt

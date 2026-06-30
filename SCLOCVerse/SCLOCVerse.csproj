@@ -32,7 +32,6 @@
     <None Remove="Images\Lia.png" />
     <None Remove="Images\made_by_community.png" />
     <None Remove="Images\SC_UA_Community.png" />
-    <None Remove="Images\smallLogo-removebg-preview.png" />
     <None Remove="Images\USF-logo.png" />
     <None Remove="Images\USF-logo2.png" />
     <None Remove="Images\hangar.svg" />
@@ -65,7 +64,6 @@
     <Resource Include="Images\Lia.png" />
     <Resource Include="Images\made_by_community.png" />
     <Resource Include="Images\SC_UA_Community.png" />
-    <Resource Include="Images\smallLogo-removebg-preview.png" />
     <Resource Include="Images\USF-logo.png" />
     <Resource Include="Images\USF-logo2.png" />
     <Resource Include="Images\hangar_icon_64.png" />
