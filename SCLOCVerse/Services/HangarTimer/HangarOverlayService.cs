@@ -8,17 +8,13 @@ namespace SCLOCVerse.Services.HangarTimer
 {
     /// <summary>
     /// Сервіс керування візуальним overlay Hangar Timer.
-    /// Містить всю логіку циклу, таймер, масштаб, прозорість та координацію з вікном.
+    /// Містить масштаб, прозорість та координацію з вікном.
+    /// Логіка циклу винесена у HangarCycleCalculator.
     /// </summary>
     public class HangarOverlayService : IHangarOverlayService
     {
         private const int BaseWidth = 820;
         private const int BaseHeight = 280;
-
-        private const int RedPhase = 2 * 60 * 60;
-        private const int GreenPhase = 1 * 60 * 60;
-        private const int BlackPhase = 5 * 60;
-        private const int TotalCycle = RedPhase + GreenPhase + BlackPhase;
 
         private const double OpacityMin = 0.50;
         private const double OpacityMax = 0.95;
@@ -177,80 +173,54 @@ namespace SCLOCVerse.Services.HangarTimer
 
         private void UpdateModel()
         {
-            long nowMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-            int elapsed = (int)Math.Floor((nowMs - _cycleStartMs) / 1000.0);
-            if (elapsed < 0) elapsed = 0;
-            int cyclePos = Mod(elapsed, TotalCycle);
+            var info = HangarCycleCalculator.Compute(_cycleStartMs);
+
+            _state.Phase = info.Phase;
+            _state.StatusMessage = info.StatusMessage;
+            _state.StatusLine = info.StatusLine;
+            _state.TimerText = info.TimerText;
 
             var lights = _state.Lights;
             for (int i = 0; i < lights.Length; i++)
             {
-                lights[i].State = HangarLightState.Black;
+                lights[i].State = info.LedStates[i];
                 lights[i].Label = string.Empty;
             }
 
+            // Міні-таймер під найближчим активним LED (зберігаємо стару поведінку).
             int minTimerIndex = -1;
+            int bestVal = int.MaxValue;
+            int interval = info.Phase == HangarCyclePhase.Closed
+                ? HangarCycleCalculator.RedPhaseSeconds / HangarCycleCalculator.LedCount
+                : HangarCycleCalculator.GreenPhaseSeconds / HangarCycleCalculator.LedCount;
 
-            if (cyclePos < RedPhase)
+            long nowMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+            int elapsed = (int)Math.Floor((nowMs - _cycleStartMs) / 1000.0);
+            int cyclePos = Mod(elapsed, HangarCycleCalculator.TotalCycleSeconds);
+
+            for (int i = 0; i < lights.Length; i++)
             {
-                int interval = RedPhase / 5;
-
-                for (int i = 0; i < 5; i++)
-                    lights[i].State = (cyclePos >= (i + 1) * interval) ? HangarLightState.Green : HangarLightState.Red;
-
-                _state.Phase = HangarCyclePhase.Closed;
-                _state.StatusMessage = "Ангар зачинено";
-                _state.StatusLine = "Відкриття через " + FormatHHMMSS(RedPhase - cyclePos);
-
-                int bestIdx = -1; int bestVal = int.MaxValue;
-                for (int i = 0; i < 5; i++)
+                if (info.Phase == HangarCyclePhase.Closed)
                 {
-                    if (lights[i].State != HangarLightState.Red) continue;
+                    if (info.LedStates[i] != HangarLightState.Red) continue;
                     int target = (i + 1) * interval;
                     int left = target - cyclePos;
-                    if (left > 0 && left < bestVal) { bestVal = left; bestIdx = i; }
-                    lights[i].Label = left > 0 ? FormatMMSS(left) : string.Empty;
+                    if (left > 0 && left < bestVal) { bestVal = left; minTimerIndex = i; }
                 }
-                minTimerIndex = bestIdx;
-            }
-            else if (cyclePos < RedPhase + GreenPhase)
-            {
-                int timeSinceGreen = cyclePos - RedPhase;
-                int interval = GreenPhase / 5;
-
-                for (int i = 0; i < 5; i++)
-                    lights[i].State = (timeSinceGreen >= (5 - i) * interval) ? HangarLightState.Black : HangarLightState.Green;
-
-                _state.Phase = HangarCyclePhase.Open;
-                _state.StatusMessage = "Ангар відкрито";
-                _state.StatusLine = "Перезапуск через " + FormatHHMMSS(GreenPhase - timeSinceGreen);
-
-                int bestIdx = -1; int bestVal = int.MaxValue;
-                for (int i = 0; i < 5; i++)
+                else if (info.Phase == HangarCyclePhase.Open)
                 {
-                    if (lights[i].State != HangarLightState.Green) continue;
-                    int target = (5 - i) * interval;
+                    if (info.LedStates[i] != HangarLightState.Green) continue;
+                    int timeSinceGreen = cyclePos - HangarCycleCalculator.RedPhaseSeconds;
+                    int target = (HangarCycleCalculator.LedCount - i) * interval;
                     int left = target - timeSinceGreen;
-                    if (left > 0 && left < bestVal) { bestVal = left; bestIdx = i; }
-                    lights[i].Label = left > 0 ? FormatMMSS(left) : string.Empty;
+                    if (left > 0 && left < bestVal) { bestVal = left; minTimerIndex = i; }
                 }
-                minTimerIndex = bestIdx;
-            }
-            else
-            {
-                int sinceBlack = cyclePos - RedPhase - GreenPhase;
-                for (int i = 0; i < 5; i++)
-                    lights[i].State = HangarLightState.Black;
-
-                _state.Phase = HangarCyclePhase.Resetting;
-                _state.StatusMessage = "Ангар перезавантажується";
-                _state.StatusLine = "Перезапуск через " + FormatHHMMSS(BlackPhase - sinceBlack);
-                minTimerIndex = -1;
             }
 
             if (minTimerIndex >= 0)
             {
-                for (int i = 0; i < 5; i++)
+                lights[minTimerIndex].Label = FormatMMSS(bestVal);
+                for (int i = 0; i < lights.Length; i++)
                 {
                     if (i != minTimerIndex)
                         lights[i].Label = string.Empty;
@@ -261,14 +231,6 @@ namespace SCLOCVerse.Services.HangarTimer
         private static int Mod(int a, int m)
         {
             return (a % m + m) % m;
-        }
-
-        private static string FormatHHMMSS(int seconds)
-        {
-            int h = seconds / 3600;
-            int m = (seconds % 3600) / 60;
-            int s = seconds % 60;
-            return $"{h:00}:{m:00}:{s:00}";
         }
 
         private static string FormatMMSS(int seconds)

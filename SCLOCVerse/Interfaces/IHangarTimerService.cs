@@ -1,3 +1,5 @@
+using SCLOCVerse.Models.HangarTimer;
+
 namespace SCLOCVerse.Interfaces
 {
     /// <summary>
@@ -5,6 +7,11 @@ namespace SCLOCVerse.Interfaces
     /// </summary>
     public interface IHangarTimerService
     {
+        /// <summary>
+        /// Подія, що спрацьовує коли авторитетний час старту циклу змінився.
+        /// </summary>
+        event EventHandler? CycleStartChanged;
+
         /// <summary>
         /// Чи відкритий overlay зараз.
         /// </summary>
@@ -14,6 +21,11 @@ namespace SCLOCVerse.Interfaces
         /// Авторитетний час старту поточного циклу в мілісекундах UTC, або null, якщо ще не встановлено.
         /// </summary>
         long? CycleStartMs { get; }
+
+        /// <summary>
+        /// Поточний стан циклу Executive Hangar, або null, якщо цикл ще не ініціалізовано.
+        /// </summary>
+        HangarCycleInfo? GetCycleInfo();
 
         /// <summary>
         /// Перемкнути видимість overlay. При першому виклику виконується синхронізація часу.

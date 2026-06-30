@@ -1,4 +1,5 @@
 using SCLOCVerse.Interfaces;
+using SCLOCVerse.Models.HangarTimer;
 using System;
 using System.Windows;
 using System.Windows.Controls;
@@ -9,10 +10,6 @@ using System.Windows.Threading;
 
 namespace SCLOCVerse.Controls
 {
-    /// <summary>
-    /// Покращена картка інструменту Hangar Timer з LED-індикатором циклу,
-    /// поточним часом та спливаючим вікном гарячих клавіш.
-    /// </summary>
     public partial class HangarTimerCard : UserControl
     {
         private IHangarTimerService? _hangarTimerService;
@@ -27,23 +24,21 @@ namespace SCLOCVerse.Controls
             Unloaded += OnUnloaded;
         }
 
-        /// <summary>
-        /// Встановлює сервіс таймера, що живить картку даними.
-        /// </summary>
         public void SetHangarTimerService(IHangarTimerService service)
         {
+            if (_hangarTimerService != null)
+                _hangarTimerService.CycleStartChanged -= OnServiceCycleStartChanged;
+
             _hangarTimerService = service;
+            _hangarTimerService.CycleStartChanged += OnServiceCycleStartChanged;
+            OnTimerTick(null, EventArgs.Empty);
         }
 
         private void OnLoaded(object sender, RoutedEventArgs e)
         {
-            _timer = new DispatcherTimer
-            {
-                Interval = TimeSpan.FromSeconds(1)
-            };
+            _timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(250) };
             _timer.Tick += OnTimerTick;
             _timer.Start();
-
             OnTimerTick(null, EventArgs.Empty);
         }
 
@@ -55,59 +50,84 @@ namespace SCLOCVerse.Controls
                 _timer.Tick -= OnTimerTick;
                 _timer = null;
             }
+
+            if (_hangarTimerService != null)
+                _hangarTimerService.CycleStartChanged -= OnServiceCycleStartChanged;
         }
 
         private void OnTimerTick(object? sender, EventArgs e)
         {
-            UpdateTimerText();
-            UpdateLedIndicator();
+            UpdateFromCycleInfo();
         }
 
-        private void UpdateTimerText()
+        private void OnServiceCycleStartChanged(object? sender, EventArgs e)
         {
-            var startMs = _hangarTimerService?.CycleStartMs;
-            if (!startMs.HasValue)
+            Dispatcher.BeginInvoke(new Action(() => OnTimerTick(null, EventArgs.Empty)), DispatcherPriority.Render);
+        }
+
+        private void UpdateFromCycleInfo()
+        {
+            var info = _hangarTimerService?.GetCycleInfo();
+            if (info == null)
             {
                 TimerText.Text = "--:--:--";
-                return;
-            }
-
-            var elapsed = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - startMs.Value;
-            var time = TimeSpan.FromMilliseconds(Math.Max(0, elapsed));
-
-            TimerText.Text = $"{time.Hours:D2}:{time.Minutes:D2}:{time.Seconds:D2}";
-        }
-
-        private void UpdateLedIndicator()
-        {
-            var startMs = _hangarTimerService?.CycleStartMs;
-            if (!startMs.HasValue)
-            {
                 SetLedState(0);
                 return;
             }
 
-            // Executive Hangar цикл триває 6 годин = 21 600 000 мс.
-            const long cycleDurationMs = 6L * 60L * 60L * 1000L;
-            var elapsed = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - startMs.Value;
-            var progress = Math.Min(1.0, Math.Max(0.0, (double)elapsed / cycleDurationMs));
+            TimerText.Text = info.TimerText;
+            SetLedState(info.LedStates);
+        }
 
-            int activeCount = progress switch
+        private void SetLedState(HangarLightState[] states)
+        {
+            SetLedFill(Led1, states.Length > 0 ? states[0] : HangarLightState.Black);
+            SetLedFill(Led2, states.Length > 1 ? states[1] : HangarLightState.Black);
+            SetLedFill(Led3, states.Length > 2 ? states[2] : HangarLightState.Black);
+            SetLedFill(Led4, states.Length > 3 ? states[3] : HangarLightState.Black);
+            SetLedFill(Led5, states.Length > 4 ? states[4] : HangarLightState.Black);
+        }
+
+        private static void SetLedFill(Ellipse led, HangarLightState state)
+        {
+            switch (state)
             {
-                < 0.20 => 1,
-                < 0.40 => 2,
-                < 0.60 => 3,
-                < 0.80 => 4,
-                _ => 5
-            };
+                case HangarLightState.Green:
+                    led.Fill = new SolidColorBrush(Color.FromRgb(80, 200, 80));
+                    led.Stroke = new SolidColorBrush(Color.FromArgb(150, 80, 200, 80));
+                    led.Effect = new DropShadowEffect
+                    {
+                        Color = Color.FromArgb(150, 80, 200, 80),
+                        BlurRadius = 8,
+                        ShadowDepth = 0,
+                        Opacity = 0.7
+                    };
+                    break;
 
-            SetLedState(activeCount);
+                case HangarLightState.Red:
+                    led.Fill = new SolidColorBrush(Color.FromRgb(220, 60, 60));
+                    led.Stroke = new SolidColorBrush(Color.FromArgb(150, 255, 80, 80));
+                    led.Effect = new DropShadowEffect
+                    {
+                        Color = Color.FromArgb(150, 255, 80, 80),
+                        BlurRadius = 8,
+                        ShadowDepth = 0,
+                        Opacity = 0.7
+                    };
+                    break;
+
+                default:
+                    led.Fill = new SolidColorBrush(Color.FromRgb(30, 30, 30));
+                    led.Stroke = new SolidColorBrush(Color.FromRgb(58, 90, 112));
+                    led.Effect = null;
+                    break;
+            }
         }
 
         private void SetLedState(int activeCount)
         {
-            var activeBrush = new SolidColorBrush(Color.FromRgb(80, 200, 80));   // зелений
-            var inactiveBrush = new SolidColorBrush(Color.FromRgb(30, 30, 30));  // темно-сірий
+            var activeBrush = new SolidColorBrush(Color.FromRgb(80, 200, 80));
+            var inactiveBrush = new SolidColorBrush(Color.FromRgb(30, 30, 30));
             var glow = new SolidColorBrush(Color.FromArgb(150, 80, 200, 80));
 
             SetLedFill(Led1, activeCount >= 1, activeBrush, inactiveBrush, glow);
@@ -145,7 +165,6 @@ namespace SCLOCVerse.Controls
 
         private void HotkeyButton_Click(object sender, RoutedEventArgs e)
         {
-            // Клік також перемикає Popup, хоча основна логіка на hover.
             if (HotkeyPopup.IsOpen)
                 ClosePopup();
             else
@@ -175,40 +194,18 @@ namespace SCLOCVerse.Controls
             DelayClosePopup();
         }
 
-        private void CardRoot_MouseEnter(object sender, System.Windows.Input.MouseEventArgs e)
-        {
-            // Легка анімація при наведенні вже реалізована через триггер Border.
-        }
-
-        private void CardRoot_MouseLeave(object sender, System.Windows.Input.MouseEventArgs e)
-        {
-            // Нічого додаткового; hover лише для стилю картки.
-        }
-
-        private void CardRoot_Loaded(object sender, RoutedEventArgs e)
-        {
-            // Зарезервовано для майбутніх ініціалізацій.
-        }
-
+        private void CardRoot_Loaded(object sender, RoutedEventArgs e) { }
         private void CardRoot_Unloaded(object sender, RoutedEventArgs e)
         {
             ClosePopup();
             OnUnloaded(sender, e);
         }
 
-        private void OpenPopup()
-        {
-            HotkeyPopup.IsOpen = true;
-        }
-
-        private void ClosePopup()
-        {
-            HotkeyPopup.IsOpen = false;
-        }
+        private void OpenPopup() => HotkeyPopup.IsOpen = true;
+        private void ClosePopup() => HotkeyPopup.IsOpen = false;
 
         private void DelayClosePopup()
         {
-            // Даємо час перевести курсор з кнопки на Popup.
             Dispatcher.BeginInvoke(new Action(() =>
             {
                 if (!_isHoveringButton && !_isHoveringPopup)

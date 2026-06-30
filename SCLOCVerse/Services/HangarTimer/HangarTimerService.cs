@@ -1,5 +1,6 @@
 using SCLOCVerse.Controls;
 using SCLOCVerse.Interfaces;
+using SCLOCVerse.Models.HangarTimer;
 using SCLOCVerse.Services.InputSystem;
 using System.Windows;
 
@@ -19,10 +20,23 @@ namespace SCLOCVerse.Services.HangarTimer
         private long _cycleStartMs = -1;
 
         /// <inheritdoc/>
+        public event EventHandler? CycleStartChanged;
+
+        /// <inheritdoc/>
         public bool IsOverlayOpen => _overlayService.IsOpen;
 
         /// <inheritdoc/>
         public long? CycleStartMs => _cycleStartMs > 0 ? _cycleStartMs : null;
+
+        /// <inheritdoc/>
+        public HangarCycleInfo? GetCycleInfo()
+        {
+            var start = CycleStartMs;
+            if (!start.HasValue)
+                return null;
+
+            return HangarCycleCalculator.Compute(start.Value);
+        }
 
         public HangarTimerService(
             IHangarStartTimeProvider startTimeProvider,
@@ -36,29 +50,40 @@ namespace SCLOCVerse.Services.HangarTimer
             _hotkeyService = hotkeyService;
 
             RegisterHotkeys();
+            InitializeCycleStartAsync();
+        }
+
+        private async void InitializeCycleStartAsync()
+        {
+            try
+            {
+                var start = await ResolveCycleStartAsync(forceRemote: false, CancellationToken.None).ConfigureAwait(false);
+                if (start.HasValue && _cycleStartMs <= 0)
+                {
+                    _cycleStartMs = start.Value;
+                    OnCycleStartChanged();
+                }
+            }
+            catch
+            {
+                // Ігноруємо помилки фонової ініціалізації; користувач може синхронізувати вручну.
+            }
         }
 
         public async Task ToggleOverlayAsync(CancellationToken cancellationToken = default)
         {
             if (_overlayService.IsOpen)
             {
-                _overlayService.Toggle(_cycleStartMs);
+                await Application.Current.Dispatcher.InvokeAsync(() => _overlayService.Toggle(_cycleStartMs));
                 return;
             }
 
-            // Показуємо оверлей одразу з локальним часом, щоб уникнути затримки на першому запуску.
-            if (_cycleStartMs <= 0)
-                _cycleStartMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
-
-            _overlayService.Show(_cycleStartMs);
-
-            // Синхронізуємо час у фоні та оновлюємо оверлей, якщо отримано нове значення.
+            // Перед першим показом отримуємо авторитетний час старту.
             var start = await ResolveCycleStartAsync(forceRemote: false, cancellationToken).ConfigureAwait(false);
-            if (start.HasValue && start.Value != _cycleStartMs)
-            {
-                _cycleStartMs = start.Value;
-                _overlayService.UpdateCycleStart(_cycleStartMs);
-            }
+            _cycleStartMs = start ?? DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+
+            await Application.Current.Dispatcher.InvokeAsync(() => _overlayService.Show(_cycleStartMs));
+            OnCycleStartChanged();
         }
 
         public async Task ForceSyncAsync(CancellationToken cancellationToken = default)
@@ -67,8 +92,12 @@ namespace SCLOCVerse.Services.HangarTimer
             if (!start.HasValue)
                 return;
 
+            if (_cycleStartMs == start.Value)
+                return;
+
             _cycleStartMs = start.Value;
-            _overlayService.UpdateCycleStart(_cycleStartMs);
+            await Application.Current.Dispatcher.InvokeAsync(() => _overlayService.UpdateCycleStart(_cycleStartMs));
+            OnCycleStartChanged();
         }
 
         public async Task ClearOverrideAndSyncAsync(CancellationToken cancellationToken = default)
@@ -82,7 +111,8 @@ namespace SCLOCVerse.Services.HangarTimer
             var ms = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
             _startTimeProvider.SetLocalOverride(ms);
             _cycleStartMs = ms;
-            _overlayService.UpdateCycleStart(_cycleStartMs);
+            Application.Current.Dispatcher.Invoke(() => _overlayService.UpdateCycleStart(_cycleStartMs));
+            OnCycleStartChanged();
         }
 
         public void PromptManualStart()
@@ -94,7 +124,8 @@ namespace SCLOCVerse.Services.HangarTimer
             {
                 _startTimeProvider.SetLocalOverride(dialog.ValueMs);
                 _cycleStartMs = dialog.ValueMs;
-                _overlayService.UpdateCycleStart(_cycleStartMs);
+                Application.Current.Dispatcher.Invoke(() => _overlayService.UpdateCycleStart(_cycleStartMs));
+                OnCycleStartChanged();
             }
         }
 
@@ -112,6 +143,8 @@ namespace SCLOCVerse.Services.HangarTimer
 
             return DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
         }
+
+        private void OnCycleStartChanged() => CycleStartChanged?.Invoke(this, EventArgs.Empty);
 
         private void RegisterHotkeys()
         {

@@ -35,10 +35,15 @@
     <None Remove="Images\smallLogo-removebg-preview.png" />
     <None Remove="Images\USF-logo.png" />
     <None Remove="Images\USF-logo2.png" />
+    <None Remove="Images\hangar.svg" />
+    <None Remove="Images\hangar_icon_64.png" />
+    <None Remove="Images\hangar_icon_128.png" />
+    <None Remove="Images\hangar_icon_256.png" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
+    <PackageReference Include="SharpVectors.Wpf" Version="1.8.4" />
     <PackageReference Include="Supabase" Version="1.1.1" />
     <PackageReference Include="WindowsAPICodePack.Shell.CommonFileDialogs" Version="1.1.5" />
   </ItemGroup>
@@ -57,9 +62,9 @@
     <Resource Include="Images\smallLogo-removebg-preview.png" />
     <Resource Include="Images\USF-logo.png" />
     <Resource Include="Images\USF-logo2.png" />
-    <Content Include="PathText.json">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
+    <Resource Include="Images\hangar_icon_64.png" />
+    <Resource Include="Images\hangar_icon_128.png" />
+    <Resource Include="Images\hangar_icon_256.png" />
   </ItemGroup>
 
   <ItemGroup>
