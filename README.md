@@ -10,9 +10,15 @@
 [![License](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge)](LICENSE.txt)
 [![Crowdin](https://badges.crowdin.net/star-citizen-localization-ua/localized.svg)](https://shorturl.at/dopMW)
 [![VirusTotal](https://img.shields.io/badge/VirusTotal-Verified-blue?style=for-the-badge)](https://www.virustotal.com/)
-[![Discord](https://img.shields.io/discord/XXXXXXXX?style=for-the-badge&label=Discord)](https://discord.gg/y2c7M9cgbk)
+[![Discord](https://img.shields.io/discord/138678973436526592?style=for-the-badge&label=Discord)](https://discord.gg/VdQBscHRCB)
 
 </p>
+
+---
+
+# 🌐 Сайт проєкту
+
+**https://scloc.pp.ua**
 
 ---
 
@@ -159,7 +165,7 @@ SCLOC-Verse поважає вашу приватність.
 
 🎮 Discord
 
-https://discord.gg/y2c7M9cgbk
+https://discord.gg/VdQBscHRCB
 
 🎥 Відеоінструкція
 

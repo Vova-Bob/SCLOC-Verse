@@ -181,7 +181,7 @@ namespace SCLOCVerse.Controls
 
         private void Card3_Click(object sender, MouseButtonEventArgs e)
         {
-            OpenUrl("https://discord.gg/y2c7M9cgbk");
+            OpenUrl("https://discord.gg/VdQBscHRCB");
         }
 
         private void Card4_Click(object sender, MouseButtonEventArgs e)
