@@ -114,7 +114,7 @@ namespace SCLOCVerse.Services.HangarTimer
             {
                 try
                 {
-                    Application.Current.Dispatcher.Invoke(() => window.Close(), DispatcherPriority.Send);
+                    _ = Application.Current.Dispatcher.InvokeAsync(() => window.Close(), DispatcherPriority.Send);
                 }
                 catch
                 {
