@@ -1,10 +1,9 @@
--- SCLOC-Verse Migration: ADR-011 — Delegated Read-Only Role for Control Center
+-- Міграція: виділена read-only роль для Control Center
 --
 -- Створює виділену роль cc_readonly, яка використовується Control Center
 -- для читання офіційного контракту control_center.
 --
 -- Ця роль не має жодних прав поза схемою control_center.
--- Міграція виконується після створення контрактної схеми (REQ-6).
 -- Пароль задається окремо через Supabase Dashboard / secure channel
 -- і ніколи не зберігається в SCLOC-Verse репозиторії.
 
@@ -12,10 +11,9 @@
 DO $$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'cc_readonly') THEN
-        CREATE ROLE cc_readonly WITH LOGIN NOINHERIT NOCREATEDB NOCREATEROLE NOSUPERUSER;
+        CREATE ROLE cc_readonly WITH LOGIN NOCREATEDB NOCREATEROLE NOSUPERUSER;
     END IF;
-END
-$$;
+END $$;
 
 -- 2. Мінімальні права на схему та об'єкти control_center
 GRANT USAGE ON SCHEMA control_center TO cc_readonly;
