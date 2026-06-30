@@ -9,7 +9,7 @@
 [![Latest Release](https://img.shields.io/github/v/release/Vova-Bob/SCLOC-Verse?style=for-the-badge&label=Latest%20Release)](https://github.com/Vova-Bob/SCLOC-Verse/releases/latest)
 [![License](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge)](LICENSE.txt)
 [![Crowdin](https://badges.crowdin.net/star-citizen-localization-ua/localized.svg)](https://shorturl.at/dopMW)
-[![VirusTotal](https://img.shields.io/badge/VirusTotal-Verified-blue?style=for-the-badge)](https://www.virustotal.com/)
+[![VirusTotal](https://img.shields.io/badge/VirusTotal-Verified-blue?style=for-the-badge)](https://www.virustotal.com/gui/file-analysis/YjNhMTQ0N2VjZmYyYzJlNzc2MWM3ZDQ1MWJjOWQ2ZWE6MTc4Mjg2MjE3NA==)
 [![Discord](https://img.shields.io/discord/138678973436526592?style=for-the-badge&label=Discord)](https://discord.gg/VdQBscHRCB)
 
 </p>
