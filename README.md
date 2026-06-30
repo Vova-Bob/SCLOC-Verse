@@ -155,7 +155,27 @@ SCLOC-Verse поважає вашу приватність.
 
 <p align="center">
 
-[![Підтримати](https://img.shields.io/website?url=https%3A%2F%2Fsend.monobank.ua%2Fjar%2F44HXkQkorg&up_message=Підтримати&style=for-the-badge&label=Monobank)](https://send.monobank.ua/jar/44HXkQkorg)
+[![Підтримати](https://img.shields.io/website?url=https%3A%2F%2Fsend.monobank.ua%2Fjar%2F44HXkQkorg&up_message=Підтримати&style=for-the-badge&label=Monobank)](https://send.monobank.ua/jar/9k64eDFt8r)
+
+### :bank: Банка Monobank
+
+https://send.monobank.ua/jar/9k64eDFt8r
+
+### :credit_card: Картка банки
+
+`4874 1000 3907 8038`
+
+### :dollar: Валютна картка
+
+`4441 1144 8279 8558`
+
+### :coin: USDT (TRC20)
+
+`TYi6BbTkzfxE9P3RvL7FnhK8Kv4YE7DqGX`
+
+### :credit_card: Donatello 
+
+https://donatello.to/VALDEUS
 
 </p>
 
