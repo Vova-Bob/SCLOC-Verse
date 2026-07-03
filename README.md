@@ -9,7 +9,7 @@
 [![Latest Release](https://img.shields.io/github/v/release/Vova-Bob/SCLOC-Verse?style=for-the-badge&label=Latest%20Release)](https://github.com/Vova-Bob/SCLOC-Verse/releases/latest)
 [![License](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge)](LICENSE.txt)
 [![Crowdin](https://badges.crowdin.net/star-citizen-localization-ua/localized.svg)](https://shorturl.at/dopMW)
-[![VirusTotal](https://img.shields.io/badge/VirusTotal-Verified-blue?style=for-the-badge)](https://www.virustotal.com/)
+[![VirusTotal](https://img.shields.io/badge/VirusTotal-Verified-blue?style=for-the-badge)](https://www.virustotal.com/gui/file-analysis/YjNhMTQ0N2VjZmYyYzJlNzc2MWM3ZDQ1MWJjOWQ2ZWE6MTc4Mjg2MjE3NA==)
 [![Discord](https://img.shields.io/discord/138678973436526592?style=for-the-badge&label=Discord)](https://discord.gg/VdQBscHRCB)
 
 </p>
@@ -166,7 +166,27 @@ Free code signing for SCLOC-Verse is provided by [SignPath.io](https://signpath.
 
 <p align="center">
 
-[![Підтримати](https://img.shields.io/website?url=https%3A%2F%2Fsend.monobank.ua%2Fjar%2F44HXkQkorg&up_message=Підтримати&style=for-the-badge&label=Monobank)](https://send.monobank.ua/jar/44HXkQkorg)
+[![Підтримати](https://img.shields.io/website?url=https%3A%2F%2Fsend.monobank.ua%2Fjar%2F44HXkQkorg&up_message=Підтримати&style=for-the-badge&label=Monobank)](https://send.monobank.ua/jar/9k64eDFt8r)
+
+### :bank: Банка Monobank
+
+https://send.monobank.ua/jar/9k64eDFt8r
+
+### :credit_card: Картка банки
+
+`4874 1000 3907 8038`
+
+### :dollar: Валютна картка
+
+`4441 1144 8279 8558`
+
+### :coin: USDT (TRC20)
+
+`TYi6BbTkzfxE9P3RvL7FnhK8Kv4YE7DqGX`
+
+### :credit_card: Donatello 
+
+https://donatello.to/VALDEUS
 
 </p>
 
