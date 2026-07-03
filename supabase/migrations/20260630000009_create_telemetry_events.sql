@@ -58,18 +58,32 @@ CREATE INDEX IF NOT EXISTS idx_telemetry_trace
 CREATE INDEX IF NOT EXISTS idx_telemetry_detect
     ON public.telemetry_events(component, operation, outcome, received_at DESC);
 
--- Безпека (RLS). Патерн нових таблиць проєкту: anon deny-all; authenticated —
--- лише owner-only INSERT через JWT (Стаття 5). Жодного GRANT anon (foot-proof).
+-- Безпека (RLS). Патерн: anon — повний deny; authenticated — owner-only SELECT+INSERT
+-- через JWT (Стаття 4). UPDATE/DELETE НЕ грантяться -> append-only (Стаття 5).
+--
+-- SELECT потрібен, бо Supabase SDK на Insert використовує Prefer: return=representation
+-- (RETURNING вимагає SELECT-привілей). Виявлено live-тестом 42501 на RETURNING —
+-- без SELECT клієнтський інсерт падав би з тією ж помилкою, що й інцидент GRANT SELECT.
+-- Owner-scoped: користувач бачить лише свої події (RLS USING user_id = auth.uid()).
 ALTER TABLE public.telemetry_events ENABLE ROW LEVEL SECURITY;
+
+-- Прибираємо унаслідовані від проєктних DEFAULT PRIVILEGES зайві гранти
+-- (TRUNCATE/REFERENCES/TRIGGER), щоб залишити мінімально необхідний доступ.
+REVOKE ALL ON public.telemetry_events FROM anon;
+REVOKE ALL ON public.telemetry_events FROM authenticated;
+GRANT SELECT, INSERT ON public.telemetry_events TO authenticated;
 
 CREATE POLICY "deny all anon on telemetry_events"
     ON public.telemetry_events AS RESTRICTIVE
     FOR ALL TO anon
     USING (false) WITH CHECK (false);
 
+CREATE POLICY "auth select own telemetry_events"
+    ON public.telemetry_events
+    FOR SELECT TO authenticated
+    USING (user_id = auth.uid());
+
 CREATE POLICY "auth insert own telemetry_events"
     ON public.telemetry_events
     FOR INSERT TO authenticated
     WITH CHECK (user_id = auth.uid());
-
-GRANT INSERT ON public.telemetry_events TO authenticated;
