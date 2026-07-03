@@ -1,11 +1,11 @@
--- SCLOC-Verse Migration: REQ-6 — Control Center Contract Schema
+-- Міграція: REQ-6 — Control Center Contract Schema
 --
 -- Контракт живе в Supabase. SCLOC-Verse як власник міграцій створює та
 -- еволюціонує цей контракт. Control Center читає лише об'єкти схеми
 -- control_center і ніколи не залежить від внутрішньої структури public.*.
 --
 -- Ця міграція містить ТІЛЬКИ контракт (schema + views). Безпека (роль cc_readonly)
--- винесена в окрему міграцію ADR-008 після Integration PASS.
+-- винесена в окрему міграцію 20260630000008.
 
 -- 1. Схема контракту
 CREATE SCHEMA IF NOT EXISTS control_center;
@@ -48,7 +48,6 @@ SELECT
     ua.is_install_active,
     ua.install_first_seen,
     ua.install_last_seen,
-    ua.install_last_session_at,
     ua.install_created_at,
     ua.install_count,
     ua.active_install_count,
@@ -75,14 +74,13 @@ SELECT
     i.game_folder_path,
     i.selected_environment,
     i.is_active,
-    i.updated_at,
-    i.last_session_at
+    i.updated_at
 FROM public.app_installations i;
 
 CREATE OR REPLACE VIEW control_center.statistics AS
 SELECT
-    (SELECT count(*) FROM public.app_installations) AS total_installations,
-    (SELECT count(*) FROM auth.users)               AS total_users;
+    (SELECT COUNT(*) FROM public.app_installations) AS total_installations,
+    (SELECT COUNT(*) FROM auth.users)               AS total_users;
 
 CREATE OR REPLACE VIEW control_center.errors AS
 SELECT
@@ -103,10 +101,7 @@ FROM public.error_reports er;
 
 CREATE OR REPLACE VIEW control_center.health AS
 SELECT
-    (SELECT count(*) FROM public.app_installations WHERE last_seen > now() - interval '7 days') AS active_installations_last_7d;
+    (SELECT COUNT(*) FROM public.app_installations WHERE last_seen > now() - interval '7 days') AS active_installations_last_7d;
 
--- 4. Примітка: control_center.audit додасться пізніше, коли admin_audit_log
---    наповниться/буде потрібна в Phase 2/3.
-
--- 5. Заборонено додавати сюди ролі, grants, функції, тригери або таблиці.
+-- 4. Заборонено додавати сюди ролі, grants, функції, тригери або таблиці.
 --    Тільки schema + views.

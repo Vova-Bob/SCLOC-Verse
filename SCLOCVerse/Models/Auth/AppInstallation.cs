@@ -44,8 +44,5 @@ namespace SCLOCVerse.Models.Auth
 
         [Supabase.Postgrest.Attributes.Column("updated_at")]
         public DateTimeOffset? UpdatedAt { get; set; }
-
-        [Supabase.Postgrest.Attributes.Column("last_session_at")]
-        public DateTimeOffset? LastSessionAt { get; set; }
     }
 }
