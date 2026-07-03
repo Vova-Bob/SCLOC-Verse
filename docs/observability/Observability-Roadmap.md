@@ -10,6 +10,40 @@
 
 ## STATUS (live)
 
+> ## 🏁 SCLOC Observability Platform — RC1 (2026-07-03)
+>
+> **Серверна частина готова.** Події збираються, структуровуються, передаються,
+> зберігаються. Інциденти детектуються та отримують INC-ID з lifecycle.
+> Control Center backend (VIEWs) готовий до споживання UI.
+>
+> **Наступний етап — Control Center UI** (не серверна логіка).
+> Лише після кількох тижнів використання UI стане зрозуміло, яких даних бракує.
+
+### Склад RC1
+
+| Компонент | Статус |
+|---|---|
+| Telemetry Client (5 слайсів подій) | ✅ Runtime / ⏳ Production Pending |
+| ErrorContextExtractor (універсальний) | ✅ |
+| HResultCatalog (0x800B0109→CERT_E_UNTRUSTEDROOT) | ✅ |
+| PrivacySanitizer | ✅ |
+| telemetry_events (append-only, RLS, 14d retention) | ✅ Runtime Verified |
+| Incident Candidates (detection VIEWs) | ✅ Live Verified |
+| Incident Engine (TABLE + promotion + INC-ID) | ✅ Live Verified |
+| incident_policy (per-component пороги) | ✅ |
+| Constitution (21 стаття) | ✅ |
+| Database-Verification Checklist (Стаття 17) | ✅ |
+
+### Наступні етапи (після UI)
+
+| Етап | Що | Коли |
+|---|---|---|
+| **Control Center UI** | Dashboard (Overview, Incidents, Traces, Releases, Telemetry Explorer) | **зараз** |
+| Phase 5 | Manual Incident Workflow (Confirmed→Investigating→Resolved) + Alerts | після досвіду з UI |
+| Phase 6 | Root Cause Catalog (fingerprint→cause) | після реальних production-інцидентів |
+
+### Історія слайсів
+
 - **Slice 1 — Minimal Client + Trace (`Application.Start`): ✅ Runtime Verified (2026-07-03).** Реальна подія зʼявилась у `control_center.traces`; пройшла повний конвеєр клієнт→Supabase→VIEW. DB-пів доведено повністю (RLS/GRANT/authenticated/anon/RETURNING/View/cc_readonly). У процесі виявлено+виправлено другий `42501` (відсутній `GRANT SELECT` для `RETURNING`).
 - **Slice 2 — OAuth: ✅ Runtime Verified.** `Auth/SignIn` + `Auth/RestoreSession`. Побудовано універсальний `ErrorContextExtractor` (source/http_status/supabase_code/hresult через інспекцію типу, не текст).
 - **Slice 3 — Installation: ✅ Runtime Verified.** `Installation/Sync` Started/Succeeded/Failed + `detail.phase`. Саме ця подія зробила б `42501` видимим за хвилини.
