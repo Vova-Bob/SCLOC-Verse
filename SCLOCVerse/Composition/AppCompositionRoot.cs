@@ -54,6 +54,13 @@ namespace SCLOCVerse.Composition
             _applicationVersionProvider = new ApplicationVersionProvider();
             _updateChannelService = (IUpdateChannelService)_settingsService;
 
+            // SCLOC Observability Platform — конструюється рано (без Supabase-клієнта),
+            // щоб інжектитись у всі сервіси оновлення та auth. Дешеве (Конституція, Стаття 3).
+            var telemetryChannel = string.IsNullOrWhiteSpace(SCLOCVerse.Settings.Default.UpdateChannel)
+                ? "stable"
+                : SCLOCVerse.Settings.Default.UpdateChannel;
+            _telemetryClient = new TelemetryClient(BuildInfo.Create(telemetryChannel), enabled: !IsTelemetryDisabled());
+
             var httpClient = new HttpClient();
             var gitHubClient = new GitHubReleaseClient(httpClient, UpdateConstants.UserAgent);
             var updateCacheService = new UpdateCacheService();
@@ -80,23 +87,15 @@ namespace SCLOCVerse.Composition
 
             _backgroundUpdateMonitor = new BackgroundUpdateMonitor(_applicationUpdateService);
 
-            _updateDownloader = new UpdateDownloader(httpClient);
-            _updateInstaller = new UpdateInstaller(new UpdateScriptBuilder());
+            _updateDownloader = new UpdateDownloader(httpClient, _telemetryClient);
+            _updateInstaller = new UpdateInstaller(new UpdateScriptBuilder(), _telemetryClient);
             _updateHistoryService = new UpdateHistoryService();
-            _updateVerifier = new UpdateVerifier();
+            _updateVerifier = new UpdateVerifier(_telemetryClient);
             _gitHubReleaseClient = gitHubClient;
             _dialogService = new DialogService(Dispatcher.CurrentDispatcher);
 
             var supabaseUrl = GetSupabaseUrl();
             var supabaseAnonKey = GetSupabaseAnonKey();
-
-            // SCLOC Observability Platform. Конструюється ДО auth (без Supabase-клієнта),
-            // щоб ITelemetryService можна було інжектувати в AuthService (розрив циклу
-            // залежностей auth ↔ telemetry). Конструювання дешеве (Конституція, Стаття 3).
-            var telemetryChannel = string.IsNullOrWhiteSpace(SCLOCVerse.Settings.Default.UpdateChannel)
-                ? "stable"
-                : SCLOCVerse.Settings.Default.UpdateChannel;
-            _telemetryClient = new TelemetryClient(BuildInfo.Create(telemetryChannel), enabled: !IsTelemetryDisabled());
 
             _authCompositionRoot = new AuthCompositionRoot(supabaseUrl, supabaseAnonKey, _telemetryClient);
 

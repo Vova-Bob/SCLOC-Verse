@@ -1,5 +1,7 @@
 ﻿using SCLOCVerse.Interfaces;
+using SCLOCVerse.Services.Observability;
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
 using System.Threading;
@@ -10,10 +12,12 @@ namespace SCLOCVerse.Services.ApplicationUpdate
     public class UpdateDownloader : IUpdateDownloader
     {
         private readonly HttpClient _httpClient;
+        private readonly ITelemetryService? _telemetry;
 
-        public UpdateDownloader(HttpClient httpClient)
+        public UpdateDownloader(HttpClient httpClient, ITelemetryService? telemetry = null)
         {
             _httpClient = httpClient ?? throw new ArgumentNullException(nameof(httpClient));
+            _telemetry = telemetry;
         }
 
         public async Task<string> DownloadAsync(
@@ -35,13 +39,26 @@ namespace SCLOCVerse.Services.ApplicationUpdate
 
             var filePath = Path.Combine(targetDirectory, fileName);
 
-            using var response = await _httpClient.GetAsync(downloadUrl, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
-            response.EnsureSuccessStatusCode();
+            // Спостережуваність: лише фактичне завантаження (арг-валідація вище — без подій).
+            var sw = Stopwatch.StartNew();
+            UpdateEvents.Track(_telemetry, "Download", "Started");
 
-            await using var fileStream = new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.None);
-            await response.Content.CopyToAsync(fileStream, cancellationToken).ConfigureAwait(false);
+            try
+            {
+                using var response = await _httpClient.GetAsync(downloadUrl, HttpCompletionOption.ResponseHeadersRead, cancellationToken).ConfigureAwait(false);
+                response.EnsureSuccessStatusCode();
 
-            return filePath;
+                await using var fileStream = new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.None);
+                await response.Content.CopyToAsync(fileStream, cancellationToken).ConfigureAwait(false);
+
+                UpdateEvents.Track(_telemetry, "Download", "Succeeded", sw.ElapsedMilliseconds);
+                return filePath;
+            }
+            catch (Exception ex)
+            {
+                UpdateEvents.Track(_telemetry, "Download", "Failed", sw.ElapsedMilliseconds, ex);
+                throw; // Zero Regression.
+            }
         }
     }
 }
