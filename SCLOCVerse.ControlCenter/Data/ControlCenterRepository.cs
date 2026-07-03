@@ -39,25 +39,80 @@ public sealed class ControlCenterRepository : IControlCenterRepository
     {
         await using var conn = await _dataSource.OpenConnectionAsync(ct).ConfigureAwait(false);
 
-        // 1. Інцидент за incident_id
         var incident = await ReadIncidentByIdAsync(conn, incidentId, ct);
         if (incident == null)
             return null;
 
-        // 2. Root event (перша подія інциденту)
         if (incident.RootEventId.HasValue)
         {
             incident.RootEvent = await ReadEventSummaryAsync(conn, incident.RootEventId.Value, ct);
-
-            // 3. Trace — повна траса запуску через correlation_id root_event
             if (incident.RootEvent != null)
                 incident.Trace = await ReadTraceAsync(conn, incident.RootEvent.CorrelationId, ct);
         }
 
-        // 4. Related events — останні Failed-події з тим fingerprint (не більше 20)
         incident.RelatedEvents = await ReadRelatedEventsAsync(conn, incident, ct);
-
         return incident;
+    }
+
+    public async Task<List<ReleaseHealth>> GetReleaseHealthAsync(CancellationToken ct = default)
+    {
+        await using var conn = await _dataSource.OpenConnectionAsync(ct).ConfigureAwait(false);
+        await using var cmd = new NpgsqlCommand("""
+            SELECT app_version, succeeded, failed, success_rate,
+                   active_installs, users_24h, new_incidents, critical_incidents,
+                   first_seen, last_seen,
+                   top_fingerprint, top_component, top_signal, top_event_count, top_severity
+            FROM control_center.release_health_detail
+            """, conn);
+
+        var results = new Dictionary<string, ReleaseHealth>();
+        await using var reader = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        while (await reader.ReadAsync(ct).ConfigureAwait(false))
+        {
+            var version = reader.GetString(0);
+            if (!results.TryGetValue(version, out var rh))
+            {
+                rh = new ReleaseHealth
+                {
+                    AppVersion = version,
+                    Succeeded = reader.GetInt64(1),
+                    Failed = reader.GetInt64(2),
+                    SuccessRate = (double)reader.GetDecimal(3),
+                    ActiveInstalls = reader.GetInt32(4),
+                    ActiveUsers24h = reader.GetInt32(5),
+                    NewIncidents = reader.GetInt32(6),
+                    CriticalIncidents = reader.GetInt32(7),
+                    FirstSeen = reader.IsDBNull(8) ? null : reader.GetDateTime(8),
+                    LastSeen = reader.IsDBNull(9) ? null : reader.GetDateTime(9),
+                };
+                // Recommendation
+                if (rh.CriticalIncidents > 0 || rh.SuccessRate < 60)
+                {
+                    rh.Recommendation = "Rollback Recommended";
+                    rh.RecommendationIcon = "🔴";
+                }
+                else if (rh.NewIncidents > 0 || rh.SuccessRate < 95)
+                {
+                    rh.Recommendation = "Watch";
+                    rh.RecommendationIcon = "🟡";
+                }
+                else
+                {
+                    rh.Recommendation = "Healthy";
+                    rh.RecommendationIcon = "🟢";
+                }
+                results[version] = rh;
+            }
+
+            if (!reader.IsDBNull(10))
+            {
+                rh.TopFingerprints.Add(new TopFingerprint(
+                    reader.GetString(10), reader.GetString(11),
+                    reader.GetString(12), reader.GetInt32(13),
+                    reader.IsDBNull(14) ? "Warning" : reader.GetString(14)));
+            }
+        }
+        return results.Values.OrderByDescending(r => r.LastSeen ?? DateTime.MinValue).ToList();
     }
 
     private static async Task<IncidentDetail?> ReadIncidentByIdAsync(NpgsqlConnection conn, string incidentId, CancellationToken ct)

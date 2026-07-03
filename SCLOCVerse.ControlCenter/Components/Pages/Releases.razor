@@ -1,8 +1,121 @@
 @page "/releases"
+@inject IControlCenterRepository Repository
+@rendermode InteractiveServer
+
+<PageTitle>Release Health — SCLOC Control Center</PageTitle>
 
 <h1>Release Health</h1>
-<p class="text-muted">Стан кожної версії: success-rate, інциденти, падіння.</p>
+<p class="text-muted">Чи можна безпечно випускати наступну версію?</p>
 
-<div class="alert alert-info">
-    <strong>Sprint 5:</strong> per-version: Auth/Installation/Updater/LIA success%, incident count, crash count.
-</div>
+@if (_error != null)
+{
+    <div class="alert alert-danger">@_error</div>
+}
+else if (_loading)
+{
+    <div class="spinner-border text-primary" role="status"></div>
+}
+else if (_releases.Count == 0)
+{
+    <p class="text-muted">Немає даних за останні 7 днів.</p>
+}
+else
+{
+    @foreach (var r in _releases)
+    {
+        <div class="card mb-3 @(r.Recommendation == "Rollback Recommended" ? "border-danger" : r.Recommendation == "Watch" ? "border-warning" : "border-success")">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <div>
+                    <strong class="fs-5">@r.AppVersion</strong>
+                    @if (r.LastSeen.HasValue)
+                    {
+                        <span class="text-muted small ms-2">остання активність: @r.LastSeen.Value.ToString("MM-dd HH:mm")</span>
+                    }
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <span class="fs-4">@r.RecommendationIcon</span>
+                    <span class="badge @(r.Recommendation == "Rollback Recommended" ? "bg-danger" : r.Recommendation == "Watch" ? "bg-warning text-dark" : "bg-success")">
+                        @r.Recommendation
+                    </span>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row text-center mb-3">
+                    <div class="col">
+                        <h3 class="@(r.SuccessRate >= 95 ? "text-success" : r.SuccessRate >= 60 ? "text-warning" : "text-danger")">
+                            @r.SuccessRate%
+                        </h3>
+                        <small class="text-muted">Success Rate</small>
+                    </div>
+                    <div class="col">
+                        <h3>@r.Succeeded</h3>
+                        <small class="text-muted">Succeeded</small>
+                    </div>
+                    <div class="col">
+                        <h3 class="@(r.Failed > 0 ? "text-danger" : "")">@r.Failed</h3>
+                        <small class="text-muted">Failed</small>
+                    </div>
+                    <div class="col">
+                        <h3>@r.ActiveInstalls</h3>
+                        <small class="text-muted">Installs</small>
+                    </div>
+                    <div class="col">
+                        <h3>@r.ActiveUsers24h</h3>
+                        <small class="text-muted">Users 24h</small>
+                    </div>
+                    <div class="col">
+                        <h3 class="@(r.NewIncidents > 0 ? "text-warning" : "")">@r.NewIncidents</h3>
+                        <small class="text-muted">Incidents</small>
+                    </div>
+                    <div class="col">
+                        <h3 class="@(r.CriticalIncidents > 0 ? "text-danger" : "")">@r.CriticalIncidents</h3>
+                        <small class="text-muted">Critical</small>
+                    </div>
+                </div>
+
+                @if (r.TopFingerprints.Count > 0)
+                {
+                    <h6>Top Problem</h6>
+                    @foreach (var fp in r.TopFingerprints)
+                    {
+                        <div class="d-flex justify-content-between align-items-center bg-light rounded p-2 mb-1">
+                            <div>
+                                <code>@fp.Fingerprint</code><br/>
+                                <small class="text-muted">@fp.Component · @fp.Severity</small>
+                            </div>
+                            <span class="badge @(fp.Severity == "Critical" ? "bg-danger" : "bg-warning text-dark")">
+                                @fp.EventCount events
+                            </span>
+                        </div>
+                    }
+                }
+                else if (r.Failed == 0)
+                {
+                    <p class="text-success mb-0">✅ Немає проблемних fingerprint-ів.</p>
+                }
+            </div>
+        </div>
+    }
+}
+
+@code {
+    private List<ReleaseHealth> _releases = new();
+    private bool _loading = true;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _releases = await Repository.GetReleaseHealthAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+}
