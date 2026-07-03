@@ -1,7 +1,11 @@
 using SCLOCVerse.Interfaces;
 using SCLOCVerse.Models.Auth;
+using SCLOCVerse.Models.Observability;
+using SCLOCVerse.Services.Observability;
 using Supabase;
 using System;
+using System.Collections.Generic;
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -14,13 +18,15 @@ namespace SCLOCVerse.Services.Auth
     {
         private readonly Supabase.Client _supabase;
         private readonly string _installId;
+        private readonly ITelemetryService? _telemetry;
 
         public string InstallId => _installId;
 
-        public InstallationService(ISupabaseClientFactory clientFactory)
+        public InstallationService(ISupabaseClientFactory clientFactory, ITelemetryService? telemetry = null)
         {
             _supabase = clientFactory?.CreateClient() ?? throw new ArgumentNullException(nameof(clientFactory));
             _installId = GetOrCreateInstallId();
+            _telemetry = telemetry;
         }
 
         public async Task SyncCurrentInstallationAsync(CancellationToken cancellationToken = default)
@@ -33,64 +39,115 @@ namespace SCLOCVerse.Services.Auth
             if (!Guid.TryParse(userIdString, out var userId))
                 return;
 
-            var now = DateTimeOffset.UtcNow;
-            var appVersion = GetCurrentAppVersion();
-            var platform = "Windows";
-            var machineId = Environment.MachineName;
-            var osVersion = Environment.OSVersion.VersionString;
+            // --- Спостережуваність: далі — фактичний Sync. ---
+            // Винятки далі поширюються незмінно (re-throw) → Zero Regression для бізнес-логіки.
+            var sw = Stopwatch.StartNew();
+            var phase = "LoadCurrentInstallation";
+            TrackSync("Started", phase);
 
-            // Перевіряємо, чи існує рядок для цього install_id.
-            var response = await _supabase
-                .From<AppInstallation>()
-                .Filter("install_id", Supabase.Postgrest.Constants.Operator.Equals, _installId)
-                .Get(cancellationToken: cancellationToken)
-                .ConfigureAwait(false);
-
-            var existing = response.Models.FirstOrDefault();
-
-            if (existing == null)
+            try
             {
-                // INSERT: перший вхід для цієї інсталяції — first_seen/created_at
-                // фіксуються раз і назавжди.
-                var installation = new AppInstallation
-                {
-                    UserId = userId,
-                    InstallId = _installId,
-                    AppVersion = appVersion,
-                    Platform = platform,
-                    MachineId = machineId,
-                    OsVersion = osVersion,
-                    FirstSeen = now,
-                    CreatedAt = now,
-                    LastSeen = now,
-                    UpdatedAt = now,
-                    IsActive = true
-                };
+                var now = DateTimeOffset.UtcNow;
+                var appVersion = GetCurrentAppVersion();
+                var platform = "Windows";
+                var machineId = Environment.MachineName;
+                var osVersion = Environment.OSVersion.VersionString;
 
-                await _supabase
-                    .From<AppInstallation>()
-                    .Insert(installation, cancellationToken: cancellationToken)
-                    .ConfigureAwait(false);
-            }
-            else
-            {
-                // UPDATE: оновлюємо лише змінні поля.
-                // first_seen/created_at не передаються — залишаються незмінними.
-#pragma warning disable CS8603
-                await _supabase
+                phase = "SelectExistingInstallation";
+                // Перевіряємо, чи існує рядок для цього install_id.
+                var response = await _supabase
                     .From<AppInstallation>()
                     .Filter("install_id", Supabase.Postgrest.Constants.Operator.Equals, _installId)
-                    .Set(i => i.UserId, userId)
-                    .Set(i => i.AppVersion, appVersion)
-                    .Set(i => i.Platform, platform)
-                    .Set(i => i.MachineId, machineId)
-                    .Set(i => i.OsVersion, osVersion)
-                    .Set(i => i.LastSeen, now)
-                    .Set(i => i.UpdatedAt, now)
-                    .Set(i => i.IsActive, true)
-                    .Update(cancellationToken: cancellationToken)
+                    .Get(cancellationToken: cancellationToken)
                     .ConfigureAwait(false);
+
+                var existing = response.Models.FirstOrDefault();
+
+                if (existing == null)
+                {
+                    phase = "InsertInstallation";
+                    // INSERT: перший вхід для цієї інсталяції — first_seen/created_at
+                    // фіксуються раз і назавжди.
+                    var installation = new AppInstallation
+                    {
+                        UserId = userId,
+                        InstallId = _installId,
+                        AppVersion = appVersion,
+                        Platform = platform,
+                        MachineId = machineId,
+                        OsVersion = osVersion,
+                        FirstSeen = now,
+                        CreatedAt = now,
+                        LastSeen = now,
+                        UpdatedAt = now,
+                        IsActive = true
+                    };
+
+                    await _supabase
+                        .From<AppInstallation>()
+                        .Insert(installation, cancellationToken: cancellationToken)
+                        .ConfigureAwait(false);
+                }
+                else
+                {
+                    phase = "UpdateInstallation";
+                    // UPDATE: оновлюємо лише змінні поля.
+                    // first_seen/created_at не передаються — залишаються незмінними.
+#pragma warning disable CS8603
+                    await _supabase
+                        .From<AppInstallation>()
+                        .Filter("install_id", Supabase.Postgrest.Constants.Operator.Equals, _installId)
+                        .Set(i => i.UserId, userId)
+                        .Set(i => i.AppVersion, appVersion)
+                        .Set(i => i.Platform, platform)
+                        .Set(i => i.MachineId, machineId)
+                        .Set(i => i.OsVersion, osVersion)
+                        .Set(i => i.LastSeen, now)
+                        .Set(i => i.UpdatedAt, now)
+                        .Set(i => i.IsActive, true)
+                        .Update(cancellationToken: cancellationToken)
+                        .ConfigureAwait(false);
 #pragma warning restore CS8603
+                }
+
+                phase = "Complete";
+                TrackSync("Succeeded", phase, sw.ElapsedMilliseconds);
+            }
+            catch (Exception ex)
+            {
+                TrackSync("Failed", phase, sw.ElapsedMilliseconds, ex);
+                throw; // Zero Regression: виняток далі поширюється, як і раніше.
+            }
+        }
+
+        // Спостережуваність Installation (Стаття 15 — Observable by Default; Стаття 1 — non-throwing).
+        // ErrorContextExtractor — спільний для всієї платформи (Стаття 12 — DRY; НЕ Installation-specific).
+        // detail: phase (де саме впав Sync) + retry_count (0 зараз; схема готова для майбутньої Retry Policy).
+        private void TrackSync(string outcome, string phase, long? durationMs = null, Exception? exception = null)
+        {
+            if (_telemetry is null)
+                return;
+
+            try
+            {
+                TelemetryContext ctx = exception is not null
+                    ? ErrorContextExtractor.Extract(exception) ?? new TelemetryContext()
+                    : new TelemetryContext();
+
+                if (durationMs.HasValue)
+                    ctx.DurationMs = (int)durationMs.Value;
+
+                ctx.Detail = new Dictionary<string, object?>
+                {
+                    ["phase"] = phase,
+                    ["retry_count"] = 0
+                };
+
+                _telemetry.Track("Installation", "Sync", outcome, ctx);
+            }
+            catch
+            {
+                // Стаття 1: телеметрія ніколи не впливає на sync.
             }
         }
 
