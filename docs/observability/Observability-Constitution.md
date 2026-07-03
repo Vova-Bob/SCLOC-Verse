@@ -167,6 +167,32 @@ Duration
 
 ---
 
+## Стаття 17 — Production Database Verification
+
+> Жодна нова таблиця або RLS policy не вважається завершеною, поки не пройшла повний runtime verification під реальною роллю `authenticated` (не `service_role`).
+
+**Точне значення.** Компіляція + SQL-наявність — НЕ є Done. Done = доведено живою системою. Інцидент `42501` траплявся двічі (`app_installations`, `telemetry_events`) і обидва рази ховався в GRANT/RLS/RETURNING, а не в коді. Тому верифікація — окрема обов'язкова стадія Definition of Done, а не «бажано».
+
+**Забезпечення.** Кожна нова таблиця проходить універсальний чеклист [`docs/checklists/Database-Verification.md`](../checklists/Database-Verification.md) під реальною роллю `authenticated`:
+
+```
+□ RLS enabled
+□ authenticated INSERT
+□ authenticated SELECT
+□ authenticated UPDATE (якщо потрібно)
+□ authenticated DELETE (якщо потрібно)
+□ anon DENY (INSERT/SELECT/UPDATE/DELETE)
+□ чужий SELECT → невидимі (count = 0)
+□ чужий INSERT/UPDATE/DELETE → BLOCKED
+□ RETURNING працює (SDK return=representation)
+□ View працює
+□ Control Center (cc_readonly) бачить дані
+```
+
+Поки пункт не закритий живим доказом — таблиця вважається невпровадженою.
+
+---
+
 ## Telemetry Levels
 
 Один feature-flag `telemetry.level` (0–4) керує обсягом даних. **Головне правило: жоден рівень не відключає детекцію інцидентів** — навіть Level 1 зберігає critical-path failures та їхні знаменники.
@@ -188,6 +214,6 @@ Duration
 ## Як змінювати Конституцію
 
 1. Конституція змінюється лише через явний Pull Request, що оновлює цей файл.
-2. Будь-яка зміна статей 1–16 вимагає позначки **Breaking Constitutional Change** у PR.
+2. Будь-яка зміна статей 1–17 вимагає позначки **Breaking Constitutional Change** у PR.
 3. Telemetry Levels є конфігурацією, а не статтею — можуть доповнюватись без перегляду статей.
 4. Якщо реалізація змушена порушити статтю — це сигнал, що треба або змінити реалізацію, або свідомо переглянути Конституцію. Мовчазне порушення неприпустиме.
