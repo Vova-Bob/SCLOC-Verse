@@ -8,6 +8,26 @@
 
 ---
 
+## STATUS (live)
+
+- **Slice 1 — Minimal Client + Trace (`Application.Start`): ✅ Runtime Verified (2026-07-03).** Реальна подія зʼявилась у `control_center.traces`; пройшла повний конвеєр клієнт→Supabase→VIEW. DB-пів доведено повністю (RLS/GRANT/authenticated/anon/RETURNING/View/cc_readonly). У процесі виявлено+виправлено другий `42501` (відсутній `GRANT SELECT` для `RETURNING`).
+
+### Поточний порядок слайсів (довкола реальних больових точок)
+
+Пріоритет — спостережуваність сервісів, що вже коштували годин форензика. **Offline Queue відкладено** (не пришвидшує пошук production-багів).
+
+| Slice | Сервіс | Події / цінність |
+|---|---|---|
+| **2** | Auth / OAuth | `OAuth.Start/Success/Failure/SessionRestored/SessionRestoreFailed` |
+| **3** | Installation | `Installation.Sync.*`, `PermissionDenied`, error-атрибути — саме ця подія врятувала б години при `42501` |
+| **4** | Updater | `Updater.Start/Download/Verify/Install/Success/Failure` |
+| **5** | L.I.A | `LIA.*` + `LIA.MSIX.Error` (HRESULT/ActivityId/cert) — для `0x800B0109` |
+| (пізніше) | Offline Queue | JSONL-персистенція — слайс «доставки при втраті мережі» |
+
+**Правило:** наступний слайс не починається, поки попередній не **Runtime Verified** (живий запуск → подія у `control_center.traces`).
+
+---
+
 ## Скрізний Definition-of-Done (Стаття 15 — Observable by Default)
 
 Будь-яка фича, додана в межах будь-якої фази, не вважається завершеною без мінімуму:
