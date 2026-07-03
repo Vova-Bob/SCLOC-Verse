@@ -205,6 +205,26 @@ Duration
 
 ---
 
+## Стаття 19 — Promotion Immutability
+
+> Promotion (детекція інцидентів) тільки ЧИТАЄ `telemetry_events` і НІКОЛИ їх не змінює.
+
+**Точне значення.** Функція `promote_incident_candidates()` та будь-яка майбутня логіка інцидентів виконує `SELECT` з `telemetry_events` і `INSERT/UPDATE` лише в `telemetry_incidents` (та похідні таблиці стану). `telemetry_events` — append-only (Стаття 5); ніхто й ніколи не модифікує історичні події, окрім retention-purge (Стаття 5).
+
+**Забезпечення.** `promote_incident_candidates()` — `SECURITY DEFINER`, викликається лише `service_role`/`pg_cron`. `cc_readonly` не має права її викликати. `authenticated`/`anon` не мають права писати в `telemetry_incidents`.
+
+---
+
+## Стаття 20 — Dashboard Purity
+
+> Control Center (Dashboard) тільки ЧИТАЄ готові VIEW. Не містить бізнес-логіки.
+
+**Точне значення.** Усі рішення (severity, status, health GREEN/YELLOW/RED, failure-rate, affected%) обчислюються в SQL VIEWs. Dashboard — це буквально `SELECT * FROM control_center.<view>`. Жодних обчислень клієнтською мовою (Blazor/C#). Жодних side-effect (ніякого виклику функцій, що пишуть).
+
+**Забезпечення.** `cc_readonly` має лише `SELECT` на об'єктах схеми `control_center`. Немає `EXECUTE` на функціях, що пишуть. Немає `INSERT/UPDATE/DELETE` ні на що. Якщо Dashboard потребує нового рішення — додається новий VIEW, а не клієнтська логіка.
+
+---
+
 ## Telemetry Levels
 
 Один feature-flag `telemetry.level` (0–4) керує обсягом даних. **Головне правило: жоден рівень не відключає детекцію інцидентів** — навіть Level 1 зберігає critical-path failures та їхні знаменники.
@@ -226,6 +246,6 @@ Duration
 ## Як змінювати Конституцію
 
 1. Конституція змінюється лише через явний Pull Request, що оновлює цей файл.
-2. Будь-яка зміна статей 1–18 вимагає позначки **Breaking Constitutional Change** у PR.
+2. Будь-яка зміна статей 1–20 вимагає позначки **Breaking Constitutional Change** у PR.
 3. Telemetry Levels є конфігурацією, а не статтею — можуть доповнюватись без перегляду статей.
 4. Якщо реалізація змушена порушити статтю — це сигнал, що треба або змінити реалізацію, або свідомо переглянути Конституцію. Мовчазне порушення неприпустиме.
