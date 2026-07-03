@@ -1,8 +1,241 @@
 @page "/incidents"
+@inject IControlCenterRepository Repository
+@rendermode InteractiveServer
 
-<h1>Incidents</h1>
-<p class="text-muted">Production-інциденти: активні, закриті, деталі.</p>
+<PageTitle>Incidents — SCLOC Control Center</PageTitle>
 
-<div class="alert alert-info">
-    <strong>Sprint 3:</strong> INC-ID, fingerprint, severity, affected, timeline, evidence, related events.
-</div>
+@if (_error != null)
+{
+    <div class="alert alert-danger">@_error</div>
+}
+else if (_loading)
+{
+    <div class="spinner-border text-primary" role="status"></div>
+}
+else if (_detail != null)
+{
+    @* ── Incident Details ── *@
+    <div class="d-flex align-items-center mb-3">
+        <h1 class="me-3">@_detail.IncidentId</h1>
+        <span class="badge @(_detail.HighestSeverity == "Critical" ? "bg-danger" : "bg-warning text-dark") fs-6">
+            @_detail.HighestSeverity
+        </span>
+        <span class="badge bg-secondary fs-6 ms-1">@_detail.Status</span>
+    </div>
+
+    <button class="btn btn-outline-secondary btn-sm mb-3" @onclick="BackToList">← Back to list</button>
+
+    <div class="row">
+        @* Left: properties *@
+        <div class="col-md-5">
+            <h5>Properties</h5>
+            <table class="table table-sm">
+                <tbody>
+                    <tr><th>Fingerprint</th><td><code class="text-wrap">@_detail.FingerprintKey</code></td></tr>
+                    <tr><th>Release</th><td>@_detail.Release</td></tr>
+                    <tr><th>Component</th><td>@_detail.Component</td></tr>
+                    <tr><th>Operation</th><td>@_detail.Operation</td></tr>
+                    <tr><th>Signal</th><td><code>@_detail.Signal</code></td></tr>
+                    <tr><th>Event Count</th><td>@_detail.EventCount</td></tr>
+                    <tr><th>Affected Users</th><td>@_detail.AffectedUsers</td></tr>
+                    <tr><th>Affected Installs</th><td>@_detail.AffectedInstalls</td></tr>
+                    <tr><th>Peak Failure</th><td>@FormatPct(_detail.PeakFailurePct)</td></tr>
+                    <tr><th>Opened</th><td>@_detail.OpenedAt.ToString("yyyy-MM-dd HH:mm")</td></tr>
+                    <tr><th>Last Event</th><td>@_detail.LastEventAt.ToString("yyyy-MM-dd HH:mm")</td></tr>
+                    @if (_detail.ClosedAt.HasValue)
+                    {
+                        <tr><th>Closed</th><td>@_detail.ClosedAt.Value.ToString("yyyy-MM-dd HH:mm")</td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        @* Right: root event + trace + evidence *@
+        <div class="col-md-7">
+            @if (_detail.RootEvent != null)
+            {
+                <h5>Root Event (first failure)</h5>
+                <div class="card bg-light mb-3">
+                    <div class="card-body">
+                        <strong>@_detail.RootEvent.Component / @_detail.RootEvent.Operation / @_detail.RootEvent.Outcome</strong><br/>
+                        <span class="text-muted">Signal:</span> <code>@_detail.RootEvent.Signal</code><br/>
+                        @if (_detail.RootEvent.ErrorMessage != null)
+                        {
+                            <span class="text-muted">Message:</span> @_detail.RootEvent.ErrorMessage<br/>
+                        }
+                        @if (_detail.RootEvent.Source != null)
+                        {
+                            <span class="text-muted">Source:</span> @_detail.RootEvent.Source<br/>
+                        }
+                        @if (_detail.RootEvent.HttpStatus != null)
+                        {
+                            <span class="text-muted">HTTP:</span> @_detail.RootEvent.HttpStatus<br/>
+                        }
+                        @if (_detail.RootEvent.Hresult != null)
+                        {
+                            <span class="text-muted">HRESULT:</span> <code>@_detail.RootEvent.Hresult</code><br/>
+                        }
+                        @if (_detail.RootEvent.SupabaseCode != null)
+                        {
+                            <span class="text-muted">Supabase:</span> <code>@_detail.RootEvent.SupabaseCode</code><br/>
+                        }
+                        @if (_detail.RootEvent.DurationMs != null)
+                        {
+                            <span class="text-muted">Duration:</span> @(($"{_detail.RootEvent.DurationMs}ms"))<br/>
+                        }
+                    </div>
+                </div>
+            }
+
+            @if (_detail.Trace.Count > 0)
+            {
+                <h5>Trace (user journey)</h5>
+                <table class="table table-sm">
+                    <thead>
+                        <tr><th>#</th><th>Component</th><th>Operation</th><th>Outcome</th><th>Signal</th><th>Time</th></tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var step in _detail.Trace)
+                        {
+                            <tr class="@(step.Outcome == "Failed" ? "table-danger" : "")">
+                                <td>@step.Step</td>
+                                <td>@step.Component</td>
+                                <td>@step.Operation</td>
+                                <td>@step.Outcome</td>
+                                <td><code>@step.Signal</code></td>
+                                <td>@step.OccurredAt.ToString("HH:mm:ss")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+
+            @if (_detail.RelatedEvents.Count > 0)
+            {
+                <h5>Related Events (latest @_detail.RelatedEvents.Count failures)</h5>
+                <table class="table table-sm">
+                    <thead>
+                        <tr><th>Time</th><th>Component</th><th>Signal</th><th>Message</th><th>Duration</th></tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var ev in _detail.RelatedEvents)
+                        {
+                            <tr>
+                                <td>@ev.OccurredAt.ToString("MM-dd HH:mm")</td>
+                                <td>@ev.Component</td>
+                                <td><code>@ev.Signal</code></td>
+                                <td class="text-truncate" style="max-width: 200px;">@ev.ErrorMessage</td>
+                                <td>@(ev.DurationMs != null ? $"{ev.DurationMs}ms" : "—")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </div>
+    </div>
+}
+else
+{
+    @* ── Incident List ── *@
+    <h1>Incidents</h1>
+
+    <div class="btn-group mb-3" role="group">
+        <button class="btn btn-sm @(_filter == "Active" ? "btn-primary" : "btn-outline-primary")" @onclick='() => LoadIncidents("Active")'>Active</button>
+        <button class="btn btn-sm @(_filter == "Closed" ? "btn-primary" : "btn-outline-primary")" @onclick='() => LoadIncidents("Closed")'>Closed</button>
+        <button class="btn btn-sm @(_filter == null ? "btn-primary" : "btn-outline-primary")" @onclick='() => LoadIncidents(null)'>All</button>
+    </div>
+
+    @if (_incidents.Count == 0)
+    {
+        <p class="text-success fw-semibold">✅ Немає інцидентів у цій категорії.</p>
+    }
+    else
+    {
+        <table class="table table-sm table-hover">
+            <thead>
+                <tr>
+                    <th>INC-ID</th>
+                    <th>Severity</th>
+                    <th>Component</th>
+                    <th>Signal</th>
+                    <th>Events</th>
+                    <th>Affected</th>
+                    <th>Opened</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var inc in _incidents)
+                {
+                    <tr class="@(inc.HighestSeverity == "Critical" ? "table-danger" : "table-warning")"
+                        style="cursor: pointer"
+                        @onclick="() => OpenDetail(inc.IncidentId)">
+                        <td><strong>@inc.IncidentId</strong></td>
+                        <td>
+                            <span class="badge @(inc.HighestSeverity == "Critical" ? "bg-danger" : "bg-warning text-dark")">
+                                @inc.HighestSeverity
+                            </span>
+                        </td>
+                        <td>@inc.Component</td>
+                        <td><code>@inc.Signal</code></td>
+                        <td>@inc.EventCount</td>
+                        <td>@inc.AffectedInstalls</td>
+                        <td>@inc.OpenedAt.ToString("MM-dd HH:mm")</td>
+                        <td>@inc.Status</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+}
+
+@code {
+    private List<ActiveIncident> _incidents = new();
+    private IncidentDetail? _detail;
+    private string? _filter = "Active";
+    private string? _error;
+    private bool _loading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try { await LoadIncidents("Active"); }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _loading = false; }
+    }
+
+    private async Task LoadIncidents(string? filter)
+    {
+        _filter = filter;
+        _detail = null;
+        _loading = true;
+        StateHasChanged();
+        try
+        {
+            _incidents = await Repository.GetIncidentsAsync(filter);
+            _error = null;
+        }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _loading = false; }
+    }
+
+    private async Task OpenDetail(string incidentId)
+    {
+        _loading = true;
+        StateHasChanged();
+        try
+        {
+            _detail = await Repository.GetIncidentDetailAsync(incidentId);
+            if (_detail == null)
+                _error = $"Інцидент {incidentId} не знайдено.";
+        }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _loading = false; }
+    }
+
+    private void BackToList()
+    {
+        _detail = null;
+    }
+
+    private static string FormatPct(decimal? pct) => pct.HasValue ? $"{pct.Value:F1}%" : "—";
+}

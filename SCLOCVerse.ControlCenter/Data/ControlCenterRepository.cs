@@ -35,6 +35,155 @@ public sealed class ControlCenterRepository : IControlCenterRepository
         return await ReadActiveIncidentsAsync(conn, ct, statusFilter);
     }
 
+    public async Task<IncidentDetail?> GetIncidentDetailAsync(string incidentId, CancellationToken ct = default)
+    {
+        await using var conn = await _dataSource.OpenConnectionAsync(ct).ConfigureAwait(false);
+
+        // 1. Інцидент за incident_id
+        var incident = await ReadIncidentByIdAsync(conn, incidentId, ct);
+        if (incident == null)
+            return null;
+
+        // 2. Root event (перша подія інциденту)
+        if (incident.RootEventId.HasValue)
+        {
+            incident.RootEvent = await ReadEventSummaryAsync(conn, incident.RootEventId.Value, ct);
+
+            // 3. Trace — повна траса запуску через correlation_id root_event
+            if (incident.RootEvent != null)
+                incident.Trace = await ReadTraceAsync(conn, incident.RootEvent.CorrelationId, ct);
+        }
+
+        // 4. Related events — останні Failed-події з тим fingerprint (не більше 20)
+        incident.RelatedEvents = await ReadRelatedEventsAsync(conn, incident, ct);
+
+        return incident;
+    }
+
+    private static async Task<IncidentDetail?> ReadIncidentByIdAsync(NpgsqlConnection conn, string incidentId, CancellationToken ct)
+    {
+        await using var cmd = new NpgsqlCommand("""
+            SELECT incident_id, id, fingerprint_key, release, component, operation, signal,
+                   root_event_id, last_event_id, opened_at, last_event_at, closed_at,
+                   status, highest_severity, peak_failure_pct, affected_users, affected_installs, event_count
+            FROM control_center.incidents
+            WHERE incident_id = $1
+            """, conn);
+        cmd.Parameters.Add(new NpgsqlParameter<string> { Value = incidentId });
+
+        await using var reader = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        if (!await reader.ReadAsync(ct).ConfigureAwait(false))
+            return null;
+
+        return new IncidentDetail
+        {
+            IncidentId = reader.GetString(0),
+            Id = reader.GetInt64(1),
+            FingerprintKey = reader.GetString(2),
+            Release = reader.GetString(3),
+            Component = reader.GetString(4),
+            Operation = reader.GetString(5),
+            Signal = reader.GetString(6),
+            RootEventId = reader.IsDBNull(7) ? null : reader.GetGuid(7),
+            OpenedAt = reader.GetDateTime(9),
+            LastEventAt = reader.GetDateTime(10),
+            ClosedAt = reader.IsDBNull(11) ? null : reader.GetDateTime(11),
+            Status = reader.GetString(12),
+            HighestSeverity = reader.GetString(13),
+            PeakFailurePct = reader.IsDBNull(14) ? null : reader.GetDecimal(14),
+            AffectedUsers = reader.GetInt32(15),
+            AffectedInstalls = reader.GetInt32(16),
+            EventCount = reader.GetInt64(17),
+        };
+    }
+
+    private static async Task<TelemetryEventSummary?> ReadEventSummaryAsync(NpgsqlConnection conn, Guid eventId, CancellationToken ct)
+    {
+        await using var cmd = new NpgsqlCommand("""
+            SELECT id, correlation_id, step, component, operation, outcome,
+                   COALESCE(hresult, supabase_code, http_status::text, exception_type, '-') AS signal,
+                   occurred_at, error_message, duration_ms, source, http_status, hresult, supabase_code
+            FROM control_center.telemetry_events
+            WHERE id = $1
+            """, conn);
+        cmd.Parameters.Add(new NpgsqlParameter<Guid> { Value = eventId });
+
+        await using var reader = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        if (!await reader.ReadAsync(ct).ConfigureAwait(false))
+            return null;
+
+        return new TelemetryEventSummary(
+            reader.GetGuid(0), reader.GetGuid(1), reader.GetInt32(2),
+            reader.GetString(3), reader.GetString(4), reader.GetString(5),
+            reader.GetString(6), reader.GetDateTime(7),
+            reader.IsDBNull(8) ? null : reader.GetString(8),
+            reader.IsDBNull(9) ? null : reader.GetInt32(9),
+            reader.IsDBNull(10) ? null : reader.GetString(10),
+            reader.IsDBNull(11) ? null : reader.GetInt32(11),
+            reader.IsDBNull(12) ? null : reader.GetString(12),
+            reader.IsDBNull(13) ? null : reader.GetString(13));
+    }
+
+    private static async Task<List<TraceStep>> ReadTraceAsync(NpgsqlConnection conn, Guid correlationId, CancellationToken ct)
+    {
+        await using var cmd = new NpgsqlCommand("""
+            SELECT step, component, operation, outcome,
+                   COALESCE(hresult, supabase_code, http_status::text, exception_type, '-') AS signal,
+                   occurred_at, error_message, duration_ms
+            FROM control_center.traces
+            WHERE correlation_id = $1
+            ORDER BY step
+            """, conn);
+        cmd.Parameters.Add(new NpgsqlParameter<Guid> { Value = correlationId });
+
+        var results = new List<TraceStep>();
+        await using var reader = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        while (await reader.ReadAsync(ct).ConfigureAwait(false))
+        {
+            results.Add(new TraceStep(
+                reader.GetInt32(0), reader.GetString(1), reader.GetString(2), reader.GetString(3),
+                reader.GetString(4), reader.GetDateTime(5),
+                reader.IsDBNull(6) ? null : reader.GetString(6),
+                reader.IsDBNull(7) ? null : reader.GetInt32(7)));
+        }
+        return results;
+    }
+
+    private static async Task<List<TelemetryEventSummary>> ReadRelatedEventsAsync(NpgsqlConnection conn, IncidentDetail incident, CancellationToken ct)
+    {
+        await using var cmd = new NpgsqlCommand("""
+            SELECT id, correlation_id, step, component, operation, outcome,
+                   COALESCE(hresult, supabase_code, http_status::text, exception_type, '-') AS signal,
+                   occurred_at, error_message, duration_ms, source, http_status, hresult, supabase_code
+            FROM control_center.telemetry_events
+            WHERE component = $1 AND operation = $2 AND app_version = $3
+              AND COALESCE(hresult, supabase_code, http_status::text, exception_type, '-') = $4
+              AND outcome = 'Failed'
+            ORDER BY occurred_at DESC LIMIT 20
+            """, conn);
+        cmd.Parameters.Add(new NpgsqlParameter<string> { Value = incident.Component });
+        cmd.Parameters.Add(new NpgsqlParameter<string> { Value = incident.Operation });
+        cmd.Parameters.Add(new NpgsqlParameter<string> { Value = incident.Release });
+        cmd.Parameters.Add(new NpgsqlParameter<string> { Value = incident.Signal });
+
+        var results = new List<TelemetryEventSummary>();
+        await using var reader = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        while (await reader.ReadAsync(ct).ConfigureAwait(false))
+        {
+            results.Add(new TelemetryEventSummary(
+                reader.GetGuid(0), reader.GetGuid(1), reader.GetInt32(2),
+                reader.GetString(3), reader.GetString(4), reader.GetString(5),
+                reader.GetString(6), reader.GetDateTime(7),
+                reader.IsDBNull(8) ? null : reader.GetString(8),
+                reader.IsDBNull(9) ? null : reader.GetInt32(9),
+                reader.IsDBNull(10) ? null : reader.GetString(10),
+                reader.IsDBNull(11) ? null : reader.GetInt32(11),
+                reader.IsDBNull(12) ? null : reader.GetString(12),
+                reader.IsDBNull(13) ? null : reader.GetString(13)));
+        }
+        return results;
+    }
+
     private static async Task<List<ActiveIncident>> ReadActiveIncidentsAsync(NpgsqlConnection conn, CancellationToken ct, string? statusFilter = null)
     {
         var where = !string.IsNullOrEmpty(statusFilter) ? "WHERE status = $1" : "WHERE status != 'Closed'";

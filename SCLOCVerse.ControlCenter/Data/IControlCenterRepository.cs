@@ -6,4 +6,5 @@ public interface IControlCenterRepository
 {
     Task<OverviewData> GetOverviewDataAsync(CancellationToken ct = default);
     Task<List<ActiveIncident>> GetIncidentsAsync(string? statusFilter = null, CancellationToken ct = default);
+    Task<IncidentDetail?> GetIncidentDetailAsync(string incidentId, CancellationToken ct = default);
 }
