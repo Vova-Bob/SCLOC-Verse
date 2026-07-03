@@ -11,20 +11,32 @@
 ## STATUS (live)
 
 - **Slice 1 — Minimal Client + Trace (`Application.Start`): ✅ Runtime Verified (2026-07-03).** Реальна подія зʼявилась у `control_center.traces`; пройшла повний конвеєр клієнт→Supabase→VIEW. DB-пів доведено повністю (RLS/GRANT/authenticated/anon/RETURNING/View/cc_readonly). У процесі виявлено+виправлено другий `42501` (відсутній `GRANT SELECT` для `RETURNING`).
+- **Slice 2 — OAuth: ✅ Runtime Verified.** `Auth/SignIn` + `Auth/RestoreSession`. Побудовано універсальний `ErrorContextExtractor` (source/http_status/supabase_code/hresult через інспекцію типу, не текст).
+- **Slice 3 — Installation: ✅ Runtime Verified.** `Installation/Sync` Started/Succeeded/Failed + `detail.phase`. Саме ця подія зробила б `42501` видимим за хвилини.
+- **Slice 4 — Updater: ⏳ Production Pending (Стаття 18).** Code ✅ Build ✅ Architecture ✅. `Updater/Download|Verify|Install`. Runtime-перевірка неможлива без реального оновлення (фейковий реліз не створюємо) → автопідвищення до Runtime Verified на першому природному update-флоу.
 
-### Поточний порядок слайсів (довкола реальних больових точок)
+### Легенда статусів
+
+| Статус | Значення |
+|---|---|
+| ✅ Runtime Verified | живе виконання доведено (подія у `control_center`) |
+| ⏳ Production Pending | Code/Build/Architecture доведені; runtime очікує природної production-події (Стаття 18) |
+| ⬜ Pending | не почато |
+
+### Порядок слайсів (довкола реальних больових точок)
 
 Пріоритет — спостережуваність сервісів, що вже коштували годин форензика. **Offline Queue відкладено** (не пришвидшує пошук production-багів).
 
-| Slice | Сервіс | Події / цінність |
+| Slice | Сервіс | Статус |
 |---|---|---|
-| **2** | Auth / OAuth | `OAuth.Start/Success/Failure/SessionRestored/SessionRestoreFailed` |
-| **3** | Installation | `Installation.Sync.*`, `PermissionDenied`, error-атрибути — саме ця подія врятувала б години при `42501` |
-| **4** | Updater | `Updater.Start/Download/Verify/Install/Success/Failure` |
-| **5** | L.I.A | `LIA.*` + `LIA.MSIX.Error` (HRESULT/ActivityId/cert) — для `0x800B0109` |
-| (пізніше) | Offline Queue | JSONL-персистенція — слайс «доставки при втраті мережі» |
+| 1 | Minimal Client + Trace | ✅ Runtime Verified |
+| 2 | Auth / OAuth | ✅ Runtime Verified |
+| 3 | Installation (`42501`) | ✅ Runtime Verified |
+| 4 | Updater (Download/Verify/Install) | ⏳ Production Pending |
+| 5 | L.I.A (`0x800B0109`) | ⬜ Pending |
+| (пізніше) | Offline Queue (JSONL-персистенція) | ⬜ Pending |
 
-**Правило:** наступний слайс не починається, поки попередній не **Runtime Verified** (живий запуск → подія у `control_center.traces`).
+**Правило:** наступний слайс не починається, поки попередній не **Runtime Verified** або **Production Pending** (Стаття 18). Production Pending → Runtime Verified при першому природному виконанні (без зміни коду).
 
 ---
 
