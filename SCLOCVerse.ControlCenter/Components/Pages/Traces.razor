@@ -1,8 +1,279 @@
 @page "/traces"
+@inject ITraceRepository TraceRepo
+@rendermode InteractiveServer
 
-<h1>Trace Explorer</h1>
-<p class="text-muted">Повний шлях користувача: Session → Trace → Events.</p>
+<PageTitle>Trace Explorer — SCLOC Control Center</PageTitle>
 
-<div class="alert alert-info">
-    <strong>Sprint 4:</strong> вибір correlation_id → хронологічний timeline подій запуску.
-</div>
+@if (_error != null)
+{
+    <div class="alert alert-danger">@_error</div>
+}
+else if (_loading)
+{
+    <div class="spinner-border text-primary" role="status"></div>
+}
+else if (_traceEvents.Count > 0)
+{
+    @* ── Trace Timeline ── *@
+    <div class="d-flex align-items-center mb-3">
+        <h1 class="me-3">Trace</h1>
+        <code class="text-muted">@_currentCorrelationId</code>
+        <button class="btn btn-outline-secondary btn-sm ms-auto" @onclick="BackToSearch">← Back to search</button>
+    </div>
+
+    <div class="row">
+        @* Timeline (left) *@
+        <div class="col-md-7">
+            <div class="timeline-container">
+                @for (int i = 0; i < _traceEvents.Count; i++)
+                {
+                    var ev = _traceEvents[i];
+                    var isLast = i == _traceEvents.Count - 1;
+                    <div class="d-flex mb-2 @(i == _selectedIdx ? "bg-light rounded p-2" : "")"
+                         style="cursor: pointer" @onclick="() => SelectEvent(i)">
+                        <div class="me-3 text-center" style="min-width: 50px;">
+                            <span class="@ev.OutcomeColor fs-5">@ev.OutcomeIcon</span>
+                            @if (!isLast)
+                            {
+                                <div class="text-muted">↓</div>
+                            }
+                        </div>
+                        <div class="flex-grow-1">
+                            <span class="text-muted small">@ev.OccurredAt.ToString("HH:mm:ss")</span><br/>
+                            <strong>@ev.Component.@ev.Operation</strong>
+                            @if (ev.Outcome == "Failed")
+                            {
+                                <span class="text-danger fw-semibold">@ev.Outcome</span>
+                                <code class="text-danger">@ev.Signal</code>
+                            }
+                            else
+                            {
+                                <span class="text-muted">@ev.Outcome</span>
+                            }
+                            @if (ev.DurationMs != null)
+                            {
+                                <span class="text-muted small">@($"{ev.DurationMs}ms")</span>
+                            }
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+
+        @* Event Details (right) *@
+        <div class="col-md-5">
+            @if (_selectedEvent != null)
+            {
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between">
+                        <strong>Event #@_selectedEvent.Step</strong>
+                        <div>
+                            <button class="btn btn-sm btn-outline-secondary @(0 >= _selectedIdx ? "disabled" : "")"
+                                    @onclick="PrevEvent">←</button>
+                            <button class="btn btn-sm btn-outline-secondary @(_selectedIdx >= _traceEvents.Count-1 ? "disabled" : "")"
+                                    @onclick="NextEvent">→</button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <table class="table table-sm mb-0">
+                            <tbody>
+                                <tr><th>Component</th><td>@_selectedEvent.Component</td></tr>
+                                <tr><th>Operation</th><td>@_selectedEvent.Operation</td></tr>
+                                <tr><th>Outcome</th><td><span class="@_selectedEvent.OutcomeColor">@_selectedEvent.Outcome</span></td></tr>
+                                <tr><th>Severity</th><td>@_selectedEvent.Severity</td></tr>
+                                <tr><th>Category</th><td>@_selectedEvent.Category</td></tr>
+                                <tr><th>Time</th><td>@_selectedEvent.OccurredAt.ToString("yyyy-MM-dd HH:mm:ss")</td></tr>
+                                <tr><th>Duration</th><td>@(_selectedEvent.DurationMs != null ? $"{_selectedEvent.DurationMs}ms" : "—")</td></tr>
+                                <tr><th>Signal</th><td><code>@_selectedEvent.Signal</code></td></tr>
+                                @if (_selectedEvent.Source != null)
+                                {
+                                    <tr><th>Source</th><td>@_selectedEvent.Source</td></tr>
+                                }
+                                @if (_selectedEvent.HttpStatus != null)
+                                {
+                                    <tr><th>HTTP</th><td>@_selectedEvent.HttpStatus</td></tr>
+                                }
+                                @if (_selectedEvent.Hresult != null)
+                                {
+                                    <tr><th>HRESULT</th><td><code>@_selectedEvent.Hresult</code></td></tr>
+                                }
+                                @if (_selectedEvent.SupabaseCode != null)
+                                {
+                                    <tr><th>Supabase</th><td><code>@_selectedEvent.SupabaseCode</code></td></tr>
+                                }
+                                @if (_selectedEvent.ErrorMessage != null)
+                                {
+                                    <tr><th>Message</th><td class="text-wrap">@_selectedEvent.ErrorMessage</td></tr>
+                                }
+                                @if (_selectedEvent.ExceptionType != null)
+                                {
+                                    <tr><th>Exception</th><td><code>@_selectedEvent.ExceptionType</code></td></tr>
+                                }
+                                <tr><th>App Version</th><td>@_selectedEvent.AppVersion</td></tr>
+                                <tr><th>CorrelationId</th><td><code class="small">@_selectedEvent.CorrelationId</code></td></tr>
+                                <tr><th>SessionId</th><td><code class="small">@_selectedEvent.SessionId</code></td></tr>
+                            </tbody>
+                        </table>
+
+                        @if (_selectedEvent.DetailJson != null)
+                        {
+                            <h6 class="mt-2">Detail (JSON)</h6>
+                            <pre class="bg-light p-2 rounded small" style="max-height: 200px; overflow: auto;">@FormatJson(_selectedEvent.DetailJson)</pre>
+                        }
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+}
+else
+{
+    @* ── Trace Search ── *@
+    <h1>Trace Explorer</h1>
+    <p class="text-muted">Знайти сесію користувача за correlation_id, user_id, install_id, версією або датою.</p>
+
+    <div class="row mb-3">
+        <div class="col-md-6">
+            <label class="form-label">Correlation ID</label>
+            <input class="form-control form-control-sm" @bind="_filter.CorrelationId" placeholder="UUID" />
+        </div>
+        <div class="col-md-6">
+            <label class="form-label">Install ID</label>
+            <input class="form-control form-control-sm" @bind="_filter.InstallId" placeholder="install_id" />
+        </div>
+        <div class="col-md-6 mt-2">
+            <label class="form-label">App Version</label>
+            <input class="form-control form-control-sm" @bind="_filter.AppVersion" placeholder="напр. 1.0.0.0" />
+        </div>
+        <div class="col-md-3 mt-2">
+            <label class="form-label">Date From</label>
+            <input type="date" class="form-control form-control-sm" @bind="_filter.DateFrom" />
+        </div>
+        <div class="col-md-3 mt-2">
+            <label class="form-label">Date To</label>
+            <input type="date" class="form-control form-control-sm" @bind="_filter.DateTo" />
+        </div>
+    </div>
+
+    <button class="btn btn-primary btn-sm mb-3" @onclick="Search">Search</button>
+
+    @if (_searchResults.Count > 0)
+    {
+        <table class="table table-sm table-hover">
+            <thead>
+                <tr>
+                    <th>Correlation ID</th>
+                    <th>Events</th>
+                    <th>Version</th>
+                    <th>First</th>
+                    <th>Last</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var s in _searchResults)
+                {
+                    <tr style="cursor: pointer" @onclick='() => OpenTrace(s.CorrelationId)'>
+                        <td><code class="small">@s.CorrelationId.ToString().Substring(0,8)…</code></td>
+                        <td>@s.EventCount</td>
+                        <td>@s.AppVersion</td>
+                        <td>@s.FirstEvent.ToString("MM-dd HH:mm")</td>
+                        <td>@s.LastEvent.ToString("MM-dd HH:mm")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+    else if (_searched)
+    {
+        <p class="text-muted">Немає результатів. Спробуйте інші фільтри.</p>
+    }
+}
+
+@code {
+    private List<TraceEvent> _traceEvents = new();
+    private List<TraceSummary> _searchResults = new();
+    private int _selectedIdx = -1;
+    private TraceEvent? _selectedEvent;
+    private Guid? _currentCorrelationId;
+    private bool _loading = true;
+    private bool _searched;
+    private string? _error;
+
+    private TraceSearchFilter _filter = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _searchResults = await TraceRepo.SearchTracesAsync(_filter);
+            _searched = true;
+        }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _loading = false; }
+    }
+
+    private async Task Search()
+    {
+        _loading = true; StateHasChanged();
+        try
+        {
+            _searchResults = await TraceRepo.SearchTracesAsync(_filter);
+            _searched = true;
+            _error = null;
+        }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _loading = false; }
+    }
+
+    private async Task OpenTrace(Guid correlationId)
+    {
+        _loading = true; StateHasChanged();
+        try
+        {
+            _currentCorrelationId = correlationId;
+            _traceEvents = await TraceRepo.GetTraceAsync(correlationId);
+            _selectedIdx = 0;
+            _selectedEvent = _traceEvents.FirstOrDefault();
+            _error = null;
+        }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _loading = false; }
+    }
+
+    private void SelectEvent(int idx)
+    {
+        _selectedIdx = idx;
+        _selectedEvent = _traceEvents[idx];
+    }
+
+    private void PrevEvent()
+    {
+        if (_selectedIdx > 0) SelectEvent(_selectedIdx - 1);
+    }
+
+    private void NextEvent()
+    {
+        if (_selectedIdx < _traceEvents.Count - 1) SelectEvent(_selectedIdx + 1);
+    }
+
+    private void BackToSearch()
+    {
+        _traceEvents.Clear();
+        _selectedEvent = null;
+        _currentCorrelationId = null;
+        _selectedIdx = -1;
+    }
+
+    private static string FormatJson(string json)
+    {
+        try
+        {
+            var doc = System.Text.Json.JsonDocument.Parse(json);
+            return System.Text.Json.JsonSerializer.Serialize(doc, new System.Text.Json.JsonSerializerOptions
+            {
+                WriteIndented = true
+            });
+        }
+        catch { return json; }
+    }
+}

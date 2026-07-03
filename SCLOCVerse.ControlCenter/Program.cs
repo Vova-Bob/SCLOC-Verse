@@ -14,6 +14,7 @@ if (!string.IsNullOrWhiteSpace(connStr))
 {
     builder.Services.AddSingleton<NpgsqlDataSource>(_ => NpgsqlDataSource.Create(connStr));
     builder.Services.AddScoped<IControlCenterRepository, ControlCenterRepository>();
+    builder.Services.AddScoped<ITraceRepository, TraceRepository>();
 }
 
 var app = builder.Build();

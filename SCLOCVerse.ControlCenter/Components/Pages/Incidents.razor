@@ -89,7 +89,10 @@ else if (_detail != null)
 
             @if (_detail.Trace.Count > 0)
             {
-                <h5>Trace (user journey)</h5>
+                <div class="d-flex align-items-center mb-2">
+                    <h5 class="me-3">Trace (user journey)</h5>
+                    <NavLink href="/traces" class="btn btn-outline-primary btn-sm">Open in Trace Explorer →</NavLink>
+                </div>
                 <table class="table table-sm">
                     <thead>
                         <tr><th>#</th><th>Component</th><th>Operation</th><th>Outcome</th><th>Signal</th><th>Time</th></tr>
