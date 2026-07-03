@@ -33,12 +33,16 @@
 | incident_policy (per-component пороги) | ✅ |
 | Constitution (21 стаття) | ✅ |
 | Database-Verification Checklist (Стаття 17) | ✅ |
+| Control Center Sprint 1 (Skeleton) | ✅ |
+| Control Center Sprint 2 (Overview) | ✅ UI Verified (RC2.5) |
+| Control Center Sprint 3 (Incident Details) | ✅ Build |
+| Control Center Sprint 4 (Trace Explorer) | ✅ Runtime Verified (RC3) |
 
-### Наступні етапи (після UI)
+### Наступні етапи
 
-| Етап | Що | Коли |
+| Етап | Що | Статус |
 |---|---|---|
-| **Control Center UI** | Dashboard (Overview, Incidents, Traces, Releases, Telemetry Explorer) | **зараз** |
+| **Sprint 5** | Release Health (per-version success, incidents, 🟢/🟡/🔴 recommendation) | **наступний** |
 | Phase 5 | Manual Incident Workflow (Confirmed→Investigating→Resolved) + Alerts | після досвіду з UI |
 | Phase 6 | Root Cause Catalog (fingerprint→cause) | після реальних production-інцидентів |
 
