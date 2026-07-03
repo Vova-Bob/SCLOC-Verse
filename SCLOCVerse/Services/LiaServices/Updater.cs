@@ -210,19 +210,36 @@ namespace SCLOCVerse.Services.LiaServices
                 $installerPath = '{{escapedInstallerPath}}'
                 $certificatePath = '{{escapedCertificatePath}}'
 
+                Write-Output "LIA installer path: $installerPath"
+                Write-Output "LIA certificate path: $certificatePath"
+                Write-Output "Certificate file exists: $(Test-Path -LiteralPath $certificatePath)"
+
                 if ($certificatePath -and (Test-Path -LiteralPath $certificatePath)) {
-                    Import-Certificate -FilePath $certificatePath -CertStoreLocation Cert:\CurrentUser\TrustedPeople | Out-Null
+                    try {
+                        Import-Certificate -FilePath $certificatePath -CertStoreLocation Cert:\CurrentUser\TrustedPeople | Out-Null
+                        Write-Output "Certificate imported successfully."
+                    } catch {
+                        throw "Failed to import L.I.A certificate: $($_.Exception.Message)"
+                    }
                 }
 
                 $extension = [System.IO.Path]::GetExtension($installerPath).ToLowerInvariant()
-                if ($extension -eq '.appinstaller') {
-                    Add-AppxPackage -AppInstallerFile $installerPath
-                } elseif ($extension -eq '.msi') {
-                    Start-Process msiexec.exe -ArgumentList "/i `"$installerPath`"" -Wait
-                } elseif ($extension -eq '.exe') {
-                    Start-Process $installerPath -Wait
-                } else {
-                    Add-AppxPackage -Path $installerPath -ForceUpdateFromAnyVersion
+                try {
+                    if ($extension -eq '.appinstaller') {
+                        Add-AppxPackage -AppInstallerFile $installerPath
+                    } elseif ($extension -eq '.msi') {
+                        Start-Process msiexec.exe -ArgumentList "/i `"$installerPath`"" -Wait
+                    } elseif ($extension -eq '.exe') {
+                        Start-Process $installerPath -Wait
+                    } else {
+                        Add-AppxPackage -Path $installerPath -ForceUpdateFromAnyVersion
+                    }
+                } catch {
+                    $hresult = '0x{0:X8}' -f $_.Exception.HResult
+                    if ($_.Exception.HResult -eq -2146762487) {
+                        throw "The L.I.A package could not be installed because its signing certificate is not trusted. HRESULT: $hresult. Please install the included .cer file manually or contact the developer."
+                    }
+                    throw "Add-AppxPackage failed with HRESULT: $hresult. $($_.Exception.Message)"
                 }
                 """;
         }
