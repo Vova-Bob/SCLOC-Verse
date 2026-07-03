@@ -1,5 +1,7 @@
 using SCLOCVerse.Interfaces;
 using SCLOCVerse.Models.Auth;
+using SCLOCVerse.Models.Observability;
+using SCLOCVerse.Services.Observability;
 using Supabase;
 using Supabase.Gotrue;
 using System;
@@ -21,6 +23,7 @@ namespace SCLOCVerse.Services.Auth
         private readonly ILoopbackCallbackListener _callbackListener;
         private readonly IInstallationService _installationService;
         private readonly IDiscordGuildSyncService _guildSyncService;
+        private readonly ITelemetryService? _telemetry;
         private readonly SemaphoreSlim _refreshLock = new(1, 1);
         private bool _disposed;
 
@@ -29,13 +32,15 @@ namespace SCLOCVerse.Services.Auth
             ISecureSessionStorage secureStorage,
             ILoopbackCallbackListener callbackListener,
             IInstallationService installationService,
-            IDiscordGuildSyncService guildSyncService)
+            IDiscordGuildSyncService guildSyncService,
+            ITelemetryService? telemetry)
         {
             _supabase = clientFactory?.CreateClient() ?? throw new ArgumentNullException(nameof(clientFactory));
             _secureStorage = secureStorage ?? throw new ArgumentNullException(nameof(secureStorage));
             _callbackListener = callbackListener ?? throw new ArgumentNullException(nameof(callbackListener));
             _installationService = installationService ?? throw new ArgumentNullException(nameof(installationService));
             _guildSyncService = guildSyncService ?? throw new ArgumentNullException(nameof(guildSyncService));
+            _telemetry = telemetry;
 
             // Початковий стан: перевірка сесії ще не виконана.
             State = AuthState.Checking;
@@ -54,6 +59,8 @@ namespace SCLOCVerse.Services.Auth
                 return new AuthResult.Failure("Вхід вже виконується.");
 
             SetState(AuthState.SigningIn);
+            var sw = Stopwatch.StartNew();
+            TrackAuth("SignIn", "Started");
 
             try
             {
@@ -69,7 +76,10 @@ namespace SCLOCVerse.Services.Auth
                     }).ConfigureAwait(false);
 
                 if (state?.Uri == null)
+                {
+                    TrackAuth("SignIn", "Failed");
                     return new AuthResult.Failure("Не вдалося отримати URL для входу.");
+                }
 
                 OpenBrowser(state.Uri.ToString());
 
@@ -78,7 +88,10 @@ namespace SCLOCVerse.Services.Auth
                 await _callbackListener.StopAsync().ConfigureAwait(false);
 
                 if (callbackUrl == null)
+                {
+                    TrackAuth("SignIn", "Cancelled");
                     return new AuthResult.Cancelled();
+                }
 
                 var code = GetQueryParameter(callbackUrl, "code");
                 var errorCode = GetQueryParameter(callbackUrl, "error");
@@ -87,33 +100,48 @@ namespace SCLOCVerse.Services.Auth
                 // Відмова користувача від авторизації — не є помилкою, повертаємо Cancelled,
                 // щоб UI не показував діалогове вікно з помилкою.
                 if (string.Equals(errorCode, "access_denied", StringComparison.OrdinalIgnoreCase))
+                {
+                    TrackAuth("SignIn", "Cancelled");
                     return new AuthResult.Cancelled();
+                }
 
                 if (!string.IsNullOrWhiteSpace(errorCode) || !string.IsNullOrWhiteSpace(errorDescription))
+                {
+                    TrackAuth("SignIn", "Failed");
                     return new AuthResult.Failure(errorDescription ?? errorCode ?? "Помилка авторизації");
+                }
 
                 if (string.IsNullOrWhiteSpace(code))
+                {
+                    TrackAuth("SignIn", "Failed");
                     return new AuthResult.Failure("Авторизаційний код відсутній.");
+                }
 
                 var pkceVerifier = state.PKCEVerifier ?? throw new InvalidOperationException("PKCE verifier is missing.");
                 var session = await _supabase.Auth.ExchangeCodeForSession(pkceVerifier, code).ConfigureAwait(false);
 
                 if (session == null)
+                {
+                    TrackAuth("SignIn", "Failed");
                     return new AuthResult.Failure("Не вдалося обміняти код на сесію.");
+                }
 
                 SaveSession(session);
                 await SyncProfileAsync(session).ConfigureAwait(false);
                 await _installationService.SyncCurrentInstallationAsync(cancellationToken).ConfigureAwait(false);
 
+                TrackAuth("SignIn", "Succeeded", durationMs: sw.ElapsedMilliseconds);
                 return new AuthResult.Success(Profile!);
             }
             catch (OperationCanceledException)
             {
+                TrackAuth("SignIn", "Cancelled");
                 return new AuthResult.Cancelled();
             }
             catch (Exception ex)
             {
                 LogError("SignIn failed", ex);
+                TrackAuth("SignIn", "Failed", ErrorContextExtractor.Extract(ex), sw.ElapsedMilliseconds);
                 return new AuthResult.Failure($"Помилка входу: {ex.Message}");
             }
             finally
@@ -136,6 +164,9 @@ namespace SCLOCVerse.Services.Auth
                 SetState(AuthState.SignedOut);
                 return false;
             }
+
+            var sw = Stopwatch.StartNew();
+            TrackAuth("RestoreSession", "Started");
 
             try
             {
@@ -169,6 +200,7 @@ namespace SCLOCVerse.Services.Auth
                     // про мінімізацію даних (identify scope). Сервіс залишається в композиції
                     // як Future Capability для Community Center.
 
+                    TrackAuth("RestoreSession", "Succeeded", durationMs: sw.ElapsedMilliseconds);
                     return true;
                 }
                 finally
@@ -181,6 +213,7 @@ namespace SCLOCVerse.Services.Auth
                 // Не знищуємо .auth при мережевих/транзитних помилках:
                 // сесія може бути валідною, а збій — тимчасовим.
                 LogError("TryRestoreSession failed", ex);
+                TrackAuth("RestoreSession", "Failed", ErrorContextExtractor.Extract(ex), sw.ElapsedMilliseconds);
                 SetState(AuthState.Error);
                 return false;
             }
@@ -223,6 +256,31 @@ namespace SCLOCVerse.Services.Auth
             _callbackListener.Dispose();
             _refreshLock.Dispose();
             _supabase.Auth.Shutdown();
+        }
+
+        // Спостережуваність OAuth (Стаття 15 — Observable by Default; Стаття 1 — non-throwing).
+        // TrackAuth НЕ знає про Supabase: отримує вже готовий структурований контекст помилки
+        // від універсального ErrorContextExtractor (Стаття 12 — DRY). Лише технічні атрибути;
+        // повідомлення санітарить PrivacySanitizer; без токенів/email/шляхів (Стаття 4).
+        private void TrackAuth(string operation, string outcome, TelemetryContext? error = null, long? durationMs = null)
+        {
+            if (_telemetry is null)
+                return;
+
+            try
+            {
+                if (durationMs.HasValue)
+                {
+                    error ??= new TelemetryContext();
+                    error.DurationMs = (int)durationMs.Value;
+                }
+
+                _telemetry.Track("Auth", operation, outcome, error);
+            }
+            catch
+            {
+                // Стаття 1: телеметрія ніколи не впливає на auth-флоу.
+            }
         }
 
         private void SaveSession(Session session)

@@ -89,19 +89,20 @@ namespace SCLOCVerse.Composition
 
             var supabaseUrl = GetSupabaseUrl();
             var supabaseAnonKey = GetSupabaseAnonKey();
-            _authCompositionRoot = new AuthCompositionRoot(supabaseUrl, supabaseAnonKey);
 
-            // SCLOC Observability Platform (Slice 1). Конструюється після auth —
-            // використовує спільний Supabase-клієнт (JWT) та install_id.
-            // Не в критичному шляху UI: конструювання дешеве (Конституція, Стаття 3).
+            // SCLOC Observability Platform. Конструюється ДО auth (без Supabase-клієнта),
+            // щоб ITelemetryService можна було інжектувати в AuthService (розрив циклу
+            // залежностей auth ↔ telemetry). Конструювання дешеве (Конституція, Стаття 3).
             var telemetryChannel = string.IsNullOrWhiteSpace(SCLOCVerse.Settings.Default.UpdateChannel)
                 ? "stable"
                 : SCLOCVerse.Settings.Default.UpdateChannel;
-            _telemetryClient = new TelemetryClient(
-                _authCompositionRoot.ClientFactory,
-                _authCompositionRoot.InstallId,
-                BuildInfo.Create(telemetryChannel),
-                enabled: !IsTelemetryDisabled());
+            _telemetryClient = new TelemetryClient(BuildInfo.Create(telemetryChannel), enabled: !IsTelemetryDisabled());
+
+            _authCompositionRoot = new AuthCompositionRoot(supabaseUrl, supabaseAnonKey, _telemetryClient);
+
+            // Після побудови auth — підключаємо client + install_id, запускаємо відправку.
+            _telemetryClient.SetInstallId(_authCompositionRoot.InstallId);
+            _telemetryClient.AttachClientFactory(_authCompositionRoot.ClientFactory);
         }
 
         public void Dispose()

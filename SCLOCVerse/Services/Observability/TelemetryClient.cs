@@ -10,12 +10,13 @@ namespace SCLOCVerse.Services.Observability
     /// Реалізація <see cref="ITelemetryService"/> — єдина точка входу спостережуваності.
     /// </summary>
     /// <remarks>
-    /// Контракт (Конституція):
-    ///  - <see cref="Track"/> синхронний, O(1), ніколи не кидає (Стаття 1);
-    ///  - не блокує UI (Стаття 2);
-    ///  - конструювання дешеве, не ламає startup (Стаття 3);
-    ///  - через <see cref="PrivacySanitizer"/> (Стаття 4);
-    ///  - kill-switch через enabled (Стаття 10).
+    /// Розрив циклу залежностей auth ↔ telemetry: конструюється БЕЗ Supabase-клієнта
+    /// (лише BuildInfo + enabled), тож може бути переданий у AuthService раніше за auth.
+    /// InstallId та ClientFactory підключаються пізніше через <see cref="SetInstallId"/> /
+    /// <see cref="AttachClientFactory"/> після побудови AuthCompositionRoot.
+    ///
+    /// Контракт (Конституція): Track sync/O(1)/non-throwing (Стаття 1), не блокує UI (Стаття 2),
+    /// не ламає startup (Стаття 3), через PrivacySanitizer (Стаття 4), kill-switch (Стаття 10).
     /// </remarks>
     public sealed class TelemetryClient : ITelemetryService, IDisposable
     {
@@ -23,33 +24,45 @@ namespace SCLOCVerse.Services.Observability
         private static readonly TimeSpan FlushInterval = TimeSpan.FromSeconds(30);
 
         private readonly BuildInfo _buildInfo;
-        private readonly string _installId;
+        private string _installId;
         private readonly string _osVersion;
         private readonly bool _enabled;
         private readonly TraceContext _traceContext;
         private readonly TelemetryEventQueue _queue;
-        private readonly TelemetryUploader _uploader;
-        private readonly Timer _flushTimer;
 
-        public TelemetryClient(ISupabaseClientFactory clientFactory, string installId, BuildInfo buildInfo, bool enabled)
+        private TelemetryUploader? _uploader;
+        private Timer? _flushTimer;
+
+        public TelemetryClient(BuildInfo buildInfo, bool enabled)
         {
             _buildInfo = buildInfo ?? throw new ArgumentNullException(nameof(buildInfo));
-            _installId = installId ?? string.Empty;
+            _installId = string.Empty; // встановлюється через SetInstallId після побудови auth.
             _osVersion = SafeOsVersion();
             _enabled = enabled;
 
             _traceContext = new TraceContext();
             _queue = new TelemetryEventQueue();
-            _uploader = new TelemetryUploader(clientFactory, _queue);
+        }
 
-            if (_enabled)
+        /// <summary>Підставляє анонімний ідентифікатор машини (install_id) після побудови auth.</summary>
+        public void SetInstallId(string installId)
+        {
+            try { _installId = installId ?? string.Empty; }
+            catch (Exception ex) { Debug.WriteLine($"[Telemetry] SetInstallId failed: {ex.Message}"); }
+        }
+
+        /// <summary>Підключає Supabase-клієнт і запускає фонову відправку (після побудови auth).</summary>
+        public void AttachClientFactory(ISupabaseClientFactory clientFactory)
+        {
+            try
             {
-                _flushTimer = new Timer(OnFlushTick, null, FlushInterval, FlushInterval);
+                _uploader = new TelemetryUploader(clientFactory, _queue);
+                if (_enabled)
+                    _flushTimer = new Timer(OnFlushTick, null, FlushInterval, FlushInterval);
             }
-            else
+            catch (Exception ex)
             {
-                // Вимкнено — таймер не запускаємо (Стаття 10), але черга існує (no-op).
-                _flushTimer = new Timer(_ => { }, null, Timeout.InfiniteTimeSpan, Timeout.InfiniteTimeSpan);
+                Debug.WriteLine($"[Telemetry] AttachClientFactory failed: {ex.Message}");
             }
         }
 
@@ -112,7 +125,7 @@ namespace SCLOCVerse.Services.Observability
         private void OnFlushTick(object? state)
         {
             // Fire-and-forget: uploader серіалізує flush через SemaphoreSlim і ловить усе сам.
-            _ = _uploader.FlushAsync();
+            _ = _uploader?.FlushAsync();
         }
 
         private static string SafeOsVersion()
@@ -126,7 +139,7 @@ namespace SCLOCVerse.Services.Observability
             try { _flushTimer?.Dispose(); } catch { /* ignore */ }
             try { _uploader?.Dispose(); } catch { /* ignore */ }
             // Slice 1: події, що залишились у памʼяті на виході, не персистуються
-            // (JSONL-durability — Slice 2).
+            // (JSONL-durability — Offline Queue slice).
         }
     }
 }

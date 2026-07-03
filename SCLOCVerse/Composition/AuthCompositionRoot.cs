@@ -16,14 +16,14 @@ namespace SCLOCVerse.Composition
         private readonly IInstallationService _installationService;
         private readonly IAuthService _authService;
 
-        public AuthCompositionRoot(string supabaseUrl, string supabaseAnonKey)
+        public AuthCompositionRoot(string supabaseUrl, string supabaseAnonKey, ITelemetryService telemetry)
         {
             _secureStorage = new SecureSessionStorage();
             _clientFactory = new SupabaseClientFactory(supabaseUrl, supabaseAnonKey, _secureStorage);
             _callbackListener = new LoopbackCallbackListener();
             _installationService = new InstallationService(_clientFactory);
             var guildSyncService = new DiscordGuildSyncService(_clientFactory);
-            _authService = new AuthService(_clientFactory, _secureStorage, _callbackListener, _installationService, guildSyncService);
+            _authService = new AuthService(_clientFactory, _secureStorage, _callbackListener, _installationService, guildSyncService, telemetry);
         }
 
         public IAuthService AuthService => _authService;
