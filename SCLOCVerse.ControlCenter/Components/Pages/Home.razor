@@ -1,8 +1,211 @@
 ﻿@page "/"
+@inject IControlCenterRepository? Repository
+@rendermode InteractiveServer
+
+<PageTitle>Overview — SCLOC Control Center</PageTitle>
 
 <h1>Overview</h1>
-<p class="text-muted">SCLOC Observability Platform — загальний стан системи.</p>
 
-<div class="alert alert-info">
-    <strong>Sprint 2:</strong> System Health (🟢/🟡/🔴 по компонентах), Active Incidents, Latest Releases.
-</div>
+@if (_error != null)
+{
+    <div class="alert alert-danger">
+        <strong>Помилка підключення:</strong> @_error
+    </div>
+}
+else if (_data == null)
+{
+    <div class="spinner-border text-primary" role="status">
+        <span class="visually-hidden">Завантаження…</span>
+    </div>
+}
+else
+{
+    @* ── Active Incidents ── *@
+    <h3 class="mt-4">🚨 Active Incidents</h3>
+    @if (_data.ActiveIncidents.Count == 0)
+    {
+        <p class="text-success fw-semibold">✅ Немає активних інцидентів.</p>
+    }
+    else
+    {
+        <table class="table table-sm table-hover">
+            <thead>
+                <tr>
+                    <th>INC-ID</th>
+                    <th>Severity</th>
+                    <th>Component</th>
+                    <th>Signal</th>
+                    <th>Events</th>
+                    <th>Affected</th>
+                    <th>Started</th>
+                    <th>Last</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var inc in _data.ActiveIncidents)
+                {
+                    <tr class="@(inc.HighestSeverity == "Critical" ? "table-danger" : "table-warning")">
+                        <td><strong>@inc.IncidentId</strong></td>
+                        <td>
+                            <span class="badge @(inc.HighestSeverity == "Critical" ? "bg-danger" : "bg-warning text-dark")">
+                                @inc.HighestSeverity
+                            </span>
+                        </td>
+                        <td>@inc.Component</td>
+                        <td><code>@inc.Signal</code></td>
+                        <td>@inc.EventCount</td>
+                        <td>@inc.AffectedInstalls</td>
+                        <td>@inc.OpenedAt.ToString("HH:mm")</td>
+                        <td>@inc.LastEventAt.ToString("HH:mm")</td>
+                        <td>@inc.Status</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+
+    @* ── System Health ── *@
+    <h3 class="mt-4">🟢 System Health</h3>
+    <table class="table table-sm">
+        <thead>
+            <tr>
+                <th>Component</th>
+                <th>Health</th>
+                <th>Active Incidents</th>
+                <th>Last Event</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var h in _data.SystemHealth)
+            {
+                <tr>
+                    <td>@h.Component</td>
+                    <td>
+                        @switch (h.Health)
+                        {
+                            case "GREEN":
+                                <span class="text-success">🟢 Healthy</span>
+                                break;
+                            case "YELLOW":
+                                <span class="text-warning">🟡 Degraded</span>
+                                break;
+                            case "RED":
+                                <span class="text-danger">🔴 Critical</span>
+                                break;
+                        }
+                    </td>
+                    <td>@h.ActiveIncidents</td>
+                    <td>@(h.LastEventAt.HasValue ? FormatRelative(h.LastEventAt.Value) : "—")</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    @* ── Latest Releases ── *@
+    <h3 class="mt-4">📦 Latest Releases</h3>
+    @if (_data.LatestReleases.Count == 0)
+    {
+        <p class="text-muted">Немає даних за останні 7 днів.</p>
+    }
+    else
+    {
+        <table class="table table-sm">
+            <thead>
+                <tr>
+                    <th>Version</th>
+                    <th>Success Rate</th>
+                    <th>Failed</th>
+                    <th>Installs</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var r in _data.LatestReleases)
+                {
+                    <tr>
+                        <td><strong>@r.AppVersion</strong></td>
+                        <td>
+                            <span class="@(r.SuccessRate >= 95 ? "text-success" : r.SuccessRate >= 60 ? "text-warning" : "text-danger") fw-semibold">
+                                @r.SuccessRate%
+                            </span>
+                        </td>
+                        <td>@r.Failed</td>
+                        <td>@r.ActiveInstalls</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+
+    @* ── Platform Statistics ── *@
+    <h3 class="mt-4">📈 Platform Statistics</h3>
+    @if (_data.Statistics != null)
+    {
+        <div class="row text-center">
+            <div class="col-md-3 mb-2">
+                <div class="card bg-light">
+                    <div class="card-body">
+                        <h5 class="card-title">@_data.Statistics.Events24h</h5>
+                        <p class="card-text text-muted">Events (24h)</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-2">
+                <div class="card bg-light">
+                    <div class="card-body">
+                        <h5 class="card-title">@_data.Statistics.ActiveUsers24h</h5>
+                        <p class="card-text text-muted">Active Users (24h)</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-2">
+                <div class="card bg-light">
+                    <div class="card-body">
+                        <h5 class="card-title">@_data.Statistics.ActiveInstallations</h5>
+                        <p class="card-text text-muted">Installations</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3 mb-2">
+                <div class="card @(_data.Statistics.OpenIncidents > 0 ? "bg-warning bg-opacity-25" : "bg-light")">
+                    <div class="card-body">
+                        <h5 class="card-title">@_data.Statistics.OpenIncidents</h5>
+                        <p class="card-text text-muted">Open Incidents</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+}
+
+@code {
+    private OverviewData? _data;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (Repository is null)
+        {
+            _error = "ConnectionStrings:ControlCenter не налаштовано (user-secrets або Environment Variable).";
+            return;
+        }
+
+        try
+        {
+            _data = await Repository.GetOverviewDataAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+    }
+
+    private static string FormatRelative(DateTime dt)
+    {
+        var diff = DateTime.UtcNow - dt.ToUniversalTime();
+        if (diff.TotalMinutes < 1) return "now";
+        if (diff.TotalMinutes < 60) return $"{(int)diff.TotalMinutes} min ago";
+        if (diff.TotalHours < 24) return $"{(int)diff.TotalHours}h ago";
+        return $"{(int)diff.TotalDays}d ago";
+    }
+}

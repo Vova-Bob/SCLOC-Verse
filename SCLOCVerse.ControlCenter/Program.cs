@@ -1,10 +1,20 @@
 using SCLOCVerse.ControlCenter.Components;
+using SCLOCVerse.ControlCenter.Data;
+using Npgsql;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
+
+// Control Center data access (cc_readonly via Npgsql, user-secrets/env var)
+var connStr = builder.Configuration.GetConnectionString("ControlCenter");
+if (!string.IsNullOrWhiteSpace(connStr))
+{
+    builder.Services.AddSingleton<NpgsqlDataSource>(_ => NpgsqlDataSource.Create(connStr));
+    builder.Services.AddScoped<IControlCenterRepository, ControlCenterRepository>();
+}
 
 var app = builder.Build();
 
