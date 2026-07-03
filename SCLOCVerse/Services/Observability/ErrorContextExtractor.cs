@@ -1,5 +1,7 @@
+using SCLOCVerse.Models.LiaModels;
 using SCLOCVerse.Models.Observability;
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Net;
@@ -65,6 +67,9 @@ namespace SCLOCVerse.Services.Observability
                 if (string.IsNullOrEmpty(ctx.Source))
                     ctx.Source = ClassifySource(exception);
 
+                // Для LiaInstallException: заповнює detail forensic-контекстом + signal_name.
+                ApplyLiaForensic(ctx, exception);
+
                 return ctx;
             }
             catch (Exception ex)
@@ -88,6 +93,7 @@ namespace SCLOCVerse.Services.Observability
             if (ns.StartsWith("Supabase.Postgrest", StringComparison.Ordinal)) return "Supabase.Postgrest";
             if (ns.StartsWith("Supabase", StringComparison.Ordinal)) return "Supabase";
             if (ex is HttpRequestException or TaskCanceledException or TimeoutException) return "Network";
+            if (ex is LiaInstallException) return "PowerShell";
             if (ex is COMException or Win32Exception) return "COM";
             return "CLR";
         }
@@ -138,9 +144,12 @@ namespace SCLOCVerse.Services.Observability
             return null;
         }
 
-        // HRESULT лише для справжніх COM/Win32-кодів (для LIA). Не затінює http_status в OAuth.
+        // HRESULT лише для справжніх COM/Win32-кодів або L.I.A (PowerShell-forensic).
         private static string? TryGetHresult(Exception ex)
         {
+            if (ex is LiaInstallException lia && !string.IsNullOrEmpty(lia.Hresult))
+                return lia.Hresult;
+
             if (ex is COMException or Win32Exception)
             {
                 var hr = unchecked((uint)ex.HResult);
@@ -157,6 +166,37 @@ namespace SCLOCVerse.Services.Observability
             int i => i,
             _ => null
         };
+
+        // Для LiaInstallException: переносить forensic-властивості (PowerShell-phase, cert,
+        // activity_id, exit_code) у detail + встановлює signal_name через HResultCatalog.
+        private static void ApplyLiaForensic(TelemetryContext ctx, Exception ex)
+        {
+            if (ex is not LiaInstallException lia)
+                return;
+
+            ctx.Detail ??= new Dictionary<string, object?>();
+
+            if (!string.IsNullOrEmpty(lia.Phase))
+                ctx.Detail["phase"] = lia.Phase;
+            ctx.Detail["retry_count"] = 0;
+            ctx.Detail["powershell_exit_code"] = lia.ExitCode;
+
+            if (!string.IsNullOrEmpty(lia.InstallerType))
+                ctx.Detail["installer_type"] = lia.InstallerType;
+            if (lia.CertificatePresent.HasValue)
+                ctx.Detail["certificate_present"] = lia.CertificatePresent;
+            if (!string.IsNullOrEmpty(lia.CertificateSubject))
+                ctx.Detail["certificate_subject"] = lia.CertificateSubject;
+            if (!string.IsNullOrEmpty(lia.CertificateThumbprint))
+                ctx.Detail["certificate_thumbprint"] = lia.CertificateThumbprint;
+            if (!string.IsNullOrEmpty(lia.ActivityId))
+                ctx.Detail["activity_id"] = lia.ActivityId;
+
+            // Структуроване символьне імʼя (не текстовий аналіз) → detail.signal_name.
+            var symbol = HResultCatalog.ResolveSymbol(lia.Hresult);
+            if (!string.IsNullOrEmpty(symbol))
+                ctx.Detail["signal_name"] = symbol;
+        }
 
         // Reflection-читання публічної властивості (null-safe, без кидків).
         private static TValue? ReadProperty<TValue>(object? obj, string name)

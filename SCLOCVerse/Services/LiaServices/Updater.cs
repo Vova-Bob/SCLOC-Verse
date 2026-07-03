@@ -1,17 +1,25 @@
 ﻿using Newtonsoft.Json;
 using SCLOCVerse.Interfaces;
 using SCLOCVerse.Models.LiaModels;
+using SCLOCVerse.Services.Observability;
 using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading;
 
 namespace SCLOCVerse.Services.LiaServices
 {
     public class Updater : IUpdater
     {
         private static readonly HttpClient Client = CreateHttpClient();
+        private readonly ITelemetryService? _telemetry;
+
+        public Updater(ITelemetryService? telemetry = null)
+        {
+            _telemetry = telemetry;
+        }
 
         public async Task<LiaInstallStatus> GetStatusAsync(CancellationToken cancellationToken = default)
         {
@@ -66,26 +74,56 @@ namespace SCLOCVerse.Services.LiaServices
             IProgress<double>? progress = null,
             CancellationToken cancellationToken = default)
         {
-            var release = await GetLatestReleaseAsync(cancellationToken).ConfigureAwait(false);
-            var installerAsset = SelectInstallerAsset(release.Assets)
-                ?? throw new InvalidOperationException("У релізі не знайдено інсталятор Л.І.А.");
-            var certificateAsset = SelectCertificateAsset(release.Assets);
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            LiaEvents.Track(_telemetry, "Install", "Started", orchestrationPhase: "Download");
 
-            Directory.CreateDirectory(AppSettings.UpdatesDirectory);
-
-            onProgress?.Invoke($"Знайдено реліз: {release.TagName ?? release.Name ?? "невідомо"}");
-            var installerPath = await EnsureAssetDownloadedAsync(installerAsset, progress, cancellationToken).ConfigureAwait(false);
-            string? certificatePath = null;
-
-            if (certificateAsset != null)
+            try
             {
-                onProgress?.Invoke("Завантаження сертифіката...");
-                certificatePath = await EnsureAssetDownloadedAsync(certificateAsset, null, cancellationToken).ConfigureAwait(false);
-            }
+                var release = await GetLatestReleaseAsync(cancellationToken).ConfigureAwait(false);
+                var installerAsset = SelectInstallerAsset(release.Assets)
+                    ?? throw new InvalidOperationException("У релізі не знайдено інсталятор Л.І.А.");
+                var certificateAsset = SelectCertificateAsset(release.Assets);
 
-            onProgress?.Invoke("Запуск інсталяції Л.І.А...");
-            await RunInstallerScriptAsync(installerPath, certificatePath, cancellationToken).ConfigureAwait(false);
-            onProgress?.Invoke("Інсталяцію завершено.");
+                Directory.CreateDirectory(AppSettings.UpdatesDirectory);
+
+                onProgress?.Invoke($"Знайдено реліз: {release.TagName ?? release.Name ?? "невідомо"}");
+
+                // --- Download ---
+                LiaEvents.Track(_telemetry, "Download", "Started", orchestrationPhase: "InstallerAsset");
+                var downloadSw = System.Diagnostics.Stopwatch.StartNew();
+                var installerPath = await EnsureAssetDownloadedAsync(installerAsset, progress, cancellationToken).ConfigureAwait(false);
+                LiaEvents.Track(_telemetry, "Download", "Succeeded", downloadSw.ElapsedMilliseconds, orchestrationPhase: "InstallerAsset");
+
+                string? certificatePath = null;
+
+                if (certificateAsset != null)
+                {
+                    onProgress?.Invoke("Завантаження сертифіката...");
+                    LiaEvents.Track(_telemetry, "Download", "Started", orchestrationPhase: "CertificateAsset");
+                    var certSw = System.Diagnostics.Stopwatch.StartNew();
+                    certificatePath = await EnsureAssetDownloadedAsync(certificateAsset, null, cancellationToken).ConfigureAwait(false);
+                    LiaEvents.Track(_telemetry, "Download", "Succeeded", certSw.ElapsedMilliseconds, orchestrationPhase: "CertificateAsset");
+                }
+
+                // --- Install ---
+                onProgress?.Invoke("Запуск інсталяції Л.І.А...");
+                LiaEvents.Track(_telemetry, "Install", "Started", orchestrationPhase: "RunInstallerScript",
+                    installerType: GetInstallerType(installerPath), certificatePresent: certificatePath != null,
+                    packageVersion: release.TagName);
+
+                var installSw = System.Diagnostics.Stopwatch.StartNew();
+                await RunInstallerScriptAsync(installerPath, certificatePath, cancellationToken).ConfigureAwait(false);
+                LiaEvents.Track(_telemetry, "Install", "Succeeded", installSw.ElapsedMilliseconds, orchestrationPhase: "Complete");
+
+                onProgress?.Invoke("Інсталяцію завершено.");
+            }
+            catch (Exception ex)
+            {
+                // ErrorContextExtractor дістане hresult/signal/cert/activity_id з LiaInstallException;
+                // для інших винятків — стандартний контекст (Network/CLR).
+                LiaEvents.Track(_telemetry, "Install", "Failed", sw.ElapsedMilliseconds, ex);
+                throw; // Zero Regression.
+            }
         }
 
         public async Task UninstallAsync(Action<string>? onProgress = null, CancellationToken cancellationToken = default)
@@ -197,7 +235,31 @@ namespace SCLOCVerse.Services.LiaServices
             var result = await RunPowerShellAsync(BuildInstallerScript(installerPath, certificatePath), cancellationToken).ConfigureAwait(false);
 
             if (result.ExitCode != 0)
+            {
+                // Структурований forensic-контракт: шукаємо ##SCLOC_FORENSIC## + JSON.
+                var forensic = LiaForensicParser.TryParse(result.Output);
+                if (forensic != null)
+                {
+                    forensic.InstallerType ??= GetInstallerType(installerPath);
+                    throw new LiaInstallException(forensic, result.ExitCode, result.Error);
+                }
+
+                // Forensic-блок відсутній — fallback на InvalidOperationException (Zero Regression).
                 throw new InvalidOperationException(string.IsNullOrWhiteSpace(result.Error) ? result.Output.Trim() : result.Error.Trim());
+            }
+        }
+
+        private static string GetInstallerType(string installerPath)
+        {
+            var ext = System.IO.Path.GetExtension(installerPath).ToLowerInvariant();
+            return ext switch
+            {
+                ".appinstaller" => "AppInstaller",
+                ".msix" or ".msixbundle" => "MSIX",
+                ".msi" => "MSI",
+                ".exe" => "EXE",
+                _ => "Unknown"
+            };
         }
 
         private static string BuildInstallerScript(string installerPath, string? certificatePath)
@@ -224,6 +286,7 @@ namespace SCLOCVerse.Services.LiaServices
                 }
 
                 $extension = [System.IO.Path]::GetExtension($installerPath).ToLowerInvariant()
+                $installerType = if ($extension -eq '.appinstaller') { 'AppInstaller' } elseif ($extension -eq '.msix' -or $extension -eq '.msixbundle') { 'MSIX' } elseif ($extension -eq '.msi') { 'MSI' } elseif ($extension -eq '.exe') { 'EXE' } else { 'Unknown' }
                 try {
                     if ($extension -eq '.appinstaller') {
                         Add-AppxPackage -AppInstallerFile $installerPath
@@ -236,6 +299,22 @@ namespace SCLOCVerse.Services.LiaServices
                     }
                 } catch {
                     $hresult = '0x{0:X8}' -f $_.Exception.HResult
+                    $certPresent = if ($certificatePath -and (Test-Path -LiteralPath $certificatePath)) { $true } else { $false }
+                    $certSubject = ''
+                    $certThumb = ''
+                    if ($certPresent) {
+                        try {
+                            $cert = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2($certificatePath)
+                            $certSubject = $cert.Subject
+                            $certThumb = $cert.Thumbprint
+                        } catch {}
+                    }
+                    $activityId = ''
+                    try { $activityId = [System.Guid]::NewGuid().ToString() } catch {}
+                    $forensic = @{ hresult = $hresult; phase = 'AddAppxPackage'; message = $_.Exception.Message; installerType = $installerType; certificatePresent = $certPresent; certificateSubject = $certSubject; certificateThumbprint = $certThumb; activityId = $activityId }
+                    $forensicJson = $forensic | ConvertTo-Json -Compress -Depth 3
+                    Write-Output '##SCLOC_FORENSIC##'
+                    Write-Output $forensicJson
                     if ($_.Exception.HResult -eq -2146762487) {
                         throw "The L.I.A package could not be installed because its signing certificate is not trusted. HRESULT: $hresult. Please install the included .cer file manually or contact the developer."
                     }

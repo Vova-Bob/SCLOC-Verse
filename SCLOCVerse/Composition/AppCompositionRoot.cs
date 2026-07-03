@@ -48,7 +48,7 @@ namespace SCLOCVerse.Composition
             _ignoreRulesProvider = new IgnoreRulesProvider();
             _folderSearchService = new FolderSearchService(_ignoreRulesProvider);
             _settingsService = new SettingsService();
-            _updater = new Updater();
+            _updater = new Updater(_telemetryClient);
             _updateCheckerService = new UpdateCheckerService(_updater);
 
             _applicationVersionProvider = new ApplicationVersionProvider();
