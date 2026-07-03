@@ -14,6 +14,7 @@
 - **Slice 2 — OAuth: ✅ Runtime Verified.** `Auth/SignIn` + `Auth/RestoreSession`. Побудовано універсальний `ErrorContextExtractor` (source/http_status/supabase_code/hresult через інспекцію типу, не текст).
 - **Slice 3 — Installation: ✅ Runtime Verified.** `Installation/Sync` Started/Succeeded/Failed + `detail.phase`. Саме ця подія зробила б `42501` видимим за хвилини.
 - **Slice 4 — Updater: ⏳ Production Pending (Стаття 18).** Code ✅ Build ✅ Architecture ✅. `Updater/Download|Verify|Install`. Runtime-перевірка неможлива без реального оновлення (фейковий реліз не створюємо) → автопідвищення до Runtime Verified на першому природному update-флоу.
+- **Slice 5 — L.I.A: ⏳ Production Pending (Стаття 18).** Code ✅ Build ✅ Architecture ✅. `LIA/Download|Install` + структурований forensic-протокол (PowerShell→JSON→`LiaInstallException`→`ErrorContextExtractor`→`HResultCatalog`: `0x800B0109→CERT_E_UNTRUSTEDROOT`). Runtime-перевірка потребує реального встановлення L.I.A → автопідвищення при першому природному зброї.
 
 ### Легенда статусів
 
@@ -33,7 +34,7 @@
 | 2 | Auth / OAuth | ✅ Runtime Verified |
 | 3 | Installation (`42501`) | ✅ Runtime Verified |
 | 4 | Updater (Download/Verify/Install) | ⏳ Production Pending |
-| 5 | L.I.A (`0x800B0109`) | ⬜ Pending |
+| 5 | L.I.A (`0x800B0109`) | ⏳ Production Pending |
 | (пізніше) | Offline Queue (JSONL-персистенція) | ⬜ Pending |
 
 **Правило:** наступний слайс не починається, поки попередній не **Runtime Verified** або **Production Pending** (Стаття 18). Production Pending → Runtime Verified при першому природному виконанні (без зміни коду).
