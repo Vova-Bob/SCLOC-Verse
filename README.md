@@ -145,6 +145,17 @@ SCLOC-Verse поважає вашу приватність.
 
 Усі дані захищені Row Level Security (RLS).
 
+Повна політика конфіденційності (англійською): [PRIVACY.md](./PRIVACY.md)
+
+---
+
+# 🖊️ Code Signing Policy
+
+Free code signing for SCLOC-Verse is provided by [SignPath.io](https://signpath.io), using a certificate from the [SignPath Foundation](https://signpath.org).
+
+- [Privacy Policy](./PRIVACY.md)
+- [Code Signing Policy](./CODE_SIGNING_POLICY.md)
+
 ---
 
 # ❤️ Підтримати проєкт
