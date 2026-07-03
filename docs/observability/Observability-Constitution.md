@@ -235,6 +235,26 @@ Duration
 
 ---
 
+## Стаття 22 — Incident History Is Immutable
+
+> Будь-яка зміна стану інциденту не перезаписує попередній стан, а створює новий запис у журналі подій.
+
+**Точне значення.** `telemetry_incidents.status` — поточний стан (кеш для швидкого читання). Кожен перехід (Detected→Confirmed→Investigating→Mitigated→Resolved→Closed) фіксується в `incident_status_log` (append-only, Стаття 5). Журнал — джерело правди; status — зручність. Історія переходів ніколи не видаляється й не перезаписується.
+
+**Забезпечення.** `transition_incident()` — SECURITY DEFINER функція: перевіряє валідність переходу (forward-only), UPDATE status (кеш) + INSERT у журнал (immutable). Пряме UPDATE `telemetry_incidents.status` мимо функції заборонено RLS.
+
+---
+
+## Стаття 23 — Incident Workflow Access
+
+> Dashboard змінює стан інцидентів лише через SECURITY DEFINER функції. Прямі table-writes заборонені.
+
+**Точне значення.** Поправка до Статті 20 (Dashboard Purity): `cc_readonly` отримує `EXECUTE` на `transition_incident()`, `add_incident_note()`, `assign_incident_owner()` — контрольований write-path для workflow. Усі інші writes заборонені. Ці функції — єдиний спосіб зміни стану/нотаток/власника з Dashboard.
+
+**Забезпечення.** GRANT EXECUTE лише на ці три функції. RLS deny-all на `incident_status_log` / `incident_notes` (прямі writes заборонені). Функції SECURITY DEFINER (runs as postgres, bypasses RLS). VIEWs `control_center.incident_timeline` / `incident_notes` — READ ONLY через cc_readonly.
+
+---
+
 ## Telemetry Levels
 
 Один feature-flag `telemetry.level` (0–4) керує обсягом даних. **Головне правило: жоден рівень не відключає детекцію інцидентів** — навіть Level 1 зберігає critical-path failures та їхні знаменники.
@@ -256,6 +276,6 @@ Duration
 ## Як змінювати Конституцію
 
 1. Конституція змінюється лише через явний Pull Request, що оновлює цей файл.
-2. Будь-яка зміна статей 1–21 вимагає позначки **Breaking Constitutional Change** у PR.
+2. Будь-яка зміна статей 1–23 вимагає позначки **Breaking Constitutional Change** у PR.
 3. Telemetry Levels є конфігурацією, а не статтею — можуть доповнюватись без перегляду статей.
 4. Якщо реалізація змушена порушити статтю — це сигнал, що треба або змінити реалізацію, або свідомо переглянути Конституцію. Мовчазне порушення неприпустиме.

@@ -21,9 +21,12 @@ public sealed class IncidentDetail
     public DateTime OpenedAt { get; set; }
     public DateTime LastEventAt { get; set; }
     public DateTime? ClosedAt { get; set; }
+    public string? Owner { get; set; }
     public TelemetryEventSummary? RootEvent { get; set; }
     public List<TraceStep> Trace { get; set; } = new();
     public List<TelemetryEventSummary> RelatedEvents { get; set; } = new();
+    public List<IncidentTimelineEntry> Timeline { get; set; } = new();
+    public List<IncidentNote> Notes { get; set; } = new();
 }
 
 public sealed record TelemetryEventSummary(

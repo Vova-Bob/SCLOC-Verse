@@ -134,6 +134,80 @@ else if (_detail != null)
                     </tbody>
                 </table>
             }
+
+            @* ── Workflow Actions (Phase 5) ── *@
+            <h5 class="mt-3">Workflow</h5>
+            <div class="d-flex gap-2 flex-wrap mb-3">
+                @if (_detail.Status != "Closed")
+                {
+                    var nextStates = GetNextStates(_detail.Status);
+                    @foreach (var s in nextStates)
+                    {
+                        <button class="btn btn-sm @(s == "Closed" ? "btn-outline-secondary" : s == "Resolved" ? "btn-success" : "btn-primary")"
+                                @onclick="() => DoTransition(s)" disabled="@_working">
+                            @s
+                        </button>
+                    }
+                }
+                else
+                {
+                    <span class="text-muted">Інцидент закрито.</span>
+                }
+            </div>
+
+            @* Owner *@
+            <div class="mb-3">
+                <label class="form-label small">Owner</label>
+                <div class="d-flex gap-2">
+                    <input class="form-control form-control-sm" style="max-width: 200px;" @bind="_ownerInput" placeholder="username" />
+                    <button class="btn btn-sm btn-outline-secondary" @onclick="DoAssignOwner" disabled="@_working">Assign</button>
+                </div>
+                @if (!string.IsNullOrEmpty(_detail.Owner))
+                {
+                    <span class="badge bg-info ms-1">@_detail.Owner</span>
+                }
+            </div>
+
+            @* Timeline (Стаття 22 — immutable journal) *@
+            @if (_detail.Timeline.Count > 0)
+            {
+                <h5>Timeline</h5>
+                <div class="border-start ps-3 ms-2">
+                    @foreach (var t in _detail.Timeline)
+                    {
+                        <div class="mb-2">
+                            <span class="text-muted small">@t.ChangedAt.ToString("MM-dd HH:mm")</span><br/>
+                            <strong>@t.FromStatus</strong> → <strong>@t.ToStatus</strong>
+                            <span class="text-muted">by @t.ChangedBy</span>
+                            @if (!string.IsNullOrEmpty(t.Note))
+                            {
+                                <br/><span class="text-muted small">@t.Note</span>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+
+            @* Notes *@
+            <h5 class="mt-3">Notes</h5>
+            <div class="mb-2">
+                <textarea class="form-control form-control-sm" rows="2" @bind="_noteInput" placeholder="Додати нотатку…"></textarea>
+                <button class="btn btn-sm btn-outline-primary mt-1" @onclick="DoAddNote" disabled="@_working">Add Note</button>
+            </div>
+            @if (_detail.Notes.Count > 0)
+            {
+                @foreach (var n in _detail.Notes)
+                {
+                    <div class="bg-light rounded p-2 mb-1">
+                        <small class="text-muted">@n.CreatedBy · @n.CreatedAt.ToString("MM-dd HH:mm")</small><br/>
+                        @n.Content
+                    </div>
+                }
+            }
+            else
+            {
+                <p class="text-muted small">Немає нотаток.</p>
+            }
         </div>
     </div>
 }
@@ -241,4 +315,65 @@ else
     }
 
     private static string FormatPct(decimal? pct) => pct.HasValue ? $"{pct.Value:F1}%" : "—";
+
+    private string _ownerInput = "";
+    private string _noteInput = "";
+    private bool _working;
+
+    private static readonly Dictionary<string, string[]> StateFlow = new()
+    {
+        ["Active"] = new[] { "Confirmed", "Investigating", "Mitigated", "Resolved", "Closed" },
+        ["Confirmed"] = new[] { "Investigating", "Mitigated", "Resolved", "Closed" },
+        ["Investigating"] = new[] { "Mitigated", "Resolved", "Closed" },
+        ["Mitigated"] = new[] { "Resolved", "Closed" },
+        ["Resolved"] = new[] { "Closed" },
+        ["Closed"] = Array.Empty<string>(),
+    };
+
+    private static string[] GetNextStates(string current) =>
+        StateFlow.GetValueOrDefault(current, Array.Empty<string>());
+
+    private async Task DoTransition(string toStatus)
+    {
+        if (_detail == null) return;
+        _working = true; StateHasChanged();
+        try
+        {
+            await Repository.TransitionIncidentAsync(_detail.Id, toStatus, "admin", null);
+            _detail = await Repository.GetIncidentDetailAsync(_detail.IncidentId);
+            _error = null;
+        }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _working = false; }
+    }
+
+    private async Task DoAssignOwner()
+    {
+        if (_detail == null || string.IsNullOrWhiteSpace(_ownerInput)) return;
+        _working = true; StateHasChanged();
+        try
+        {
+            await Repository.AssignOwnerAsync(_detail.Id, _ownerInput.Trim());
+            _detail = await Repository.GetIncidentDetailAsync(_detail.IncidentId);
+            _ownerInput = "";
+            _error = null;
+        }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _working = false; }
+    }
+
+    private async Task DoAddNote()
+    {
+        if (_detail == null || string.IsNullOrWhiteSpace(_noteInput)) return;
+        _working = true; StateHasChanged();
+        try
+        {
+            await Repository.AddIncidentNoteAsync(_detail.Id, _noteInput.Trim(), "admin");
+            _detail = await Repository.GetIncidentDetailAsync(_detail.IncidentId);
+            _noteInput = "";
+            _error = null;
+        }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _working = false; }
+    }
 }
