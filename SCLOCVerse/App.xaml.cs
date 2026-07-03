@@ -57,6 +57,12 @@ namespace SCLOCVerse
             MigrateSettingsIfNeeded();
 
             _compositionRoot = new AppCompositionRoot();
+
+            // SCLOC Observability Platform — фіксуємо запуск (Slice 1).
+            // Не блокує, не кидає (Конституція, Стаття 1/3). Pre-auth подія
+            // буферується й відправляється після авторизації.
+            _compositionRoot.Telemetry.Track("Application", "Start", "Started");
+
             var window = _compositionRoot.CreateMainWindow();
             MainWindow = window;
 

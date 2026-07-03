@@ -30,6 +30,12 @@ namespace SCLOCVerse.Composition
 
         public IAuthStatusProvider AuthStatusProvider => _authService;
 
+        /// <summary>Спільний Supabase-клієнт (з JWT) — використовує Observability Platform для відправки подій.</summary>
+        public ISupabaseClientFactory ClientFactory => _clientFactory;
+
+        /// <summary>Анонімний стабільний ідентифікатор машини (не MachineName).</summary>
+        public string InstallId => _installationService.InstallId;
+
         public void Dispose()
         {
             if (_authService is IDisposable disposable)

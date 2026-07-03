@@ -1,5 +1,6 @@
 using SCLOCVerse.Helpers;
 using SCLOCVerse.Interfaces;
+using SCLOCVerse.Models.Observability;
 using SCLOCVerse.Services;
 using SCLOCVerse.Services.ApplicationUpdate;
 using SCLOCVerse.Services.Common;
@@ -7,6 +8,7 @@ using SCLOCVerse.Services.HangarTimer;
 using SCLOCVerse.Services.InputSystem;
 using SCLOCVerse.Services.LiaServices;
 using SCLOCVerse.Services.LocalizationServices;
+using SCLOCVerse.Services.Observability;
 using SCLOCVerse.ViewModels;
 using System.Net.Http;
 using System.Windows.Threading;
@@ -32,6 +34,7 @@ namespace SCLOCVerse.Composition
         private readonly IGitHubReleaseClient _gitHubReleaseClient;
         private readonly IDialogService _dialogService;
         private readonly AuthCompositionRoot _authCompositionRoot;
+        private readonly TelemetryClient _telemetryClient;
 
         private readonly IHangarSettingsService _hangarSettingsService;
         private readonly IHangarStartTimeProvider _hangarStartTimeProvider;
@@ -87,10 +90,26 @@ namespace SCLOCVerse.Composition
             var supabaseUrl = GetSupabaseUrl();
             var supabaseAnonKey = GetSupabaseAnonKey();
             _authCompositionRoot = new AuthCompositionRoot(supabaseUrl, supabaseAnonKey);
+
+            // SCLOC Observability Platform (Slice 1). Конструюється після auth —
+            // використовує спільний Supabase-клієнт (JWT) та install_id.
+            // Не в критичному шляху UI: конструювання дешеве (Конституція, Стаття 3).
+            var telemetryChannel = string.IsNullOrWhiteSpace(SCLOCVerse.Settings.Default.UpdateChannel)
+                ? "stable"
+                : SCLOCVerse.Settings.Default.UpdateChannel;
+            _telemetryClient = new TelemetryClient(
+                _authCompositionRoot.ClientFactory,
+                _authCompositionRoot.InstallId,
+                BuildInfo.Create(telemetryChannel),
+                enabled: !IsTelemetryDisabled());
         }
 
         public void Dispose()
         {
+            // Спочатку зупиняємо телеметрію: її uploader використовує auth-клієнт,
+            // тож глушимо до dispose auth-композиції (reverse-order).
+            try { _telemetryClient?.Dispose(); } catch { /* ignore */ }
+
             // Спочатку зупиняємо фоновий монітор, щоб його DispatcherTimer
             // не утримував Dispatcher і MainWindow живим.
             if (_backgroundUpdateMonitor is IDisposable backgroundMonitor)
@@ -108,6 +127,9 @@ namespace SCLOCVerse.Composition
         }
 
         public AuthCompositionRoot AuthCompositionRoot => _authCompositionRoot;
+
+        /// <summary>Єдина точка спостережуваності (Конституція, Стаття 7/12).</summary>
+        public ITelemetryService Telemetry => _telemetryClient;
 
         public IHangarTimerService HangarTimerService => _hangarTimerService;
         public IHotkeyService HotkeyService => _hotkeyService;
@@ -168,6 +190,15 @@ namespace SCLOCVerse.Composition
                 return value;
 
             return "placeholder-anon-key";
+        }
+
+        // Kill-switch телеметрії через env (Конституція, Стаття 10).
+        // Повний remote feature_flags/levels — пізніший слайс.
+        private static bool IsTelemetryDisabled()
+        {
+            var value = System.Environment.GetEnvironmentVariable("SCLOCVERSE_TELEMETRY_DISABLED");
+            return string.Equals(value, "1", StringComparison.Ordinal)
+                || string.Equals(value, "true", StringComparison.OrdinalIgnoreCase);
         }
     }
 }
