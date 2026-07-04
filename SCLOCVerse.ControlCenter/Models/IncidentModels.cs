@@ -128,6 +128,56 @@ public sealed class KnowledgeHistoryEntry
     public string ChangeType { get; set; } = "Updated";
 }
 
+/// <summary>
+/// Метрика покриття знань (Slice 5). З materialized view control_center.knowledge_coverage.
+/// </summary>
+public sealed class KnowledgeCoverage
+{
+    public int TotalFingerprints { get; set; }
+    public int CoveredFingerprints { get; set; }
+    public int UncoveredFingerprints { get; set; }
+    public decimal CoveragePct { get; set; }
+}
+
+/// <summary>
+/// Результат ручного пошуку Knowledge (Slice 5).
+/// </summary>
+public sealed class KnowledgeSearchResult
+{
+    public long KnowledgeId { get; set; }
+    public string Title { get; set; } = "";
+    public string Component { get; set; } = "";
+    public string Signal { get; set; } = "";
+    public string Status { get; set; } = "";
+    public string Confidence { get; set; } = "";
+    public string? FixedVersion { get; set; }
+    public DateTime UpdatedAt { get; set; }
+    public long TotalCount { get; set; }
+}
+
+/// <summary>
+/// Запис зі списку топ непокритих component+signal (Slice 5).
+/// </summary>
+public sealed class MissingKnowledgeEntry
+{
+    public string Component { get; set; } = "";
+    public string Signal { get; set; } = "";
+    public int FingerprintCount { get; set; }
+    public long TotalEvents { get; set; }
+    public DateTime LastSeen { get; set; }
+    public string HighestSeverity { get; set; } = "";
+}
+
+/// <summary>
+/// Кандидат на авто-верифікацію (Slice 5). Повертається verify_knowledge_auto().
+/// </summary>
+public sealed class KnowledgeAutoVerifyResult
+{
+    public long KnowledgeId { get; set; }
+    public string Title { get; set; } = "";
+    public string Reason { get; set; } = "";
+}
+
 public sealed record TelemetryEventSummary(
     Guid Id, Guid CorrelationId, int Step,
     string Component, string Operation, string Outcome,

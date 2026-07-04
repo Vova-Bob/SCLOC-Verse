@@ -248,6 +248,102 @@ public sealed class ControlCenterRepository : IControlCenterRepository
         return await MatchKnowledgePriority2Async(conn, incidentId, ct);
     }
 
+    // ── Slice 5: Release Integration + Coverage + Search ──
+
+    public async Task<KnowledgeCoverage> GetKnowledgeCoverageAsync(CancellationToken ct = default)
+    {
+        await using var conn = await _dataSource.OpenConnectionAsync(ct).ConfigureAwait(false);
+        await using var cmd = new NpgsqlCommand(
+            "SELECT total_fingerprints, covered_fingerprints, uncovered_fingerprints, coverage_pct FROM control_center.knowledge_coverage", conn);
+        await using var reader = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        if (!await reader.ReadAsync(ct).ConfigureAwait(false))
+            return new KnowledgeCoverage();
+        return new KnowledgeCoverage
+        {
+            TotalFingerprints = reader.GetInt32(0),
+            CoveredFingerprints = reader.GetInt32(1),
+            UncoveredFingerprints = reader.GetInt32(2),
+            CoveragePct = reader.GetDecimal(3)
+        };
+    }
+
+    public async Task<List<MissingKnowledgeEntry>> GetTopMissingKnowledgeAsync(CancellationToken ct = default)
+    {
+        await using var conn = await _dataSource.OpenConnectionAsync(ct).ConfigureAwait(false);
+        await using var cmd = new NpgsqlCommand(
+            "SELECT component, signal, fingerprint_count, total_events, last_seen, highest_severity FROM control_center.top_missing_knowledge", conn);
+        var results = new List<MissingKnowledgeEntry>();
+        await using var reader = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        while (await reader.ReadAsync(ct).ConfigureAwait(false))
+        {
+            results.Add(new MissingKnowledgeEntry
+            {
+                Component = reader.GetString(0),
+                Signal = reader.GetString(1),
+                FingerprintCount = reader.GetInt32(2),
+                TotalEvents = reader.GetInt64(3),
+                LastSeen = reader.GetDateTime(4),
+                HighestSeverity = reader.GetString(5)
+            });
+        }
+        return results;
+    }
+
+    public async Task<List<KnowledgeSearchResult>> SearchKnowledgeAsync(string query, string? component, string? status, string? confidence, int limit, int offset, CancellationToken ct = default)
+    {
+        await using var conn = await _dataSource.OpenConnectionAsync(ct).ConfigureAwait(false);
+        await using var cmd = new NpgsqlCommand("SELECT * FROM public.search_knowledge($1,$2,$3,$4,$5,$6)", conn);
+        cmd.Parameters.Add(new NpgsqlParameter<string> { Value = query ?? "" });
+        cmd.Parameters.Add(new NpgsqlParameter<string?> { Value = string.IsNullOrEmpty(component) ? null : component });
+        cmd.Parameters.Add(new NpgsqlParameter<string?> { Value = string.IsNullOrEmpty(status) ? null : status });
+        cmd.Parameters.Add(new NpgsqlParameter<string?> { Value = string.IsNullOrEmpty(confidence) ? null : confidence });
+        cmd.Parameters.Add(new NpgsqlParameter<int> { Value = limit });
+        cmd.Parameters.Add(new NpgsqlParameter<int> { Value = offset });
+        var results = new List<KnowledgeSearchResult>();
+        await using var reader = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        while (await reader.ReadAsync(ct).ConfigureAwait(false))
+        {
+            results.Add(new KnowledgeSearchResult
+            {
+                KnowledgeId = reader.GetInt64(0),
+                Title = reader.GetString(1),
+                Component = reader.GetString(2),
+                Signal = reader.GetString(3),
+                Status = reader.GetString(4),
+                Confidence = reader.GetString(5),
+                FixedVersion = reader.IsDBNull(6) ? null : reader.GetString(6),
+                UpdatedAt = reader.GetDateTime(7),
+                TotalCount = reader.GetInt64(8)
+            });
+        }
+        return results;
+    }
+
+    public async Task<List<KnowledgeAutoVerifyResult>> RunKnowledgeAutoVerifyAsync(CancellationToken ct = default)
+    {
+        await using var conn = await _dataSource.OpenConnectionAsync(ct).ConfigureAwait(false);
+        await using var cmd = new NpgsqlCommand("SELECT knowledge_id, title, reason FROM public.verify_knowledge_auto()", conn);
+        var results = new List<KnowledgeAutoVerifyResult>();
+        await using var reader = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        while (await reader.ReadAsync(ct).ConfigureAwait(false))
+        {
+            results.Add(new KnowledgeAutoVerifyResult
+            {
+                KnowledgeId = reader.GetInt64(0),
+                Title = reader.GetString(1),
+                Reason = reader.GetString(2)
+            });
+        }
+        return results;
+    }
+
+    public async Task RefreshKnowledgeCoverageAsync(CancellationToken ct = default)
+    {
+        await using var conn = await _dataSource.OpenConnectionAsync(ct).ConfigureAwait(false);
+        await using var cmd = new NpgsqlCommand("SELECT public.refresh_knowledge_coverage()", conn);
+        await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+    }
+
     // Внутрішній overload — використовується в GetIncidentDetailAsync, щоб не відкривати друге підключення.
     private static async Task<KnownSolution?> GetKnownSolutionAsync(NpgsqlConnection conn, long incidentId, CancellationToken ct)
     {

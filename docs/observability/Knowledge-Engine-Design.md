@@ -594,16 +594,16 @@ Per-release статистика coverage (для UI 8.3). **Обов'язков
 | UI | Динамічні кнопки Publish/Verify/Deprecate/Archive залежно від поточного статусу. Модал transition з обов'язковим reason для Archive. 🟢 Priority 1 (Exact Match, зелений) / 🟡 Priority 2 (Similar Solution, жовтий з warning) / ⚪ No Knowledge (сірий). Badge Priority 1/2 у шапці Known Solution. |
 | Критерій | Повний цикл Draft → Reviewed → Verified → Archived через одну функцію з audit WorkflowTransition/Archived. Priority 2 не показує Draft/Deprecated/Archived Knowledge. Exact match має пріоритет над similar. |
 
-### Slice 5 — Release Integration (auto-verify + coverage) + Manual Search
+### Slice 5 — Release Integration (auto-verify + coverage) + Manual Search (Runtime Verified)
 
 **Мета:** завершити повний Knowledge Loop — автоматична верифікація знань через `release_health`, метрика покриття, ручний пошук. Це завершальна стадія Phase 6, після якої Knowledge Engine стає автономною підсистемою.
 
 | Що | Деталі |
 |---|---|
-| БД | `pg_cron` job з `verify_knowledge_auto()` (5 умов §6.1). Materialized view `control_center.knowledge_coverage` + REFRESH job. Розширення `notification_queue.notification_type` CHECK `KnowledgeVerified`. `search_knowledge` (з пагінацією). VIEW `control_center.knowledge_list`. Cleanup-міграція: `DROP FUNCTION archive_knowledge_entry` (deprecated у Slice 3.5). |
-| Код | (мінімум — переважно БД). Опціонально сервіс Knowledge Search для сторінки Knowledge. |
-| UI | Колонка Knowledge Coverage у Release Health. Позначка "Verified by release_health" у KnowledgeEntry. Опціонально сторінка Knowledge.razor зі списком + пошуком. |
-| Критерій | Повний Knowledge Loop замкнений: Verified Knowledge → 50+ installs → 95% success → 14 днів без рецидиву → auto-verify → knowledge_coverage = N%. |
+| БД | `verify_knowledge_auto()` (5 умов §6.1: High + Reviewed/Verified + fixed_version + ≥50 installs + ≥95% success + 14д без рецидиву). `search_knowledge()` з пагінацією. Materialized VIEW `control_center.knowledge_coverage` + `refresh_knowledge_coverage()` (SECURITY DEFINER, бо cc_readonly не власник MV). VIEW `control_center.knowledge_list`. VIEW `control_center.top_missing_knowledge`. `DROP FUNCTION archive_knowledge_entry` (deprecated Slice 3.5). CHECK-розширення `notification_type` + 'KnowledgeVerified'. |
+| Код | `RunKnowledgeAutoVerifyAsync`, `SearchKnowledgeAsync`, `GetKnowledgeCoverageAsync`, `GetTopMissingKnowledgeAsync`, `RefreshKnowledgeCoverageAsync`. Моделі: `KnowledgeCoverage`, `KnowledgeSearchResult`, `MissingKnowledgeEntry`, `KnowledgeAutoVerifyResult`. |
+| UI | Coverage Dashboard на Overview (0%→100% з progress bar + Top Missing). Knowledge Ready на Releases (Coverage + Unknown Fingerprints + warning). Нова сторінка Knowledge.razor (Coverage summary + Top Missing + Manual Search + Auto-Verify button). Sidebar: 📚 Knowledge. |
+| Критерій | Повний Knowledge Loop замкнений: High → Fixed Version → 50+ installs → 95% success → 14д без рецидиву → auto-verify → knowledge_coverage 100% → Coverage в Dashboard. |
 
 #### Definition of Done (Slice 5)
 
@@ -627,7 +627,7 @@ Coverage % відображається в Release Health
 
 #### Технічний борг (узгоджений після Slice 3.5 + Slice 4 review)
 
-1. **Cleanup `archive_knowledge_entry()`** — функція більше не викликається з C# (замінена на `transition_knowledge(..., 'Archived', ...)`). До RC виконати окрему cleanup-міграцію з `DROP FUNCTION`. Не блокує Slice 5.
+1. **Cleanup `archive_knowledge_entry()`** — ✅ Виконано у Slice 5 (DROP FUNCTION у міграції 00023).
 
 2. **Workflow History: `from_status` / `to_status` у snapshot** — зараз Timeline для `WorkflowTransition` показує лише reason, але не напрямок переходу. Додати в snapshot (або окремі колонки `knowledge_version_history`) `from_status`/`to_status`, щоб Timeline одразу показував:
    ```
@@ -638,6 +638,15 @@ Coverage % відображається в Release Health
 3. **Priority Badge + Confidence** — у шапці Known Solution badge вже показує `Priority 1 — Verified — High`, але Confidence візуально зливається зі статусом. Можна розділити на два окремих badge, щоб адміністратор одразу бачив дві незалежні характеристики (використовуємо знання vs довіра до нього). Косметика, не блокує.
 
 4. **Phase 7 (post-Slice 5)** — семантичний пошук, embeddings, AI-assisted knowledge. Базова модель даних та цикл роботи (Slice 1–5) залишаються без змін. Phase 7 — еволюція поверх стабільного фундаменту.
+
+#### Зауваження щодо pg_cron (Slice 5)
+
+pg_cron НЕ доступний на цьому проєкті (розширення не встановлене). Тому `verify_knowledge_auto()` викликається:
+1. Ручний trigger через Control Center (кнопка ⚡ Auto-Verify на Knowledge сторінці) — v1.
+2. Опціонально через Edge Function scheduled (Supabase) — post-Slice 5.
+3. Опціонально через pg_cron — якщо буде активовано в Supabase Dashboard.
+
+Функція ідемпотентна: повторний виклик безпечно повертає тих самих кандидатів (якщо умови ще виконані).
 
 ### Пріоритети між слайсами
 

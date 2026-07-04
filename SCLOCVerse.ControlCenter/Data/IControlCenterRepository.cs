@@ -24,4 +24,11 @@ public interface IControlCenterRepository
     Task<int> GetKnowledgeCurrentVersionAsync(long knowledgeId, CancellationToken ct = default);
     Task<bool> CanEditKnowledgeAsync(long knowledgeId, CancellationToken ct = default);
     Task<KnownSolution?> MatchKnowledgePriority2Async(long incidentId, CancellationToken ct = default);
+
+    // ── Slice 5: Release Integration + Coverage + Search ──
+    Task<KnowledgeCoverage> GetKnowledgeCoverageAsync(CancellationToken ct = default);
+    Task<List<MissingKnowledgeEntry>> GetTopMissingKnowledgeAsync(CancellationToken ct = default);
+    Task<List<KnowledgeSearchResult>> SearchKnowledgeAsync(string query, string? component, string? status, string? confidence, int limit, int offset, CancellationToken ct = default);
+    Task<List<KnowledgeAutoVerifyResult>> RunKnowledgeAutoVerifyAsync(CancellationToken ct = default);
+    Task RefreshKnowledgeCoverageAsync(CancellationToken ct = default);
 }

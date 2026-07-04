@@ -1,0 +1,259 @@
+@page "/knowledge"
+@inject IControlCenterRepository Repository
+@rendermode InteractiveServer
+
+<PageTitle>Knowledge — SCLOC Control Center</PageTitle>
+
+<h1>📚 Knowledge Base</h1>
+<p class="text-muted">База знань: пошук, покриття, авто-верифікація.</p>
+
+@if (_error != null)
+{
+    <div class="alert alert-danger">@_error</div>
+}
+
+@* ── Coverage Summary ── *@
+@if (_coverage != null)
+{
+    <div class="row text-center mb-4">
+        <div class="col-md-3 mb-2">
+            <div class="card @(decimal.ToDouble(_coverage.CoveragePct) >= 80 ? "border-success" : decimal.ToDouble(_coverage.CoveragePct) >= 50 ? "border-warning" : "border-danger")">
+                <div class="card-body">
+                    <h3 class="@(decimal.ToDouble(_coverage.CoveragePct) >= 80 ? "text-success" : decimal.ToDouble(_coverage.CoveragePct) >= 50 ? "text-warning" : "text-danger")">
+                        @decimal.ToDouble(_coverage.CoveragePct).ToString("F1")%
+                    </h3>
+                    <small class="text-muted">Coverage</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-2">
+            <div class="card bg-light">
+                <div class="card-body">
+                    <h5 class="text-success">@_coverage.CoveredFingerprints</h5>
+                    <small class="text-muted">Covered</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-2">
+            <div class="card bg-light">
+                <div class="card-body">
+                    <h5 class="text-danger">@_coverage.UncoveredFingerprints</h5>
+                    <small class="text-muted">Uncovered</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-2">
+            <div class="card bg-light">
+                <div class="card-body">
+                    <h5>@_coverage.TotalFingerprints</h5>
+                    <small class="text-muted">Total Fingerprints</small>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@* ── Auto-Verify ── *@
+@if (_autoVerifyResults != null && _autoVerifyResults.Count > 0)
+{
+    <div class="alert alert-success">
+        <strong>✅ Auto-Verified (@_autoVerifyResults.Count):</strong>
+        <ul class="mb-0 mt-1">
+            @foreach (var r in _autoVerifyResults)
+            {
+                <li><strong>ID @r.KnowledgeId:</strong> @r.Title — @r.Reason</li>
+            }
+        </ul>
+    </div>
+}
+
+@* ── Top Missing Knowledge ── *@
+@if (_missing.Count > 0)
+{
+    <h3 class="mt-4">🔍 Top Missing Knowledge</h3>
+    <p class="text-muted small">Найчастіші проблеми без Verified Knowledge — кандидати на документування.</p>
+    <table class="table table-sm table-hover">
+        <thead>
+            <tr>
+                <th>Component</th>
+                <th>Signal</th>
+                <th>Fingerprints</th>
+                <th>Events</th>
+                <th>Severity</th>
+                <th>Last Seen</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var m in _missing)
+            {
+                <tr class="@(m.HighestSeverity == "Critical" ? "table-danger" : "table-warning")">
+                    <td>@m.Component</td>
+                    <td><code>@m.Signal</code></td>
+                    <td>@m.FingerprintCount</td>
+                    <td>@m.TotalEvents</td>
+                    <td><span class="badge @(m.HighestSeverity == "Critical" ? "bg-danger" : "bg-warning text-dark")">@m.HighestSeverity</span></td>
+                    <td>@m.LastSeen.ToString("MM-dd HH:mm")</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@* ── Manual Search ── *@
+<h3 class="mt-4">🔎 Search Knowledge</h3>
+<div class="row g-2 mb-3">
+    <div class="col-md-4">
+        <input type="text" class="form-control" placeholder="Title, fingerprint, component, signal..." @bind="_searchQuery" @bind:event="oninput" />
+    </div>
+    <div class="col-md-2">
+        <select class="form-select" @bind="_searchStatus">
+            <option value="">Any Status</option>
+            <option value="Draft">Draft</option>
+            <option value="Reviewed">Reviewed</option>
+            <option value="Verified">Verified</option>
+            <option value="Deprecated">Deprecated</option>
+            <option value="Archived">Archived</option>
+        </select>
+    </div>
+    <div class="col-md-2">
+        <select class="form-select" @bind="_searchConfidence">
+            <option value="">Any Confidence</option>
+            <option value="Low">Low</option>
+            <option value="Medium">Medium</option>
+            <option value="High">High</option>
+            <option value="Verified">Verified</option>
+        </select>
+    </div>
+    <div class="col-md-2">
+        <button class="btn btn-primary w-100" @onclick="DoSearch" disabled="@_searching">Search</button>
+    </div>
+    <div class="col-md-2">
+        <button class="btn btn-outline-secondary w-100" @onclick="RunAutoVerify" disabled="@_searching">⚡ Auto-Verify</button>
+    </div>
+</div>
+
+@if (_searchResults.Count > 0)
+{
+    <p class="text-muted small">@_searchResults[0].TotalCount знайдено</p>
+    <table class="table table-sm table-hover">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Title</th>
+                <th>Component</th>
+                <th>Signal</th>
+                <th>Status</th>
+                <th>Confidence</th>
+                <th>Fixed In</th>
+                <th>Updated</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var r in _searchResults)
+            {
+                <tr>
+                    <td>@r.KnowledgeId</td>
+                    <td>@r.Title</td>
+                    <td>@r.Component</td>
+                    <td><code>@r.Signal</code></td>
+                    <td><span class="badge @(r.Status == "Verified" ? "bg-success" : r.Status == "Archived" ? "bg-secondary" : "bg-info")">@r.Status</span></td>
+                    <td><span class="badge @(r.Confidence == "Verified" ? "bg-success" : r.Confidence == "High" ? "bg-primary" : "bg-light text-dark")">@r.Confidence</span></td>
+                    <td>@(r.FixedVersion ?? "—")</td>
+                    <td>@r.UpdatedAt.ToString("MM-dd HH:mm")</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+else if (_searched)
+{
+    <p class="text-muted">Нічого не знайдено.</p>
+}
+
+@code {
+    private KnowledgeCoverage? _coverage;
+    private List<MissingKnowledgeEntry> _missing = new();
+    private List<KnowledgeSearchResult> _searchResults = new();
+    private List<KnowledgeAutoVerifyResult>? _autoVerifyResults;
+    private string _searchQuery = "";
+    private string _searchStatus = "";
+    private string _searchConfidence = "";
+    private bool _searching;
+    private bool _searched;
+    private string? _error;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        _searching = true;
+        StateHasChanged();
+        try
+        {
+            await Repository.RefreshKnowledgeCoverageAsync();
+            _coverage = await Repository.GetKnowledgeCoverageAsync();
+            _missing = await Repository.GetTopMissingKnowledgeAsync();
+            _searchResults = await Repository.SearchKnowledgeAsync("", null, null, null, 20, 0);
+            _error = null;
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _searching = false;
+        }
+    }
+
+    private async Task DoSearch()
+    {
+        _searching = true;
+        StateHasChanged();
+        try
+        {
+            _searchResults = await Repository.SearchKnowledgeAsync(
+                _searchQuery,
+                string.IsNullOrEmpty(_searchStatus) ? null : _searchStatus,
+                string.IsNullOrEmpty(_searchConfidence) ? null : _searchConfidence,
+                null, 20, 0);
+            _searched = true;
+            _error = null;
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _searching = false;
+        }
+    }
+
+    private async Task RunAutoVerify()
+    {
+        _searching = true;
+        StateHasChanged();
+        try
+        {
+            _autoVerifyResults = await Repository.RunKnowledgeAutoVerifyAsync();
+            if (_autoVerifyResults.Count > 0)
+            {
+                await Repository.RefreshKnowledgeCoverageAsync();
+                _coverage = await Repository.GetKnowledgeCoverageAsync();
+            }
+            _error = null;
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _searching = false;
+        }
+    }
+}

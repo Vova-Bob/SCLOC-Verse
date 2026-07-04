@@ -15,12 +15,50 @@ else if (_loading)
 {
     <div class="spinner-border text-primary" role="status"></div>
 }
-else if (_releases.Count == 0)
-{
-    <p class="text-muted">Немає даних за останні 7 днів.</p>
-}
 else
 {
+    @* ── Knowledge Ready (Coverage) ── *@
+    @if (_coverage != null)
+    {
+        var pct = decimal.ToDouble(_coverage.CoveragePct);
+        var readyColor = pct >= 80 ? "text-success" : pct >= 50 ? "text-warning" : "text-danger";
+        var borderColor = pct >= 80 ? "border-success" : pct >= 50 ? "border-warning" : "border-danger";
+        <div class="card mb-4 @borderColor">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <strong>📚 Knowledge Ready</strong>
+                <span class="badge bg-light text-dark">@_coverage.CoveredFingerprints / @_coverage.TotalFingerprints</span>
+            </div>
+            <div class="card-body text-center">
+                <div class="row align-items-center">
+                    <div class="col-md-4">
+                        <h3 class="@readyColor mb-0">@pct.ToString("F1")%</h3>
+                        <small class="text-muted">Coverage</small>
+                    </div>
+                    <div class="col-md-4">
+                        <h3 class="text-success mb-0">@_coverage.CoveredFingerprints</h3>
+                        <small class="text-muted">Covered</small>
+                    </div>
+                    <div class="col-md-4">
+                        <h3 class="@(pct >= 80 ? "text-success" : "text-warning") mb-0">@_coverage.UncoveredFingerprints</h3>
+                        <small class="text-muted">Unknown Fingerprints</small>
+                    </div>
+                </div>
+                @if (_coverage.UncoveredFingerprints > 0 && pct < 80)
+                {
+                    <div class="alert alert-warning mt-3 mb-0 py-2 small">
+                        ⚠ База знань покриває лише @pct.ToString("F0")% проблем. Документуйте топ-проблеми перед релізом.
+                    </div>
+                }
+            </div>
+        </div>
+    }
+
+    @if (_releases.Count == 0)
+    {
+        <p class="text-muted">Немає даних за останні 7 днів.</p>
+    }
+    else
+    {
     @foreach (var r in _releases)
     {
         <div class="card mb-3 @(r.Recommendation == "Rollback Recommended" ? "border-danger" : r.Recommendation == "Watch" ? "border-warning" : "border-success")">
@@ -96,18 +134,29 @@ else
             </div>
         </div>
     }
+    }
 }
 
 @code {
     private List<ReleaseHealth> _releases = new();
     private bool _loading = true;
     private string? _error;
+    private KnowledgeCoverage? _coverage;
 
     protected override async Task OnInitializedAsync()
     {
         try
         {
             _releases = await Repository.GetReleaseHealthAsync();
+            try
+            {
+                await Repository.RefreshKnowledgeCoverageAsync();
+                _coverage = await Repository.GetKnowledgeCoverageAsync();
+            }
+            catch
+            {
+                // Coverage — best-effort
+            }
         }
         catch (Exception ex)
         {
