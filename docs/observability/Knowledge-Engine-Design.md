@@ -550,38 +550,40 @@ Per-release статистика coverage (для UI 8.3). **Обов'язков
 
 **Немає:** створення/редагування/пошук/workflow/auto-verify. Усе через SQL для тесту.
 
-### Slice 2 — Search + Match Priority 2
+### Slice 2 — Authoring
 
-**Мета:** оператор може шукати знання вручну; матчинг розширено до Priority 2.
-
-| Що | Деталі |
-|---|---|
-| БД | VIEW `control_center.knowledge_list` + функція `search_knowledge` (з пагінацією) + функція `match_knowledge_for_incident` (Priority 1 + 2). |
-| Код | `IKnowledgeRepository` + `KnowledgeRepository`. |
-| UI | Сторінка `Knowledge.razor` зі списком + фільтрами + пошуком. |
-| Критерій | Пошук за keyword + filter по component/status/confidence працює. Match Priority 2 активується при відсутності Priority 1. |
-
-### Slice 3 — Workflow (Create / Update / Verify / Deprecate / Archive)
-
-**Мета:** повний життєвий цикл через UI.
+**Мета:** оператор може створити Draft Knowledge Entry прямо з деталей вирішеного інциденту.
 
 | Що | Деталі |
 |---|---|
-| БД | Усі SECURITY DEFINER функції §10 (крім `verify_knowledge_auto`). `add_knowledge_reference` + `remove_knowledge_reference`. |
-| Код | Сервіс Knowledge Workflow (викликає функції). |
-| UI | Форма створення/редагування. Кнопки Publish/Verify/Deprecate/Archive на сторінці деталізації. Кнопка "Create Knowledge" у `Incidents.razor` (із prefetch fingerprint). Історія версій з visible `ChangedBy` + `SessionUser`. |
-| Критерій | Повний цикл Draft → Reviewed → Verified через UI, з audit у `knowledge_version_history` (з `session_user`). Спроба змінити Status/Confidence у неможливу комбінацію → БД відхиляє. |
+| БД | SECURITY DEFINER функція `create_knowledge_from_incident(incident_id, title, known_cause, workaround, created_by)` + допоміжна `can_create_knowledge_for_incident(incident_id)`. Правила: статус інциденту ∈ {Mitigated, Resolved, Closed}; owner IS NOT NULL; один не-Archived Knowledge на fingerprint. |
+| Код | `KnowledgeDraftInput`, `KnowledgeCreateResult`, `IControlCenterRepository.CreateKnowledgeFromIncidentAsync`, `CanCreateKnowledgeForIncidentAsync`, `PiiSanitizer`. |
+| UI | Кнопка "Save as Knowledge" у блоці "No knowledge found" у `Incidents.razor`. Модальна форма з Title, Known Cause, Workaround. Після створення — info-банер та підказка "Knowledge Draft exists". |
+| Критерій | Інцидент Resolved + Owner → клік Save as Knowledge → заповнення форми → Draft створено в БД → UI показує Draft-статус. |
 
-### Slice 4 — Version History UI
+**Немає:** окремого списку Knowledge, пошуку, references, workflow-переходів, auto-verify.
 
-**Мета:** показувати повну історію змін запису з diff ключових полів.
+### Slice 3 — Versioning + Match Priority 2
+
+**Мета:** редагування Knowledge, історія версій, relaxed matching.
 
 | Що | Деталі |
 |---|---|
-| БД | (вже є з Slice 1 — `knowledge_version_history`) |
-| Код | `GetKnowledgeHistoryAsync(knowledgeId)` з diff обчисленням. |
-| UI | Розділ "History" на сторінці деталізації: timeline версій з diff ключових полів. Видно `ChangedBy` (заявлений) + `SessionUser` (реальний). |
-| Критерій | Будь-яка зміна запису з'являється в історії за ≤ 1 с. |
+| БД | `update_knowledge_entry` + `add_knowledge_reference`/`remove_knowledge_reference`. Функція `match_knowledge_for_incident` розширено до Priority 2 (component + signal). VIEW `control_center.knowledge_list`. |
+| Код | Методи оновлення, читання історії, diff-обчислення. |
+| UI | Кнопки Publish/Verify/Deprecate/Archive. Розділ History на сторінці деталізації. Жовтий блок "Можлива підказка" для Priority 2. |
+| Критерій | Будь-яка зміна запису з'являється в `knowledge_version_history` за ≤ 1 с. Спроба змінити Status/Confidence у неможливу комбінацію → БД відхиляє. |
+
+### Slice 4 — Workflow (Verify / Deprecate / Archive) + Knowledge Search
+
+**Мета:** повний життєвий цикл через UI + ручний пошук.
+
+| Що | Деталі |
+|---|---|
+| БД | `publish_knowledge_entry`, `verify_knowledge_entry`, `deprecate_knowledge_entry`, `archive_knowledge_entry`, `reopen_knowledge_entry`, `search_knowledge` (з пагінацією). |
+| Код | Сервіс Knowledge Workflow. |
+| UI | Окрема сторінка `Knowledge.razor` зі списком + фільтрами + пошуком. Кнопки Workflow на сторінці деталізації. |
+| Критерій | Повний цикл Draft → Reviewed → Verified через UI, з audit у `knowledge_version_history` (з `session_user`). |
 
 ### Slice 5 — Release Integration (auto-verify + coverage)
 
@@ -599,16 +601,23 @@ Per-release статистика coverage (для UI 8.3). **Обов'язков
 ```
 Slice 1 (Display)            — дає цінність навіть без UI створення
    ↓
-Slice 3 (Workflow)           — замикає цикл "Investigation → Knowledge"
+Slice 2 (Authoring)          — замикає цикл "Investigation → Knowledge"
    ↓
-Slice 2 (Search + Match 2)   — оператор знаходить знання вручну + relaxed matching
+Slice 3 (Versioning + Match 2) — редагування, історія, relaxed matching
    ↓
-Slice 4 (History)            — прозорість змін
+Slice 4 (Workflow + Search)  — повний життєвий цикл + ручний пошук
    ↓
-Slice 5 (Release Integration)— знання "дозрівають" автоматично
+Slice 5 (Release Integration) — знання "дозрівають" автоматично
 ```
 
 Кожен слайс самодостатній. Можна зупинитись після будь-якого.
+
+### Замітка щодо нумерації після Slice 2
+
+Первинний план v1.1 мав Slice 2 = Search + Match Priority 2. Після узгодження
+Authoring було піднято на Slice 2, бо воно замикає основний цикл: інцидент
+→ рішення → Draft Knowledge. Пошук та relaxed matching стали Slice 3/4.
+Архітектура §1–§10 не змінилась; лише порядок поставки.
 
 ---
 

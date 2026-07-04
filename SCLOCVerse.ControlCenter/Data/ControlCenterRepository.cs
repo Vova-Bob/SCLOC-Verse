@@ -47,6 +47,12 @@ public sealed class ControlCenterRepository : IControlCenterRepository
         incident.Timeline = await ReadTimelineAsync(conn, incident.Id, ct);
         incident.Notes = await ReadNotesAsync(conn, incident.Id, ct);
         incident.KnownSolution = await GetKnownSolutionAsync(conn, incident.Id, ct);
+        if (incident.KnownSolution == null)
+        {
+            var draft = await QueryDraftKnowledgeAsync(conn, incident.FingerprintKey, ct);
+            incident.DraftKnowledgeId = draft?.KnowledgeId;
+            incident.DraftKnowledgeStatus = draft?.Status;
+        }
         return incident;
     }
 
@@ -54,6 +60,35 @@ public sealed class ControlCenterRepository : IControlCenterRepository
     {
         await using var conn = await _dataSource.OpenConnectionAsync(ct).ConfigureAwait(false);
         return await GetKnownSolutionAsync(conn, incidentId, ct);
+    }
+
+    public async Task<KnowledgeCreateResult> CreateKnowledgeFromIncidentAsync(long incidentId, KnowledgeDraftInput input, string createdBy, CancellationToken ct = default)
+    {
+        await using var conn = await _dataSource.OpenConnectionAsync(ct).ConfigureAwait(false);
+        await using var cmd = new NpgsqlCommand("SELECT knowledge_id, created_new FROM public.create_knowledge_from_incident($1,$2,$3,$4,$5)", conn);
+        cmd.Parameters.Add(new NpgsqlParameter<long> { Value = incidentId });
+        cmd.Parameters.Add(new NpgsqlParameter<string> { Value = input.Title });
+        cmd.Parameters.Add(new NpgsqlParameter<string> { Value = input.KnownCause });
+        cmd.Parameters.Add(new NpgsqlParameter<string?> { Value = input.Workaround });
+        cmd.Parameters.Add(new NpgsqlParameter<string> { Value = createdBy });
+        await using var reader = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        if (!await reader.ReadAsync(ct).ConfigureAwait(false))
+            throw new InvalidOperationException("Knowledge creation did not return a result.");
+
+        return new KnowledgeCreateResult
+        {
+            KnowledgeId = reader.GetInt64(0),
+            CreatedNew = reader.GetBoolean(1)
+        };
+    }
+
+    public async Task<bool> CanCreateKnowledgeForIncidentAsync(long incidentId, CancellationToken ct = default)
+    {
+        await using var conn = await _dataSource.OpenConnectionAsync(ct).ConfigureAwait(false);
+        await using var cmd = new NpgsqlCommand("SELECT public.can_create_knowledge_for_incident($1)", conn);
+        cmd.Parameters.Add(new NpgsqlParameter<long> { Value = incidentId });
+        var result = await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false);
+        return result is true;
     }
 
     // Внутрішній overload — використовується в GetIncidentDetailAsync, щоб не відкривати друге підключення.
@@ -311,5 +346,20 @@ public sealed class ControlCenterRepository : IControlCenterRepository
         while (await reader.ReadAsync(ct).ConfigureAwait(false))
             results.Add(new IncidentNote(reader.GetInt64(0), reader.GetInt64(1), reader.GetString(2), reader.GetString(3), reader.GetDateTime(4)));
         return results;
+    }
+
+    private static async Task<(long KnowledgeId, string Status)?> QueryDraftKnowledgeAsync(NpgsqlConnection conn, string fingerprintKey, CancellationToken ct)
+    {
+        // Читаємо через control_center VIEW (доступно cc_readonly), а не напряму public.knowledge_entries,
+        // бо остання захищена RLS deny-all для cc_readonly.
+        await using var cmd = new NpgsqlCommand("""
+            SELECT id, status FROM control_center.knowledge_entry_detail
+            WHERE fingerprint_key = $1 AND status NOT IN ('Verified','Archived')
+            ORDER BY updated_at DESC, id DESC LIMIT 1
+            """, conn);
+        cmd.Parameters.Add(new NpgsqlParameter<string> { Value = fingerprintKey });
+        await using var reader = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        if (!await reader.ReadAsync(ct).ConfigureAwait(false)) return null;
+        return (reader.GetInt64(0), reader.GetString(1));
     }
 }

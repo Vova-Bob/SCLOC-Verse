@@ -28,6 +28,13 @@ public sealed class IncidentDetail
     public List<IncidentTimelineEntry> Timeline { get; set; } = new();
     public List<IncidentNote> Notes { get; set; } = new();
     public KnownSolution? KnownSolution { get; set; }
+
+    /// <summary>
+    /// Якщо для fingerprint існує Knowledge Entry, але вона ще не Verified (Draft/Reviewed),
+    /// тут зберігається її статус — для UI-підказки "Knowledge Draft exists".
+    /// </summary>
+    public string? DraftKnowledgeStatus { get; set; }
+    public long? DraftKnowledgeId { get; set; }
 }
 
 /// <summary>
@@ -51,6 +58,25 @@ public sealed class KnownSolutionReference
     public string Type { get; set; } = "";
     public string? Url { get; set; }
     public string? Label { get; set; }
+}
+
+/// <summary>
+/// Вхідні дані для створення Draft Knowledge Entry з інциденту (Slice 2).
+/// </summary>
+public sealed class KnowledgeDraftInput
+{
+    public string Title { get; set; } = "";
+    public string KnownCause { get; set; } = "";
+    public string? Workaround { get; set; }
+}
+
+/// <summary>
+/// Результат створення Knowledge: ID та ознака, чи створено новий запис.
+/// </summary>
+public sealed class KnowledgeCreateResult
+{
+    public long KnowledgeId { get; set; }
+    public bool CreatedNew { get; set; }
 }
 
 public sealed record TelemetryEventSummary(

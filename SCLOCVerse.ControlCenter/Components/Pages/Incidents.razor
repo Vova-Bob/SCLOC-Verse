@@ -1,5 +1,6 @@
 @page "/incidents"
 @inject IControlCenterRepository Repository
+@using SCLOCVerse.ControlCenter.Services
 @rendermode InteractiveServer
 
 <PageTitle>Incidents — SCLOC Control Center</PageTitle>
@@ -24,6 +25,14 @@ else if (_detail != null)
     </div>
 
     <button class="btn btn-outline-secondary btn-sm mb-3" @onclick="BackToList">← Back to list</button>
+
+    @if (!string.IsNullOrEmpty(_knowledgeHint))
+    {
+        <div class="alert alert-info alert-dismissible mb-3">
+            @_knowledgeHint
+            <button type="button" class="btn-close" aria-label="Close" @onclick="() => _knowledgeHint = null"></button>
+        </div>
+    }
 
     <div class="row">
         @* Left: properties *@
@@ -105,11 +114,33 @@ else if (_detail != null)
                     </div>
                 </div>
             }
+            else if (!string.IsNullOrEmpty(_detail.DraftKnowledgeStatus))
+            {
+                <div class="card mb-3 border-info">
+                    <div class="card-body d-flex justify-content-between align-items-center">
+                        <span class="text-info">📝 Knowledge @_detail.DraftKnowledgeStatus exists (ID @_detail.DraftKnowledgeId). It will appear as Known Solution after verification.</span>
+                    </div>
+                </div>
+            }
             else
             {
                 <div class="card mb-3 border-secondary">
-                    <div class="card-body text-muted">
-                        🔍 No knowledge found.
+                    <div class="card-body d-flex justify-content-between align-items-center">
+                        <span class="text-muted">🔍 No knowledge found.</span>
+                        @if (_canCreateKnowledge)
+                        {
+                            <button class="btn btn-sm btn-success" @onclick="OpenKnowledgeModal" disabled="@_working">
+                                Save as Knowledge
+                            </button>
+                        }
+                        else if (_detail.Status == "Active" || _detail.Status == "Confirmed" || _detail.Status == "Investigating")
+                        {
+                            <span class="text-muted small">Available after Mitigated / Resolved / Closed</span>
+                        }
+                        else if (string.IsNullOrEmpty(_detail.Owner))
+                        {
+                            <span class="text-muted small">Assign owner first</span>
+                        }
                     </div>
                 </div>
             }
@@ -272,6 +303,57 @@ else if (_detail != null)
             }
         </div>
     </div>
+
+    @* ── Save as Knowledge Modal ── *@
+    @if (_showKnowledgeModal)
+    {
+        <div class="modal fade show" tabindex="-1" style="display: block;" aria-modal="true" role="dialog">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Save as Knowledge — @_detail.IncidentId</h5>
+                        <button type="button" class="btn-close" aria-label="Close" @onclick="CloseKnowledgeModal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="small text-muted">
+                            Fingerprint: <code>@_detail.FingerprintKey</code>
+                        </p>
+
+                        <div class="mb-3">
+                            <label class="form-label">Title</label>
+                            <input type="text" class="form-control" @bind="_knowledgeInput.Title" placeholder="Short title" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Known Cause</label>
+                            <textarea class="form-control" rows="3" @bind="_knowledgeInput.KnownCause" placeholder="Root cause"></textarea>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Workaround (optional)</label>
+                            <textarea class="form-control" rows="2" @bind="_knowledgeInput.Workaround" placeholder="Temporary workaround for users"></textarea>
+                        </div>
+
+                        @if (!string.IsNullOrEmpty(_knowledgeHint))
+                        {
+                            <div class="alert alert-info small">@_knowledgeHint</div>
+                        }
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" @onclick="CloseKnowledgeModal" disabled="@_working">Cancel</button>
+                        <button type="button" class="btn btn-success" @onclick="DoCreateKnowledge" disabled="@_working">
+                            @if (_working)
+                            {
+                                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                            }
+                            Save as Draft
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="modal-backdrop fade show"></div>
+    }
 }
 else
 {
@@ -366,6 +448,8 @@ else
             _detail = await Repository.GetIncidentDetailAsync(incidentId);
             if (_detail == null)
                 _error = $"Інцидент {incidentId} не знайдено.";
+            else
+                _canCreateKnowledge = await Repository.CanCreateKnowledgeForIncidentAsync(_detail.Id);
         }
         catch (Exception ex) { _error = ex.Message; }
         finally { _loading = false; }
@@ -381,6 +465,10 @@ else
     private string _ownerInput = "";
     private string _noteInput = "";
     private bool _working;
+    private bool _canCreateKnowledge;
+    private bool _showKnowledgeModal;
+    private KnowledgeDraftInput _knowledgeInput = new();
+    private string? _knowledgeHint;
 
     private static readonly Dictionary<string, string[]> StateFlow = new()
     {
@@ -403,6 +491,7 @@ else
         {
             await Repository.TransitionIncidentAsync(_detail.Id, toStatus, "admin", null);
             _detail = await Repository.GetIncidentDetailAsync(_detail.IncidentId);
+            _canCreateKnowledge = await Repository.CanCreateKnowledgeForIncidentAsync(_detail!.Id);
             _error = null;
         }
         catch (Exception ex) { _error = ex.Message; }
@@ -417,6 +506,7 @@ else
         {
             await Repository.AssignOwnerAsync(_detail.Id, _ownerInput.Trim());
             _detail = await Repository.GetIncidentDetailAsync(_detail.IncidentId);
+            _canCreateKnowledge = await Repository.CanCreateKnowledgeForIncidentAsync(_detail!.Id);
             _ownerInput = "";
             _error = null;
         }
@@ -432,10 +522,76 @@ else
         {
             await Repository.AddIncidentNoteAsync(_detail.Id, _noteInput.Trim(), "admin");
             _detail = await Repository.GetIncidentDetailAsync(_detail.IncidentId);
-            _noteInput = "";
             _error = null;
         }
         catch (Exception ex) { _error = ex.Message; }
         finally { _working = false; }
+    }
+
+    private void OpenKnowledgeModal()
+    {
+        _knowledgeInput = new KnowledgeDraftInput
+        {
+            Title = $"{_detail?.Component} / {_detail?.Signal}",
+            KnownCause = "",
+            Workaround = ""
+        };
+        _knowledgeHint = "Knowledge will be saved as Draft (Low confidence). Verification happens later through release health.";
+        _showKnowledgeModal = true;
+    }
+
+    private void CloseKnowledgeModal()
+    {
+        _showKnowledgeModal = false;
+        _knowledgeInput = new KnowledgeDraftInput();
+        _knowledgeHint = null;
+    }
+
+    private async Task DoCreateKnowledge()
+    {
+        if (_detail == null) return;
+        if (string.IsNullOrWhiteSpace(_knowledgeInput.Title) || string.IsNullOrWhiteSpace(_knowledgeInput.KnownCause))
+        {
+            _error = "Title and Known Cause are required.";
+            return;
+        }
+
+        _working = true; StateHasChanged();
+        try
+        {
+            var sanitized = new KnowledgeDraftInput
+            {
+                Title = PiiSanitizer.Sanitize(_knowledgeInput.Title) ?? "",
+                KnownCause = PiiSanitizer.Sanitize(_knowledgeInput.KnownCause) ?? "",
+                Workaround = PiiSanitizer.Sanitize(_knowledgeInput.Workaround)
+            };
+
+            var result = await Repository.CreateKnowledgeFromIncidentAsync(_detail.Id, sanitized, "admin");
+            _showKnowledgeModal = false;
+            _knowledgeInput = new KnowledgeDraftInput();
+            _knowledgeHint = null;
+
+            if (result.CreatedNew)
+            {
+                _error = null;
+                _knowledgeHint = $"✅ Knowledge Draft created (ID {result.KnowledgeId}).";
+            }
+            else
+            {
+                _error = null;
+                _knowledgeHint = $"ℹ Knowledge already exists for this fingerprint (ID {result.KnowledgeId}).";
+            }
+
+            _detail = await Repository.GetIncidentDetailAsync(_detail.IncidentId);
+            _canCreateKnowledge = await Repository.CanCreateKnowledgeForIncidentAsync(_detail!.Id);
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _working = false;
+        }
     }
 }

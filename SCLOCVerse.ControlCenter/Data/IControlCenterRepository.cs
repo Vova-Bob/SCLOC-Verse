@@ -14,4 +14,6 @@ public interface IControlCenterRepository
     Task<List<IncidentTimelineEntry>> GetIncidentTimelineAsync(long incidentId, CancellationToken ct = default);
     Task<List<IncidentNote>> GetIncidentNotesAsync(long incidentId, CancellationToken ct = default);
     Task<KnownSolution?> GetKnownSolutionAsync(long incidentId, CancellationToken ct = default);
+    Task<KnowledgeCreateResult> CreateKnowledgeFromIncidentAsync(long incidentId, KnowledgeDraftInput input, string createdBy, CancellationToken ct = default);
+    Task<bool> CanCreateKnowledgeForIncidentAsync(long incidentId, CancellationToken ct = default);
 }
