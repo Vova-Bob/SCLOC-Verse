@@ -214,3 +214,88 @@ pg_restore --clean --if-exists -d "$DATABASE_URL" scloc-verse-pre-1.0.0.1-cleanu
 Або через Supabase Dashboard → Backups → Restore.
 
 **Після відкату:** НЕ повторювати cleanup без аналізу причини.
+
+---
+
+## Додаток: Класифікація таблиць (Cleanup Policy)
+
+Форензик-аудит після первинного cleanup виявив, що `app_installations` —
+**гібридна таблиця**, а не чиста телеметрія. Цей розділ фіксує постійну
+політику класифікації для всіх майбутніх cleanup-операцій.
+
+### Observability Cache (очищати повністю)
+
+Таблиці, що містять виключно operational cache та тестові verification-дані.
+Повне очищення безпечне.
+
+```
+telemetry_events
+telemetry_incidents
+incident_status_log
+incident_notes
+knowledge_entries
+knowledge_references
+knowledge_version_history
+notification_queue
+notification_attempts
+```
+
+### Business State Tables (НЕ очищати повністю)
+
+Гібридні таблиці, що містять як operational state, так і невідновлювану
+business history. Очищення дозволене лише для гарантовано тестових записів.
+
+#### `app_installations`
+
+```
+Ніколи не очищати повністю.
+
+Допускається:
+  • Видалення лише відомих тестових install_id (не-UUID патерн);
+  • Або відновлення з backup після помилкового cleanup.
+
+Причина:
+  Таблиця містить business history:
+    - first_seen  (дата першої установки — adoption-метрика);
+    - created_at  (дата створення запису).
+  Ці поля НЕ відновлюються автоматично — наступний Sync клієнта створить
+  рядок з новим first_seen, спотворюючи adoption-криву.
+
+  install_id — стабільний client-side identity (файл + реєстр Windows),
+  тому повторний Sync виконує UPDATE (не INSERT), і history виживає.
+
+Фільтр для cleanup:
+  DELETE FROM public.app_installations
+  WHERE install_id !~ '^[0-9a-f]{32}$';   -- лише не-UUID тестові
+```
+
+#### `auth.users`
+
+```
+Ніколи не очищати повністю.
+
+Допускається:
+  • Видалення лише тестових акаунтів:
+      - email LIKE 'test@%'
+      - email LIKE '%@example.com'
+      - UUID з патерном усіх однакових hex (33333333-..., 00000000-...)
+
+Причина:
+  auth.users — це реєстр production користувачів. Відновлення неможливе
+  без повторної реєстрації кожного.
+
+УВАГА FK:
+  app_installations / error_reports / admin_audit_log / telemetry_events
+  мають ON DELETE NO ACTION — БЛОКУЮТЬ видалення user, якщо є посилання.
+  Перед DELETE user переконатись, що ці таблиці не містять записів з цим
+  user_id (наприклад, після cleanup telemetry вони порожні).
+```
+
+### Production Config (ніколи не чіпати)
+
+```
+incident_policy              -- пороги компонентів
+supabase_migrations.*        -- історія міграцій
+realtime.*, storage.*        -- системні схеми Supabase
+RLS, функції, VIEW, схеми    -- контракти
+```

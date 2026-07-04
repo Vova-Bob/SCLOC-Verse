@@ -16,14 +16,16 @@
 --   - knowledge_version_history:   0
 --   - notification_queue:          0
 --   - notification_attempts:       0
---   - app_installations:           0
+--   - app_installations:           >0 (Business State — зберігаються UUID)
 --   - knowledge_coverage:          0.0% (0 / 0)
 --   - incident_policy:             5 (ЗБЕРЕЖЕНО — production config)
 --   - тестових INC-2026-0000X:     0
 --   - тестових fingerprint abc123: 0
 -- ============================================================================
 
--- ── 1. Підрахунок записів observability таблиць (усі мають бути 0) ──────────
+-- ── 1. Підрахунок записів observability таблиць ─────────────────────────────
+--    app_installations НЕ має бути 0 — це Business State таблиця.
+--    Очікування: зберігає UUID-records (реальні); видаляються лише не-UUID.
 SELECT 'observability_tables' AS check_name,
        (SELECT count(*) FROM public.telemetry_events) AS telemetry_events,
        (SELECT count(*) FROM public.telemetry_incidents) AS telemetry_incidents,
@@ -34,7 +36,7 @@ SELECT 'observability_tables' AS check_name,
        (SELECT count(*) FROM public.knowledge_version_history) AS knowledge_version_history,
        (SELECT count(*) FROM public.notification_queue) AS notification_queue,
        (SELECT count(*) FROM public.notification_attempts) AS notification_attempts,
-       (SELECT count(*) FROM public.app_installations) AS app_installations;
+       (SELECT count(*) FROM public.app_installations) AS app_installations_kept;
 
 -- ── 2. Відсутність тестових інцидентів (INC-2026-0000X) ─────────────────────
 SELECT 'test_incidents_check' AS check_name, count(*) AS found
@@ -52,13 +54,22 @@ WHERE fingerprint_hash = 'abc123';
 SELECT 'test_install_id_check' AS check_name, count(*) AS found
 FROM public.app_installations
 WHERE install_id = 'install-1'
-   OR install_id LIKE 'sim-install-%';
--- Очікування: 0
+   OR install_id LIKE 'sim-install-%'
+   OR install_id !~ '^[0-9a-f]{32}$';
+-- Очікування: 0 (лише реальні UUID залишається)
 
 -- ── 5. Відсутність тестових app_version (1.0.0 — не 1.0.0.0) ────────────────
 SELECT 'test_version_check' AS check_name, count(*) AS found
 FROM public.telemetry_events
 WHERE app_version = '1.0.0';
+-- Очікування: 0
+
+-- ── 5a. Відсутність тестових auth.users ─────────────────────────────────────
+SELECT 'test_users_check' AS check_name, count(*) AS found
+FROM auth.users
+WHERE email LIKE 'test@%'
+   OR email LIKE '%@example.com'
+   OR id::text ~ '^(00000000|11111111|22222222|33333333|44444444|55555555|66666666|77777777|88888888|99999999|aaaaaaaa|bbbbbbbb|cccccccc|dddddddd|eeeeeeee|ffffffff)-';
 -- Очікування: 0
 
 -- ── 6. Knowledge Coverage (має бути 0.0%) ───────────────────────────────────
@@ -76,9 +87,11 @@ FROM public.incident_policy;
 -- Очікування: 5 (НЕ 0 — це production config, має залишитись)
 
 -- ── 8. Auth користувачі ЗБЕРЕЖЕНІ ───────────────────────────────────────────
-SELECT 'auth_users_check' AS check_name, count(*) AS users_preserved
-FROM auth.users;
--- Очікування: >0 (користувачі Supabase Auth збережені)
+SELECT 'auth_users_check' AS check_name, count(*) AS real_users_preserved
+FROM auth.users
+WHERE email NOT LIKE 'test@%'
+  AND email NOT LIKE '%@example.com';
+-- Очікування: >0 (реальні користувачі збережені, тестові видалені)
 
 -- ============================================================================
 -- ПІДСУМКОВИЙ ВЕРДИКТ

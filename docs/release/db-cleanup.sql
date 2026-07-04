@@ -13,7 +13,10 @@
 --
 -- ЩО НЕ ТОРКАЄТЬСЯ:
 --   - incident_policy (production пороги компонентів).
---   - auth.* (користувачі Supabase Auth, сесії).
+--   - auth.users — РЕАЛЬНІ користувачі (збережено). Видаляються лише
+--     тестові акаунти (test@*, *@example.com, UUID-патерни).
+--   - app_installations — реальні UUID (business history). Видаляються
+--     лише не-UUID тестові install_id.
 --   - supabase_migrations.schema_migrations (історія міграцій).
 --   - realtime.*, storage.* (системні схеми Supabase).
 --   - RLS, функції, VIEW, схеми, розширення.
@@ -50,13 +53,33 @@ DELETE FROM public.telemetry_incidents;
 -- ── 4. Telemetry Events ─────────────────────────────────────────────────────
 DELETE FROM public.telemetry_events;
 
--- ── 5. App Installations (observability) ────────────────────────────────────
---    УВАГА: app_installations має FK до auth.users через user_id, але user_id
---    nullable. Видаляємо лише observability installations.
---    Auth користувачі (auth.users) НЕ зачіпаються.
-DELETE FROM public.app_installations;
+-- ── 5. App Installations (Business State — НЕ повне очищення) ──────────────
+--    УВАГА: app_installations — це HYBRID таблиця:
+--      • Operational State: last_seen, country, app_version, is_active
+--        (відновлюються з клієнта + Cloudflare-тригер)
+--      • Business History:   first_seen, created_at
+--        (НЕ відновлюються — це adoption-метрика)
+--    Тому НЕ очищаємо повністю. Видаляємо лише гарантовано тестові
+--    install_id (не-UUID патерн: 'install-1', 'sim-install-*' тощо).
+--    Реальні UUID (32 hex) залишаються як business history.
+DELETE FROM public.app_installations
+WHERE install_id !~ '^[0-9a-f]{32}$';
 
--- ── 6. REFRESH Materialized Views ───────────────────────────────────────────
+-- ── 6. Тестові користувачі auth.users ───────────────────────────────────────
+--    Видаляємо лише гарантовано тестові акаунти:
+--      • email test@* / *@example.com
+--      • UUID з патерном усіх однакових hex-цифр (33333..., 00000..., fffff...)
+--    Реальні користувачі (38) ЗАЛИШАЮТЬСЯ.
+--    FK: app_installations/error_reports/admin_audit_log/telemetry_events
+--    мають ON DELETE NO ACTION — тому перед DELETE user треба переконатись,
+--    що немає записів з цим user_id. Для тестових акаунтів це так (вони
+--    створювались без installation/session).
+DELETE FROM auth.users
+WHERE email LIKE 'test@%'
+   OR email LIKE '%@example.com'
+   OR id::text ~ '^(00000000|11111111|22222222|33333333|44444444|55555555|66666666|77777777|88888888|99999999|aaaaaaaa|bbbbbbbb|cccccccc|dddddddd|eeeeeeee|ffffffff)-';
+
+-- ── 7. REFRESH Materialized Views ───────────────────────────────────────────
 REFRESH MATERIALIZED VIEW control_center.knowledge_coverage;
 
 COMMIT;
@@ -69,4 +92,5 @@ SELECT 'CLEANUP COMPLETE' AS status,
        (SELECT count(*) FROM public.telemetry_incidents) AS incidents_left,
        (SELECT count(*) FROM public.knowledge_entries) AS knowledge_left,
        (SELECT count(*) FROM public.notification_queue) AS notifications_left,
-       (SELECT count(*) FROM public.app_installations) AS installations_left;
+       (SELECT count(*) FROM public.app_installations) AS installations_kept,
+       (SELECT count(*) FROM auth.users) AS auth_users_kept;
