@@ -27,6 +27,30 @@ public sealed class IncidentDetail
     public List<TelemetryEventSummary> RelatedEvents { get; set; } = new();
     public List<IncidentTimelineEntry> Timeline { get; set; } = new();
     public List<IncidentNote> Notes { get; set; } = new();
+    public KnownSolution? KnownSolution { get; set; }
+}
+
+/// <summary>
+/// Підказка "Known Solution" з Knowledge Engine для інциденту (Slice 1).
+/// </summary>
+public sealed class KnownSolution
+{
+    public long KnowledgeId { get; set; }
+    public string Title { get; set; } = "";
+    public string? Symptoms { get; set; }
+    public string KnownCause { get; set; } = "";
+    public string? Workaround { get; set; }
+    public string? PermanentFix { get; set; }
+    public string? FixedVersion { get; set; }
+    public string Confidence { get; set; } = "";
+    public List<KnownSolutionReference> References { get; set; } = new();
+}
+
+public sealed class KnownSolutionReference
+{
+    public string Type { get; set; } = "";
+    public string? Url { get; set; }
+    public string? Label { get; set; }
 }
 
 public sealed record TelemetryEventSummary(

@@ -46,7 +46,46 @@ public sealed class ControlCenterRepository : IControlCenterRepository
         incident.RelatedEvents = await QueryRelatedEventsAsync(conn, incident, ct);
         incident.Timeline = await ReadTimelineAsync(conn, incident.Id, ct);
         incident.Notes = await ReadNotesAsync(conn, incident.Id, ct);
+        incident.KnownSolution = await GetKnownSolutionAsync(conn, incident.Id, ct);
         return incident;
+    }
+
+    public async Task<KnownSolution?> GetKnownSolutionAsync(long incidentId, CancellationToken ct = default)
+    {
+        await using var conn = await _dataSource.OpenConnectionAsync(ct).ConfigureAwait(false);
+        return await GetKnownSolutionAsync(conn, incidentId, ct);
+    }
+
+    // Внутрішній overload — використовується в GetIncidentDetailAsync, щоб не відкривати друге підключення.
+    private static async Task<KnownSolution?> GetKnownSolutionAsync(NpgsqlConnection conn, long incidentId, CancellationToken ct)
+    {
+        await using var cmd = new NpgsqlCommand("""
+            SELECT d.id, d.title, d.symptoms, d.known_cause, d.workaround, d.permanent_fix,
+                   d.fixed_version, d.confidence, d.references
+            FROM public.match_knowledge_for_incident($1) m
+            JOIN control_center.knowledge_entry_detail d ON d.id = m.knowledge_id
+            """, conn);
+        cmd.Parameters.Add(new NpgsqlParameter<long> { Value = incidentId });
+        await using var reader = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        if (!await reader.ReadAsync(ct).ConfigureAwait(false)) return null;
+
+        var refsJson = reader.IsDBNull(8) ? null : reader.GetString(8);
+        var refs = string.IsNullOrWhiteSpace(refsJson)
+            ? new List<KnownSolutionReference>()
+            : System.Text.Json.JsonSerializer.Deserialize<List<KnownSolutionReference>>(refsJson);
+
+        return new KnownSolution
+        {
+            KnowledgeId = reader.GetInt64(0),
+            Title = reader.GetString(1),
+            Symptoms = reader.IsDBNull(2) ? null : reader.GetString(2),
+            KnownCause = reader.GetString(3),
+            Workaround = reader.IsDBNull(4) ? null : reader.GetString(4),
+            PermanentFix = reader.IsDBNull(5) ? null : reader.GetString(5),
+            FixedVersion = reader.IsDBNull(6) ? null : reader.GetString(6),
+            Confidence = reader.GetString(7),
+            References = refs ?? new List<KnownSolutionReference>()
+        };
     }
 
     public async Task<List<ReleaseHealth>> GetReleaseHealthAsync(CancellationToken ct = default)

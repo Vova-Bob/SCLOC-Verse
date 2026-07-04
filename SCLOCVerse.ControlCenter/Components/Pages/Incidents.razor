@@ -52,6 +52,68 @@ else if (_detail != null)
 
         @* Right: root event + trace + evidence *@
         <div class="col-md-7">
+            @if (_detail.KnownSolution != null)
+            {
+                <div class="card mb-3 border-success">
+                    <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+                        <strong>Known Solution</strong>
+                        <span class="badge bg-light text-dark">@_detail.KnownSolution.Confidence</span>
+                    </div>
+                    <div class="card-body">
+                        <h6 class="card-title">@_detail.KnownSolution.Title</h6>
+
+                        <dl class="row mb-1 small">
+                            <dt class="col-sm-3">Cause</dt>
+                            <dd class="col-sm-9">@_detail.KnownSolution.KnownCause</dd>
+
+                            @if (!string.IsNullOrWhiteSpace(_detail.KnownSolution.Workaround))
+                            {
+                                <dt class="col-sm-3">Workaround</dt>
+                                <dd class="col-sm-9">@_detail.KnownSolution.Workaround</dd>
+                            }
+
+                            @if (!string.IsNullOrWhiteSpace(_detail.KnownSolution.PermanentFix))
+                            {
+                                <dt class="col-sm-3">Fix</dt>
+                                <dd class="col-sm-9">@_detail.KnownSolution.PermanentFix</dd>
+                            }
+
+                            @if (!string.IsNullOrWhiteSpace(_detail.KnownSolution.FixedVersion))
+                            {
+                                <dt class="col-sm-3">Fixed In</dt>
+                                <dd class="col-sm-9"><code>@_detail.KnownSolution.FixedVersion</code></dd>
+                            }
+
+                            @if (_detail.KnownSolution.References.Count > 0)
+                            {
+                                <dt class="col-sm-3">References</dt>
+                                <dd class="col-sm-9">
+                                    @foreach (var r in _detail.KnownSolution.References)
+                                    {
+                                        if (!string.IsNullOrWhiteSpace(r.Url))
+                                        {
+                                            <a href="@r.Url" target="_blank" class="d-block">@(r.Label ?? r.Url)</a>
+                                        }
+                                        else
+                                        {
+                                            <span class="d-block">@(r.Label ?? r.Type)</span>
+                                        }
+                                    }
+                                </dd>
+                            }
+                        </dl>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="card mb-3 border-secondary">
+                    <div class="card-body text-muted">
+                        🔍 No knowledge found.
+                    </div>
+                </div>
+            }
+
             @if (_detail.RootEvent != null)
             {
                 <h5>Root Event (first failure)</h5>

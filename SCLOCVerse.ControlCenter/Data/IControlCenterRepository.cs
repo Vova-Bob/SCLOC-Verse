@@ -13,4 +13,5 @@ public interface IControlCenterRepository
     Task AssignOwnerAsync(long incidentId, string owner, CancellationToken ct = default);
     Task<List<IncidentTimelineEntry>> GetIncidentTimelineAsync(long incidentId, CancellationToken ct = default);
     Task<List<IncidentNote>> GetIncidentNotesAsync(long incidentId, CancellationToken ct = default);
+    Task<KnownSolution?> GetKnownSolutionAsync(long incidentId, CancellationToken ct = default);
 }
