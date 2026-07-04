@@ -136,10 +136,29 @@ namespace SCLOCVerse.Services.Observability
 
         public void Dispose()
         {
+            // Спочатку зупиняємо таймер, щоб він не стартував новий flush
+            // під час фінального (race із завершенням застосунку).
             try { _flushTimer?.Dispose(); } catch { /* ignore */ }
+
+            // Фінальний flush із захистом від зависання (Стаття 1 — non-throwing).
+            // Останні події (≤ FlushInterval) не повинні губитись при закритті —
+            // типовий сценарій: користувач отримав помилку L.I.A. й одразу закрив вікно.
+            // Timeout 5с захищає від зависання через мережу/Supabase.
+            if (_uploader is not null)
+            {
+                try
+                {
+                    var flushTask = _uploader.FlushAsync();
+                    if (!flushTask.Wait(TimeSpan.FromSeconds(5)))
+                        Debug.WriteLine("[Telemetry] Final flush on dispose timed out after 5s.");
+                }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"[Telemetry] Final flush on dispose failed: {ex.Message}");
+                }
+            }
+
             try { _uploader?.Dispose(); } catch { /* ignore */ }
-            // Slice 1: події, що залишились у памʼяті на виході, не персистуються
-            // (JSONL-durability — Offline Queue slice).
         }
     }
 }
