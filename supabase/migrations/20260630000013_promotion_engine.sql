@@ -118,6 +118,7 @@ SELECT
     'INC-' || to_char(opened_at, 'YYYY') || '-' || lpad(id::text, 5, '0') AS incident_id,
     id, fingerprint_key, fingerprint_hash, release, component, operation, signal,
     root_event_id, last_event_id, opened_at, last_event_at, closed_at,
-    status, highest_severity, peak_failure_pct, affected_users, affected_installs, event_count
+    status, highest_severity, peak_failure_pct, affected_users, affected_installs, event_count,
+    owner
 FROM public.telemetry_incidents
 ORDER BY opened_at DESC;

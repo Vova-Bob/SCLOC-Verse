@@ -219,7 +219,7 @@ public sealed class ControlCenterRepository : IControlCenterRepository
             SELECT step, component, operation, outcome,
                    COALESCE(hresult, supabase_code, http_status::text, exception_type, '-'),
                    occurred_at, error_message, duration_ms
-            FROM control_center.traces WHERE correlation_id = $1 ORDER BY step
+            FROM control_center.telemetry_events WHERE correlation_id = $1 ORDER BY step
             """, conn);
         cmd.Parameters.Add(new NpgsqlParameter<Guid> { Value = correlationId });
         var results = new List<TraceStep>();
