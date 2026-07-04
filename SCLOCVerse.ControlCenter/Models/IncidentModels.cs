@@ -50,11 +50,15 @@ public sealed class KnownSolution
     public string? PermanentFix { get; set; }
     public string? FixedVersion { get; set; }
     public string Confidence { get; set; } = "";
+    public string Status { get; set; } = "";
+    public string? AffectedVersions { get; set; }
+    public DateTime UpdatedAt { get; set; }
     public List<KnownSolutionReference> References { get; set; } = new();
 }
 
 public sealed class KnownSolutionReference
 {
+    public long ReferenceId { get; set; }
     public string Type { get; set; } = "";
     public string? Url { get; set; }
     public string? Label { get; set; }
@@ -77,6 +81,44 @@ public sealed class KnowledgeCreateResult
 {
     public long KnowledgeId { get; set; }
     public bool CreatedNew { get; set; }
+}
+
+/// <summary>
+/// Вхідні дані для редагування Knowledge Entry (Slice 3).
+/// </summary>
+public sealed class KnowledgeEditInput
+{
+    public int ExpectedVersion { get; set; }
+    public string Title { get; set; } = "";
+    public string? Symptoms { get; set; }
+    public string KnownCause { get; set; } = "";
+    public string? Workaround { get; set; }
+    public string? PermanentFix { get; set; }
+    public string? AffectedVersions { get; set; }
+    public string? FixedVersion { get; set; }
+    public string ChangeReason { get; set; } = "";
+}
+
+/// <summary>
+/// Вхідні дані для додавання reference до Knowledge Entry (Slice 3).
+/// </summary>
+public sealed class KnowledgeReferenceInput
+{
+    public string Type { get; set; } = "GitHubIssue";
+    public string Url { get; set; } = "";
+    public string Label { get; set; } = "";
+}
+
+/// <summary>
+/// Запис історії версій Knowledge Entry (Slice 3).
+/// </summary>
+public sealed class KnowledgeHistoryEntry
+{
+    public int Version { get; set; }
+    public string? ChangedBy { get; set; }
+    public string? DbUser { get; set; }
+    public DateTime ChangedAt { get; set; }
+    public string? ChangeReason { get; set; }
 }
 
 public sealed record TelemetryEventSummary(

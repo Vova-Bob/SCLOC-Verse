@@ -91,12 +91,110 @@ public sealed class ControlCenterRepository : IControlCenterRepository
         return result is true;
     }
 
+    public async Task UpdateKnowledgeAsync(long knowledgeId, KnowledgeEditInput input, string changedBy, CancellationToken ct = default)
+    {
+        await using var conn = await _dataSource.OpenConnectionAsync(ct).ConfigureAwait(false);
+        await using var cmd = new NpgsqlCommand("SELECT public.update_knowledge_entry($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)", conn);
+        cmd.Parameters.Add(new NpgsqlParameter<long> { Value = knowledgeId });
+        cmd.Parameters.Add(new NpgsqlParameter<int> { Value = input.ExpectedVersion });
+        cmd.Parameters.Add(new NpgsqlParameter<string> { Value = input.Title });
+        cmd.Parameters.Add(new NpgsqlParameter<string?> { Value = input.Symptoms });
+        cmd.Parameters.Add(new NpgsqlParameter<string> { Value = input.KnownCause });
+        cmd.Parameters.Add(new NpgsqlParameter<string?> { Value = input.Workaround });
+        cmd.Parameters.Add(new NpgsqlParameter<string?> { Value = input.PermanentFix });
+        cmd.Parameters.Add(new NpgsqlParameter<string?> { Value = input.AffectedVersions });
+        cmd.Parameters.Add(new NpgsqlParameter<string?> { Value = input.FixedVersion });
+        cmd.Parameters.Add(new NpgsqlParameter<string> { Value = changedBy });
+        cmd.Parameters.Add(new NpgsqlParameter<string> { Value = input.ChangeReason });
+        try
+        {
+            await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+        }
+        catch (PostgresException ex) when (ex.Message.Contains("concurrently"))
+        {
+            throw new InvalidOperationException("Knowledge entry was modified by another user. Please reload and try again.", ex);
+        }
+    }
+
+
+    public async Task ArchiveKnowledgeAsync(long knowledgeId, string archiveReason, string changedBy, CancellationToken ct = default)
+    {
+        await using var conn = await _dataSource.OpenConnectionAsync(ct).ConfigureAwait(false);
+        await using var cmd = new NpgsqlCommand("SELECT public.archive_knowledge_entry($1,$2,$3)", conn);
+        cmd.Parameters.Add(new NpgsqlParameter<long> { Value = knowledgeId });
+        cmd.Parameters.Add(new NpgsqlParameter<string> { Value = archiveReason });
+        cmd.Parameters.Add(new NpgsqlParameter<string> { Value = changedBy });
+        await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+    }
+
+    public async Task AddKnowledgeReferenceAsync(long knowledgeId, KnowledgeReferenceInput input, string addedBy, CancellationToken ct = default)
+    {
+        await using var conn = await _dataSource.OpenConnectionAsync(ct).ConfigureAwait(false);
+        await using var cmd = new NpgsqlCommand("SELECT public.add_knowledge_reference($1,$2,$3,$4,$5)", conn);
+        cmd.Parameters.Add(new NpgsqlParameter<long> { Value = knowledgeId });
+        cmd.Parameters.Add(new NpgsqlParameter<string> { Value = input.Type });
+        cmd.Parameters.Add(new NpgsqlParameter<string> { Value = input.Url });
+        cmd.Parameters.Add(new NpgsqlParameter<string> { Value = input.Label });
+        cmd.Parameters.Add(new NpgsqlParameter<string> { Value = addedBy });
+        await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+    }
+
+    public async Task RemoveKnowledgeReferenceAsync(long referenceId, string removedBy, CancellationToken ct = default)
+    {
+        await using var conn = await _dataSource.OpenConnectionAsync(ct).ConfigureAwait(false);
+        await using var cmd = new NpgsqlCommand("SELECT public.remove_knowledge_reference($1,$2)", conn);
+        cmd.Parameters.Add(new NpgsqlParameter<long> { Value = referenceId });
+        cmd.Parameters.Add(new NpgsqlParameter<string> { Value = removedBy });
+        await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+    }
+
+    public async Task<List<KnowledgeHistoryEntry>> GetKnowledgeHistoryAsync(long knowledgeId, CancellationToken ct = default)
+    {
+        await using var conn = await _dataSource.OpenConnectionAsync(ct).ConfigureAwait(false);
+        await using var cmd = new NpgsqlCommand("SELECT version, changed_by, db_user, changed_at, change_reason FROM public.get_knowledge_history($1)", conn);
+        cmd.Parameters.Add(new NpgsqlParameter<long> { Value = knowledgeId });
+        var results = new List<KnowledgeHistoryEntry>();
+        await using var reader = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        while (await reader.ReadAsync(ct).ConfigureAwait(false))
+        {
+            results.Add(new KnowledgeHistoryEntry
+            {
+                Version = reader.GetInt32(0),
+                ChangedBy = reader.IsDBNull(1) ? null : reader.GetString(1),
+                DbUser = reader.IsDBNull(2) ? null : reader.GetString(2),
+                ChangedAt = reader.GetDateTime(3),
+                ChangeReason = reader.IsDBNull(4) ? null : reader.GetString(4)
+            });
+        }
+        return results;
+    }
+
+    public async Task<int> GetKnowledgeCurrentVersionAsync(long knowledgeId, CancellationToken ct = default)
+    {
+        await using var conn = await _dataSource.OpenConnectionAsync(ct).ConfigureAwait(false);
+        await using var cmd = new NpgsqlCommand("SELECT public.get_knowledge_current_version($1)", conn);
+        cmd.Parameters.Add(new NpgsqlParameter<long> { Value = knowledgeId });
+        var result = await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false);
+        return result is int v ? v : 0;
+    }
+
+    public async Task<bool> CanEditKnowledgeAsync(long knowledgeId, CancellationToken ct = default)
+    {
+        await using var conn = await _dataSource.OpenConnectionAsync(ct).ConfigureAwait(false);
+        await using var cmd = new NpgsqlCommand("SELECT public.can_edit_knowledge($1)", conn);
+        cmd.Parameters.Add(new NpgsqlParameter<long> { Value = knowledgeId });
+        var result = await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false);
+        return result is true;
+    }
+
     // Внутрішній overload — використовується в GetIncidentDetailAsync, щоб не відкривати друге підключення.
     private static async Task<KnownSolution?> GetKnownSolutionAsync(NpgsqlConnection conn, long incidentId, CancellationToken ct)
     {
         await using var cmd = new NpgsqlCommand("""
             SELECT d.id, d.title, d.symptoms, d.known_cause, d.workaround, d.permanent_fix,
-                   d.fixed_version, d.confidence, d.references
+                   d.fixed_version, d.confidence, d.status,
+                   COALESCE(array_to_string(d.affected_versions, ','), '') AS affected_versions,
+                   d.updated_at, d.references
             FROM public.match_knowledge_for_incident($1) m
             JOIN control_center.knowledge_entry_detail d ON d.id = m.knowledge_id
             """, conn);
@@ -104,7 +202,7 @@ public sealed class ControlCenterRepository : IControlCenterRepository
         await using var reader = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
         if (!await reader.ReadAsync(ct).ConfigureAwait(false)) return null;
 
-        var refsJson = reader.IsDBNull(8) ? null : reader.GetString(8);
+        var refsJson = reader.IsDBNull(11) ? null : reader.GetString(11);
         var refs = string.IsNullOrWhiteSpace(refsJson)
             ? new List<KnownSolutionReference>()
             : System.Text.Json.JsonSerializer.Deserialize<List<KnownSolutionReference>>(refsJson);
@@ -119,6 +217,9 @@ public sealed class ControlCenterRepository : IControlCenterRepository
             PermanentFix = reader.IsDBNull(5) ? null : reader.GetString(5),
             FixedVersion = reader.IsDBNull(6) ? null : reader.GetString(6),
             Confidence = reader.GetString(7),
+            Status = reader.GetString(8),
+            AffectedVersions = reader.IsDBNull(9) ? null : reader.GetString(9),
+            UpdatedAt = reader.GetDateTime(10),
             References = refs ?? new List<KnownSolutionReference>()
         };
     }

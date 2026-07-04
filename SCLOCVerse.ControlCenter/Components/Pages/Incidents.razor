@@ -66,14 +66,31 @@ else if (_detail != null)
                 <div class="card mb-3 border-success">
                     <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
                         <strong>Known Solution</strong>
-                        <span class="badge bg-light text-dark">@_detail.KnownSolution.Confidence</span>
+                        <div class="d-flex gap-2 align-items-center">
+                            <span class="badge bg-light text-dark">@_detail.KnownSolution.Status — @_detail.KnownSolution.Confidence</span>
+                            <span class="text-white-50 small">Updated @_detail.KnownSolution.UpdatedAt.ToString("yyyy-MM-dd HH:mm")</span>
+                        </div>
                     </div>
                     <div class="card-body">
-                        <h6 class="card-title">@_detail.KnownSolution.Title</h6>
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <h6 class="card-title mb-0">@_detail.KnownSolution.Title</h6>
+                            <div class="btn-group btn-group-sm" role="group">
+                                <button class="btn btn-sm btn-outline-secondary" @onclick="OpenEditKnowledgeModal" disabled="@_working">Edit</button>
+                                <button class="btn btn-sm btn-outline-secondary" @onclick="OpenHistoryModal" disabled="@_working">History</button>
+                                <button class="btn btn-sm btn-outline-secondary" @onclick="OpenReferenceModal" disabled="@_working">+ Reference</button>
+                                <button class="btn btn-sm btn-outline-danger" @onclick="OpenArchiveModal" disabled="@_working">Archive</button>
+                            </div>
+                        </div>
 
                         <dl class="row mb-1 small">
                             <dt class="col-sm-3">Cause</dt>
                             <dd class="col-sm-9">@_detail.KnownSolution.KnownCause</dd>
+
+                            @if (!string.IsNullOrWhiteSpace(_detail.KnownSolution.Symptoms))
+                            {
+                                <dt class="col-sm-3">Symptoms</dt>
+                                <dd class="col-sm-9">@_detail.KnownSolution.Symptoms</dd>
+                            }
 
                             @if (!string.IsNullOrWhiteSpace(_detail.KnownSolution.Workaround))
                             {
@@ -93,20 +110,29 @@ else if (_detail != null)
                                 <dd class="col-sm-9"><code>@_detail.KnownSolution.FixedVersion</code></dd>
                             }
 
+                            @if (!string.IsNullOrWhiteSpace(_detail.KnownSolution.AffectedVersions))
+                            {
+                                <dt class="col-sm-3">Affected</dt>
+                                <dd class="col-sm-9"><code>@_detail.KnownSolution.AffectedVersions</code></dd>
+                            }
+
                             @if (_detail.KnownSolution.References.Count > 0)
                             {
                                 <dt class="col-sm-3">References</dt>
                                 <dd class="col-sm-9">
                                     @foreach (var r in _detail.KnownSolution.References)
                                     {
-                                        if (!string.IsNullOrWhiteSpace(r.Url))
-                                        {
-                                            <a href="@r.Url" target="_blank" class="d-block">@(r.Label ?? r.Url)</a>
-                                        }
-                                        else
-                                        {
-                                            <span class="d-block">@(r.Label ?? r.Type)</span>
-                                        }
+                                        <div class="d-flex align-items-center gap-2">
+                                            @if (!string.IsNullOrWhiteSpace(r.Url))
+                                            {
+                                                <a href="@r.Url" target="_blank">@(r.Label ?? r.Url)</a>
+                                            }
+                                            else
+                                            {
+                                                <span>@(r.Label ?? r.Type)</span>
+                                            }
+                                            <button type="button" class="btn btn-link btn-sm p-0 text-danger" title="Remove" @onclick="() => RemoveReference(r.ReferenceId)" disabled="@_working">×</button>
+                                        </div>
                                     }
                                 </dd>
                             }
@@ -354,6 +380,203 @@ else if (_detail != null)
         </div>
         <div class="modal-backdrop fade show"></div>
     }
+
+    @* ── Edit Knowledge Modal ── *@
+    @if (_showEditKnowledgeModal)
+    {
+        <div class="modal fade show" tabindex="-1" style="display: block;" aria-modal="true" role="dialog">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Edit Knowledge — @_detail.KnownSolution?.Title</h5>
+                        <button type="button" class="btn-close" aria-label="Close" @onclick="CloseEditKnowledgeModal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label">Title</label>
+                            <input type="text" class="form-control" @bind="_knowledgeEditInput.Title" placeholder="Short title" />
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Known Cause</label>
+                            <textarea class="form-control" rows="3" @bind="_knowledgeEditInput.KnownCause" placeholder="Root cause"></textarea>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Symptoms</label>
+                            <textarea class="form-control" rows="3" @bind="_knowledgeEditInput.Symptoms" placeholder="What users see"></textarea>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Workaround (optional)</label>
+                            <textarea class="form-control" rows="2" @bind="_knowledgeEditInput.Workaround" placeholder="Temporary workaround"></textarea>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Permanent Fix (optional)</label>
+                            <textarea class="form-control" rows="2" @bind="_knowledgeEditInput.PermanentFix" placeholder="What was fixed"></textarea>
+                        </div>
+
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Affected Versions (comma-separated)</label>
+                                <input type="text" class="form-control" @bind="_knowledgeEditInput.AffectedVersions" placeholder="1.0.0,1.0.1" />
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Fixed Version</label>
+                                <input type="text" class="form-control" @bind="_knowledgeEditInput.FixedVersion" placeholder="1.0.2" />
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Change Reason</label>
+                            <input type="text" class="form-control" @bind="_knowledgeEditInput.ChangeReason" placeholder="Why are you editing this?" />
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" @onclick="CloseEditKnowledgeModal" disabled="@_working">Cancel</button>
+                        <button type="button" class="btn btn-primary" @onclick="DoUpdateKnowledge" disabled="@_working">
+                            @if (_working)
+                            {
+                                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                            }
+                            Save Changes
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="modal-backdrop fade show"></div>
+    }
+
+    @* ── Knowledge History Modal ── *@
+    @if (_showHistoryModal)
+    {
+        <div class="modal fade show" tabindex="-1" style="display: block;" aria-modal="true" role="dialog">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Knowledge History — @_detail.KnownSolution?.Title</h5>
+                        <button type="button" class="btn-close" aria-label="Close" @onclick="CloseHistoryModal"></button>
+                    </div>
+                    <div class="modal-body">
+                        @if (_knowledgeHistory.Count == 0)
+                        {
+                            <p class="text-muted">No history available.</p>
+                        }
+                        else
+                        {
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Version</th>
+                                        <th>When</th>
+                                        <th>By</th>
+                                        <th>Reason</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var h in _knowledgeHistory)
+                                    {
+                                        <tr>
+                                            <td><span class="badge bg-secondary">@h.Version</span></td>
+                                            <td>@h.ChangedAt.ToString("yyyy-MM-dd HH:mm")</td>
+                                            <td>@h.ChangedBy <span class="text-muted small">(@h.DbUser)</span></td>
+                                            <td>@h.ChangeReason</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        }
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" @onclick="CloseHistoryModal">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="modal-backdrop fade show"></div>
+    }
+
+    @* ── Add Reference Modal ── *@
+    @if (_showReferenceModal)
+    {
+        <div class="modal fade show" tabindex="-1" style="display: block;" aria-modal="true" role="dialog">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Add Reference — @_detail.KnownSolution?.Title</h5>
+                        <button type="button" class="btn-close" aria-label="Close" @onclick="CloseReferenceModal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label">Type</label>
+                            <select class="form-select" @bind="_knowledgeReferenceInput.Type">
+                                <option value="GitHubIssue">GitHub Issue</option>
+                                <option value="GitCommit">Git Commit</option>
+                                <option value="Documentation">Documentation</option>
+                                <option value="External">External</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">URL</label>
+                            <input type="url" class="form-control" @bind="_knowledgeReferenceInput.Url" placeholder="https://..." />
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Label</label>
+                            <input type="text" class="form-control" @bind="_knowledgeReferenceInput.Label" placeholder="Issue #42" />
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" @onclick="CloseReferenceModal" disabled="@_working">Cancel</button>
+                        <button type="button" class="btn btn-primary" @onclick="DoAddReference" disabled="@_working">
+                            @if (_working)
+                            {
+                                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                            }
+                            Add Reference
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="modal-backdrop fade show"></div>
+    }
+
+    @* ── Archive Knowledge Modal ── *@
+    @if (_showArchiveModal)
+    {
+        <div class="modal fade show" tabindex="-1" style="display: block;" aria-modal="true" role="dialog">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Archive Knowledge</h5>
+                        <button type="button" class="btn-close" aria-label="Close" @onclick="CloseArchiveModal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p class="text-muted small">Archive is a final state. The Knowledge will no longer appear as Known Solution for matching incidents.</p>
+                        <div class="mb-3">
+                            <label class="form-label">Archive Reason</label>
+                            <input type="text" class="form-control" @bind="_archiveReasonInput" placeholder="Why is this knowledge being archived?" />
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" @onclick="CloseArchiveModal" disabled="@_working">Cancel</button>
+                        <button type="button" class="btn btn-danger" @onclick="DoArchiveKnowledge" disabled="@_working">
+                            @if (_working)
+                            {
+                                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                            }
+                            Archive
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="modal-backdrop fade show"></div>
+    }
 }
 else
 {
@@ -467,8 +690,16 @@ else
     private bool _working;
     private bool _canCreateKnowledge;
     private bool _showKnowledgeModal;
+    private bool _showEditKnowledgeModal;
+    private bool _showHistoryModal;
+    private bool _showReferenceModal;
+    private bool _showArchiveModal;
     private KnowledgeDraftInput _knowledgeInput = new();
+    private KnowledgeEditInput _knowledgeEditInput = new();
+    private KnowledgeReferenceInput _knowledgeReferenceInput = new();
     private string? _knowledgeHint;
+    private List<KnowledgeHistoryEntry> _knowledgeHistory = new();
+    private string _archiveReasonInput = "";
 
     private static readonly Dictionary<string, string[]> StateFlow = new()
     {
@@ -582,6 +813,203 @@ else
                 _knowledgeHint = $"ℹ Knowledge already exists for this fingerprint (ID {result.KnowledgeId}).";
             }
 
+            _detail = await Repository.GetIncidentDetailAsync(_detail.IncidentId);
+            _canCreateKnowledge = await Repository.CanCreateKnowledgeForIncidentAsync(_detail!.Id);
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _working = false;
+        }
+    }
+
+    // ── Knowledge Lifecycle modals ──
+
+    private async Task OpenEditKnowledgeModal()
+    {
+        if (_detail?.KnownSolution == null) return;
+        var version = await Repository.GetKnowledgeCurrentVersionAsync(_detail.KnownSolution.KnowledgeId);
+        _knowledgeEditInput = new KnowledgeEditInput
+        {
+            ExpectedVersion = version,
+            Title = _detail.KnownSolution.Title,
+            Symptoms = _detail.KnownSolution.Symptoms,
+            KnownCause = _detail.KnownSolution.KnownCause,
+            Workaround = _detail.KnownSolution.Workaround,
+            PermanentFix = _detail.KnownSolution.PermanentFix,
+            AffectedVersions = _detail.KnownSolution.AffectedVersions,
+            FixedVersion = _detail.KnownSolution.FixedVersion,
+            ChangeReason = ""
+        };
+        _showEditKnowledgeModal = true;
+    }
+
+    private void CloseEditKnowledgeModal()
+    {
+        _showEditKnowledgeModal = false;
+        _knowledgeEditInput = new KnowledgeEditInput();
+    }
+
+    private async Task DoUpdateKnowledge()
+    {
+        if (_detail?.KnownSolution == null) return;
+        if (string.IsNullOrWhiteSpace(_knowledgeEditInput.Title) || string.IsNullOrWhiteSpace(_knowledgeEditInput.KnownCause))
+        {
+            _error = "Title and Known Cause are required.";
+            return;
+        }
+        if (string.IsNullOrWhiteSpace(_knowledgeEditInput.ChangeReason))
+        {
+            _error = "Change reason is required.";
+            return;
+        }
+
+        _working = true; StateHasChanged();
+        try
+        {
+            var sanitized = new KnowledgeEditInput
+            {
+                ExpectedVersion = _knowledgeEditInput.ExpectedVersion,
+                Title = PiiSanitizer.Sanitize(_knowledgeEditInput.Title) ?? "",
+                Symptoms = PiiSanitizer.Sanitize(_knowledgeEditInput.Symptoms),
+                KnownCause = PiiSanitizer.Sanitize(_knowledgeEditInput.KnownCause) ?? "",
+                Workaround = PiiSanitizer.Sanitize(_knowledgeEditInput.Workaround),
+                PermanentFix = PiiSanitizer.Sanitize(_knowledgeEditInput.PermanentFix),
+                AffectedVersions = _knowledgeEditInput.AffectedVersions,
+                FixedVersion = _knowledgeEditInput.FixedVersion,
+                ChangeReason = _knowledgeEditInput.ChangeReason
+            };
+
+            await Repository.UpdateKnowledgeAsync(_detail.KnownSolution.KnowledgeId, sanitized, "admin");
+            _showEditKnowledgeModal = false;
+            _knowledgeEditInput = new KnowledgeEditInput();
+            _error = null;
+            _knowledgeHint = "✅ Knowledge updated.";
+            _detail = await Repository.GetIncidentDetailAsync(_detail.IncidentId);
+            _canCreateKnowledge = await Repository.CanCreateKnowledgeForIncidentAsync(_detail!.Id);
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _working = false;
+        }
+    }
+
+    private async Task OpenHistoryModal()
+    {
+        if (_detail?.KnownSolution == null) return;
+        _knowledgeHistory = await Repository.GetKnowledgeHistoryAsync(_detail.KnownSolution.KnowledgeId);
+        _showHistoryModal = true;
+    }
+
+    private void CloseHistoryModal() => _showHistoryModal = false;
+
+    private void OpenReferenceModal()
+    {
+        _knowledgeReferenceInput = new KnowledgeReferenceInput { Type = "GitHubIssue", Url = "", Label = "" };
+        _showReferenceModal = true;
+    }
+
+    private void CloseReferenceModal()
+    {
+        _showReferenceModal = false;
+        _knowledgeReferenceInput = new KnowledgeReferenceInput();
+    }
+
+    private async Task DoAddReference()
+    {
+        if (_detail?.KnownSolution == null) return;
+        if (string.IsNullOrWhiteSpace(_knowledgeReferenceInput.Url) || string.IsNullOrWhiteSpace(_knowledgeReferenceInput.Label))
+        {
+            _error = "URL and Label are required.";
+            return;
+        }
+
+        _working = true; StateHasChanged();
+        try
+        {
+            var sanitized = new KnowledgeReferenceInput
+            {
+                Type = _knowledgeReferenceInput.Type,
+                Url = PiiSanitizer.Sanitize(_knowledgeReferenceInput.Url) ?? "",
+                Label = PiiSanitizer.Sanitize(_knowledgeReferenceInput.Label) ?? ""
+            };
+
+            await Repository.AddKnowledgeReferenceAsync(_detail.KnownSolution.KnowledgeId, sanitized, "admin");
+            _showReferenceModal = false;
+            _knowledgeReferenceInput = new KnowledgeReferenceInput();
+            _error = null;
+            _knowledgeHint = "✅ Reference added.";
+            _detail = await Repository.GetIncidentDetailAsync(_detail.IncidentId);
+            _canCreateKnowledge = await Repository.CanCreateKnowledgeForIncidentAsync(_detail!.Id);
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _working = false;
+        }
+    }
+
+    private async Task RemoveReference(long referenceId)
+    {
+        if (_detail?.KnownSolution == null) return;
+        _working = true; StateHasChanged();
+        try
+        {
+            await Repository.RemoveKnowledgeReferenceAsync(referenceId, "admin");
+            _error = null;
+            _knowledgeHint = "✅ Reference removed.";
+            _detail = await Repository.GetIncidentDetailAsync(_detail.IncidentId);
+            _canCreateKnowledge = await Repository.CanCreateKnowledgeForIncidentAsync(_detail!.Id);
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _working = false;
+        }
+    }
+
+    private void OpenArchiveModal()
+    {
+        _archiveReasonInput = "";
+        _showArchiveModal = true;
+    }
+
+    private void CloseArchiveModal()
+    {
+        _showArchiveModal = false;
+        _archiveReasonInput = "";
+    }
+
+    private async Task DoArchiveKnowledge()
+    {
+        if (_detail?.KnownSolution == null) return;
+        if (string.IsNullOrWhiteSpace(_archiveReasonInput))
+        {
+            _error = "Archive reason is required.";
+            return;
+        }
+
+        _working = true; StateHasChanged();
+        try
+        {
+            await Repository.ArchiveKnowledgeAsync(_detail.KnownSolution.KnowledgeId, _archiveReasonInput.Trim(), "admin");
+            _showArchiveModal = false;
+            _archiveReasonInput = "";
+            _error = null;
+            _knowledgeHint = "✅ Knowledge archived.";
             _detail = await Repository.GetIncidentDetailAsync(_detail.IncidentId);
             _canCreateKnowledge = await Repository.CanCreateKnowledgeForIncidentAsync(_detail!.Id);
         }

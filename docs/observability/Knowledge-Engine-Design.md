@@ -509,15 +509,17 @@ Per-release статистика coverage (для UI 8.3). **Обов'язков
 | Функція | Дія | Параметри | Повертає |
 |---|---|---|---|
 | `create_knowledge_entry` | Створити Draft | fingerprint_key, title, known_cause, optional fields, created_by | new KnowledgeId |
-| `update_knowledge_entry` | Редагувати з audit (dual-identity) | knowledge_id, fields, changed_by, change_reason | void (snapshot у history з `session_user=current_user`) |
+| `update_knowledge_entry` | Редагувати з audit (dual-identity) та оптимістичною конкуренцією | knowledge_id, expected_version, fields, changed_by, change_reason | void (snapshot у history з `session_user=current_user`) |
 | `publish_knowledge_entry` | Draft → Reviewed | knowledge_id, changed_by | void |
 | `verify_knowledge_entry` | Reviewed → Verified (ручне, напр. ad-hoc) | knowledge_id, changed_by | void (вимагає Confidence ≥ High — інваріант §4) |
 | `verify_knowledge_auto` | pg_cron: авто-Verify за формулою §6.1 | (без параметрів) | count of auto-verified |
 | `deprecate_knowledge_entry` | Verified → Deprecated | knowledge_id, changed_by, change_reason | void |
-| `archive_knowledge_entry` | * → Archived | knowledge_id, changed_by | void (заборонено з Archived) |
+| `archive_knowledge_entry` | * → Archived (final state) | knowledge_id, archive_reason, changed_by | void (archive_reason обов'язковий) |
 | `reopen_knowledge_entry` | Deprecated → Reviewed | knowledge_id, changed_by, change_reason | void |
-| `add_knowledge_reference` | Додати посилання | knowledge_id, ref_type, url, label, added_by | reference_id |
-| `remove_knowledge_reference` | Прибрати посилання | reference_id, removed_by | void |
+| `add_knowledge_reference` | Додати посилання (створює audit-версію) | knowledge_id, ref_type, url, label, added_by | reference_id |
+| `remove_knowledge_reference` | Прибрати посилання (створює audit-версію) | reference_id, removed_by | void |
+| `get_knowledge_history` | Історія версій Knowledge | knowledge_id | (version, changed_by, db_user, changed_at, change_reason) |
+| `get_knowledge_current_version` | Поточна версія для optimistic concurrency | knowledge_id | int |
 | `search_knowledge` | Пошук для Manual Search (з пагінацією) | query, component?, status?, confidence?, limit, offset | set of (knowledge_id, title, status, confidence, relevance_rank) |
 | `match_knowledge_for_incident` | Автоматичний матчинг (§7) | incident_id | (knowledge_id, priority, confidence) or null |
 
@@ -563,27 +565,27 @@ Per-release статистика coverage (для UI 8.3). **Обов'язков
 
 **Немає:** окремого списку Knowledge, пошуку, references, workflow-переходів, auto-verify.
 
-### Slice 3 — Versioning + Match Priority 2
+### Slice 3 — Knowledge Lifecycle (Versioning)
 
-**Мета:** редагування Knowledge, історія версій, relaxed matching.
-
-| Що | Деталі |
-|---|---|
-| БД | `update_knowledge_entry` + `add_knowledge_reference`/`remove_knowledge_reference`. Функція `match_knowledge_for_incident` розширено до Priority 2 (component + signal). VIEW `control_center.knowledge_list`. |
-| Код | Методи оновлення, читання історії, diff-обчислення. |
-| UI | Кнопки Publish/Verify/Deprecate/Archive. Розділ History на сторінці деталізації. Жовтий блок "Можлива підказка" для Priority 2. |
-| Критерій | Будь-яка зміна запису з'являється в `knowledge_version_history` за ≤ 1 с. Спроба змінити Status/Confidence у неможливу комбінацію → БД відхиляє. |
-
-### Slice 4 — Workflow (Verify / Deprecate / Archive) + Knowledge Search
-
-**Мета:** повний життєвий цикл через UI + ручний пошук.
+**Мета:** редагування Knowledge, управління references, архівування, історія версій.
 
 | Що | Деталі |
 |---|---|
-| БД | `publish_knowledge_entry`, `verify_knowledge_entry`, `deprecate_knowledge_entry`, `archive_knowledge_entry`, `reopen_knowledge_entry`, `search_knowledge` (з пагінацією). |
+| БД | `update_knowledge_entry(knowledge_id, expected_version, ...)` з оптимістичною конкуренцією. `add_knowledge_reference`/`remove_knowledge_reference` створюють audit-версію. `archive_knowledge_entry(knowledge_id, archive_reason, changed_by)` — фінальний стан. `get_knowledge_history`/`get_knowledge_current_version`. `parse_version_list` для перетворення `1.0.0,1.0.1` у `text[]`. |
+| Код | `KnowledgeEditInput`, `KnowledgeReferenceInput`, `KnowledgeHistoryEntry`. `IControlCenterRepository.UpdateKnowledgeAsync`, `ArchiveKnowledgeAsync`, `AddKnowledgeReferenceAsync`, `RemoveKnowledgeReferenceAsync`, `GetKnowledgeHistoryAsync`, `GetKnowledgeCurrentVersionAsync`, `CanEditKnowledgeAsync`. Санітизація PII через `PiiSanitizer`. |
+| UI | Блок Known Solution має кнопки Edit / History / + Reference / Archive. Модальні форми: Edit (Title, Cause, Symptoms, Workaround, Permanent Fix, Affected Versions, Fixed Version, Change Reason), Add Reference, History table (version, when, changed_by + db_user, reason), Archive modal з обов'язковим Archive Reason. |
+| Критерій | Verified Knowledge можна редагувати (status залишається Verified). References додаються/видаляються, і кожна операція створює версію в `knowledge_version_history`. Archive переключає Knowledge у Archived і прибирає його з Known Solution. |
+
+### Slice 4 — Workflow (Verify / Deprecate / Reopen) + Knowledge Search
+
+**Мета:** ручні workflow-переходи Draft → Reviewed → Verified → Deprecated, ручний пошук, окремий список Knowledge.
+
+| Що | Деталі |
+|---|---|
+| БД | `publish_knowledge_entry`, `verify_knowledge_entry`, `deprecate_knowledge_entry`, `reopen_knowledge_entry`, `search_knowledge` (з пагінацією). Функція `match_knowledge_for_incident` розширено до Priority 2 (component + signal). VIEW `control_center.knowledge_list`. |
 | Код | Сервіс Knowledge Workflow. |
-| UI | Окрема сторінка `Knowledge.razor` зі списком + фільтрами + пошуком. Кнопки Workflow на сторінці деталізації. |
-| Критерій | Повний цикл Draft → Reviewed → Verified через UI, з audit у `knowledge_version_history` (з `session_user`). |
+| UI | Окрема сторінка `Knowledge.razor` зі списком + фільтрами + пошуком. Кнопки Workflow на сторінці деталізації. Жовтий блок "Можлива підказка" для Priority 2. |
+| Критерій | Повний цикл Draft → Reviewed → Verified через UI, з audit у `knowledge_version_history` (з `session_user`). Спроба змінити Status/Confidence у неможливу комбінацію → БД відхиляє. |
 
 ### Slice 5 — Release Integration (auto-verify + coverage)
 
@@ -599,13 +601,13 @@ Per-release статистика coverage (для UI 8.3). **Обов'язков
 ### Пріоритети між слайсами
 
 ```
-Slice 1 (Display)            — дає цінність навіть без UI створення
+Slice 1 (Display)             — дає цінність навіть без UI створення
    ↓
-Slice 2 (Authoring)          — замикає цикл "Investigation → Knowledge"
+Slice 2 (Authoring)           — замикає цикл "Investigation → Knowledge"
    ↓
-Slice 3 (Versioning + Match 2) — редагування, історія, relaxed matching
+Slice 3 (Knowledge Lifecycle) — редагування, references, archive, історія
    ↓
-Slice 4 (Workflow + Search)  — повний життєвий цикл + ручний пошук
+Slice 4 (Workflow + Search)   — workflow-переходи + ручний пошук
    ↓
 Slice 5 (Release Integration) — знання "дозрівають" автоматично
 ```
