@@ -10,7 +10,10 @@ builder.Services.AddRazorComponents()
 // Control Center data access (cc_readonly via Npgsql, user-secrets/env var).
 // Notification Engine ВИНЕСЕНО в окремий Worker Service SCLOCVerse.Notifier (Стаття 24).
 // UI лише читає control_center.notifications VIEW для відображення статусу черги.
-var connStr = builder.Configuration.GetConnectionString("ControlCenter");
+// Connection string надходить через user-secrets/env (Стаття 29 — Secret Independence).
+// Control Center використовує виділену роль cc_readonly (НЕ cc_notifier).
+var connStr = builder.Configuration.GetConnectionString("ControlCenter")
+    ?? Environment.GetEnvironmentVariable("SCLOC_CC_READONLY_DB");
 if (!string.IsNullOrWhiteSpace(connStr))
 {
     builder.Services.AddSingleton<NpgsqlDataSource>(_ => NpgsqlDataSource.Create(connStr));

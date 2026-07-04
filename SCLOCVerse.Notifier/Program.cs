@@ -10,12 +10,14 @@ using SCLOCVerse.Notifier.Providers;
 // Повністю автономний від UI — працює, навіть якщо Control Center вимкнений.
 var builder = Host.CreateApplicationBuilder(args);
 
-var connStr = builder.Configuration.GetConnectionString("ControlCenter")
-    ?? Environment.GetEnvironmentVariable("SCLOC_CONTROL_CENTER_DB");
+// Connection string надходить через user-secrets/env (Стаття 29 — Secret Independence).
+// Worker використовує виділену роль cc_notifier (НЕ cc_readonly) — власна змінна SCLOC_NOTIFIER_DB.
+var connStr = builder.Configuration.GetConnectionString("Notifier")
+    ?? Environment.GetEnvironmentVariable("SCLOC_NOTIFIER_DB");
 if (string.IsNullOrWhiteSpace(connStr))
     throw new InvalidOperationException(
-        "Connection string 'ControlCenter' is not configured. " +
-        "Use user-secrets ('ConnectionStrings:ControlCenter') or SCLOC_CONTROL_CENTER_DB env var.");
+        "Connection string 'Notifier' is not configured. " +
+        "Use user-secrets ('ConnectionStrings:Notifier') or SCLOC_NOTIFIER_DB env var.");
 
 builder.Services.AddSingleton<NpgsqlDataSource>(_ => NpgsqlDataSource.Create(connStr));
 
