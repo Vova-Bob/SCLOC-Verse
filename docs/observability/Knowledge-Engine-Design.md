@@ -594,16 +594,50 @@ Per-release статистика coverage (для UI 8.3). **Обов'язков
 | UI | Динамічні кнопки Publish/Verify/Deprecate/Archive залежно від поточного статусу. Модал transition з обов'язковим reason для Archive. 🟢 Priority 1 (Exact Match, зелений) / 🟡 Priority 2 (Similar Solution, жовтий з warning) / ⚪ No Knowledge (сірий). Badge Priority 1/2 у шапці Known Solution. |
 | Критерій | Повний цикл Draft → Reviewed → Verified → Archived через одну функцію з audit WorkflowTransition/Archived. Priority 2 не показує Draft/Deprecated/Archived Knowledge. Exact match має пріоритет над similar. |
 
-### Slice 5 — Release Integration (auto-verify + coverage)
+### Slice 5 — Release Integration (auto-verify + coverage) + Manual Search
 
-**Мета:** автоматичне підвищення Confidence до `Verified` через `release_health` (§6.1).
+**Мета:** завершити повний Knowledge Loop — автоматична верифікація знань через `release_health`, метрика покриття, ручний пошук. Це завершальна стадія Phase 6, після якої Knowledge Engine стає автономною підсистемою.
 
 | Що | Деталі |
 |---|---|
-| БД | `pg_cron` job з `verify_knowledge_auto()` (5 умов §6.1). Materialized view `control_center.knowledge_coverage` + REFRESH job. Розширення `notification_queue.notification_type` CHECK `KnowledgeVerified`. |
-| Код | (мінімум — переважно БД) |
-| UI | Колонка Knowledge Coverage у Release Health. Позначка "Verified by release_health" у KnowledgeEntry. |
-| Критерій | Після 14 днів без рецидивів + наявності FixedVersion + 5 умов §6.1 — High автоматично стає Verified (з audit + нотифікація). |
+| БД | `pg_cron` job з `verify_knowledge_auto()` (5 умов §6.1). Materialized view `control_center.knowledge_coverage` + REFRESH job. Розширення `notification_queue.notification_type` CHECK `KnowledgeVerified`. `search_knowledge` (з пагінацією). VIEW `control_center.knowledge_list`. Cleanup-міграція: `DROP FUNCTION archive_knowledge_entry` (deprecated у Slice 3.5). |
+| Код | (мінімум — переважно БД). Опціонально сервіс Knowledge Search для сторінки Knowledge. |
+| UI | Колонка Knowledge Coverage у Release Health. Позначка "Verified by release_health" у KnowledgeEntry. Опціонально сторінка Knowledge.razor зі списком + пошуком. |
+| Критерій | Повний Knowledge Loop замкнений: Verified Knowledge → 50+ installs → 95% success → 14 днів без рецидиву → auto-verify → knowledge_coverage = N%. |
+
+#### Definition of Done (Slice 5)
+
+```
+High Confidence Knowledge
+    ↓
+Fixed Version випущено
+    ↓
+50+ installs на Fixed Version
+    ↓
+95%+ success rate на Fixed Version
+    ↓
+14 днів без рецидиву того самого fingerprint
+    ↓
+verify_knowledge_auto() → Confidence = 'Verified'
+    ↓
+knowledge_coverage materialized view оновлюється
+    ↓
+Coverage % відображається в Release Health
+```
+
+#### Технічний борг (узгоджений після Slice 3.5 + Slice 4 review)
+
+1. **Cleanup `archive_knowledge_entry()`** — функція більше не викликається з C# (замінена на `transition_knowledge(..., 'Archived', ...)`). До RC виконати окрему cleanup-міграцію з `DROP FUNCTION`. Не блокує Slice 5.
+
+2. **Workflow History: `from_status` / `to_status` у snapshot** — зараз Timeline для `WorkflowTransition` показує лише reason, але не напрямок переходу. Додати в snapshot (або окремі колонки `knowledge_version_history`) `from_status`/`to_status`, щоб Timeline одразу показував:
+   ```
+   Reviewed ↓ Verified
+   ```
+   без аналізу JSON-snapshot. Низький пріоритет, поки це косметика.
+
+3. **Priority Badge + Confidence** — у шапці Known Solution badge вже показує `Priority 1 — Verified — High`, але Confidence візуально зливається зі статусом. Можна розділити на два окремих badge, щоб адміністратор одразу бачив дві незалежні характеристики (використовуємо знання vs довіра до нього). Косметика, не блокує.
+
+4. **Phase 7 (post-Slice 5)** — семантичний пошук, embeddings, AI-assisted knowledge. Базова модель даних та цикл роботи (Slice 1–5) залишаються без змін. Phase 7 — еволюція поверх стабільного фундаменту.
 
 ### Пріоритети між слайсами
 
