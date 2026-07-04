@@ -48,18 +48,21 @@ namespace SCLOCVerse.Composition
             _ignoreRulesProvider = new IgnoreRulesProvider();
             _folderSearchService = new FolderSearchService(_ignoreRulesProvider);
             _settingsService = new SettingsService();
+
+            // SCLOC Observability Platform — конструюється найраніше (без Supabase-клієнта),
+            // щоб інжектитись у всі сервіси оновлення та auth, включно з L.I.A.-Updater.
+            // Дешеве (Конституція, Стаття 3). Будь-яке створення сервісів, що залежать від
+            // телеметрії, має відбуватись ПІСЛЯ цього блоку, інакше вони отримають null.
+            var telemetryChannel = string.IsNullOrWhiteSpace(SCLOCVerse.Settings.Default.UpdateChannel)
+                ? "stable"
+                : SCLOCVerse.Settings.Default.UpdateChannel;
+            _telemetryClient = new TelemetryClient(BuildInfo.Create(telemetryChannel), enabled: !IsTelemetryDisabled());
+
             _updater = new Updater(_telemetryClient);
             _updateCheckerService = new UpdateCheckerService(_updater);
 
             _applicationVersionProvider = new ApplicationVersionProvider();
             _updateChannelService = (IUpdateChannelService)_settingsService;
-
-            // SCLOC Observability Platform — конструюється рано (без Supabase-клієнта),
-            // щоб інжектитись у всі сервіси оновлення та auth. Дешеве (Конституція, Стаття 3).
-            var telemetryChannel = string.IsNullOrWhiteSpace(SCLOCVerse.Settings.Default.UpdateChannel)
-                ? "stable"
-                : SCLOCVerse.Settings.Default.UpdateChannel;
-            _telemetryClient = new TelemetryClient(BuildInfo.Create(telemetryChannel), enabled: !IsTelemetryDisabled());
 
             var httpClient = new HttpClient();
             var gitHubClient = new GitHubReleaseClient(httpClient, UpdateConstants.UserAgent);
