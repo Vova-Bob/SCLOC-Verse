@@ -1,20 +1,29 @@
 using SCLOCVerse.ControlCenter.Components;
 using SCLOCVerse.ControlCenter.Data;
+using SCLOCVerse.ControlCenter.Notifications;
 using Npgsql;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
 
-// Control Center data access (cc_readonly via Npgsql, user-secrets/env var)
 var connStr = builder.Configuration.GetConnectionString("ControlCenter");
 if (!string.IsNullOrWhiteSpace(connStr))
 {
     builder.Services.AddSingleton<NpgsqlDataSource>(_ => NpgsqlDataSource.Create(connStr));
     builder.Services.AddScoped<IControlCenterRepository, ControlCenterRepository>();
     builder.Services.AddScoped<ITraceRepository, TraceRepository>();
+
+    // Notification Engine (Стаття 24/25)
+    var discordWebhook = builder.Configuration["Notifications:Discord:WebhookUrl"]
+        ?? Environment.GetEnvironmentVariable("SCLOC_DISCORD_WEBHOOK");
+    if (!string.IsNullOrWhiteSpace(discordWebhook))
+    {
+        builder.Services.AddKeyedSingleton<INotificationProvider, DiscordNotificationProvider>("Discord",
+            (sp, _) => new DiscordNotificationProvider(new HttpClient(), discordWebhook!));
+        builder.Services.AddHostedService<NotificationDispatcher>();
+    }
 }
 
 var app = builder.Build();

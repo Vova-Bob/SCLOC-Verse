@@ -255,6 +255,26 @@ Duration
 
 ---
 
+## Стаття 24 — Notification Independence
+
+> Невдала доставка будь-якого повідомлення ніколи не впливає на створення, оновлення, життєвий цикл або закриття інциденту.
+
+**Точне значення.** Incident Engine не знає про Discord/Email/Telegram. Promotion-функція створює інцидент і (опційно) записує в `notification_queue` — але НЕ відправляє повідомлення напряму. Відправка — окремий шар (Notification Dispatcher). Timeout/відмова Discord не змінює статус інциденту. Усі помилки Notification Engine ізольовані (Стаття 1 — Absolute Isolation).
+
+**Забезпечення.** `promote_incident_candidates()` пише лише в `telemetry_incidents` + `notification_queue` (append-only). Dispatcher читає queue, відправляє, оновлює статус доставки. Incident Engine ніколи не чекає результату відправки.
+
+---
+
+## Стаття 25 — Notification Idempotency
+
+> Одне й те саме повідомлення не можна відправити двічі.
+
+**Точне значення.** Якщо `promote_incident_candidates()` викликається 10 разів (pg_cron 5 хв), інцидент створюється один раз (Стаття 21), і повідомлення про його створення відправляється **один раз**. Дедуплікація — через `notification_queue.incident_id` + `notification_type` UNIQUE.
+
+**Забезпечення.** `notification_queue` має `UNIQUE(incident_id, notification_type) WHERE status != 'Failed'`. Dispatcher відправляє лише рядки зі `status = 'Pending'`. Після відправки — `status = 'Delivered'` (або `Failed` + retry_count).
+
+---
+
 ## Telemetry Levels
 
 Один feature-flag `telemetry.level` (0–4) керує обсягом даних. **Головне правило: жоден рівень не відключає детекцію інцидентів** — навіть Level 1 зберігає critical-path failures та їхні знаменники.
@@ -276,6 +296,6 @@ Duration
 ## Як змінювати Конституцію
 
 1. Конституція змінюється лише через явний Pull Request, що оновлює цей файл.
-2. Будь-яка зміна статей 1–23 вимагає позначки **Breaking Constitutional Change** у PR.
+2. Будь-яка зміна статей 1–25 вимагає позначки **Breaking Constitutional Change** у PR.
 3. Telemetry Levels є конфігурацією, а не статтею — можуть доповнюватись без перегляду статей.
 4. Якщо реалізація змушена порушити статтю — це сигнал, що треба або змінити реалізацію, або свідомо переглянути Конституцію. Мовчазне порушення неприпустиме.
