@@ -275,6 +275,54 @@ Duration
 
 ---
 
+## Стаття 26 — Delivery Audit
+
+> Жодна спроба доставки не може зникнути без сліду.
+
+**Точне значення.** Кожна спроба відправки повідомлення провайдеру залишає окремий append-only запис у `notification_attempts` незалежно від результату: успіх, помилка, timeout, відсутність провайдера — усе фіксується.
+
+**Перехід станів черги строго обмежений:**
+
+```
+Pending → Sending → Delivered
+                   ↘ Failed (після вичерпання max_retries)
+                   ↘ RetryScheduled (з next_attempt_at)
+
+RetryScheduled → Sending → ...
+
+Sending → (zombie > 10 хв) → RetryScheduled
+```
+
+Заборонено будь-які інші переходи. Зокрема, заборонено `Pending → (зникло)`.
+
+**Забезпечення.**
+- `notification_attempts` — append-only таблиця (Стаття 6 стиль) з FK на `notification_queue`, RLS deny-all.
+- CHECK-обмеження на `notification_queue.status`: `('Pending','Sending','Delivered','Failed','RetryScheduled')`.
+- CHECK-обмеження на `notification_attempts.status`: `('Sending','Delivered','Failed')`.
+- Zombie Recovery: диспетчер на старті кожного циклу переводить елементи у `Sending` довше за `ZombieTimeoutMinutes` назад у `RetryScheduled` — щоб краш Worker не породжував "вічних Sending".
+- Колонки `claimed_at` + `claimed_by` (machine:pid) фіксують власника кожної обробки.
+- Колонка `provider_message_id` дозволяє зіставити запис у БД з реальним повідомленням у зовнішній системі (Discord message id, Email message-id тощо).
+
+---
+
+## Стаття 27 — Provider Independence
+
+> Notification Engine не знає про конкретні канали. Він знає лише `INotificationProvider`.
+
+**Точне значення.** Диспетчер оперує контрактом `INotificationProvider` з контрактної бібліотеки `SCLOCVerse.Notifications`. Discord/Email/Telegram — реалізації цього інтерфейсу, що реєструються в DI як окремі класи. Додавання нового каналу не потребує змін у диспетчері чи черзі.
+
+**Забезпечення.**
+- Контракти (`INotificationProvider`, `NotificationPayload`, `NotificationResult`, `NotificationChannel`) живуть у **окремій** бібліотеці `SCLOCVerse.Notifications`, відокремленій і від Worker, і від Control Center.
+- Worker (`SCLOCVerse.Notifier`) посилається на контрактну бібліотеку.
+- Control Center не має жодного коду сповіщень (окрім читання `control_center.notifications` VIEW для адмін-панелі).
+- Назви каналів — константи `NotificationChannel.Discord` тощо, не "магічні рядки".
+- `NotificationPayload` версіонований (`version` у jsonb) — зміна формату не ламає існуючі записи в черзі.
+- Webhook URL/облікові дані провайдерів зберігаються **тільки** у user-secrets / environment variables, ніколи в БД.
+
+**Переваги.** Будь-який шар (Worker, UI, тести) може працювати з однаковими типами, не отримуючи залежності від конкретного каналу чи движка відправки.
+
+---
+
 ## Telemetry Levels
 
 Один feature-flag `telemetry.level` (0–4) керує обсягом даних. **Головне правило: жоден рівень не відключає детекцію інцидентів** — навіть Level 1 зберігає critical-path failures та їхні знаменники.
