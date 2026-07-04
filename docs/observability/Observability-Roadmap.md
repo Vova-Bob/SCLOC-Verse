@@ -44,7 +44,7 @@
 |---|---|---|
 | **Sprint 5** | Release Health (per-version success, incidents, 🟢/🟡/🔴 recommendation) | **наступний** |
 | Phase 5 | Manual Incident Workflow (Confirmed→Investigating→Resolved) + Alerts | після досвіду з UI |
-| Phase 6 | Root Cause Catalog (fingerprint→cause) | після реальних production-інцидентів |
+| Phase 6 | **Knowledge Engine** (підказки за fingerprint → Known Solution) — ручне створення знань (Стаття 28) | після реальних production-інцидентів |
 
 ### Історія слайсів
 
