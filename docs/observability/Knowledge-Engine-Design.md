@@ -11,7 +11,9 @@
 > - [`Observability-RC1-Release.md`](./Observability-RC1-Release.md) (фундамент RC1)
 > - [`Knowledge-Engine-Design-Review.md`](./Knowledge-Engine-Design-Review.md) (аудит v1.0 → 6 правок у v1.1)
 >
-> **Статус:** Design v1.1 (Frozen). После погодження — розбивка на Slices у Roadmap.
+> **Статус:** Phase 6 завершено. Slices 1–5 Runtime Verified.
+> API Knowledge Engine v1.0 оголошено **замороженим** (див. розділ
+> **API Freeze v1.0** наприкінці). Подальші зміни — лише адитивні.
 
 ---
 
@@ -806,3 +808,63 @@ Authoring було піднято на Slice 2, бо воно замикає о�
 - **Дата:** 2026-07-04
 - **Базис:** RC1 (тег `v0.9.0-observability-rc1`), Constitution v28, Knowledge-Engine-Design-Review v1.0
 - **Наступний крок:** погодження v1.1 → старт Slice 1 (Display)
+
+---
+
+## API Freeze v1.0 (Phase 6 — Completed)
+
+Phase 6 завершено. Усі Slices 1–5 Runtime Verified:
+
+| Slice | Статус | Commit |
+|---|---|---|
+| 1 — Display | Runtime Verified | `7e855fe` |
+| 2 — Authoring | Runtime Verified | `07886e0` |
+| 3 — Lifecycle | Runtime Verified | `09c4dd0` |
+| 3.5 — Refinements | Runtime Verified | `c3785f0` |
+| 4 — Workflow + Priority 2 | Runtime Verified | `c3785f0` |
+| 5 — Release Integration + Coverage + Search | Runtime Verified | `e1357dc` |
+
+### Заморожений контракт
+
+Наступні об'єкти оголошуються стабільним API Knowledge Engine v1.0.
+Phase 7 та всі подальші фази НЕ можуть змінювати їхню структуру або
+семантику — лише адитивні розширення (нові колонки nullable, нові
+функції, нові VIEW поверх існуючих).
+
+**Таблиці (заморожені):**
+- `public.knowledge_entries`
+- `public.knowledge_references`
+- `public.knowledge_version_history`
+
+**Функції (заморожений контракт):**
+- `create_knowledge_from_incident`
+- `update_knowledge_entry` (з `expected_version` optimistic concurrency)
+- `transition_knowledge` (єдина точка workflow-переходів)
+- `add_knowledge_reference` / `remove_knowledge_reference`
+- `verify_knowledge_auto` (5 умов §6.1)
+- `match_knowledge_for_incident` (Priority 1) / `match_knowledge_priority2`
+- `search_knowledge`
+- `get_knowledge_history` / `get_knowledge_current_version`
+
+**VIEW (заморожені):**
+- `control_center.knowledge_entry_detail`
+- `control_center.knowledge_coverage` (materialized)
+- `control_center.knowledge_list`
+- `control_center.top_missing_knowledge`
+
+### Phase 7 — межі
+
+Phase 7 (інтелектуальний шар) працює **поверх** замороженого контракту:
+
+| Дозволено | Заборонено |
+|---|---|
+| Нові таблиці (embeddings, ai_suggestions) | ALTER TABLE knowledge_entries (не-nullable) |
+| Нові SECURITY DEFINER функції | Зміна сигнатури існуючих функцій |
+| Нові VIEW (semantic_search) | DROP існуючих функцій/VIEW |
+| Адитивні колонки (nullable, з DEFAULT) | Зміна CHECK-інваріантів (§4) |
+| Окремі pgvector/extensions | Зміна workflow-правил (transition_knowledge) |
+
+**Дата заморожування API:** 2026-07-04  
+**Версія API:** 1.0 (Frozen)  
+**Останній commit Phase 6:** `e1357dc`  
+**Повний Knowledge Loop:** Telemetry → Incident → Knowledge Draft → Workflow → Verified → release_health → auto-verify → coverage → Known Solution (без ручного SQL)
