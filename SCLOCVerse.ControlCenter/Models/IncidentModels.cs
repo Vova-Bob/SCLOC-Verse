@@ -30,6 +30,11 @@ public sealed class IncidentDetail
     public KnownSolution? KnownSolution { get; set; }
 
     /// <summary>
+    /// Підказка Similar Solution (Priority 2) — component+signal match, не exact fingerprint.
+    /// </summary>
+    public KnownSolution? SimilarSolution { get; set; }
+
+    /// <summary>
     /// Якщо для fingerprint існує Knowledge Entry, але вона ще не Verified (Draft/Reviewed),
     /// тут зберігається її статус — для UI-підказки "Knowledge Draft exists".
     /// </summary>
@@ -53,6 +58,7 @@ public sealed class KnownSolution
     public string Status { get; set; } = "";
     public string? AffectedVersions { get; set; }
     public DateTime UpdatedAt { get; set; }
+    public int Priority { get; set; }
     public List<KnownSolutionReference> References { get; set; } = new();
 }
 
@@ -119,6 +125,7 @@ public sealed class KnowledgeHistoryEntry
     public string? DbUser { get; set; }
     public DateTime ChangedAt { get; set; }
     public string? ChangeReason { get; set; }
+    public string ChangeType { get; set; } = "Updated";
 }
 
 public sealed record TelemetryEventSummary(

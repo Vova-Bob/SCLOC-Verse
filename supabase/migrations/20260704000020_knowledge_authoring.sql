@@ -56,6 +56,8 @@ BEGIN
     END IF;
 
     -- 1.5 Створити Draft Knowledge Entry
+    PERFORM public.set_knowledge_change_context('Created', 'Created from incident ' || p_incident_id);
+
     INSERT INTO public.knowledge_entries (
         fingerprint_key,
         fingerprint_hash,

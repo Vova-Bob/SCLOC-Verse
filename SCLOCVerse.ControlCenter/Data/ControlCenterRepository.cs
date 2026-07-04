@@ -47,11 +47,19 @@ public sealed class ControlCenterRepository : IControlCenterRepository
         incident.Timeline = await ReadTimelineAsync(conn, incident.Id, ct);
         incident.Notes = await ReadNotesAsync(conn, incident.Id, ct);
         incident.KnownSolution = await GetKnownSolutionAsync(conn, incident.Id, ct);
-        if (incident.KnownSolution == null)
+        if (incident.KnownSolution != null)
         {
-            var draft = await QueryDraftKnowledgeAsync(conn, incident.FingerprintKey, ct);
-            incident.DraftKnowledgeId = draft?.KnowledgeId;
-            incident.DraftKnowledgeStatus = draft?.Status;
+            incident.KnownSolution.Priority = 1;
+        }
+        else
+        {
+            incident.SimilarSolution = await MatchKnowledgePriority2Async(conn, incident.Id, ct);
+            if (incident.SimilarSolution == null)
+            {
+                var draft = await QueryDraftKnowledgeAsync(conn, incident.FingerprintKey, ct);
+                incident.DraftKnowledgeId = draft?.KnowledgeId;
+                incident.DraftKnowledgeStatus = draft?.Status;
+            }
         }
         return incident;
     }
@@ -116,15 +124,23 @@ public sealed class ControlCenterRepository : IControlCenterRepository
         }
     }
 
-
-    public async Task ArchiveKnowledgeAsync(long knowledgeId, string archiveReason, string changedBy, CancellationToken ct = default)
+    public async Task TransitionKnowledgeAsync(long knowledgeId, string targetStatus, string reason, int expectedVersion, string changedBy, CancellationToken ct = default)
     {
         await using var conn = await _dataSource.OpenConnectionAsync(ct).ConfigureAwait(false);
-        await using var cmd = new NpgsqlCommand("SELECT public.archive_knowledge_entry($1,$2,$3)", conn);
+        await using var cmd = new NpgsqlCommand("SELECT public.transition_knowledge($1,$2,$3,$4,$5)", conn);
         cmd.Parameters.Add(new NpgsqlParameter<long> { Value = knowledgeId });
-        cmd.Parameters.Add(new NpgsqlParameter<string> { Value = archiveReason });
+        cmd.Parameters.Add(new NpgsqlParameter<string> { Value = targetStatus });
+        cmd.Parameters.Add(new NpgsqlParameter<string> { Value = reason });
+        cmd.Parameters.Add(new NpgsqlParameter<int> { Value = expectedVersion });
         cmd.Parameters.Add(new NpgsqlParameter<string> { Value = changedBy });
-        await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+        try
+        {
+            await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
+        }
+        catch (PostgresException ex) when (ex.Message.Contains("concurrently"))
+        {
+            throw new InvalidOperationException("Knowledge entry was modified by another user. Please reload and try again.", ex);
+        }
     }
 
     public async Task AddKnowledgeReferenceAsync(long knowledgeId, KnowledgeReferenceInput input, string addedBy, CancellationToken ct = default)
@@ -151,7 +167,7 @@ public sealed class ControlCenterRepository : IControlCenterRepository
     public async Task<List<KnowledgeHistoryEntry>> GetKnowledgeHistoryAsync(long knowledgeId, CancellationToken ct = default)
     {
         await using var conn = await _dataSource.OpenConnectionAsync(ct).ConfigureAwait(false);
-        await using var cmd = new NpgsqlCommand("SELECT version, changed_by, db_user, changed_at, change_reason FROM public.get_knowledge_history($1)", conn);
+        await using var cmd = new NpgsqlCommand("SELECT version, changed_by, db_user, changed_at, change_reason, change_type FROM public.get_knowledge_history($1)", conn);
         cmd.Parameters.Add(new NpgsqlParameter<long> { Value = knowledgeId });
         var results = new List<KnowledgeHistoryEntry>();
         await using var reader = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
@@ -163,7 +179,8 @@ public sealed class ControlCenterRepository : IControlCenterRepository
                 ChangedBy = reader.IsDBNull(1) ? null : reader.GetString(1),
                 DbUser = reader.IsDBNull(2) ? null : reader.GetString(2),
                 ChangedAt = reader.GetDateTime(3),
-                ChangeReason = reader.IsDBNull(4) ? null : reader.GetString(4)
+                ChangeReason = reader.IsDBNull(4) ? null : reader.GetString(4),
+                ChangeType = reader.IsDBNull(5) ? "Updated" : reader.GetString(5)
             });
         }
         return results;
@@ -185,6 +202,50 @@ public sealed class ControlCenterRepository : IControlCenterRepository
         cmd.Parameters.Add(new NpgsqlParameter<long> { Value = knowledgeId });
         var result = await cmd.ExecuteScalarAsync(ct).ConfigureAwait(false);
         return result is true;
+    }
+
+    // Внутрішній overload — використовується в GetIncidentDetailAsync, щоб не відкривати друге підключення.
+    private static async Task<KnownSolution?> MatchKnowledgePriority2Async(NpgsqlConnection conn, long incidentId, CancellationToken ct)
+    {
+        await using var cmd = new NpgsqlCommand("""
+            SELECT d.id, d.title, d.symptoms, d.known_cause, d.workaround, d.permanent_fix,
+                   d.fixed_version, d.confidence, d.status,
+                   COALESCE(array_to_string(d.affected_versions, ','), '') AS affected_versions,
+                   d.updated_at, d.references
+            FROM public.match_knowledge_priority2($1) m
+            JOIN control_center.knowledge_entry_detail d ON d.id = m.knowledge_id
+            """, conn);
+        cmd.Parameters.Add(new NpgsqlParameter<long> { Value = incidentId });
+        await using var reader = await cmd.ExecuteReaderAsync(ct).ConfigureAwait(false);
+        if (!await reader.ReadAsync(ct).ConfigureAwait(false)) return null;
+
+        var refsJson = reader.IsDBNull(11) ? null : reader.GetString(11);
+        var refs = string.IsNullOrWhiteSpace(refsJson)
+            ? new List<KnownSolutionReference>()
+            : System.Text.Json.JsonSerializer.Deserialize<List<KnownSolutionReference>>(refsJson);
+
+        return new KnownSolution
+        {
+            KnowledgeId = reader.GetInt64(0),
+            Title = reader.GetString(1),
+            Symptoms = reader.IsDBNull(2) ? null : reader.GetString(2),
+            KnownCause = reader.GetString(3),
+            Workaround = reader.IsDBNull(4) ? null : reader.GetString(4),
+            PermanentFix = reader.IsDBNull(5) ? null : reader.GetString(5),
+            FixedVersion = reader.IsDBNull(6) ? null : reader.GetString(6),
+            Confidence = reader.GetString(7),
+            Status = reader.GetString(8),
+            AffectedVersions = reader.IsDBNull(9) ? null : reader.GetString(9),
+            UpdatedAt = reader.GetDateTime(10),
+            Priority = 2,
+            References = refs ?? new List<KnownSolutionReference>()
+        };
+    }
+
+    public async Task<KnownSolution?> MatchKnowledgePriority2Async(long incidentId, CancellationToken ct = default)
+    {
+        await using var conn = await _dataSource.OpenConnectionAsync(ct).ConfigureAwait(false);
+        return await MatchKnowledgePriority2Async(conn, incidentId, ct);
     }
 
     // Внутрішній overload — використовується в GetIncidentDetailAsync, щоб не відкривати друге підключення.
@@ -220,6 +281,7 @@ public sealed class ControlCenterRepository : IControlCenterRepository
             Status = reader.GetString(8),
             AffectedVersions = reader.IsDBNull(9) ? null : reader.GetString(9),
             UpdatedAt = reader.GetDateTime(10),
+            Priority = 1,
             References = refs ?? new List<KnownSolutionReference>()
         };
     }

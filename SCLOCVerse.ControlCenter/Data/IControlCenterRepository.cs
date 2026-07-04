@@ -17,10 +17,11 @@ public interface IControlCenterRepository
     Task<KnowledgeCreateResult> CreateKnowledgeFromIncidentAsync(long incidentId, KnowledgeDraftInput input, string createdBy, CancellationToken ct = default);
     Task<bool> CanCreateKnowledgeForIncidentAsync(long incidentId, CancellationToken ct = default);
     Task UpdateKnowledgeAsync(long knowledgeId, KnowledgeEditInput input, string changedBy, CancellationToken ct = default);
-    Task ArchiveKnowledgeAsync(long knowledgeId, string archiveReason, string changedBy, CancellationToken ct = default);
+    Task TransitionKnowledgeAsync(long knowledgeId, string targetStatus, string reason, int expectedVersion, string changedBy, CancellationToken ct = default);
     Task AddKnowledgeReferenceAsync(long knowledgeId, KnowledgeReferenceInput input, string addedBy, CancellationToken ct = default);
     Task RemoveKnowledgeReferenceAsync(long referenceId, string removedBy, CancellationToken ct = default);
     Task<List<KnowledgeHistoryEntry>> GetKnowledgeHistoryAsync(long knowledgeId, CancellationToken ct = default);
     Task<int> GetKnowledgeCurrentVersionAsync(long knowledgeId, CancellationToken ct = default);
     Task<bool> CanEditKnowledgeAsync(long knowledgeId, CancellationToken ct = default);
+    Task<KnownSolution?> MatchKnowledgePriority2Async(long incidentId, CancellationToken ct = default);
 }

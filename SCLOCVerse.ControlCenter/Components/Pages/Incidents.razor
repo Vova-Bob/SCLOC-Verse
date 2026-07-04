@@ -63,24 +63,52 @@ else if (_detail != null)
         <div class="col-md-7">
             @if (_detail.KnownSolution != null)
             {
-                <div class="card mb-3 border-success">
-                    <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
-                        <strong>Known Solution</strong>
+                var borderClass = _detail.KnownSolution.Priority == 1 ? "border-success" : "border-warning";
+                var headerClass = _detail.KnownSolution.Priority == 1 ? "bg-success" : "bg-warning";
+                var badgeColor = _detail.KnownSolution.Priority == 1 ? "bg-light text-dark" : "bg-dark text-warning";
+                var priorityLabel = _detail.KnownSolution.Priority == 1 ? "Priority 1" : "Priority 2";
+                var priorityEmoji = _detail.KnownSolution.Priority == 1 ? "🟢" : "🟡";
+
+                <div class="card mb-3 @borderClass">
+                    <div class="card-header @headerClass text-white d-flex justify-content-between align-items-center">
+                        <strong>@(priorityEmoji) Known Solution</strong>
                         <div class="d-flex gap-2 align-items-center">
-                            <span class="badge bg-light text-dark">@_detail.KnownSolution.Status — @_detail.KnownSolution.Confidence</span>
+                            <span class="badge @badgeColor">@priorityLabel — @_detail.KnownSolution.Status — @_detail.KnownSolution.Confidence</span>
                             <span class="text-white-50 small">Updated @_detail.KnownSolution.UpdatedAt.ToString("yyyy-MM-dd HH:mm")</span>
                         </div>
                     </div>
                     <div class="card-body">
                         <div class="d-flex justify-content-between align-items-start mb-2">
                             <h6 class="card-title mb-0">@_detail.KnownSolution.Title</h6>
-                            <div class="btn-group btn-group-sm" role="group">
-                                <button class="btn btn-sm btn-outline-secondary" @onclick="OpenEditKnowledgeModal" disabled="@_working">Edit</button>
-                                <button class="btn btn-sm btn-outline-secondary" @onclick="OpenHistoryModal" disabled="@_working">History</button>
-                                <button class="btn btn-sm btn-outline-secondary" @onclick="OpenReferenceModal" disabled="@_working">+ Reference</button>
-                                <button class="btn btn-sm btn-outline-danger" @onclick="OpenArchiveModal" disabled="@_working">Archive</button>
+                            <div class="d-flex flex-wrap gap-2 align-items-start">
+                                <div class="btn-group btn-group-sm" role="group">
+                                    <button class="btn btn-sm btn-outline-secondary" @onclick="OpenEditKnowledgeModal" disabled="@_working">Edit</button>
+                                    <button class="btn btn-sm btn-outline-secondary" @onclick="OpenHistoryModal" disabled="@_working">History</button>
+                                    <button class="btn btn-sm btn-outline-secondary" @onclick="OpenReferenceModal" disabled="@_working">+ Reference</button>
+                                </div>
+                                <div class="btn-group btn-group-sm" role="group">
+                                    @foreach (var next in GetNextKnowledgeStatuses(_detail.KnownSolution.Status))
+                                    {
+                                        var label = next switch
+                                        {
+                                            "Reviewed" => "Publish",
+                                            "Verified" => "Verify",
+                                            "Deprecated" => "Deprecate",
+                                            "Archived" => "Archive",
+                                            _ => next
+                                        };
+                                        <button class="btn btn-sm btn-outline-primary" @onclick="() => OpenWorkflowModal(next)" disabled="@_working">@label</button>
+                                    }
+                                </div>
                             </div>
                         </div>
+
+                        @if (_detail.KnownSolution.Priority == 2)
+                        {
+                            <div class="alert alert-warning py-1 px-2 small mb-2">
+                                ⚠️ Similar solution: matched by component + signal, not exact fingerprint.
+                            </div>
+                        }
 
                         <dl class="row mb-1 small">
                             <dt class="col-sm-3">Cause</dt>
@@ -140,6 +168,45 @@ else if (_detail != null)
                     </div>
                 </div>
             }
+            else if (_detail.SimilarSolution != null)
+            {
+                <div class="card mb-3 border-warning">
+                    <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center">
+                        <strong>🟡 Similar Solution</strong>
+                        <span class="badge bg-dark text-warning">Priority 2 — @_detail.SimilarSolution.Status — @_detail.SimilarSolution.Confidence</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="alert alert-warning py-1 px-2 small mb-2">
+                            ⚠️ Matched by component + signal only. Review before applying.
+                        </div>
+                        <h6 class="card-title">@_detail.SimilarSolution.Title</h6>
+                        <dl class="row mb-1 small">
+                            <dt class="col-sm-3">Cause</dt>
+                            <dd class="col-sm-9">@_detail.SimilarSolution.KnownCause</dd>
+                            @if (!string.IsNullOrWhiteSpace(_detail.SimilarSolution.Workaround))
+                            {
+                                <dt class="col-sm-3">Workaround</dt>
+                                <dd class="col-sm-9">@_detail.SimilarSolution.Workaround</dd>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(_detail.SimilarSolution.PermanentFix))
+                            {
+                                <dt class="col-sm-3">Fix</dt>
+                                <dd class="col-sm-9">@_detail.SimilarSolution.PermanentFix</dd>
+                            }
+                        </dl>
+                    </div>
+                </div>
+
+                <div class="card mb-3 border-secondary">
+                    <div class="card-body d-flex justify-content-between align-items-center">
+                        <span class="text-muted">🔍 No exact knowledge found.</span>
+                        @if (_canCreateKnowledge)
+                        {
+                            <button class="btn btn-sm btn-success" @onclick="OpenKnowledgeModal" disabled="@_working">Save as Knowledge</button>
+                        }
+                    </div>
+                </div>
+            }
             else if (!string.IsNullOrEmpty(_detail.DraftKnowledgeStatus))
             {
                 <div class="card mb-3 border-info">
@@ -152,7 +219,7 @@ else if (_detail != null)
             {
                 <div class="card mb-3 border-secondary">
                     <div class="card-body d-flex justify-content-between align-items-center">
-                        <span class="text-muted">🔍 No knowledge found.</span>
+                        <span class="text-muted">⚪ No knowledge found.</span>
                         @if (_canCreateKnowledge)
                         {
                             <button class="btn btn-sm btn-success" @onclick="OpenKnowledgeModal" disabled="@_working">
@@ -480,6 +547,7 @@ else if (_detail != null)
                                     {
                                         <tr>
                                             <td><span class="badge bg-secondary">@h.Version</span></td>
+                                            <td>@FormatChangeTypeLabel(h.ChangeType)</td>
                                             <td>@h.ChangedAt.ToString("yyyy-MM-dd HH:mm")</td>
                                             <td>@h.ChangedBy <span class="text-muted small">(@h.DbUser)</span></td>
                                             <td>@h.ChangeReason</td>
@@ -515,6 +583,7 @@ else if (_detail != null)
                                 <option value="GitHubIssue">GitHub Issue</option>
                                 <option value="GitCommit">Git Commit</option>
                                 <option value="Documentation">Documentation</option>
+                                <option value="ReleaseNotes">Release Notes</option>
                                 <option value="External">External</option>
                             </select>
                         </div>
@@ -537,6 +606,38 @@ else if (_detail != null)
                                 <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
                             }
                             Add Reference
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="modal-backdrop fade show"></div>
+    }
+
+    @* ── Workflow Transition Modal ── *@
+    @if (_showWorkflowModal)
+    {
+        <div class="modal fade show" tabindex="-1" style="display: block;" aria-modal="true" role="dialog">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Transition Knowledge → @_workflowTargetStatus</h5>
+                        <button type="button" class="btn-close" aria-label="Close" @onclick="CloseWorkflowModal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label">Reason</label>
+                            <input type="text" class="form-control" @bind="_workflowReasonInput" placeholder="Why is this transition happening?" />
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" @onclick="CloseWorkflowModal" disabled="@_working">Cancel</button>
+                        <button type="button" class="btn btn-primary" @onclick="DoWorkflowTransition" disabled="@_working">
+                            @if (_working)
+                            {
+                                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                            }
+                            Transition
                         </button>
                     </div>
                 </div>
@@ -700,6 +801,9 @@ else
     private string? _knowledgeHint;
     private List<KnowledgeHistoryEntry> _knowledgeHistory = new();
     private string _archiveReasonInput = "";
+    private string _workflowReasonInput = "";
+    private bool _showWorkflowModal;
+    private string _workflowTargetStatus = "";
 
     private static readonly Dictionary<string, string[]> StateFlow = new()
     {
@@ -711,8 +815,20 @@ else
         ["Closed"] = Array.Empty<string>(),
     };
 
+    private static readonly Dictionary<string, string[]> KnowledgeWorkflow = new()
+    {
+        ["Draft"] = new[] { "Reviewed", "Archived" },
+        ["Reviewed"] = new[] { "Verified", "Archived" },
+        ["Verified"] = new[] { "Deprecated", "Archived" },
+        ["Deprecated"] = new[] { "Reviewed", "Archived" },
+        ["Archived"] = Array.Empty<string>(),
+    };
+
     private static string[] GetNextStates(string current) =>
         StateFlow.GetValueOrDefault(current, Array.Empty<string>());
+
+    private static string[] GetNextKnowledgeStatuses(string current) =>
+        KnowledgeWorkflow.GetValueOrDefault(current, Array.Empty<string>());
 
     private async Task DoTransition(string toStatus)
     {
@@ -1002,14 +1118,44 @@ else
             return;
         }
 
+        await DoKnowledgeTransition("Archived", _archiveReasonInput.Trim());
+        _showArchiveModal = false;
+        _archiveReasonInput = "";
+    }
+
+    private void OpenWorkflowModal(string targetStatus)
+    {
+        _workflowTargetStatus = targetStatus;
+        _workflowReasonInput = "";
+        _showWorkflowModal = true;
+    }
+
+    private void CloseWorkflowModal()
+    {
+        _showWorkflowModal = false;
+        _workflowReasonInput = "";
+        _workflowTargetStatus = "";
+    }
+
+    private async Task DoWorkflowTransition()
+    {
+        if (string.IsNullOrWhiteSpace(_workflowTargetStatus)) return;
+        await DoKnowledgeTransition(_workflowTargetStatus, _workflowReasonInput.Trim());
+        _showWorkflowModal = false;
+        _workflowReasonInput = "";
+        _workflowTargetStatus = "";
+    }
+
+    private async Task DoKnowledgeTransition(string targetStatus, string reason)
+    {
+        if (_detail?.KnownSolution == null) return;
         _working = true; StateHasChanged();
         try
         {
-            await Repository.ArchiveKnowledgeAsync(_detail.KnownSolution.KnowledgeId, _archiveReasonInput.Trim(), "admin");
-            _showArchiveModal = false;
-            _archiveReasonInput = "";
+            var version = await Repository.GetKnowledgeCurrentVersionAsync(_detail.KnownSolution.KnowledgeId);
+            await Repository.TransitionKnowledgeAsync(_detail.KnownSolution.KnowledgeId, targetStatus, reason, version, "admin");
             _error = null;
-            _knowledgeHint = "✅ Knowledge archived.";
+            _knowledgeHint = $"✅ Knowledge transitioned to {targetStatus}.";
             _detail = await Repository.GetIncidentDetailAsync(_detail.IncidentId);
             _canCreateKnowledge = await Repository.CanCreateKnowledgeForIncidentAsync(_detail!.Id);
         }
@@ -1022,4 +1168,15 @@ else
             _working = false;
         }
     }
+
+    private static string FormatChangeTypeLabel(string changeType) => changeType switch
+    {
+        "Created" => "🆕 Created",
+        "Updated" => "✏️ Updated",
+        "ReferenceAdded" => "🔗 Reference Added",
+        "ReferenceRemoved" => "🗑️ Reference Removed",
+        "WorkflowTransition" => "🔄 Workflow Transition",
+        "Archived" => "📦 Archived",
+        _ => changeType
+    };
 }

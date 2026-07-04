@@ -510,12 +510,8 @@ Per-release статистика coverage (для UI 8.3). **Обов'язков
 |---|---|---|---|
 | `create_knowledge_entry` | Створити Draft | fingerprint_key, title, known_cause, optional fields, created_by | new KnowledgeId |
 | `update_knowledge_entry` | Редагувати з audit (dual-identity) та оптимістичною конкуренцією | knowledge_id, expected_version, fields, changed_by, change_reason | void (snapshot у history з `session_user=current_user`) |
-| `publish_knowledge_entry` | Draft → Reviewed | knowledge_id, changed_by | void |
-| `verify_knowledge_entry` | Reviewed → Verified (ручне, напр. ad-hoc) | knowledge_id, changed_by | void (вимагає Confidence ≥ High — інваріант §4) |
+| `transition_knowledge` | Єдина функція workflow-переходу (Slice 4) | knowledge_id, target_status, reason, expected_version, changed_by | void (audit з change_type WorkflowTransition/Archived) |
 | `verify_knowledge_auto` | pg_cron: авто-Verify за формулою §6.1 | (без параметрів) | count of auto-verified |
-| `deprecate_knowledge_entry` | Verified → Deprecated | knowledge_id, changed_by, change_reason | void |
-| `archive_knowledge_entry` | * → Archived (final state) | knowledge_id, archive_reason, changed_by | void (archive_reason обов'язковий) |
-| `reopen_knowledge_entry` | Deprecated → Reviewed | knowledge_id, changed_by, change_reason | void |
 | `add_knowledge_reference` | Додати посилання (створює audit-версію) | knowledge_id, ref_type, url, label, added_by | reference_id |
 | `remove_knowledge_reference` | Прибрати посилання (створює audit-версію) | reference_id, removed_by | void |
 | `get_knowledge_history` | Історія версій Knowledge | knowledge_id | (version, changed_by, db_user, changed_at, change_reason) |
@@ -576,16 +572,27 @@ Per-release статистика coverage (для UI 8.3). **Обов'язков
 | UI | Блок Known Solution має кнопки Edit / History / + Reference / Archive. Модальні форми: Edit (Title, Cause, Symptoms, Workaround, Permanent Fix, Affected Versions, Fixed Version, Change Reason), Add Reference, History table (version, when, changed_by + db_user, reason), Archive modal з обов'язковим Archive Reason. |
 | Критерій | Verified Knowledge можна редагувати (status залишається Verified). References додаються/видаляються, і кожна операція створює версію в `knowledge_version_history`. Archive переключає Knowledge у Archived і прибирає його з Known Solution. |
 
-### Slice 4 — Workflow (Verify / Deprecate / Reopen) + Knowledge Search
+### Slice 3.5 — Stabilization Refinements (Runtime Verified)
 
-**Мета:** ручні workflow-переходи Draft → Reviewed → Verified → Deprecated, ручний пошук, окремий список Knowledge.
+**Мета:** покращення audit-деталізації, обмеження reference_type, вбудовування can_edit перевірок у БД.
 
 | Що | Деталі |
 |---|---|
-| БД | `publish_knowledge_entry`, `verify_knowledge_entry`, `deprecate_knowledge_entry`, `reopen_knowledge_entry`, `search_knowledge` (з пагінацією). Функція `match_knowledge_for_incident` розширено до Priority 2 (component + signal). VIEW `control_center.knowledge_list`. |
-| Код | Сервіс Knowledge Workflow. |
-| UI | Окрема сторінка `Knowledge.razor` зі списком + фільтрами + пошуком. Кнопки Workflow на сторінці деталізації. Жовтий блок "Можлива підказка" для Priority 2. |
-| Критерій | Повний цикл Draft → Reviewed → Verified через UI, з audit у `knowledge_version_history` (з `session_user`). Спроба змінити Status/Confidence у неможливу комбінацію → БД відхиляє. |
+| БД | `knowledge_version_history.change_type` (Created/Updated/ReferenceAdded/ReferenceRemoved/WorkflowTransition/Archived). Audit-тригер обчислює `change_type` через `set_config('knowledge.change_type', ...)` контекст транзакції. `require_not_archived()` вбудована в update/add/remove функції. CHECK-enum `reference_type` (GitCommit, GitHubIssue, Documentation, ReleaseNotes, External). |
+| Код | `KnowledgeHistoryEntry.ChangeType`; `GetKnowledgeHistoryAsync` повертає change_type. |
+| UI | Історія версій показує людські labels: 🆕 Created, ✏️ Updated, 🔗 Reference Added, 🗑️ Reference Removed, 🔄 Workflow Transition, 📦 Archived. |
+| Критерій | Кожна версія в історії має коректний `change_type` без аналізу snapshot. Archived Knowledge не можна редагувати (перевірка в БД, не лише в UI). |
+
+### Slice 4 — Workflow (transition_knowledge) + Priority 2 Match (Runtime Verified)
+
+**Мета:** єдина функція workflow-переходів, Priority 2 детермінований матчинг, UI-індикатори точності.
+
+| Що | Деталі |
+|---|---|
+| БД | `transition_knowledge(knowledge_id, target_status, reason, expected_version, changed_by)` — єдина функція замість publish/verify/deprecate/reopen. Дозволені переходи: Draft→Reviewed/Archived, Reviewed→Verified/Archived, Verified→Deprecated/Archived, Deprecated→Reviewed/Archived. Optimistic concurrency через expected_version. `match_knowledge_priority2(incident_id)` — component+signal серед Verified, ORDER BY confidence DESC, updated_at DESC, LIMIT 1; виключає інциденти з exact match. |
+| Код | `TransitionKnowledgeAsync`, `MatchKnowledgePriority2Async`. `KnownSolution.Priority` (1=exact, 2=similar). `IncidentDetail.SimilarSolution`. |
+| UI | Динамічні кнопки Publish/Verify/Deprecate/Archive залежно від поточного статусу. Модал transition з обов'язковим reason для Archive. 🟢 Priority 1 (Exact Match, зелений) / 🟡 Priority 2 (Similar Solution, жовтий з warning) / ⚪ No Knowledge (сірий). Badge Priority 1/2 у шапці Known Solution. |
+| Критерій | Повний цикл Draft → Reviewed → Verified → Archived через одну функцію з audit WorkflowTransition/Archived. Priority 2 не показує Draft/Deprecated/Archived Knowledge. Exact match має пріоритет над similar. |
 
 ### Slice 5 — Release Integration (auto-verify + coverage)
 
@@ -607,9 +614,11 @@ Slice 2 (Authoring)           — замикає цикл "Investigation → Kno
    ↓
 Slice 3 (Knowledge Lifecycle) — редагування, references, archive, історія
    ↓
-Slice 4 (Workflow + Search)   — workflow-переходи + ручний пошук
+Slice 3.5 (Refinements)       — change_type, reference enum, can_edit у БД
    ↓
-Slice 5 (Release Integration) — знання "дозрівають" автоматично
+Slice 4 (Workflow + Priority) — transition_knowledge + Priority 2 match
+   ↓
+Slice 5 (Release Integration) — знання "дозрівають" автоматично + пошук
 ```
 
 Кожен слайс самодостатній. Можна зупинитись після будь-якого.
