@@ -18,9 +18,19 @@ namespace SCLOCVerse
         private const string SingleInstanceMutexName = "SCLOCVerse_SingleInstanceMutex";
         private AppCompositionRoot? _compositionRoot;
 
+        /// <summary>
+        /// При запуску з Windows Tray/Autostart передається цей прапорець —
+        /// вікно стартує прихованим у трей, не показуючись на екрані.
+        /// </summary>
+        private const string MinimizedArg = "--minimized";
+
         protected override void OnStartup(StartupEventArgs e)
         {
             base.OnStartup(e);
+
+            // Парсинг аргументів запуску. --minimized — старт у треї (для автозапуску).
+            var startMinimized = Array.Exists(e.Args ?? Array.Empty<string>(),
+                a => string.Equals(a, MinimizedArg, StringComparison.OrdinalIgnoreCase));
 
             // Перевірка single instance через локальний Mutex.
             bool createdNew;
@@ -66,11 +76,20 @@ namespace SCLOCVerse
             var window = _compositionRoot.CreateMainWindow();
             MainWindow = window;
 
-            // Закриття головного вікна має завершувати застосунок, навіть якщо
-            // відкритий Hangar overlay. OnExit закриє overlay через Dispose.
-            ShutdownMode = ShutdownMode.OnMainWindowClose;
+            // Tray-режим: закриття головного вікна ховає його у трей, а не гасить
+            // процес. Вихід — лише через tray-меню "Вийти" або явний Shutdown().
+            ShutdownMode = ShutdownMode.OnExplicitShutdown;
 
-            window.Show();
+            if (startMinimized)
+            {
+                // Старт у треї: вікно створене, але приховане. Tray-іконку
+                // та обробники подій трея підключає MainWindow.xaml.cs.
+                window.Hide();
+            }
+            else
+            {
+                window.Show();
+            }
         }
 
         private static void MigrateSettingsIfNeeded()

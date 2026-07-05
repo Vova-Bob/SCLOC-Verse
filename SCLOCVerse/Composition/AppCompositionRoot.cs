@@ -9,6 +9,7 @@ using SCLOCVerse.Services.InputSystem;
 using SCLOCVerse.Services.LiaServices;
 using SCLOCVerse.Services.LocalizationServices;
 using SCLOCVerse.Services.Observability;
+using SCLOCVerse.Services.Tray;
 using SCLOCVerse.ViewModels;
 using System.Net.Http;
 using System.Windows.Threading;
@@ -42,6 +43,7 @@ namespace SCLOCVerse.Composition
         private readonly IHotkeyBackend _hotkeyBackend;
         private readonly IHotkeyService _hotkeyService;
         private readonly IHangarTimerService _hangarTimerService;
+        private readonly ITrayService _trayService;
 
         public AppCompositionRoot()
         {
@@ -90,6 +92,10 @@ namespace SCLOCVerse.Composition
 
             _backgroundUpdateMonitor = new BackgroundUpdateMonitor(_applicationUpdateService);
 
+            // Tray-сервіс інкапсулює H.NotifyIcon.TaskbarIcon. Ініціалізується
+            // пізніше (Mainlop), коли UI-диспетчер уже готовий.
+            _trayService = new TrayService();
+
             _updateDownloader = new UpdateDownloader(httpClient, _telemetryClient);
             _updateInstaller = new UpdateInstaller(new UpdateScriptBuilder(), _telemetryClient);
             _updateHistoryService = new UpdateHistoryService();
@@ -112,6 +118,10 @@ namespace SCLOCVerse.Composition
             // Спочатку зупиняємо телеметрію: її uploader використовує auth-клієнт,
             // тож глушимо до dispose auth-композиції (reverse-order).
             try { _telemetryClient?.Dispose(); } catch { /* ignore */ }
+
+            // Tray-іконку прибираємо раніше за інших UI-ресурсів, щоб під час
+            // завершення не залишалася фантомна іконка в системному треї.
+            try { _trayService?.Dispose(); } catch { /* ignore */ }
 
             // Спочатку зупиняємо фоновий монітор, щоб його DispatcherTimer
             // не утримував Dispatcher і MainWindow живим.
@@ -136,6 +146,9 @@ namespace SCLOCVerse.Composition
 
         public IHangarTimerService HangarTimerService => _hangarTimerService;
         public IHotkeyService HotkeyService => _hotkeyService;
+
+        /// <summary>Tray-сервіс для зовнішнього використання (наприклад, App_OnExit).</summary>
+        public ITrayService TrayService => _trayService;
 
         public MainWindow CreateMainWindow()
         {
@@ -166,7 +179,8 @@ namespace SCLOCVerse.Composition
                 _authCompositionRoot.AuthService,
                 _authCompositionRoot.AuthStatusProvider,
                 _hangarTimerService,
-                _hotkeyService);
+                _hotkeyService,
+                _trayService);
         }
 
         private static string GetSupabaseUrl()

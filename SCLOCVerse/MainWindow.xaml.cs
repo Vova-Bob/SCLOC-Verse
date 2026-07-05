@@ -11,6 +11,7 @@ using SCLOCVerse.Services.Cache;
 using SCLOCVerse.Windows;
 using SCLOCVerse.Services.InputSystem;
 using SCLOCVerse.Services.LiaServices;
+using SCLOCVerse.Services.Tray;
 using SCLOCVerse.ViewModels;
 using System.IO;
 using System.Windows;
@@ -50,9 +51,12 @@ namespace SCLOCVerse
         private readonly UpdateStatusPresenter _updateStatusPresenter;
         private readonly IHangarTimerService _hangarTimerService;
         private readonly IHotkeyService _hotkeyService;
+        private readonly ITrayService _trayService;
         private IHotkeyMessageSource? _hotkeyMessageSource;
         private bool _showGameFolderToast = true;
         private DateTime? _suppressStartupUpdateCheckUntil;
+        /// <summary>Прапець явного виходу: знімає перехоплення OnClosing у tray-режимі.</summary>
+        private bool _isExiting;
         private EnvironmentSelector EnvSelector => CanvasLocalization.EnvironmentSelector;
         private Button BtnInstall => CanvasLocalization.InstallButton;
         private Button BtnLocalisationDelete => CanvasLocalization.DeleteButton;
@@ -78,7 +82,7 @@ namespace SCLOCVerse
         private readonly UpdateCheckerService _updateCheckerService;
         private readonly CleanupController _cacheCleanupController;
 
-        public MainWindow(MainWindowViewModel viewModel, IWindowHelper windowHelper, ILocalizationInstaller localizationInstaller, IReadmeService readmeService,     IUpdater updater, UpdateCheckerService updateCheckerService, IApplicationUpdateService applicationUpdateService, IBackgroundUpdateMonitor backgroundUpdateMonitor, IUpdateChannelService updateChannelService, IApplicationVersionProvider applicationVersionProvider, IUpdateDownloader updateDownloader, IUpdateInstaller updateInstaller, IUpdateHistoryService updateHistoryService, IUpdateVerifier updateVerifier, IGitHubReleaseClient gitHubReleaseClient, IDialogService dialogService, IAuthService authService, IAuthStatusProvider authStatusProvider, IHangarTimerService hangarTimerService, IHotkeyService hotkeyService)
+        public MainWindow(MainWindowViewModel viewModel, IWindowHelper windowHelper, ILocalizationInstaller localizationInstaller, IReadmeService readmeService,     IUpdater updater, UpdateCheckerService updateCheckerService, IApplicationUpdateService applicationUpdateService, IBackgroundUpdateMonitor backgroundUpdateMonitor, IUpdateChannelService updateChannelService, IApplicationVersionProvider applicationVersionProvider, IUpdateDownloader updateDownloader, IUpdateInstaller updateInstaller, IUpdateHistoryService updateHistoryService, IUpdateVerifier updateVerifier, IGitHubReleaseClient gitHubReleaseClient, IDialogService dialogService, IAuthService authService, IAuthStatusProvider authStatusProvider, IHangarTimerService hangarTimerService, IHotkeyService hotkeyService, ITrayService trayService)
         {
             InitializeComponent();
 
@@ -102,6 +106,7 @@ namespace SCLOCVerse
             _authStatusProvider = authStatusProvider;
             _hangarTimerService = hangarTimerService;
             _hotkeyService = hotkeyService;
+            _trayService = trayService;
 
             _toastService = new ToastService(AppToast.ToastBorder, AppToast.ToastText);
             _linkService = new LinkService(_toastService);
@@ -166,6 +171,14 @@ namespace SCLOCVerse
             BtnResetCash.Click += BtnReset_Cash;
             BtnLiaInstall.Click += BtnLiaInstall_Click;
             BtnLiaDelete.Click += BtnLiaDelete_Click;
+
+            // Ініціалізація системного трея та прив'язка його подій.
+            // Tray працює незалежно від видимості вікна: приховане вікно
+            // можна показати двойним кліком по іконці або через контекстне меню.
+            _trayService.Initialize();
+            _trayService.ShowRequested += Tray_ShowRequested;
+            _trayService.CheckUpdatesRequested += Tray_CheckUpdatesRequested;
+            _trayService.ExitRequested += Tray_ExitRequested;
         }
 
         private async void MainWindow_Loaded(object sender, RoutedEventArgs e)
@@ -530,7 +543,61 @@ namespace SCLOCVerse
         }
 
         private void Minimize_Click(object sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;
-        private void Close_Click(object sender, RoutedEventArgs e) => Close();
+
+        /// <summary>
+        /// Кнопка закриття в tray-режимі ховає вікно замість завершення процесу.
+        /// Повний вихід — через tray-меню "Вийти". На Етапі D буде керуватися
+        /// прапцем MinimizeToTray з Settings.
+        /// </summary>
+        private void Close_Click(object sender, RoutedEventArgs e)
+        {
+            Hide();
+        }
+
+        /// <summary>
+        /// Перехоплення системного закриття (Alt+F4, X у title bar):
+        /// у tray-режимі ховаємо вікно, а не гасимо процес.
+        /// Прапець _isExiting знімає перехоплення під час явного виходу (tray "Вийти").
+        /// </summary>
+        protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
+        {
+            if (_trayService.IsInitialized && !_isExiting)
+            {
+                e.Cancel = true;
+                Hide();
+                return;
+            }
+
+            base.OnClosing(e);
+        }
+
+        /// <summary>Tray: показати вікно та активувати його.</summary>
+        private void Tray_ShowRequested(object? sender, EventArgs e)
+        {
+            Show();
+            WindowState = WindowState.Normal;
+            Activate();
+            Focus();
+        }
+
+        /// <summary>Tray: ініціювати ручну перевірку оновлень застосунку.</summary>
+        private void Tray_CheckUpdatesRequested(object? sender, EventArgs e)
+        {
+            // Show вікно, щоб користувач бачив результат перевірки.
+            Show();
+            WindowState = WindowState.Normal;
+            Activate();
+            _ = RunManualUpdateCheckAsync(forceRefresh: true);
+        }
+
+        /// <summary>Tray: повний вихід із застосунку через tray-меню "Вийти".</summary>
+        private void Tray_ExitRequested(object? sender, EventArgs e)
+        {
+            // Знімаємо перехоплення OnClosing, щоб Shutdown() реально завершив процес,
+            // а не знову приховав вікно в трей.
+            _isExiting = true;
+            Application.Current.Shutdown();
+        }
 
         private void Account_Click(object sender, RoutedEventArgs e)
         {
