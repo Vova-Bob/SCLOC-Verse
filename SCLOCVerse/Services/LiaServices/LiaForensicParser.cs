@@ -9,10 +9,21 @@ namespace SCLOCVerse.Services.LiaServices
     /// Контрольований контракт (маркер ##SCLOC_FORENSIC## + наступний JSON-рядок),
     /// не аналіз тексту повідомлення помилки.
     /// </summary>
+    /// <remarks>
+    /// Два методи парсингу:
+    /// • <see cref="TryParse"/> — повний forensic з маркером (існуючий non-elevated шлях).
+    /// • <see cref="TryParseMinimal"/> — мінімальний пакет JSON без маркера (новий elevated шлях,
+    ///   де PowerShell передає лише {phase, hresult, activityId, message}, а C# добудовує решту).
+    /// Обидва повертають той самий <see cref="LiaForensic"/> — перехідний період,旧 контракт
+    /// не видаляється до стабілізації нового.
+    /// </remarks>
     public static class LiaForensicParser
     {
         private const string Marker = "##SCLOC_FORENSIC##";
 
+        /// <summary>
+        /// Парсить повний forensic-блок з маркером ##SCLOC_FORENSIC## (існуючий non-elevated шлях).
+        /// </summary>
         public static LiaForensic? TryParse(string? output)
         {
             if (string.IsNullOrWhiteSpace(output))
@@ -42,6 +53,34 @@ namespace SCLOCVerse.Services.LiaServices
             }
 
             return null;
+        }
+
+        /// <summary>
+        /// Парсить мінімальний forensic-пакет (чистий JSON без маркера) від elevated PowerShell.
+        /// На відміну від <see cref="TryParse"/>, очікує валідний JSON-рядок напряму,
+        /// а не текст з маркером ##SCLOC_FORENSIC##.
+        /// </summary>
+        /// <param name="json">
+        /// Мінімальний пакет: <c>{ "phase": "...", "hresult": "0x...", "activityId": "...", "message": "..." }</c>.
+        /// Усі поля optional — C# добудовує сертифікат/InstallerType/AppxLog самостійно.
+        /// </param>
+        public static LiaForensic? TryParseMinimal(string? json)
+        {
+            if (string.IsNullOrWhiteSpace(json))
+                return null;
+
+            try
+            {
+                var forensic = JsonConvert.DeserializeObject<LiaForensic>(json);
+                if (forensic != null)
+                    forensic.RawJson = json;
+                return forensic;
+            }
+            catch
+            {
+                // best-effort: JSON пошкоджено — повертаємо null, caller робить fallback.
+                return null;
+            }
         }
     }
 }

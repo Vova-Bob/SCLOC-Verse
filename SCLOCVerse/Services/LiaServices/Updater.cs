@@ -2,6 +2,7 @@
 using SCLOCVerse.Interfaces;
 using SCLOCVerse.Models.LiaModels;
 using SCLOCVerse.Services.Observability;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
@@ -436,7 +437,10 @@ namespace SCLOCVerse.Services.LiaServices
                 """;
         }
 
-        private static async Task<PowerShellResult> RunPowerShellAsync(string script, CancellationToken cancellationToken)
+        private static async Task<PowerShellResult> RunPowerShellAsync(
+            string script,
+            CancellationToken cancellationToken,
+            bool requireElevation = false)
         {
             Directory.CreateDirectory(AppSettings.UpdatesDirectory);
             var scriptPath = Path.Combine(AppSettings.UpdatesDirectory, $"lia-{Guid.NewGuid():N}.ps1");
@@ -450,17 +454,34 @@ namespace SCLOCVerse.Services.LiaServices
             // користувач бачить «HRESULT 0x80131500. ���� ࠠࠢ뢠���...» замість оригінального
             // локалізованого повідомлення Add-AppxPackage / Import-Certificate.
             //
-            // Override [Console]::OutputEncoding + $OutputEncoding на початку скрипта
-            // зобов'язує PowerShell писати UTF-8 у pipe. Один fix у RunPowerShellAsync покриває
-            // всі 3 caller'и: BuildInstallerScript, UninstallAsync, GetInstalledVersionAsync.
+            // Override [Console]::OutputEncoding + [Console]::ErrorEncoding + $OutputEncoding
+            // на початку скрипта зобов'язує PowerShell писати UTF-8 у pipe. ErrorEncoding додано
+            // для elevated-режиму, де wrapper читає stderr дочірнього процесу через .NET Process
+            // з StandardErrorEncoding=UTF8 (нульова регресія для non-elevated, де StandardErrorEncoding
+            // в StartInfo вже UTF8). Один fix у RunPowerShellAsync покриває всі caller'и:
+            // BuildInstallerScript, UninstallAsync, GetInstalledVersionAsync.
             const string EncodingPreamble = """
                 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+                [Console]::ErrorEncoding = [System.Text.Encoding]::UTF8
                 $OutputEncoding = [System.Text.Encoding]::UTF8
                 """;
             var fullScript = EncodingPreamble + "\n" + script;
 
             await File.WriteAllTextAsync(scriptPath, fullScript, new UTF8Encoding(false), cancellationToken).ConfigureAwait(false);
 
+            // --- ELEVATED ШЛЯХ ---
+            // UseShellExecute=true + Verb="runas" — єдиний спосіб UAC elevation в .NET.
+            // RedirectStandardOutput несумісний з UseShellExecute=true, тому транспорт
+            // реалізовано через wrapper.ps1, який стартує дочірній powershell з .NET Process
+            // (RedirectStandardOutput=true) і записує stdout/stderr у файли UTF-8 без BOM.
+            // Дочірній powershell успадковує admin token від wrapper. Контракт PowerShellResult
+            // однаковий в обох режимах — caller не знає про механізм транспорту.
+            if (requireElevation)
+            {
+                return await RunElevatedAsync(scriptPath, cancellationToken).ConfigureAwait(false);
+            }
+
+            // --- NON-ELEVATED ШЛЯХ (існуюча логіка, біт-в-біт) ---
             try
             {
                 using var process = new Process
@@ -490,12 +511,124 @@ namespace SCLOCVerse.Services.LiaServices
             }
             finally
             {
+                TryDeleteFile(scriptPath);
+            }
+        }
+
+        /// <summary>
+        /// Elevated-режим RunPowerShellAsync: UAC через Verb=runas + прозорий транспорт
+        /// stdout/stderr через тимчаскові файли (wrapper.ps1 + .NET Process з RedirectStandardOutput).
+        /// </summary>
+        /// <remarks>
+        /// UseShellExecute=true забороняє RedirectStandardOutput (Windows API обмеження),
+        /// тому wrapper.ps1 стартує дочірній powershell.exe через .NET ProcessStartInfo з
+        /// RedirectStandardOutput=true + StandardOutputEncoding=UTF8 і записує результати у
+        /// файли через [System.IO.File]::WriteAllText з UTF8Encoding(false) (без BOM).
+        /// PowerShell 5.1 оператор > пише UTF-16LE — тому .NET API обов'язкове.
+        /// Дочірній процес успадковує elevated token від wrapper — Add-AppxPackage та
+        /// Import-Certificate в LocalMachine\* працюють без додаткового elevation.
+        /// </remarks>
+        private static async Task<PowerShellResult> RunElevatedAsync(string scriptPath, CancellationToken cancellationToken)
+        {
+            var wrapperPath = Path.Combine(AppSettings.UpdatesDirectory, $"lia-wrapper-{Guid.NewGuid():N}.ps1");
+            var stdoutPath = Path.Combine(AppSettings.UpdatesDirectory, $"lia-stdout-{Guid.NewGuid():N}.txt");
+            var stderrPath = Path.Combine(AppSettings.UpdatesDirectory, $"lia-stderr-{Guid.NewGuid():N}.txt");
+
+            // Wrapper: стартує оригінальний скрипт через .NET Process з контрольованим UTF-8.
+            // $psi.Arguments використовує PowerShell-інтерполяцію (подвійні лапки з $scriptPath).
+            var wrapperScript = $$"""
+                $ErrorActionPreference = 'Continue'
+                [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+                $OutputEncoding = [System.Text.Encoding]::UTF8
+
+                $scriptPath = '{{EscapePowerShellString(scriptPath)}}'
+                $stdoutPath = '{{EscapePowerShellString(stdoutPath)}}'
+                $stderrPath = '{{EscapePowerShellString(stderrPath)}}'
+
+                $psi = New-Object System.Diagnostics.ProcessStartInfo
+                $psi.FileName = 'powershell.exe'
+                $psi.Arguments = "-NoProfile -ExecutionPolicy Bypass -File `"$scriptPath`""
+                $psi.UseShellExecute = $false
+                $psi.CreateNoWindow = $true
+                $psi.RedirectStandardOutput = $true
+                $psi.RedirectStandardError = $true
+                $psi.StandardOutputEncoding = [System.Text.Encoding]::UTF8
+                $psi.StandardErrorEncoding = [System.Text.Encoding]::UTF8
+
+                $child = New-Object System.Diagnostics.Process
+                $child.StartInfo = $psi
+                [void]$child.Start()
+
+                $stdout = $child.StandardOutput.ReadToEnd()
+                $stderr = $child.StandardError.ReadToEnd()
+                $child.WaitForExit()
+                $code = $child.ExitCode
+
+                $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+                [System.IO.File]::WriteAllText($stdoutPath, $stdout, $utf8NoBom)
+                [System.IO.File]::WriteAllText($stderrPath, $stderr, $utf8NoBom)
+
+                exit $code
+                """;
+
+            await File.WriteAllTextAsync(wrapperPath, wrapperScript, new UTF8Encoding(false), cancellationToken).ConfigureAwait(false);
+
+            try
+            {
+                using var process = new Process
+                {
+                    StartInfo = new ProcessStartInfo
+                    {
+                        FileName = "powershell.exe",
+                        Arguments = $"-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File \"{wrapperPath}\"",
+                        UseShellExecute = true,
+                        Verb = "runas",
+                        WindowStyle = ProcessWindowStyle.Hidden
+                    }
+                };
+
                 try
                 {
-                    File.Delete(scriptPath);
+                    process.Start();
                 }
-                catch
-                {}
+                catch (Win32Exception ex) when (ex.NativeErrorCode == 1223) // ERROR_CANCELLED — користувач відхилив UAC.
+                {
+                    // Контракт ElevationDeclined: ExitCode=-1, Output порожній.
+                    // RunInstallerScriptAsync сформує LiaInstallException з Phase="ElevationDeclined".
+                    return new PowerShellResult(-1, string.Empty, "Elevation declined by user");
+                }
+
+                await process.WaitForExitAsync(cancellationToken).ConfigureAwait(false);
+
+                var output = File.Exists(stdoutPath)
+                    ? await File.ReadAllTextAsync(stdoutPath, Encoding.UTF8, cancellationToken).ConfigureAwait(false)
+                    : string.Empty;
+                var error = File.Exists(stderrPath)
+                    ? await File.ReadAllTextAsync(stderrPath, Encoding.UTF8, cancellationToken).ConfigureAwait(false)
+                    : string.Empty;
+
+                return new PowerShellResult(process.ExitCode, output, error);
+            }
+            finally
+            {
+                TryDeleteFile(scriptPath);
+                TryDeleteFile(wrapperPath);
+                TryDeleteFile(stdoutPath);
+                TryDeleteFile(stderrPath);
+            }
+        }
+
+        // best-effort видалення тимчаскових файлів (не кидає при помилці).
+        private static void TryDeleteFile(string path)
+        {
+            try
+            {
+                if (File.Exists(path))
+                    File.Delete(path);
+            }
+            catch
+            {
+                // Тимчаскові файли в %LOCALAPPDATA% — ОС очистити при перезавантаженні.
             }
         }
 
