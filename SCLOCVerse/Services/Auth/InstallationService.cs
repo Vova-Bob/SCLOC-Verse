@@ -116,6 +116,12 @@ namespace SCLOCVerse.Services.Auth
             catch (Exception ex)
             {
                 TrackSync("Failed", phase, sw.ElapsedMilliseconds, ex);
+
+                // Стаття 16 — Terminal Flush: Failed-подія має покинути чергу ДО throw,
+                // інакше secondary exception у caller finally може вбити процес без D15 flush.
+                if (_telemetry is not null)
+                    await _telemetry.FlushAsync(TimeSpan.FromSeconds(5)).ConfigureAwait(false);
+
                 throw; // Zero Regression: виняток далі поширюється, як і раніше.
             }
         }

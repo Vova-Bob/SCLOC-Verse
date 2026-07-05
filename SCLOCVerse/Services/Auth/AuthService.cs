@@ -142,6 +142,12 @@ namespace SCLOCVerse.Services.Auth
             {
                 LogError("SignIn failed", ex);
                 TrackAuth("SignIn", "Failed", ErrorContextExtractor.Extract(ex), sw.ElapsedMilliseconds);
+
+                // Стаття 16 — Terminal Flush: Failed-подія має покинути чергу ДО throw,
+                // інакше secondary exception у caller finally може вбити процес без D15 flush.
+                if (_telemetry is not null)
+                    await _telemetry.FlushAsync(TimeSpan.FromSeconds(5), cancellationToken).ConfigureAwait(false);
+
                 return new AuthResult.Failure($"Помилка входу: {ex.Message}");
             }
             finally
@@ -214,6 +220,12 @@ namespace SCLOCVerse.Services.Auth
                 // сесія може бути валідною, а збій — тимчасовим.
                 LogError("TryRestoreSession failed", ex);
                 TrackAuth("RestoreSession", "Failed", ErrorContextExtractor.Extract(ex), sw.ElapsedMilliseconds);
+
+                // Стаття 16 — Terminal Flush: Failed-подія має покинути чергу до повернення,
+                // інакше при подальшому crash процесу (напр. у App.OnStartup) черга втрачається.
+                if (_telemetry is not null)
+                    await _telemetry.FlushAsync(TimeSpan.FromSeconds(5), cancellationToken).ConfigureAwait(false);
+
                 SetState(AuthState.Error);
                 return false;
             }

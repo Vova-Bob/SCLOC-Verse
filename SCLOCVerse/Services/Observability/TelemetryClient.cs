@@ -84,6 +84,35 @@ namespace SCLOCVerse.Services.Observability
             }
         }
 
+        /// <inheritdoc/>
+        /// <remarks>
+        /// Стаття 16 — Terminal Flush. Реалізація делегує в Uploader з Task.WhenAny+timeout.
+        /// Non-throwing (Стаття 1): будь-яка помилка всередині логується й ковтається.
+        /// </remarks>
+        public async Task FlushAsync(TimeSpan timeout, CancellationToken cancellationToken = default)
+        {
+            if (!_enabled || _uploader is null)
+                return;
+
+            try
+            {
+                var flushTask = _uploader.FlushAsync();
+                var delayTask = Task.Delay(timeout, cancellationToken);
+                var winner = await Task.WhenAny(flushTask, delayTask).ConfigureAwait(false);
+
+                if (winner != flushTask)
+                    Debug.WriteLine($"[Telemetry] FlushAsync timed out after {timeout.TotalSeconds:F1}s.");
+
+                // Якщо flushTask устиг завершитись із винятком — ковтаємо (Стаття 1).
+                // Не await'имо flushTask цілеспрямовано: у race з delayTask unobserved exception
+                // логується всередині Uploader.FlushAsync власним try/catch.
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[Telemetry] FlushAsync failed: {ex.Message}");
+            }
+        }
+
         private TelemetryEvent BuildEvent(string component, string operation, string outcome, TelemetryContext? context)
         {
             return new TelemetryEvent

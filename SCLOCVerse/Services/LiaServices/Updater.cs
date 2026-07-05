@@ -89,9 +89,22 @@ namespace SCLOCVerse.Services.LiaServices
                 onProgress?.Invoke($"Знайдено реліз: {release.TagName ?? release.Name ?? "невідомо"}");
 
                 // --- Download ---
+                // Кожен Download.Started зобов'язаний мати terminal (інваріант платформи).
+                // EnsureAssetDownloadedAsync кидає → обов'язково Download.Failed + FlushAsync до throw.
                 LiaEvents.Track(_telemetry, "Download", "Started", orchestrationPhase: "InstallerAsset");
                 var downloadSw = System.Diagnostics.Stopwatch.StartNew();
-                var installerPath = await EnsureAssetDownloadedAsync(installerAsset, progress, cancellationToken).ConfigureAwait(false);
+                string installerPath;
+                try
+                {
+                    installerPath = await EnsureAssetDownloadedAsync(installerAsset, progress, cancellationToken).ConfigureAwait(false);
+                }
+                catch (Exception dlEx)
+                {
+                    LiaEvents.Track(_telemetry, "Download", "Failed", downloadSw.ElapsedMilliseconds, dlEx, orchestrationPhase: "InstallerAsset");
+                    if (_telemetry is not null)
+                        await _telemetry.FlushAsync(TimeSpan.FromSeconds(5), cancellationToken).ConfigureAwait(false);
+                    throw;
+                }
                 LiaEvents.Track(_telemetry, "Download", "Succeeded", downloadSw.ElapsedMilliseconds, orchestrationPhase: "InstallerAsset");
 
                 string? certificatePath = null;
@@ -101,11 +114,24 @@ namespace SCLOCVerse.Services.LiaServices
                     onProgress?.Invoke("Завантаження сертифіката...");
                     LiaEvents.Track(_telemetry, "Download", "Started", orchestrationPhase: "CertificateAsset");
                     var certSw = System.Diagnostics.Stopwatch.StartNew();
-                    certificatePath = await EnsureAssetDownloadedAsync(certificateAsset, null, cancellationToken).ConfigureAwait(false);
+                    try
+                    {
+                        certificatePath = await EnsureAssetDownloadedAsync(certificateAsset, null, cancellationToken).ConfigureAwait(false);
+                    }
+                    catch (Exception certEx)
+                    {
+                        LiaEvents.Track(_telemetry, "Download", "Failed", certSw.ElapsedMilliseconds, certEx, orchestrationPhase: "CertificateAsset");
+                        if (_telemetry is not null)
+                            await _telemetry.FlushAsync(TimeSpan.FromSeconds(5), cancellationToken).ConfigureAwait(false);
+                        throw;
+                    }
                     LiaEvents.Track(_telemetry, "Download", "Succeeded", certSw.ElapsedMilliseconds, orchestrationPhase: "CertificateAsset");
                 }
 
                 // --- Install ---
+                // Granular telemetry: RunInstallerScript — окрема operation, щоб Dashboard одразу
+                // показував «де саме обірвався L.I.A.» (CertificateImport / AddAppxPackage),
+                // а не лише факт «Install.Failed десь усередині». detail.phase несе точне місце.
                 onProgress?.Invoke("Запуск інсталяції Л.І.А...");
                 LiaEvents.Track(_telemetry, "Install", "Started", orchestrationPhase: "RunInstallerScript",
                     installerType: GetInstallerType(installerPath), certificatePresent: certificatePath != null,
@@ -122,6 +148,13 @@ namespace SCLOCVerse.Services.LiaServices
                 // ErrorContextExtractor дістане hresult/signal/cert/activity_id з LiaInstallException;
                 // для інших винятків — стандартний контекст (Network/CLR).
                 LiaEvents.Track(_telemetry, "Install", "Failed", sw.ElapsedMilliseconds, ex);
+
+                // Стаття 16 — Terminal Flush. Гарантуємо, що Failed-подія покине чергу ДО throw.
+                // Інакше secondary exception у caller finally (напр. UpdateLiaVersionAsync)
+                // може вбити процес без виклику D15 Dispose → черга втрачається.
+                if (_telemetry is not null)
+                    await _telemetry.FlushAsync(TimeSpan.FromSeconds(5), cancellationToken).ConfigureAwait(false);
+
                 throw; // Zero Regression.
             }
         }
@@ -230,9 +263,30 @@ namespace SCLOCVerse.Services.LiaServices
             return destinationPath;
         }
 
-        private static async Task RunInstallerScriptAsync(string installerPath, string? certificatePath, CancellationToken cancellationToken)
+        private async Task RunInstallerScriptAsync(string installerPath, string? certificatePath, CancellationToken cancellationToken)
         {
-            var result = await RunPowerShellAsync(BuildInstallerScript(installerPath, certificatePath), cancellationToken).ConfigureAwait(false);
+            // Granular terminal telemetry для PowerShell-фази. Якщо процес обірветься тут
+            // (AddAppxPackage впав на 0x800B0109, AV вбив process тощо) — Dashboard одразу
+            // покаже LIA.RunInstallerScript.Failed замість «Install.Failed десь усередині».
+            // detail.phase несе точне місце (CertificateImport / AddAppxPackage) з forensic.
+            var scriptSw = System.Diagnostics.Stopwatch.StartNew();
+            LiaEvents.Track(_telemetry, "RunInstallerScript", "Started");
+
+            PowerShellResult result;
+            try
+            {
+                result = await RunPowerShellAsync(BuildInstallerScript(installerPath, certificatePath), cancellationToken).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                // Process.Start/WaitForExitAsync/IO винятки — PowerShell навіть не стартував
+                // або стартував і впав до completion. Фаза невідома (ExitCode відсутній).
+                LiaEvents.Track(_telemetry, "RunInstallerScript", "Failed", scriptSw.ElapsedMilliseconds, ex,
+                    orchestrationPhase: "ProcessExecution");
+                if (_telemetry is not null)
+                    await _telemetry.FlushAsync(TimeSpan.FromSeconds(5), cancellationToken).ConfigureAwait(false);
+                throw;
+            }
 
             if (result.ExitCode != 0)
             {
@@ -241,12 +295,23 @@ namespace SCLOCVerse.Services.LiaServices
                 if (forensic != null)
                 {
                     forensic.InstallerType ??= GetInstallerType(installerPath);
-                    throw new LiaInstallException(forensic, result.ExitCode, result.Error);
+                    var liaEx = new LiaInstallException(forensic, result.ExitCode, result.Error);
+                    LiaEvents.Track(_telemetry, "RunInstallerScript", "Failed", scriptSw.ElapsedMilliseconds, liaEx);
+                    if (_telemetry is not null)
+                        await _telemetry.FlushAsync(TimeSpan.FromSeconds(5), cancellationToken).ConfigureAwait(false);
+                    throw liaEx;
                 }
 
                 // Forensic-блок відсутній — fallback на InvalidOperationException (Zero Regression).
-                throw new InvalidOperationException(string.IsNullOrWhiteSpace(result.Error) ? result.Output.Trim() : result.Error.Trim());
+                var fallbackEx = new InvalidOperationException(string.IsNullOrWhiteSpace(result.Error) ? result.Output.Trim() : result.Error.Trim());
+                LiaEvents.Track(_telemetry, "RunInstallerScript", "Failed", scriptSw.ElapsedMilliseconds, fallbackEx,
+                    orchestrationPhase: "UnknownExitCode");
+                if (_telemetry is not null)
+                    await _telemetry.FlushAsync(TimeSpan.FromSeconds(5), cancellationToken).ConfigureAwait(false);
+                throw fallbackEx;
             }
+
+            LiaEvents.Track(_telemetry, "RunInstallerScript", "Succeeded", scriptSw.ElapsedMilliseconds);
         }
 
         private static string GetInstallerType(string installerPath)
@@ -272,6 +337,11 @@ namespace SCLOCVerse.Services.LiaServices
                 $installerPath = '{{escapedInstallerPath}}'
                 $certificatePath = '{{escapedCertificatePath}}'
 
+                # installerType обчислюємо раніше, щоб forensic CertificateImport catch
+                # міг включити його в structured JSON (інакше $null на момент помилки імпорту).
+                $extension = [System.IO.Path]::GetExtension($installerPath).ToLowerInvariant()
+                $installerType = if ($extension -eq '.appinstaller') { 'AppInstaller' } elseif ($extension -eq '.msix' -or $extension -eq '.msixbundle') { 'MSIX' } elseif ($extension -eq '.msi') { 'MSI' } elseif ($extension -eq '.exe') { 'EXE' } else { 'Unknown' }
+
                 Write-Output "LIA installer path: $installerPath"
                 Write-Output "LIA certificate path: $certificatePath"
                 Write-Output "Certificate file exists: $(Test-Path -LiteralPath $certificatePath)"
@@ -281,12 +351,27 @@ namespace SCLOCVerse.Services.LiaServices
                         Import-Certificate -FilePath $certificatePath -CertStoreLocation Cert:\CurrentUser\TrustedPeople | Out-Null
                         Write-Output "Certificate imported successfully."
                     } catch {
-                        throw "Failed to import L.I.A certificate: $($_.Exception.Message)"
+                        # Forensic-контракт фази CertificateImport — дзеркально до AddAppxPackage catch.
+                        # phase='CertificateImport' дозволяє ErrorContextExtractor встановити точне
+                        # місце обриву в detail.phase (більше не "десь у PowerShell").
+                        $certHr = '0x{0:X8}' -f $_.Exception.HResult
+                        $certSubject = ''
+                        $certThumb = ''
+                        try {
+                            $cert = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2($certificatePath)
+                            $certSubject = $cert.Subject
+                            $certThumb = $cert.Thumbprint
+                        } catch {}
+                        $activityId = ''
+                        try { $activityId = [System.Guid]::NewGuid().ToString() } catch {}
+                        $certForensic = @{ hresult = $certHr; phase = 'CertificateImport'; message = $_.Exception.Message; installerType = $installerType; certificatePresent = $true; certificateSubject = $certSubject; certificateThumbprint = $certThumb; activityId = $activityId }
+                        $certForensicJson = $certForensic | ConvertTo-Json -Compress -Depth 3
+                        Write-Output '##SCLOC_FORENSIC##'
+                        Write-Output $certForensicJson
+                        throw "Failed to import L.I.A certificate (HRESULT: $certHr): $($_.Exception.Message)"
                     }
                 }
 
-                $extension = [System.IO.Path]::GetExtension($installerPath).ToLowerInvariant()
-                $installerType = if ($extension -eq '.appinstaller') { 'AppInstaller' } elseif ($extension -eq '.msix' -or $extension -eq '.msixbundle') { 'MSIX' } elseif ($extension -eq '.msi') { 'MSI' } elseif ($extension -eq '.exe') { 'EXE' } else { 'Unknown' }
                 try {
                     if ($extension -eq '.appinstaller') {
                         Add-AppxPackage -AppInstallerFile $installerPath
