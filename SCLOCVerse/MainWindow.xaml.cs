@@ -563,15 +563,23 @@ namespace SCLOCVerse
         }
 
         /// <summary>
-        /// Системне закриття (Alt+F4, Taskbar → Close, Application.Shutdown):
-        /// повний вихід із застосунку. Перехоплення OnClosing НЕ потрібне —
-        /// будь-який виклик Window.Close() трактується як повний вихід.
-        /// Виняток — X-кнопка, яка викликає MinimizeToTray() безпосередньо
-        /// і не проходить через OnClosing як закриття.
+        /// Системне закриття (Alt+F4, Taskbar → Close, tray "Вийти"):
+        /// повний вихід із застосунку.
+        ///
+        /// Критична деталь: ShutdownMode = OnExplicitShutdown (App.xaml.cs:81),
+        /// тож стандартне закриття вікна НЕ гасить процес автоматично.
+        /// Тому тут, у OnClosed, викликається явний Application.Shutdown().
+        ///
+        /// X-кнопка НЕ проходить через OnClosed — вона викликає MinimizeToTray() →
+        /// Hide(), а Hide() не піднімає Closing/Closed події. Тому трей-режим
+        /// (процес живий прихованим) продовжує працювати коректно.
         /// </summary>
-        protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
+        protected override void OnClosed(EventArgs e)
         {
-            base.OnClosing(e);
+            base.OnClosed(e);
+            // Явне завершення застосунку. Запускає App.OnExit → CompositionRoot.Dispose
+            // (reverse-order: telemetry, tray, background monitor, overlay, hangar, auth).
+            Application.Current.Shutdown();
         }
 
         /// <summary>Tray: показати вікно та активувати його.</summary>
@@ -596,10 +604,9 @@ namespace SCLOCVerse
         /// <summary>Tray: повний вихід із застосунку через tray-меню "Вийти".</summary>
         private void Tray_ExitRequested(object? sender, EventArgs e)
         {
-            // Явно закриваємо головне вікно — це запускає стандартний шлях
-            // WPF-завершення (Closed → App.OnExit → CompositionRoot.Dispose).
+            // Close() запускає OnClosed, який викликає Application.Shutdown().
+            // Подвійний Shutdown() тут не потрібен.
             Close();
-            Application.Current.Shutdown();
         }
 
         private void Account_Click(object sender, RoutedEventArgs e)
