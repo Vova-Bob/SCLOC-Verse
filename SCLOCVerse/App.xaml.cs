@@ -6,6 +6,8 @@ using System;
 using System.Reflection;
 using System.Windows;
 
+using CommunityToolkit.WinUI.Notifications;
+
 namespace SCLOCVerse
 {
     /// <summary>
@@ -33,6 +35,18 @@ namespace SCLOCVerse
             MigrateSettingsIfNeeded();
 
             _compositionRoot = new AppCompositionRoot();
+
+            // Toast Activation — точка маршрутизації всіх системних подій.
+            // App.xaml — природне місце для маршрутизації (як Startup/Exit/SessionEnding).
+            // Toast клік → універсальний ShowMainWindow (не прив'язаний до джерела).
+            ToastNotificationManagerCompat.OnActivated += toastArgs =>
+            {
+                // Маршалінг у UI-потік: OnActivated може викликатись з фонового потоку.
+                Dispatcher.Invoke(() =>
+                {
+                    _compositionRoot?.ApplicationInstance.ShowMainWindow();
+                });
+            };
 
             // Single Instance: перевірка й IPC-активація.
             // Перший процес — продовжує запуск UI + піднімає pipe-сервер.

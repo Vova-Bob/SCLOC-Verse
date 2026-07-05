@@ -44,5 +44,13 @@ namespace SCLOCVerse.Interfaces
         /// Подія маршалінгується в потік, що викликав StartServerAsync (UI-потік).
         /// </summary>
         event EventHandler<InstanceCommand>? CommandReceived;
+
+        /// <summary>
+        /// Активувати головне вікно поточного процесу (внутрішня активація, без IPC).
+        /// Універсальний метод — не прив'язаний до джерела події. Використовується
+        /// для будь-якої системної події, що потребує показати вікно:
+        /// Toast Activation, URL Handler, Protocol, Session events тощо.
+        /// </summary>
+        void ShowMainWindow();
     }
 }

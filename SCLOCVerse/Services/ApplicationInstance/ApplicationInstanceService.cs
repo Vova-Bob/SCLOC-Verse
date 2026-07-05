@@ -47,6 +47,17 @@ namespace SCLOCVerse.Services.ApplicationInstance
 
         public event EventHandler<InstanceCommand>? CommandReceived;
 
+        /// <summary>
+        /// Активувати головне вікно поточного процесу. Універсальний метод — не знає
+        /// про джерело події (Toast / URL / Tray через інший маршрут). Використовує
+        /// вже існуючий маршрут CommandReceived з Kind=Show, що його обробляє
+        /// MainWindow (Dispatcher.BeginInvoke(Show + Activate)).
+        /// </summary>
+        public void ShowMainWindow()
+        {
+            CommandReceived?.Invoke(this, new InstanceCommand { Kind = InstanceCommandKind.Show });
+        }
+
         public Task StartServerAsync(CancellationToken cancellationToken = default)
         {
             if (!_isFirstInstance)

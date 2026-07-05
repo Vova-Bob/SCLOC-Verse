@@ -10,6 +10,7 @@ using SCLOCVerse.Services.HangarTimer;
 using SCLOCVerse.Services.InputSystem;
 using SCLOCVerse.Services.LiaServices;
 using SCLOCVerse.Services.LocalizationServices;
+using SCLOCVerse.Services.Notifications;
 using SCLOCVerse.Services.Observability;
 using SCLOCVerse.Services.Tray;
 using SCLOCVerse.ViewModels;
@@ -48,6 +49,7 @@ namespace SCLOCVerse.Composition
         private readonly ITrayService _trayService;
         private readonly IApplicationInstanceService _applicationInstanceService;
         private readonly IAutostartService _autostartService;
+        private readonly IToastNotificationService _toastNotificationService;
 
         public AppCompositionRoot()
         {
@@ -106,9 +108,14 @@ namespace SCLOCVerse.Composition
             _trayService = new TrayService();
 
             // Autostart-сервіс керує HKCU Run-ключем. Без стану (не тримає
-            // дескрипторів), dispose не потрібен. UI-чекбックス буде підключений
+            // дескрипторів), dispose не потрібен. UI-чекбокс буде підключений
             // на Етапі D (Settings).
             _autostartService = new AutostartService();
+
+            // OS Toast-сервіс для Windows Notification Center. Окремий від in-app
+            // IToastService. Без стану — dispose не потрібен. Підключається до
+            // оркестратора на Етапах E/F.
+            _toastNotificationService = new ToastNotificationService();
 
             _updateDownloader = new UpdateDownloader(httpClient, _telemetryClient);
             _updateInstaller = new UpdateInstaller(new UpdateScriptBuilder(), _telemetryClient);
@@ -174,6 +181,9 @@ namespace SCLOCVerse.Composition
 
         /// <summary>Сервіс автозапуску з Windows (HKCU Run-ключ).</summary>
         public IAutostartService Autostart => _autostartService;
+
+        /// <summary>Сервіс OS-сповіщень (Notification Center).</summary>
+        public IToastNotificationService ToastNotifications => _toastNotificationService;
 
         public IHangarTimerService HangarTimerService => _hangarTimerService;
         public IHotkeyService HotkeyService => _hotkeyService;
