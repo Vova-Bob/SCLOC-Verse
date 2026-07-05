@@ -55,8 +55,6 @@ namespace SCLOCVerse
         private IHotkeyMessageSource? _hotkeyMessageSource;
         private bool _showGameFolderToast = true;
         private DateTime? _suppressStartupUpdateCheckUntil;
-        /// <summary>Прапець явного виходу: знімає перехоплення OnClosing у tray-режимі.</summary>
-        private bool _isExiting;
         private EnvironmentSelector EnvSelector => CanvasLocalization.EnvironmentSelector;
         private Button BtnInstall => CanvasLocalization.InstallButton;
         private Button BtnLocalisationDelete => CanvasLocalization.DeleteButton;
@@ -545,29 +543,34 @@ namespace SCLOCVerse
         private void Minimize_Click(object sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;
 
         /// <summary>
-        /// Кнопка закриття в tray-режимі ховає вікно замість завершення процесу.
-        /// Повний вихід — через tray-меню "Вийти". На Етапі D буде керуватися
-        /// прапцем MinimizeToTray з Settings.
+        /// Кнопка X у title bar: згортає в трей (не завершує процес).
+        /// Tray-persistent модель (Discord/Telegram): вікно зникає, програма
+        /// продовжує фонову роботу (автооновлення локалізації, тости, автозапуск).
+        /// Повний вихід — лише через Alt+F4 або tray-меню "Вийти".
+        /// На Етапі D поведінка керуватиметься прапцем MinimizeToTray з Settings.
         /// </summary>
         private void Close_Click(object sender, RoutedEventArgs e)
+        {
+            MinimizeToTray();
+        }
+
+        /// <summary>
+        /// Приховує вікно в системний трей. Не завершує процес.
+        /// </summary>
+        private void MinimizeToTray()
         {
             Hide();
         }
 
         /// <summary>
-        /// Перехоплення системного закриття (Alt+F4, X у title bar):
-        /// у tray-режимі ховаємо вікно, а не гасимо процес.
-        /// Прапець _isExiting знімає перехоплення під час явного виходу (tray "Вийти").
+        /// Системне закриття (Alt+F4, Taskbar → Close, Application.Shutdown):
+        /// повний вихід із застосунку. Перехоплення OnClosing НЕ потрібне —
+        /// будь-який виклик Window.Close() трактується як повний вихід.
+        /// Виняток — X-кнопка, яка викликає MinimizeToTray() безпосередньо
+        /// і не проходить через OnClosing як закриття.
         /// </summary>
         protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
         {
-            if (_trayService.IsInitialized && !_isExiting)
-            {
-                e.Cancel = true;
-                Hide();
-                return;
-            }
-
             base.OnClosing(e);
         }
 
@@ -593,9 +596,6 @@ namespace SCLOCVerse
         /// <summary>Tray: повний вихід із застосунку через tray-меню "Вийти".</summary>
         private void Tray_ExitRequested(object? sender, EventArgs e)
         {
-            // Знімаємо перехоплення OnClosing, щоб Shutdown() реально завершив процес,
-            // а не знову приховав вікно в трей.
-            _isExiting = true;
             // Явно закриваємо головне вікно — це запускає стандартний шлях
             // WPF-завершення (Closed → App.OnExit → CompositionRoot.Dispose).
             Close();
