@@ -596,6 +596,9 @@ namespace SCLOCVerse
             // Знімаємо перехоплення OnClosing, щоб Shutdown() реально завершив процес,
             // а не знову приховав вікно в трей.
             _isExiting = true;
+            // Явно закриваємо головне вікно — це запускає стандартний шлях
+            // WPF-завершення (Closed → App.OnExit → CompositionRoot.Dispose).
+            Close();
             Application.Current.Shutdown();
         }
 

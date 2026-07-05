@@ -1,13 +1,14 @@
-﻿using H.NotifyIcon;
+using H.NotifyIcon;
 using SCLOCVerse.Interfaces;
-using System.IO;
+using System.Diagnostics;
 using System.Windows;
+using System.Windows.Controls;
 
 namespace SCLOCVerse.Services.Tray
 {
     /// <summary>
     /// Реалізація системного трея на базі H.NotifyIcon.TaskbarIcon.
-    /// Іконка використовує app_icon.ico як Resource (вже підключений у .csproj).
+    /// Іконка завантажується з WPF Resource (pack URI) — app_icon.ico.
     /// Усі події маршалінгуються в UI-потік через Application.Current.Dispatcher.
     /// </summary>
     public class TrayService : ITrayService
@@ -30,42 +31,64 @@ namespace SCLOCVerse.Services.Tray
             _taskbarIcon = new TaskbarIcon
             {
                 ToolTipText = "SCLOC-Verse",
-                IconSource = LoadIconSource()
+                Icon = LoadIcon()
             };
 
             _taskbarIcon.TrayMouseDoubleClick += (s, e) => Raise(ShowRequested);
             _taskbarIcon.ContextMenu = BuildContextMenu();
+
+            // Критично для програмного створення: без XAML-дерева TaskbarIcon не додає
+            // іконку в системний трей автоматично. ForceCreate примусово реєструє її
+            // в tray area оболонки Windows. Без цього виклику трей залишається порожнім.
+            // enablesEfficiencyMode: false — уникаємо конфліктів з WPF-диспетчером.
+            _taskbarIcon.ForceCreate(enablesEfficiencyMode: false);
+            Trace.WriteLine("[TrayService] TaskbarIcon created and ForceCreate called.");
         }
 
         /// <summary>
-        /// Завантажує іконку з-packaged resource.
-        /// app_icon.ico підключений як Resource у .csproj.
+        /// Завантажує іконку з WPF Resource (app_icon.ico підключений як Resource у .csproj).
+        /// Pack URI використовує GetResourceStream — це стандартний WPF-спосіб для Resource-файлів.
         /// </summary>
-        private static System.Windows.Media.ImageSource LoadIconSource()
+        private static System.Drawing.Icon LoadIcon()
         {
-            // Pack URI для ресурсу збірки.
-            var uri = new Uri("pack://application:,,,/app_icon.ico", UriKind.Absolute);
-            return System.Windows.Media.Imaging.BitmapFrame.Create(uri);
+            try
+            {
+                var uri = new Uri("pack://application:,,,/app_icon.ico", UriKind.Absolute);
+                var resourceInfo = Application.GetResourceStream(uri);
+                if (resourceInfo == null)
+                {
+                    Trace.WriteLine("[TrayService] app_icon.ico resource not found, fallback to default icon.");
+                    return System.Drawing.SystemIcons.Application;
+                }
+
+                using var stream = resourceInfo.Stream;
+                return new System.Drawing.Icon(stream);
+            }
+            catch (Exception ex)
+            {
+                Trace.WriteLine($"[TrayService] Icon load failed: {ex.Message}. Fallback to default icon.");
+                return System.Drawing.SystemIcons.Application;
+            }
         }
 
         /// <summary>
         /// Будує контекстне меню трея: "Показати", "Перевірити оновлення", "Вийти".
         /// </summary>
-        private System.Windows.Controls.ContextMenu BuildContextMenu()
+        private ContextMenu BuildContextMenu()
         {
-            var menu = new System.Windows.Controls.ContextMenu();
+            var menu = new ContextMenu();
 
-            var showItem = new System.Windows.Controls.MenuItem { Header = "Показати" };
+            var showItem = new MenuItem { Header = "Показати" };
             showItem.Click += (s, e) => Raise(ShowRequested);
             menu.Items.Add(showItem);
 
-            var checkItem = new System.Windows.Controls.MenuItem { Header = "Перевірити оновлення" };
+            var checkItem = new MenuItem { Header = "Перевірити оновлення" };
             checkItem.Click += (s, e) => Raise(CheckUpdatesRequested);
             menu.Items.Add(checkItem);
 
-            menu.Items.Add(new System.Windows.Controls.Separator());
+            menu.Items.Add(new Separator());
 
-            var exitItem = new System.Windows.Controls.MenuItem { Header = "Вийти" };
+            var exitItem = new MenuItem { Header = "Вийти" };
             exitItem.Click += (s, e) => Raise(ExitRequested);
             menu.Items.Add(exitItem);
 
@@ -108,3 +131,4 @@ namespace SCLOCVerse.Services.Tray
         }
     }
 }
+
