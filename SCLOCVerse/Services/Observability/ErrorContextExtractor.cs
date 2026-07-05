@@ -168,7 +168,7 @@ namespace SCLOCVerse.Services.Observability
         };
 
         // Для LiaInstallException: переносить forensic-властивості (PowerShell-phase, cert,
-        // activity_id, exit_code) у detail + встановлює signal_name через HResultCatalog.
+        // activity_id, appx_log) у detail + встановлює signal_name через HResultCatalog.
         private static void ApplyLiaForensic(TelemetryContext ctx, Exception ex)
         {
             if (ex is not LiaInstallException lia)
@@ -191,6 +191,12 @@ namespace SCLOCVerse.Services.Observability
                 ctx.Detail["certificate_thumbprint"] = lia.CertificateThumbprint;
             if (!string.IsNullOrEmpty(lia.ActivityId))
                 ctx.Detail["activity_id"] = lia.ActivityId;
+
+            // AppX Event Viewer dump — розгорнутий stack deployment-помилки. Локалізаційно-незалежний
+            // на рівні кодів подій (EventID). Дозволяє Control Center діагностувати навіть якщо
+            // $_.Exception.Message пошкоджено mojibake через OEM-кодування консолі.
+            if (!string.IsNullOrEmpty(lia.AppxLog))
+                ctx.Detail["appx_log"] = lia.AppxLog;
 
             // Структуроване символьне імʼя (не текстовий аналіз) → detail.signal_name.
             var symbol = HResultCatalog.ResolveSymbol(lia.Hresult);

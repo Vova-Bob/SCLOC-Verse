@@ -6,6 +6,12 @@ namespace SCLOCVerse.Models.LiaModels
     /// Структурований forensic-контракт між PowerShell-інсталятором L.I.A та C#
     /// (контрольований JSON-протокол за маркером ##SCLOC_FORENSIC##, не аналіз тексту).
     /// </summary>
+    /// <remarks>
+    /// Стаття 18 — Structured Forensics. Усі діагностично-значущі поля передаються як
+    /// іменовані ключі JSON, а не як текст повідомлення. Це дозволяє Control Center
+    /// працювати незалежно від локалізації Windows (HRESULT 0x800B0109 однаково
+    /// інтерпретується на укр/рос/англ системах).
+    /// </remarks>
     public sealed class LiaForensic
     {
         [JsonProperty("hresult")]
@@ -29,8 +35,19 @@ namespace SCLOCVerse.Models.LiaModels
         [JsonProperty("certificateThumbprint")]
         public string? CertificateThumbprint { get; set; }
 
+        /// <summary>
+        /// Реальний ActivityId від AppX Deployment API (System.Exception.Activity),
+        /// НЕ синтетичний NewGuid. Дозволяє корелювати з Get-AppxLog.
+        /// </summary>
         [JsonProperty("activityId")]
         public string? ActivityId { get; set; }
+
+        /// <summary>
+        /// Стислий дамп Get-AppxLog -ActivityId (Event Viewer records). Містить
+        /// розгорнутий stack deployment-помилки, недоступний у $_.Exception.Message.
+        /// </summary>
+        [JsonProperty("appxLog")]
+        public string? AppxLog { get; set; }
 
         /// <summary>Сирий JSON-рядок (для ForensicJson у винятку).</summary>
         [JsonIgnore]

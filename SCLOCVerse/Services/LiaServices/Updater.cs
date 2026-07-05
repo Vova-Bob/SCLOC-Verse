@@ -362,9 +362,14 @@ namespace SCLOCVerse.Services.LiaServices
                             $certSubject = $cert.Subject
                             $certThumb = $cert.Thumbprint
                         } catch {}
-                        $activityId = ''
-                        try { $activityId = [System.Guid]::NewGuid().ToString() } catch {}
-                        $certForensic = @{ hresult = $certHr; phase = 'CertificateImport'; message = $_.Exception.Message; installerType = $installerType; certificatePresent = $true; certificateSubject = $certSubject; certificateThumbprint = $certThumb; activityId = $activityId }
+
+                        # Import-Certificate НЕ створює AppX Activity, але $activityId залишаємо
+                        # порожнім (структурна симетрія з AddAppxPackage forensic). appxLog теж
+                        # порожній — для cert-import це несемантично.
+                        $certActivityId = ''
+                        $certAppxLog = ''
+
+                        $certForensic = @{ hresult = $certHr; phase = 'CertificateImport'; message = $_.Exception.Message; installerType = $installerType; certificatePresent = $true; certificateSubject = $certSubject; certificateThumbprint = $certThumb; activityId = $certActivityId; appxLog = $certAppxLog }
                         $certForensicJson = $certForensic | ConvertTo-Json -Compress -Depth 3
                         Write-Output '##SCLOC_FORENSIC##'
                         Write-Output $certForensicJson
@@ -394,9 +399,32 @@ namespace SCLOCVerse.Services.LiaServices
                             $certThumb = $cert.Thumbprint
                         } catch {}
                     }
+
+                    # Реальний ActivityId від AppX Deployment API (System.Exception.Activity).
+                    # Раніше генерувався NewGuid — НЕВОЗМОЖНО було корелювати з Get-AppxLog.
+                    # AppX deployment exceptions носять Activity як властивість типу System.Guid,
+                    # іноді через InnerException.Activity. Null-safe reflection-chain.
                     $activityId = ''
-                    try { $activityId = [System.Guid]::NewGuid().ToString() } catch {}
-                    $forensic = @{ hresult = $hresult; phase = 'AddAppxPackage'; message = $_.Exception.Message; installerType = $installerType; certificatePresent = $certPresent; certificateSubject = $certSubject; certificateThumbprint = $certThumb; activityId = $activityId }
+                    try {
+                        if ($_.Exception.Activity) { $activityId = $_.Exception.Activity.ToString() }
+                        elseif ($_.Exception.InnerException -and $_.Exception.InnerException.Activity) {
+                            $activityId = $_.Exception.InnerException.Activity.ToString()
+                        }
+                    } catch {}
+
+                    # Get-AppxLog повертає розгорнутий Event Viewer dump для цього ActivityId —
+                    # stack deployment-помилки, недоступний у $_.Exception.Message. Цей текст
+                    # локалізаційно-незалежний на рівні HRESULT-кодів, тож Control Center може
+                    # діагностувати навіть якщо PowerShell message пошкоджено mojibake.
+                    $appxLog = ''
+                    if ($activityId) {
+                        try {
+                            $appxLog = ((Get-AppxLog -ActivityId $activityId -ErrorAction SilentlyContinue) | Out-String)
+                            if ($appxLog) { $appxLog = $appxLog.Trim() }
+                        } catch {}
+                    }
+
+                    $forensic = @{ hresult = $hresult; phase = 'AddAppxPackage'; message = $_.Exception.Message; installerType = $installerType; certificatePresent = $certPresent; certificateSubject = $certSubject; certificateThumbprint = $certThumb; activityId = $activityId; appxLog = $appxLog }
                     $forensicJson = $forensic | ConvertTo-Json -Compress -Depth 3
                     Write-Output '##SCLOC_FORENSIC##'
                     Write-Output $forensicJson

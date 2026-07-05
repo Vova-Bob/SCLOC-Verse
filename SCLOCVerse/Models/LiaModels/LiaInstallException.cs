@@ -11,6 +11,7 @@ namespace SCLOCVerse.Models.LiaModels
         public string? Hresult { get; }
         public string? Phase { get; }
         public string? ActivityId { get; }
+        public string? AppxLog { get; }
         public int ExitCode { get; }
         public string? InstallerType { get; }
         public bool? CertificatePresent { get; }
@@ -24,6 +25,7 @@ namespace SCLOCVerse.Models.LiaModels
             Hresult = forensic.Hresult;
             Phase = forensic.Phase;
             ActivityId = forensic.ActivityId;
+            AppxLog = forensic.AppxLog;
             ExitCode = exitCode;
             InstallerType = forensic.InstallerType;
             CertificatePresent = forensic.CertificatePresent;
