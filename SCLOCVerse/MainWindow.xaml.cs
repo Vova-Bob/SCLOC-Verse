@@ -54,9 +54,15 @@ namespace SCLOCVerse
         private readonly ITrayService _trayService;
         private readonly IApplicationInstanceService _applicationInstanceService;
         private readonly IAutostartService _autostartService;
+        private readonly IUiInteractionPolicy _uiPolicy;
         private IHotkeyMessageSource? _hotkeyMessageSource;
         private bool _showGameFolderToast = true;
         private DateTime? _suppressStartupUpdateCheckUntil;
+        /// <summary>
+        /// Прапець ідемпотентного запуску інтерактивного старту UI.
+        /// Перший показ вікна (Tray/IPC) запускає CompleteInteractiveStartupAsync один раз.
+        /// </summary>
+        private bool _interactiveStartupCompleted;
         private EnvironmentSelector EnvSelector => CanvasLocalization.EnvironmentSelector;
         private Button BtnInstall => CanvasLocalization.InstallButton;
         private Button BtnLocalisationDelete => CanvasLocalization.DeleteButton;
@@ -82,7 +88,7 @@ namespace SCLOCVerse
         private readonly UpdateCheckerService _updateCheckerService;
         private readonly CleanupController _cacheCleanupController;
 
-        public MainWindow(MainWindowViewModel viewModel, IWindowHelper windowHelper, ILocalizationInstaller localizationInstaller, IReadmeService readmeService,     IUpdater updater, UpdateCheckerService updateCheckerService, IApplicationUpdateService applicationUpdateService, IBackgroundUpdateMonitor backgroundUpdateMonitor, IUpdateChannelService updateChannelService, IApplicationVersionProvider applicationVersionProvider, IUpdateDownloader updateDownloader, IUpdateInstaller updateInstaller, IUpdateHistoryService updateHistoryService, IUpdateVerifier updateVerifier, IGitHubReleaseClient gitHubReleaseClient, IDialogService dialogService, IAuthService authService, IAuthStatusProvider authStatusProvider, IHangarTimerService hangarTimerService, IHotkeyService hotkeyService, ITrayService trayService, IApplicationInstanceService applicationInstanceService, IAutostartService autostartService)
+        public MainWindow(MainWindowViewModel viewModel, IWindowHelper windowHelper, ILocalizationInstaller localizationInstaller, IReadmeService readmeService,     IUpdater updater, UpdateCheckerService updateCheckerService, IApplicationUpdateService applicationUpdateService, IBackgroundUpdateMonitor backgroundUpdateMonitor, IUpdateChannelService updateChannelService, IApplicationVersionProvider applicationVersionProvider, IUpdateDownloader updateDownloader, IUpdateInstaller updateInstaller, IUpdateHistoryService updateHistoryService, IUpdateVerifier updateVerifier, IGitHubReleaseClient gitHubReleaseClient, IDialogService dialogService, IAuthService authService, IAuthStatusProvider authStatusProvider, IHangarTimerService hangarTimerService, IHotkeyService hotkeyService, ITrayService trayService, IApplicationInstanceService applicationInstanceService, IAutostartService autostartService, IUiInteractionPolicy uiPolicy)
         {
             InitializeComponent();
 
@@ -109,6 +115,7 @@ namespace SCLOCVerse
             _trayService = trayService;
             _applicationInstanceService = applicationInstanceService;
             _autostartService = autostartService;
+            _uiPolicy = uiPolicy;
 
             _toastService = new ToastService(AppToast.ToastBorder, AppToast.ToastText);
             _linkService = new LinkService(_toastService);
@@ -203,6 +210,8 @@ namespace SCLOCVerse
                     WindowState = WindowState.Normal;
                     Activate();
                     Focus();
+                    // Перший показ вікна запускає відкладені промпти (якщо ще не виконувались).
+                    _ = EnsureInteractiveUiInitializedAsync();
                 }
             }));
         }
@@ -238,10 +247,45 @@ namespace SCLOCVerse
 
             InitializeUpdateChannel();
 
+            // Стартові промпти — залежно від політики взаємодії з UI.
+            // При --minimized (BackgroundUiPolicy) відкладаються до моменту
+            // першого показу вікна користувачем (EnsureInteractiveUiInitializedAsync).
+            if (_uiPolicy.CanShowStartupPrompts)
+            {
+                _ = EnsureInteractiveUiInitializedAsync();
+            }
+        }
+
+        /// <summary>
+        /// Єдина точка запуску інтерактивного старту UI. Ідемпотентна.
+        /// Викликається:
+        ///   - з MainWindow_Loaded, якщо політика дозволяє стартові промпти;
+        ///   - з точок першого показу вікна (Tray_ShowRequested, IPC Show),
+        ///     якщо раніше не виконувався (--minimized старт).
+        /// </summary>
+        private async Task EnsureInteractiveUiInitializedAsync()
+        {
+            // Non-reentrant guard: встановлюємо синхронно до будь-якого await,
+            // щоб паралельні виклики з Tray та IPC не запустили промпти двічі.
+            if (_interactiveStartupCompleted)
+                return;
+            _interactiveStartupCompleted = true;
+
+            await CompleteInteractiveStartupAsync().ConfigureAwait(true);
+        }
+
+        /// <summary>
+        /// Завершення інтерактивного старту: стартові тости, промпт кешу шейдерів,
+        /// перевірка оновлень. Назва універсальна — сюди з часом можуть потрапити
+        /// Welcome Wizard, What's New, Tips, Migration Dialog тощо.
+        /// </summary>
+        private async Task CompleteInteractiveStartupAsync()
+        {
             _ = ShowStartupToastsAsync();
             _ = _cacheCleanupController.RunStartupPromptAsync(CancellationToken.None);
 
             _ = RunStartupUpdateCheckAsync();
+            await Task.CompletedTask;
         }
 
         private bool _isInitializingUpdateChannel;
@@ -617,6 +661,8 @@ namespace SCLOCVerse
             WindowState = WindowState.Normal;
             Activate();
             Focus();
+            // Перший показ вікна запускає відкладені промпти (якщо ще не виконувались).
+            _ = EnsureInteractiveUiInitializedAsync();
         }
 
         /// <summary>Tray: ініціювати ручну перевірку оновлень застосунку.</summary>
@@ -626,6 +672,8 @@ namespace SCLOCVerse
             Show();
             WindowState = WindowState.Normal;
             Activate();
+            // Перший показ вікна запускає відкладені промпти (якщо ще не виконувались).
+            _ = EnsureInteractiveUiInitializedAsync();
             _ = RunManualUpdateCheckAsync(forceRefresh: true);
         }
 

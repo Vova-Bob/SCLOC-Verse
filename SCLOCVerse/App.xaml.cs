@@ -1,5 +1,7 @@
 ﻿using SCLOCVerse.Composition;
+using SCLOCVerse.Interfaces;
 using SCLOCVerse.Models.ApplicationInstance;
+using SCLOCVerse.Services.UiPolicy;
 using System;
 using System.Reflection;
 using System.Windows;
@@ -52,7 +54,14 @@ namespace SCLOCVerse
             // буферується й відправляється після авторизації.
             _compositionRoot.Telemetry.Track("Application", "Start", "Started");
 
-            var window = _compositionRoot.CreateMainWindow();
+            // Політика взаємодії з UI: визначає, які UI-елементи дозволені.
+            // --minimized → BackgroundUiPolicy (модальні діалоги/стартові промпти заборонені,
+            // бо підняли б приховане вікно з трея). Інакше — InteractiveUiPolicy.
+            IUiInteractionPolicy uiPolicy = startMinimized
+                ? new BackgroundUiPolicy()
+                : new InteractiveUiPolicy();
+
+            var window = _compositionRoot.CreateMainWindow(uiPolicy);
             MainWindow = window;
 
             // Tray-режим: закриття головного вікна ховає його у трей, а не гасить

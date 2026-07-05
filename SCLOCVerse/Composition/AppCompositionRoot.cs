@@ -181,7 +181,7 @@ namespace SCLOCVerse.Composition
         /// <summary>Tray-сервіс для зовнішнього використання (наприклад, App_OnExit).</summary>
         public ITrayService TrayService => _trayService;
 
-        public MainWindow CreateMainWindow()
+        public MainWindow CreateMainWindow(IUiInteractionPolicy uiPolicy)
         {
             var searchFolder = new SearchFolder(_folderSearchService, _settingsService);
             var viewModel = new MainWindowViewModel(searchFolder, _settingsService);
@@ -213,7 +213,8 @@ namespace SCLOCVerse.Composition
                 _hotkeyService,
                 _trayService,
                 _applicationInstanceService,
-                _autostartService);
+                _autostartService,
+                uiPolicy);
         }
 
         private static string GetSupabaseUrl()
