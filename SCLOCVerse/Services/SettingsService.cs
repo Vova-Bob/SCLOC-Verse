@@ -4,7 +4,7 @@ using System.IO;
 
 namespace SCLOCVerse.Services
 {
-    public class SettingsService : ISettingsService, IUpdateChannelService
+    public class SettingsService : ISettingsService, IUpdateChannelService, IPreferencesService
     {
         public void ClearGameFolder()
         {
@@ -61,6 +61,74 @@ namespace SCLOCVerse.Services
 
             setter(normalized);
             return true;
+        }
+
+        // ===== IPreferencesService =====
+
+        public bool GetMinimizeToTray()
+        {
+            return Settings.Default.MinimizeToTray;
+        }
+
+        public void SetMinimizeToTray(bool value)
+        {
+            Settings.Default.MinimizeToTray = value;
+            Settings.Default.Save();
+        }
+
+        public bool GetAutoUpdateLocalization()
+        {
+            return Settings.Default.AutoUpdateLocalization;
+        }
+
+        public void SetAutoUpdateLocalization(bool value)
+        {
+            Settings.Default.AutoUpdateLocalization = value;
+            Settings.Default.Save();
+        }
+
+        public string GetLastLocalizationToast()
+        {
+            return Settings.Default.LastLocalizationToast ?? string.Empty;
+        }
+
+        public void SetLastLocalizationToast(string version)
+        {
+            Settings.Default.LastLocalizationToast = version ?? string.Empty;
+            Settings.Default.Save();
+        }
+
+        public string GetLastLiaToast()
+        {
+            return Settings.Default.LastLiaToast ?? string.Empty;
+        }
+
+        public void SetLastLiaToast(string version)
+        {
+            Settings.Default.LastLiaToast = version ?? string.Empty;
+            Settings.Default.Save();
+        }
+
+        public string GetLastAppToast()
+        {
+            return Settings.Default.LastAppToast ?? string.Empty;
+        }
+
+        public void SetLastAppToast(string version)
+        {
+            Settings.Default.LastAppToast = version ?? string.Empty;
+            Settings.Default.Save();
+        }
+
+        public string GetLastToastTimestampUtc()
+        {
+            return Settings.Default.LastToastTimestampUtc ?? string.Empty;
+        }
+
+        public void SetLastToastTimestampUtc(string timestamp)
+        {
+            Settings.Default.LastToastTimestampUtc = timestamp ?? string.Empty;
+            Settings.Default.Save();
         }
     }
 }

@@ -25,6 +25,7 @@ namespace SCLOCVerse.Composition
         private readonly IIgnoreRulesProvider _ignoreRulesProvider;
         private readonly IFolderSearchService _folderSearchService;
         private readonly ISettingsService _settingsService;
+        private readonly IPreferencesService _preferencesService;
         private readonly IUpdater _updater;
         private readonly UpdateCheckerService _updateCheckerService;
         private readonly IApplicationVersionProvider _applicationVersionProvider;
@@ -61,6 +62,9 @@ namespace SCLOCVerse.Composition
             _ignoreRulesProvider = new IgnoreRulesProvider();
             _folderSearchService = new FolderSearchService(_ignoreRulesProvider);
             _settingsService = new SettingsService();
+            // SettingsService реалізує ISettingsService + IUpdateChannelService + IPreferencesService
+            // через один об'єкт (Варіант A) — єдиний клас над %LocalAppData%\SCLOCVerse\user.config.
+            _preferencesService = (IPreferencesService)_settingsService;
 
             // SCLOC Observability Platform — конструюється найраніше (без Supabase-клієнта),
             // щоб інжектитись у всі сервіси оновлення та auth, включно з L.I.A.-Updater.
@@ -185,6 +189,9 @@ namespace SCLOCVerse.Composition
         /// <summary>Сервіс OS-сповіщень (Notification Center).</summary>
         public IToastNotificationService ToastNotifications => _toastNotificationService;
 
+        /// <summary>Налаштування-переваги користувача (MinimizeToTray, AutoUpdate, Toast Dedup).</summary>
+        public IPreferencesService Preferences => _preferencesService;
+
         public IHangarTimerService HangarTimerService => _hangarTimerService;
         public IHotkeyService HotkeyService => _hotkeyService;
 
@@ -224,7 +231,8 @@ namespace SCLOCVerse.Composition
                 _trayService,
                 _applicationInstanceService,
                 _autostartService,
-                uiPolicy);
+                uiPolicy,
+                _preferencesService);
         }
 
         private static string GetSupabaseUrl()

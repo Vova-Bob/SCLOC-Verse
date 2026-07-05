@@ -24,5 +24,11 @@ namespace SCLOCVerse.Controls
         public ComboBox UpdateChannelSelector => UpdateChannelComboBox;
 
         public Button UpdateHistoryButtonControl => UpdateHistoryButton;
+
+        public CheckBox RunAtStartupCheckBoxControl => RunAtStartupCheckBox;
+
+        public CheckBox MinimizeToTrayCheckBoxControl => MinimizeToTrayCheckBox;
+
+        public CheckBox AutoUpdateLocalizationCheckBoxControl => AutoUpdateLocalizationCheckBox;
     }
 }

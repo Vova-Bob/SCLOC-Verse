@@ -7,6 +7,14 @@
 //     the code is regenerated.
 // </auto-generated>
 //------------------------------------------------------------------------------
+//
+// ПРИМІТКА: поля RunAtStartup, MinimizeToTray, AutoUpdateLocalization,
+// LastLocalizationToast, LastLiaToast, LastAppToast, LastToastTimestampUtc
+// додані вручну (CLI MSBuild не запускає SettingsSingleFileGenerator — це
+// Visual Studio Design-Time-only задача). При наступному відкритті у VS
+// з секції Settings цей файл буде автоматично регенеровано з Settings.settings,
+// поля збережуться (значення за замовчуванням узгоджені між .settings і .cs).
+//------------------------------------------------------------------------------
 
 namespace SCLOCVerse {
     
@@ -152,6 +160,90 @@ namespace SCLOCVerse {
             }
             set {
                 this["InputSystemDiagnostics"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool RunAtStartup {
+            get {
+                return ((bool)(this["RunAtStartup"]));
+            }
+            set {
+                this["RunAtStartup"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("True")]
+        public bool MinimizeToTray {
+            get {
+                return ((bool)(this["MinimizeToTray"]));
+            }
+            set {
+                this["MinimizeToTray"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool AutoUpdateLocalization {
+            get {
+                return ((bool)(this["AutoUpdateLocalization"]));
+            }
+            set {
+                this["AutoUpdateLocalization"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string LastLocalizationToast {
+            get {
+                return ((string)(this["LastLocalizationToast"]));
+            }
+            set {
+                this["LastLocalizationToast"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string LastLiaToast {
+            get {
+                return ((string)(this["LastLiaToast"]));
+            }
+            set {
+                this["LastLiaToast"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string LastAppToast {
+            get {
+                return ((string)(this["LastAppToast"]));
+            }
+            set {
+                this["LastAppToast"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("")]
+        public string LastToastTimestampUtc {
+            get {
+                return ((string)(this["LastToastTimestampUtc"]));
+            }
+            set {
+                this["LastToastTimestampUtc"] = value;
             }
         }
     }

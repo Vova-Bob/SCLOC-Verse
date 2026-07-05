@@ -390,6 +390,58 @@
             </Setter>
         </Style>
 
+        <!-- Стиль для CheckBox налаштувань -->
+        <Style x:Key="SettingCheckBox" TargetType="{x:Type CheckBox}">
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontFamily" Value="Segoe UI"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="Margin" Value="0,8,0,0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="{x:Type CheckBox}">
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <!-- Коробка чекбокса -->
+                            <Border x:Name="Box"
+                                    Width="20" Height="20"
+                                    CornerRadius="4"
+                                    BorderThickness="2"
+                                    BorderBrush="#4AA3D8"
+                                    Background="#0C1A2A"
+                                    VerticalAlignment="Center"/>
+                            <!-- Відмітка (галочка) -->
+                            <TextBlock x:Name="Check"
+                                       Text="✓"
+                                       FontSize="16"
+                                       FontWeight="Bold"
+                                       Foreground="White"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"
+                                       Margin="-20,0,0,0"
+                                       Width="20" Height="20"
+                                       TextAlignment="Center"
+                                       Opacity="0"/>
+                            <!-- Текст -->
+                            <ContentPresenter VerticalAlignment="Center" Margin="10,0,0,0"/>
+                        </StackPanel>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True">
+                                <Setter TargetName="Box" Property="Background" Value="#2478A9"/>
+                                <Setter TargetName="Check" Property="Opacity" Value="1"/>
+                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Box" Property="BorderBrush" Value="#8DD0FF"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.55"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
     </Canvas.Resources>
 
     <!-- Заголовок -->
@@ -465,6 +517,35 @@
             Canvas.Top="502"
             Width="170"
             Height="28"/>
+
+    <!-- ============== БЛОК "ПОВЕДІНКА" ============== -->
+
+    <!-- Заголовок блоку -->
+    <TextBlock Canvas.Left="70" Canvas.Top="555"
+               Text="Поведінка:"
+               Foreground="White"
+               FontSize="14"
+               FontWeight="Bold"/>
+
+    <!-- Чекбокс: Запускати з Windows -->
+    <CheckBox x:Name="RunAtStartupCheckBox"
+              Style="{StaticResource SettingCheckBox}"
+              Content="Запускати з Windows"
+              Canvas.Left="70" Canvas.Top="580"/>
+
+    <!-- Чекбокс: Згортати в трей -->
+    <CheckBox x:Name="MinimizeToTrayCheckBox"
+              Style="{StaticResource SettingCheckBox}"
+              Content="Згортати в трей при закритті"
+              Canvas.Left="320" Canvas.Top="580"/>
+
+    <!-- ============== БЛОК "ОНОВЛЕННЯ ЛОКАЛІЗАЦІЇ" ============== -->
+
+    <!-- Чекбокс: Автоматично оновлювати локалізацію -->
+    <CheckBox x:Name="AutoUpdateLocalizationCheckBox"
+              Style="{StaticResource SettingCheckBox}"
+              Content="Автоматично оновлювати локалізацію"
+              Canvas.Left="70" Canvas.Top="615"/>
 
     <!-- README блок -->
     <Border Canvas.Left="70" Canvas.Top="220"

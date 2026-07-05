@@ -55,6 +55,7 @@ namespace SCLOCVerse
         private readonly IApplicationInstanceService _applicationInstanceService;
         private readonly IAutostartService _autostartService;
         private readonly IUiInteractionPolicy _uiPolicy;
+        private readonly IPreferencesService _preferencesService;
         private IHotkeyMessageSource? _hotkeyMessageSource;
         private bool _showGameFolderToast = true;
         private DateTime? _suppressStartupUpdateCheckUntil;
@@ -88,7 +89,7 @@ namespace SCLOCVerse
         private readonly UpdateCheckerService _updateCheckerService;
         private readonly CleanupController _cacheCleanupController;
 
-        public MainWindow(MainWindowViewModel viewModel, IWindowHelper windowHelper, ILocalizationInstaller localizationInstaller, IReadmeService readmeService,     IUpdater updater, UpdateCheckerService updateCheckerService, IApplicationUpdateService applicationUpdateService, IBackgroundUpdateMonitor backgroundUpdateMonitor, IUpdateChannelService updateChannelService, IApplicationVersionProvider applicationVersionProvider, IUpdateDownloader updateDownloader, IUpdateInstaller updateInstaller, IUpdateHistoryService updateHistoryService, IUpdateVerifier updateVerifier, IGitHubReleaseClient gitHubReleaseClient, IDialogService dialogService, IAuthService authService, IAuthStatusProvider authStatusProvider, IHangarTimerService hangarTimerService, IHotkeyService hotkeyService, ITrayService trayService, IApplicationInstanceService applicationInstanceService, IAutostartService autostartService, IUiInteractionPolicy uiPolicy)
+        public MainWindow(MainWindowViewModel viewModel, IWindowHelper windowHelper, ILocalizationInstaller localizationInstaller, IReadmeService readmeService,     IUpdater updater, UpdateCheckerService updateCheckerService, IApplicationUpdateService applicationUpdateService, IBackgroundUpdateMonitor backgroundUpdateMonitor, IUpdateChannelService updateChannelService, IApplicationVersionProvider applicationVersionProvider, IUpdateDownloader updateDownloader, IUpdateInstaller updateInstaller, IUpdateHistoryService updateHistoryService, IUpdateVerifier updateVerifier, IGitHubReleaseClient gitHubReleaseClient, IDialogService dialogService, IAuthService authService, IAuthStatusProvider authStatusProvider, IHangarTimerService hangarTimerService, IHotkeyService hotkeyService, ITrayService trayService, IApplicationInstanceService applicationInstanceService, IAutostartService autostartService, IUiInteractionPolicy uiPolicy, IPreferencesService preferencesService)
         {
             InitializeComponent();
 
@@ -116,6 +117,7 @@ namespace SCLOCVerse
             _applicationInstanceService = applicationInstanceService;
             _autostartService = autostartService;
             _uiPolicy = uiPolicy;
+            _preferencesService = preferencesService;
 
             _toastService = new ToastService(AppToast.ToastBorder, AppToast.ToastText);
             _linkService = new LinkService(_toastService);
@@ -159,6 +161,15 @@ namespace SCLOCVerse
             };
             CanvasSettings.UpdateChannelSelector.SelectionChanged += UpdateChannelSelector_SelectionChanged;
             CanvasSettings.UpdateHistoryButtonControl.Click += UpdateHistoryButton_Click;
+
+            // Підписка на чекбокси налаштувань (Етап D).
+            // RunAtStartup синхронізується з реєстром (джерело істини), а не з Settings.
+            CanvasSettings.RunAtStartupCheckBoxControl.Checked += RunAtStartupCheckBox_Changed;
+            CanvasSettings.RunAtStartupCheckBoxControl.Unchecked += RunAtStartupCheckBox_Changed;
+            CanvasSettings.MinimizeToTrayCheckBoxControl.Checked += MinimizeToTrayCheckBox_Changed;
+            CanvasSettings.MinimizeToTrayCheckBoxControl.Unchecked += MinimizeToTrayCheckBox_Changed;
+            CanvasSettings.AutoUpdateLocalizationCheckBoxControl.Checked += AutoUpdateLocalizationCheckBox_Changed;
+            CanvasSettings.AutoUpdateLocalizationCheckBoxControl.Unchecked += AutoUpdateLocalizationCheckBox_Changed;
 
             Loaded += MainWindow_Loaded;
             _authService.StatusChanged += OnAuthStatusChanged;
@@ -246,6 +257,7 @@ namespace SCLOCVerse
             await Task.WhenAll(tasks).ConfigureAwait(true);
 
             InitializeUpdateChannel();
+            InitializePreferenceCheckBoxes();
 
             // Стартові промпти — залежно від політики взаємодії з UI.
             // При --minimized (BackgroundUiPolicy) відкладаються до моменту
@@ -316,6 +328,73 @@ namespace SCLOCVerse
             {
                 _isInitializingUpdateChannel = false;
             }
+        }
+
+        /// <summary>
+        /// Прапець, що блокує підняття подій Checked/Unchecked під час програмної
+        /// синхронізації стану чекбоксів (патерн як _isInitializingUpdateChannel).
+        /// </summary>
+        private bool _isInitializingPreferences;
+
+        /// <summary>
+        /// Синхронізує стан чекбоксів налаштувань зі джерелами істини:
+        ///   - RunAtStartup       ← IAutostartService.IsEnabled() (реєстр)
+        ///   - MinimizeToTray     ← IPreferencesService.GetMinimizeToTray()
+        ///   - AutoUpdateLoc      ← IPreferencesService.GetAutoUpdateLocalization()
+        /// </summary>
+        private void InitializePreferenceCheckBoxes()
+        {
+            _isInitializingPreferences = true;
+            try
+            {
+                // RunAtStartup: джерело істини — реєстр (можна змінити через Task Manager).
+                CanvasSettings.RunAtStartupCheckBoxControl.IsChecked = _autostartService.IsEnabled();
+                CanvasSettings.MinimizeToTrayCheckBoxControl.IsChecked = _preferencesService.GetMinimizeToTray();
+                CanvasSettings.AutoUpdateLocalizationCheckBoxControl.IsChecked = _preferencesService.GetAutoUpdateLocalization();
+            }
+            finally
+            {
+                _isInitializingPreferences = false;
+            }
+        }
+
+        private void RunAtStartupCheckBox_Changed(object sender, RoutedEventArgs e)
+        {
+            if (_isInitializingPreferences)
+                return;
+
+            var isChecked = CanvasSettings.RunAtStartupCheckBoxControl.IsChecked == true;
+            try
+            {
+                if (isChecked)
+                    _autostartService.Enable();
+                else
+                    _autostartService.Disable();
+            }
+            catch (Exception ex)
+            {
+                // Реєстр недоступний — відкочуємо стан чекбокса до фактичного.
+                System.Diagnostics.Debug.WriteLine($"[RunAtStartup] {ex.Message}");
+                _isInitializingPreferences = true;
+                CanvasSettings.RunAtStartupCheckBoxControl.IsChecked = _autostartService.IsEnabled();
+                _isInitializingPreferences = false;
+            }
+        }
+
+        private void MinimizeToTrayCheckBox_Changed(object sender, RoutedEventArgs e)
+        {
+            if (_isInitializingPreferences)
+                return;
+
+            _preferencesService.SetMinimizeToTray(CanvasSettings.MinimizeToTrayCheckBoxControl.IsChecked == true);
+        }
+
+        private void AutoUpdateLocalizationCheckBox_Changed(object sender, RoutedEventArgs e)
+        {
+            if (_isInitializingPreferences)
+                return;
+
+            _preferencesService.SetAutoUpdateLocalization(CanvasSettings.AutoUpdateLocalizationCheckBoxControl.IsChecked == true);
         }
 
         private async Task RunManualUpdateCheckAsync(bool forceRefresh = false)
@@ -615,15 +694,28 @@ namespace SCLOCVerse
         private void Minimize_Click(object sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;
 
         /// <summary>
-        /// Кнопка X у title bar: згортає в трей (не завершує процес).
-        /// Tray-persistent модель (Discord/Telegram): вікно зникає, програма
-        /// продовжує фонову роботу (автооновлення локалізації, тости, автозапуск).
-        /// Повний вихід — лише через Alt+F4 або tray-меню "Вийти".
-        /// На Етапі D поведінка керуватиметься прапцем MinimizeToTray з Settings.
+        /// Кнопка X у title bar. Єдина політика закриття (правка #5): перевіряє
+        /// MinimizeToTray через IPreferencesService.
+        ///   MinimizeToTray=true  → MinimizeToTray() (Hide у трей)
+        ///   MinimizeToTray=false → Close() → OnClosed → Shutdown (повний вихід)
         /// </summary>
         private void Close_Click(object sender, RoutedEventArgs e)
         {
-            MinimizeToTray();
+            HandleCloseRequested();
+        }
+
+        /// <summary>
+        /// Єдина точка прийняття рішення про закриття. Викликається з:
+        ///   - Close_Click (X-кнопка)
+        ///   - OnClosing (Alt+F4, Taskbar → Close)
+        /// Гарантує однакову поведінку для всіх способів закриття.
+        /// </summary>
+        private void HandleCloseRequested()
+        {
+            if (_preferencesService.GetMinimizeToTray())
+                MinimizeToTray();
+            else
+                Close();
         }
 
         /// <summary>
@@ -635,16 +727,41 @@ namespace SCLOCVerse
         }
 
         /// <summary>
-        /// Системне закриття (Alt+F4, Taskbar → Close, tray "Вийти"):
-        /// повний вихід із застосунку.
+        /// Системне закриття (Alt+F4, Taskbar → Close).
+        /// Єдина політика: якщо MinimizeToTray=true — відміняємо закриття й ховаємо в трей.
+        /// Інакше — передаємо стандартному WPF-шляху → OnClosed → Shutdown.
         ///
-        /// Критична деталь: ShutdownMode = OnExplicitShutdown (App.xaml.cs:81),
+        /// Tray-меню "Вийти" обходить це: там встановлюється явний виклик Close()
+        /// через інший шлях (через _isExiting — прибрано в SessionFix, перевіряємо
+        /// через прапець _forceExit).
+        /// </summary>
+        private bool _forceExit;
+
+        protected override void OnClosing(System.ComponentModel.CancelEventArgs e)
+        {
+            if (_forceExit)
+            {
+                // Явний вихід через tray "Вийти" — стандартний шлях закриття.
+                base.OnClosing(e);
+                return;
+            }
+
+            if (_preferencesService.GetMinimizeToTray())
+            {
+                // Згортаємо в трей замість виходу.
+                e.Cancel = true;
+                MinimizeToTray();
+                return;
+            }
+
+            base.OnClosing(e);
+        }
+
+        /// <summary>
+        /// OnClosed — остання точка перед знищенням вікна.
+        /// Критична деталь: ShutdownMode = OnExplicitShutdown (App.xaml.cs),
         /// тож стандартне закриття вікна НЕ гасить процес автоматично.
         /// Тому тут, у OnClosed, викликається явний Application.Shutdown().
-        ///
-        /// X-кнопка НЕ проходить через OnClosed — вона викликає MinimizeToTray() →
-        /// Hide(), а Hide() не піднімає Closing/Closed події. Тому трей-режим
-        /// (процес живий прихованим) продовжує працювати коректно.
         /// </summary>
         protected override void OnClosed(EventArgs e)
         {
@@ -680,8 +797,9 @@ namespace SCLOCVerse
         /// <summary>Tray: повний вихід із застосунку через tray-меню "Вийти".</summary>
         private void Tray_ExitRequested(object? sender, EventArgs e)
         {
-            // Close() запускає OnClosed, який викликає Application.Shutdown().
-            // Подвійний Shutdown() тут не потрібен.
+            // Прапець _forceExit знімає перехоплення OnClosing, щоб Close()
+            // реально завершив процес (а не згорнув у трей за MinimizeToTray).
+            _forceExit = true;
             Close();
         }
 
