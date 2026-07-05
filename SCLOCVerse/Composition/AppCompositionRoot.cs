@@ -4,6 +4,7 @@ using SCLOCVerse.Models.Observability;
 using SCLOCVerse.Services;
 using SCLOCVerse.Services.ApplicationInstance;
 using SCLOCVerse.Services.ApplicationUpdate;
+using SCLOCVerse.Services.Autostart;
 using SCLOCVerse.Services.Common;
 using SCLOCVerse.Services.HangarTimer;
 using SCLOCVerse.Services.InputSystem;
@@ -46,6 +47,7 @@ namespace SCLOCVerse.Composition
         private readonly IHangarTimerService _hangarTimerService;
         private readonly ITrayService _trayService;
         private readonly IApplicationInstanceService _applicationInstanceService;
+        private readonly IAutostartService _autostartService;
 
         public AppCompositionRoot()
         {
@@ -100,8 +102,13 @@ namespace SCLOCVerse.Composition
             _backgroundUpdateMonitor = new BackgroundUpdateMonitor(_applicationUpdateService);
 
             // Tray-сервіс інкапсулює H.NotifyIcon.TaskbarIcon. Ініціалізується
-            // пізніше (Mainlop), коли UI-диспетчер уже готовий.
+            // пізніше (Mainlop), коли UI-диспетчер вже готовий.
             _trayService = new TrayService();
+
+            // Autostart-сервіс керує HKCU Run-ключем. Без стану (не тримає
+            // дескрипторів), dispose не потрібен. UI-чекбックス буде підключений
+            // на Етапі D (Settings).
+            _autostartService = new AutostartService();
 
             _updateDownloader = new UpdateDownloader(httpClient, _telemetryClient);
             _updateInstaller = new UpdateInstaller(new UpdateScriptBuilder(), _telemetryClient);
@@ -165,6 +172,9 @@ namespace SCLOCVerse.Composition
         /// <summary>Сервіс єдиного екземпляра + IPC активації.</summary>
         public IApplicationInstanceService ApplicationInstance => _applicationInstanceService;
 
+        /// <summary>Сервіс автозапуску з Windows (HKCU Run-ключ).</summary>
+        public IAutostartService Autostart => _autostartService;
+
         public IHangarTimerService HangarTimerService => _hangarTimerService;
         public IHotkeyService HotkeyService => _hotkeyService;
 
@@ -202,7 +212,8 @@ namespace SCLOCVerse.Composition
                 _hangarTimerService,
                 _hotkeyService,
                 _trayService,
-                _applicationInstanceService);
+                _applicationInstanceService,
+                _autostartService);
         }
 
         private static string GetSupabaseUrl()
