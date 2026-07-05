@@ -1,10 +1,7 @@
 ﻿using SCLOCVerse.Composition;
-using SCLOCVerse.Controls.Dialogs;
-using SCLOCVerse.Services.ApplicationUpdate;
+using SCLOCVerse.Models.ApplicationInstance;
 using System;
-using System.Diagnostics;
 using System.Reflection;
-using System.Threading;
 using System.Windows;
 
 namespace SCLOCVerse
@@ -14,8 +11,6 @@ namespace SCLOCVerse
     /// </summary>
     public partial class App : Application
     {
-        private static Mutex? _singleInstanceMutex;
-        private const string SingleInstanceMutexName = "SCLOCVerse_SingleInstanceMutex";
         private AppCompositionRoot? _compositionRoot;
 
         /// <summary>
@@ -24,7 +19,7 @@ namespace SCLOCVerse
         /// </summary>
         private const string MinimizedArg = "--minimized";
 
-        protected override void OnStartup(StartupEventArgs e)
+        protected override async void OnStartup(StartupEventArgs e)
         {
             base.OnStartup(e);
 
@@ -32,41 +27,25 @@ namespace SCLOCVerse
             var startMinimized = Array.Exists(e.Args ?? Array.Empty<string>(),
                 a => string.Equals(a, MinimizedArg, StringComparison.OrdinalIgnoreCase));
 
-            // Перевірка single instance через локальний Mutex.
-            bool createdNew;
-            try
-            {
-                _singleInstanceMutex = new Mutex(true, SingleInstanceMutexName, out createdNew);
-            }
-            catch (AbandonedMutexException)
-            {
-                // Попередній екземпляр аварійно завершився, mutex звільнено.
-                // Поточний процес стає першим екземпляром.
-                createdNew = true;
-                _singleInstanceMutex = new Mutex(true, SingleInstanceMutexName, out _);
-            }
-
-            if (!createdNew)
-            {
-                _singleInstanceMutex.Dispose();
-                _singleInstanceMutex = null;
-
-                BaseDialog.Show(new DialogOptions
-                {
-                    Type = DialogType.Info,
-                    Title = "SCLOC-Verse",
-                    Message = "Програма вже запущена. Ви можете мати лише один активний екземпляр.",
-                    Buttons = MessageBoxButton.OK
-                });
-
-                Shutdown();
-                return;
-            }
-
             // Автоматична міграція User Settings після оновлення версії.
             MigrateSettingsIfNeeded();
 
             _compositionRoot = new AppCompositionRoot();
+
+            // Single Instance: перевірка й IPC-активація.
+            // Перший процес — продовжує запуск UI + піднімає pipe-сервер.
+            // Другий процес  — передає команду Show першому й тихо завершується.
+            if (!_compositionRoot.ApplicationInstance.IsFirstInstance)
+            {
+                await _compositionRoot.ApplicationInstance
+                    .SignalExistingInstanceAsync(new InstanceCommand { Kind = InstanceCommandKind.Show })
+                    .ConfigureAwait(true);
+
+                // Звільняємо ресурси другого процесу перед виходом.
+                _compositionRoot.Dispose();
+                Shutdown();
+                return;
+            }
 
             // SCLOC Observability Platform — фіксуємо запуск (Slice 1).
             // Не блокує, не кидає (Конституція, Стаття 1/3). Pre-auth подія
@@ -90,6 +69,10 @@ namespace SCLOCVerse
             {
                 window.Show();
             }
+
+            // Перший процес піднімає pipe-сервер для прийому команд від повторних
+            // запусків. Подія CommandReceived підключається в MainWindow.
+            await _compositionRoot.ApplicationInstance.StartServerAsync().ConfigureAwait(true);
         }
 
         private static void MigrateSettingsIfNeeded()
@@ -132,8 +115,10 @@ namespace SCLOCVerse
         protected override void OnExit(ExitEventArgs e)
         {
             // Спочатку звільняємо всі фонові ресурси: таймери, HttpListener,
-            // Supabase refresh timer тощо. Інакше Dispatcher залишиться живим
-            // і OnExit зависне на мережевих викликах.
+            // Supabase refresh timer, pipe-сервер єдиного екземпляра тощо.
+            // Інакше Dispatcher залишиться живим і OnExit зависне на мережевих
+            // викликах. CompositionRoot.Dispose прибирає й Mutex/Pipe через
+            // ApplicationInstanceService (reverse-order).
             try
             {
                 _compositionRoot?.Dispose();
@@ -143,16 +128,6 @@ namespace SCLOCVerse
                 // Не блокуємо вихід при помилках dispose.
             }
 
-            try
-            {
-                _singleInstanceMutex?.ReleaseMutex();
-            }
-            catch
-            {
-                // Ігноруємо помилки при звільненні mutex.
-            }
-
-            _singleInstanceMutex?.Dispose();
             base.OnExit(e);
         }
     }

@@ -52,6 +52,7 @@ namespace SCLOCVerse
         private readonly IHangarTimerService _hangarTimerService;
         private readonly IHotkeyService _hotkeyService;
         private readonly ITrayService _trayService;
+        private readonly IApplicationInstanceService _applicationInstanceService;
         private IHotkeyMessageSource? _hotkeyMessageSource;
         private bool _showGameFolderToast = true;
         private DateTime? _suppressStartupUpdateCheckUntil;
@@ -80,7 +81,7 @@ namespace SCLOCVerse
         private readonly UpdateCheckerService _updateCheckerService;
         private readonly CleanupController _cacheCleanupController;
 
-        public MainWindow(MainWindowViewModel viewModel, IWindowHelper windowHelper, ILocalizationInstaller localizationInstaller, IReadmeService readmeService,     IUpdater updater, UpdateCheckerService updateCheckerService, IApplicationUpdateService applicationUpdateService, IBackgroundUpdateMonitor backgroundUpdateMonitor, IUpdateChannelService updateChannelService, IApplicationVersionProvider applicationVersionProvider, IUpdateDownloader updateDownloader, IUpdateInstaller updateInstaller, IUpdateHistoryService updateHistoryService, IUpdateVerifier updateVerifier, IGitHubReleaseClient gitHubReleaseClient, IDialogService dialogService, IAuthService authService, IAuthStatusProvider authStatusProvider, IHangarTimerService hangarTimerService, IHotkeyService hotkeyService, ITrayService trayService)
+        public MainWindow(MainWindowViewModel viewModel, IWindowHelper windowHelper, ILocalizationInstaller localizationInstaller, IReadmeService readmeService,     IUpdater updater, UpdateCheckerService updateCheckerService, IApplicationUpdateService applicationUpdateService, IBackgroundUpdateMonitor backgroundUpdateMonitor, IUpdateChannelService updateChannelService, IApplicationVersionProvider applicationVersionProvider, IUpdateDownloader updateDownloader, IUpdateInstaller updateInstaller, IUpdateHistoryService updateHistoryService, IUpdateVerifier updateVerifier, IGitHubReleaseClient gitHubReleaseClient, IDialogService dialogService, IAuthService authService, IAuthStatusProvider authStatusProvider, IHangarTimerService hangarTimerService, IHotkeyService hotkeyService, ITrayService trayService, IApplicationInstanceService applicationInstanceService)
         {
             InitializeComponent();
 
@@ -105,6 +106,7 @@ namespace SCLOCVerse
             _hangarTimerService = hangarTimerService;
             _hotkeyService = hotkeyService;
             _trayService = trayService;
+            _applicationInstanceService = applicationInstanceService;
 
             _toastService = new ToastService(AppToast.ToastBorder, AppToast.ToastText);
             _linkService = new LinkService(_toastService);
@@ -177,6 +179,30 @@ namespace SCLOCVerse
             _trayService.ShowRequested += Tray_ShowRequested;
             _trayService.CheckUpdatesRequested += Tray_CheckUpdatesRequested;
             _trayService.ExitRequested += Tray_ExitRequested;
+
+            // Single Instance IPC: повторний запуск застосунку передає команду
+            // через Named Pipe. Підписуємось на CommandReceived, щоб показати
+            // вікно, коли користувач запускає другий екземпляр. Маршалінг у
+            // UI-потік — через Dispatcher, бо подія приходить з pipe-сервера.
+            _applicationInstanceService.CommandReceived += ApplicationInstance_CommandReceived;
+        }
+
+        /// <summary>
+        /// Обробник IPC-команд від повторних запусків.
+        /// </summary>
+        private void ApplicationInstance_CommandReceived(object? sender, Models.ApplicationInstance.InstanceCommand command)
+        {
+            // Команда приходить з фонового потоку pipe-сервера — маршалінг у UI.
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                if (command.Kind == Models.ApplicationInstance.InstanceCommandKind.Show)
+                {
+                    Show();
+                    WindowState = WindowState.Normal;
+                    Activate();
+                    Focus();
+                }
+            }));
         }
 
         private async void MainWindow_Loaded(object sender, RoutedEventArgs e)

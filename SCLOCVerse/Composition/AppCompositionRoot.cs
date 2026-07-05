@@ -2,6 +2,7 @@ using SCLOCVerse.Helpers;
 using SCLOCVerse.Interfaces;
 using SCLOCVerse.Models.Observability;
 using SCLOCVerse.Services;
+using SCLOCVerse.Services.ApplicationInstance;
 using SCLOCVerse.Services.ApplicationUpdate;
 using SCLOCVerse.Services.Common;
 using SCLOCVerse.Services.HangarTimer;
@@ -44,9 +45,15 @@ namespace SCLOCVerse.Composition
         private readonly IHotkeyService _hotkeyService;
         private readonly IHangarTimerService _hangarTimerService;
         private readonly ITrayService _trayService;
+        private readonly IApplicationInstanceService _applicationInstanceService;
 
         public AppCompositionRoot()
         {
+            // Single Instance + IPC: створюється найпершим, бо визначає,
+            // чи цей процес — перший (IsFirstInstance), від чого залежить
+            // подальший сценарій (старт UI vs IPC-сигнал + вихід).
+            _applicationInstanceService = new ApplicationInstanceService();
+
             _ignoreRulesProvider = new IgnoreRulesProvider();
             _folderSearchService = new FolderSearchService(_ignoreRulesProvider);
             _settingsService = new SettingsService();
@@ -119,6 +126,17 @@ namespace SCLOCVerse.Composition
             // тож глушимо до dispose auth-композиції (reverse-order).
             try { _telemetryClient?.Dispose(); } catch { /* ignore */ }
 
+            // Pipe-сервер єдиного екземпляра зупиняємо раніше за UI-ресурси:
+            // інакше другий процес може підключитись у момент, коли UI вже
+            // диспознуто, і отримати некоректну відповідь. IAsyncDisposable →
+            // блокуємо через GetAwaiter().GetResult() у sync-Dispose.
+            try
+            {
+                if (_applicationInstanceService is IAsyncDisposable asyncDisposable)
+                    asyncDisposable.DisposeAsync().AsTask().GetAwaiter().GetResult();
+            }
+            catch { /* ignore */ }
+
             // Tray-іконку прибираємо раніше за інших UI-ресурсів, щоб під час
             // завершення не залишалася фантомна іконка в системному треї.
             try { _trayService?.Dispose(); } catch { /* ignore */ }
@@ -143,6 +161,9 @@ namespace SCLOCVerse.Composition
 
         /// <summary>Єдина точка спостережуваності (Конституція, Стаття 7/12).</summary>
         public ITelemetryService Telemetry => _telemetryClient;
+
+        /// <summary>Сервіс єдиного екземпляра + IPC активації.</summary>
+        public IApplicationInstanceService ApplicationInstance => _applicationInstanceService;
 
         public IHangarTimerService HangarTimerService => _hangarTimerService;
         public IHotkeyService HotkeyService => _hotkeyService;
@@ -180,7 +201,8 @@ namespace SCLOCVerse.Composition
                 _authCompositionRoot.AuthStatusProvider,
                 _hangarTimerService,
                 _hotkeyService,
-                _trayService);
+                _trayService,
+                _applicationInstanceService);
         }
 
         private static string GetSupabaseUrl()
