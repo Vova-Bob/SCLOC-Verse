@@ -371,8 +371,14 @@ namespace SCLOCVerse.Services.LiaServices
 
                 if ($certificatePath -and (Test-Path -LiteralPath $certificatePath)) {
                     try {
-                        Import-Certificate -FilePath $certificatePath -CertStoreLocation Cert:\CurrentUser\TrustedPeople | Out-Null
-                        Write-Output "Certificate imported successfully."
+                        # Commit 3: cert import переведено на LocalMachine\Root + LocalMachine\TrustedPeople
+                        # (еквівалент BAT автора: certutil -addstore -f Root + certutil -addstore -f TrustedPeople).
+                        # AppX deployment trust verification перевіряє лише LocalMachine store (Microsoft docs),
+                        # тому CurrentUser\TrustedPeople був недостатнім → 0x800B0109.
+                        # Вимагає elevation (requireElevation=true в RunInstallerScriptAsync, Commit 2).
+                        Import-Certificate -FilePath $certificatePath -CertStoreLocation Cert:\LocalMachine\Root | Out-Null
+                        Import-Certificate -FilePath $certificatePath -CertStoreLocation Cert:\LocalMachine\TrustedPeople | Out-Null
+                        Write-Output "Certificate imported to LocalMachine\Root and LocalMachine\TrustedPeople."
                     } catch {
                         # Forensic-контракт фази CertificateImport — дзеркально до AddAppxPackage catch.
                         # phase='CertificateImport' дозволяє ErrorContextExtractor встановити точне
