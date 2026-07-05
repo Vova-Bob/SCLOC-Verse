@@ -89,6 +89,19 @@ namespace SCLOCVerse.Services.Observability
             {
                 Debug.WriteLine($"[Telemetry] Загальна помилка FlushAsync: {ex.Message}");
             }
+            finally
+            {
+                // P0: обовʼязковий Release семафора. Без нього будь-який вихід із критичної
+                // секції (ранній return при null CurrentUser / порожній черзі / exception)
+                // залишав _flushLock захопленим назавжди — усі наступні flush (Timer-tick,
+                // FlushAsync з catch, Dispose flush) блокувались на WaitAsync() і ніколи
+                // не відправляли events. Це пояснювало повну відсутність Failed-подій
+                // у всій історії БД: будь-яка помилка виникала вже після першого flush,
+                // який глухо блокував pipeline. CLR гарантує виконання finally навіть
+                // при return/throw — тому ранні return залишаються як є.
+                try { _flushLock.Release(); }
+                catch { /* Семфор вже відпущено — безпечно ігноруємо (Стаття 1). */ }
+            }
         }
 
         // Унікальне порушення client_event_id (Postgres 23505 / HTTP 409).
