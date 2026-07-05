@@ -412,7 +412,26 @@ namespace SCLOCVerse.Services.LiaServices
         {
             Directory.CreateDirectory(AppSettings.UpdatesDirectory);
             var scriptPath = Path.Combine(AppSettings.UpdatesDirectory, $"lia-{Guid.NewGuid():N}.ps1");
-            await File.WriteAllTextAsync(scriptPath, script, new UTF8Encoding(false), cancellationToken).ConfigureAwait(false);
+
+            // UNICODE-цілісність PowerShell output (Стаття 17 — Verbatim Diagnostics).
+            //
+            // PowerShell 5.1 без консолі (CreateNoWindow=true + RedirectStandardOutput=true)
+            // за замовчуванням серіалізує stdout/stderr через OEM code page системи — на укр/рос
+            // Windows це CP1251 або CP866. Клієнт читає з Encoding.UTF8 (StandardOutputEncoding),
+            // тож кирилиця перетворюється на невалідні байти → заміна на U+FFFD ('?') →
+            // користувач бачить «HRESULT 0x80131500. ���� ࠠࠢ뢠���...» замість оригінального
+            // локалізованого повідомлення Add-AppxPackage / Import-Certificate.
+            //
+            // Override [Console]::OutputEncoding + $OutputEncoding на початку скрипта
+            // зобов'язує PowerShell писати UTF-8 у pipe. Один fix у RunPowerShellAsync покриває
+            // всі 3 caller'и: BuildInstallerScript, UninstallAsync, GetInstalledVersionAsync.
+            const string EncodingPreamble = """
+                [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+                $OutputEncoding = [System.Text.Encoding]::UTF8
+                """;
+            var fullScript = EncodingPreamble + "\n" + script;
+
+            await File.WriteAllTextAsync(scriptPath, fullScript, new UTF8Encoding(false), cancellationToken).ConfigureAwait(false);
 
             try
             {
