@@ -45,6 +45,23 @@ namespace SCLOCVerse.Services.Common
             }
         }
 
+        // TODO(architecture): список середовищ дублюється у Controls/EnvironmentSelector.xaml.cs.
+        // Свідомо не винесено в спільне місце, щоб не створювати новий файл і не тягнути
+        // залежність шару Services від шару Controls. Винести при появі третього місця використання.
+        private static readonly string[] GameEnvironments = { "LIVE", "PTU", "EPTU", "HOTFIX" };
+
+        // Папка StarCitizen вважається справжнім коренем гри лише за наявності хоча б одного середовища.
+        // Без цієї перевірки будь-яка папка з іменем StarCitizen (бэкап, dev-копія тощо) визнавалася б грою.
+        private static bool IsValidGameRoot(string root)
+        {
+            foreach (var env in GameEnvironments)
+            {
+                if (Directory.Exists(Path.Combine(root, env)))
+                    return true;
+            }
+            return false;
+        }
+
         private string? DepthFirstSearch(string root, string targetFolder, int maxDepth, int currentDepth, CancellationToken token)
         {
             if (currentDepth > maxDepth || token.IsCancellationRequested)
@@ -52,8 +69,11 @@ namespace SCLOCVerse.Services.Common
 
             try
             {
-                if (Path.GetFileName(root).Equals(targetFolder, StringComparison.OrdinalIgnoreCase))
+                if (Path.GetFileName(root).Equals(targetFolder, StringComparison.OrdinalIgnoreCase)
+                    && IsValidGameRoot(root))
+                {
                     return root;
+                }
 
                 foreach (var dir in Directory.EnumerateDirectories(root))
                 {
