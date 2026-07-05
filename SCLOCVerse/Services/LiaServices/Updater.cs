@@ -454,15 +454,13 @@ namespace SCLOCVerse.Services.LiaServices
             // користувач бачить «HRESULT 0x80131500. ���� ࠠࠢ뢠���...» замість оригінального
             // локалізованого повідомлення Add-AppxPackage / Import-Certificate.
             //
-            // Override [Console]::OutputEncoding + [Console]::ErrorEncoding + $OutputEncoding
-            // на початку скрипта зобов'язує PowerShell писати UTF-8 у pipe. ErrorEncoding додано
-            // для elevated-режиму, де wrapper читає stderr дочірнього процесу через .NET Process
-            // з StandardErrorEncoding=UTF8 (нульова регресія для non-elevated, де StandardErrorEncoding
-            // в StartInfo вже UTF8). Один fix у RunPowerShellAsync покриває всі caller'и:
-            // BuildInstallerScript, UninstallAsync, GetInstalledVersionAsync.
+            // Override [Console]::OutputEncoding + $OutputEncoding на початку скрипта
+            // зобов'язує PowerShell писати UTF-8 у pipe. У PowerShell 5.1 [Console]::OutputEncoding
+            // визначає кодування ОБИДВА потоків (stdout і stderr) — окрема [Console]::ErrorEncoding
+            // з'явилася лише в .NET 5+ і кидає PropertyNotFound у PS 5.1. Один fix у RunPowerShellAsync
+            // покриває всі caller'и: BuildInstallerScript, UninstallAsync, GetInstalledVersionAsync.
             const string EncodingPreamble = """
                 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-                [Console]::ErrorEncoding = [System.Text.Encoding]::UTF8
                 $OutputEncoding = [System.Text.Encoding]::UTF8
                 """;
             var fullScript = EncodingPreamble + "\n" + script;
