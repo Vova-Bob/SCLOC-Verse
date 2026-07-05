@@ -276,7 +276,15 @@ namespace SCLOCVerse.Services.LiaServices
             PowerShellResult result;
             try
             {
-                result = await RunPowerShellAsync(BuildInstallerScript(installerPath, certificatePath), cancellationToken).ConfigureAwait(false);
+                // Commit 2: requireElevation=true — перевірка механізму UAC elevation.
+                // BuildInstallerScript недоторканий (cert все ще в CurrentUser\TrustedPeople),
+                // тому 0x800B0109 очікувано залишиться. Мета — підтвердити працездатність elevation.
+                Debug.WriteLine("[LIA] RunInstallerScript: elevation requested");
+                result = await RunPowerShellAsync(
+                    BuildInstallerScript(installerPath, certificatePath),
+                    cancellationToken,
+                    requireElevation: true).ConfigureAwait(false);
+                Debug.WriteLine($"[LIA] RunInstallerScript: elevation completed, ExitCode={result.ExitCode}");
             }
             catch (Exception ex)
             {
@@ -333,8 +341,22 @@ namespace SCLOCVerse.Services.LiaServices
             var escapedInstallerPath = EscapePowerShellString(installerPath);
             var escapedCertificatePath = EscapePowerShellString(certificatePath ?? string.Empty);
 
+            // Діагностика elevation (debug build) — підтверджує, що PowerShell працює elevated
+            // після UAC. Прибрати після стабілізації Commit 3 або залишити під #if DEBUG.
+            // Write-Output "ELEVATED=True/False" — не впливає на логіку, лише діагностичний рядок.
+#if DEBUG
+            const string ElevationDiagnostic = """
+                $liaPrincipal = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
+                $liaIsAdmin = $liaPrincipal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+                Write-Output "ELEVATED=$liaIsAdmin"
+                """;
+#else
+            const string ElevationDiagnostic = "";
+#endif
+
             return $$"""
                 $ErrorActionPreference = 'Stop'
+                {{ElevationDiagnostic}}
                 $installerPath = '{{escapedInstallerPath}}'
                 $certificatePath = '{{escapedCertificatePath}}'
 
