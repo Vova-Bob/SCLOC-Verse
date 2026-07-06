@@ -215,8 +215,8 @@ namespace SCLOCVerse.Services.Auth
                 title: "SCLOC-Verse — Авторизацію завершено",
                 statusTitle: "Авторизацію завершено",
                 statusMessage: "Вхід до SCLOC-Verse виконано успішно." +
-                    "<br><br>Якщо застосунок уже відкрився — можете закрити цю вкладку браузера." +
-                    "<br>Якщо ні — поверніться до SCLOC-Verse вручну.",
+                    "<br><br><strong class=\"action\">Можете закрити цю вкладку браузера.</strong>" +
+                    "<br>Якщо застосунок не відкрився — поверніться до SCLOC-Verse вручну.",
                 statusKind: "success");
         }
 
@@ -251,7 +251,7 @@ namespace SCLOCVerse.Services.Auth
             var titleColor = statusKind == "error" ? "var(--error)" : "var(--text)";
             var iconColor = statusKind == "error" ? "var(--error)" : "var(--glow)";
             var favicon = BuildInlineSvgFavicon();
-            var logo = BuildInlineSvgLogo();
+            var logo = $"<img class=\"logo\" src=\"{OAuthHtmlAssets.LogoDataUri.Value}\" alt=\"SCLOC-Verse\" aria-label=\"SCLOC-Verse logo\">";
 
             var html = new StringBuilder();
             html.AppendLine("<!DOCTYPE html>");
@@ -297,10 +297,11 @@ namespace SCLOCVerse.Services.Auth
             html.AppendLine("  backdrop-filter: blur(10px);");
             html.AppendLine("}");
             html.AppendLine(".logo {");
-            html.AppendLine("  width: 96px;");
-            html.AppendLine("  height: 96px;");
+            html.AppendLine("  width: 132px;");
+            html.AppendLine("  height: 132px;");
             html.AppendLine("  margin: 0 auto 24px;");
             html.AppendLine("  display: block;");
+            html.AppendLine("  object-fit: contain;");
             html.AppendLine("  filter: drop-shadow(0 0 18px rgba(109, 185, 248, 0.45));");
             html.AppendLine("}");
             html.AppendLine(".status-icon {");
@@ -329,6 +330,13 @@ namespace SCLOCVerse.Services.Auth
             html.AppendLine(".message strong {");
             html.AppendLine("  color: var(--text);");
             html.AppendLine("  font-weight: 600;");
+            html.AppendLine("}");
+            html.AppendLine(".message .action {");
+            html.AppendLine("  color: var(--glow);");
+            html.AppendLine("  font-weight: 600;");
+            html.AppendLine("}");
+            html.AppendLine(".message .action::before {");
+            html.AppendLine("  content: '👉 ';");
             html.AppendLine("}");
             html.AppendLine("@media (max-width: 480px) {");
             html.AppendLine("  .card { padding: 32px 24px; }");
@@ -364,20 +372,6 @@ namespace SCLOCVerse.Services.Auth
             return "data:image/svg+xml;utf8," + svg;
         }
 
-        private static string BuildInlineSvgLogo()
-        {
-            return "<svg class=\"logo\" viewBox=\"0 0 200 200\" xmlns=\"http://www.w3.org/2000/svg\" aria-label=\"SCLOC-Verse logo\">" +
-                "<defs>" +
-                "<linearGradient id=\"g\" x1=\"0%\" y1=\"0%\" x2=\"100%\" y2=\"100%\">" +
-                "<stop offset=\"0%\" stop-color=\"#6DB9F8\"/>" +
-                "<stop offset=\"100%\" stop-color=\"#2D9CFF\"/>" +
-                "</linearGradient>" +
-                "</defs>" +
-                "<path d=\"M100 10 L180 55 V145 L100 190 L20 145 V55 Z\" fill=\"none\" stroke=\"url(#g)\" stroke-width=\"6\" stroke-linejoin=\"round\"/>" +
-                "<path d=\"M100 40 L145 65 V115 L100 140 L55 115 V65 Z\" fill=\"none\" stroke=\"#6DB9F8\" stroke-width=\"3\" stroke-linejoin=\"round\" opacity=\"0.7\"/>" +
-                "<circle cx=\"100\" cy=\"100\" r=\"12\" fill=\"#6DB9F8\"/>" +
-                "<path d=\"M100 88 V40 M100 112 V160 M88 100 H40 M112 100 H160\" stroke=\"#6DB9F8\" stroke-width=\"3\" stroke-linecap=\"round\" opacity=\"0.55\"/>" +
-                "</svg>";
-        }
+
     }
 }
