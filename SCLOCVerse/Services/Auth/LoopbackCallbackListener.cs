@@ -250,7 +250,7 @@ namespace SCLOCVerse.Services.Auth
 
             var titleColor = statusKind == "error" ? "var(--error)" : "var(--text)";
             var iconColor = statusKind == "error" ? "var(--error)" : "var(--glow)";
-            var favicon = BuildInlineSvgFavicon();
+            var favicon = OAuthHtmlAssets.FaviconDataUri.Value;
             var logo = $"<img class=\"logo\" src=\"{OAuthHtmlAssets.LogoDataUri.Value}\" alt=\"SCLOC-Verse\" aria-label=\"SCLOC-Verse logo\">";
 
             var html = new StringBuilder();
@@ -260,7 +260,7 @@ namespace SCLOCVerse.Services.Auth
             html.AppendLine("<meta charset=\"utf-8\">");
             html.AppendLine("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">");
             html.Append("<title>").Append(WebUtility.HtmlEncode(title)).AppendLine("</title>");
-            html.Append("<link rel=\"icon\" type=\"image/svg+xml\" href=\"").Append(favicon).AppendLine("\">");
+            html.Append("<link rel=\"icon\" type=\"image/x-icon\" href=\"").Append(favicon).AppendLine("\">");
             html.AppendLine("<style>");
             html.AppendLine(":root {");
             html.AppendLine("  --bg: #0A1D29;");
@@ -361,16 +361,7 @@ namespace SCLOCVerse.Services.Auth
             return html.ToString();
         }
 
-        private static string BuildInlineSvgFavicon()
-        {
-            // SVG-іконка у форматі data: URI — нуль зовнішніх запитів.
-            var svg = "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'>" +
-                "<rect width='32' height='32' rx='6' fill='%230A1D29'/>" +
-                "<path d='M16 4 L28 28 H4 Z' fill='none' stroke='%236DB9F8' stroke-width='2.5' stroke-linejoin='round'/>" +
-                "<circle cx='16' cy='14' r='3' fill='%236DB9F8'/>" +
-                "</svg>";
-            return "data:image/svg+xml;utf8," + svg;
-        }
+
 
 
     }
