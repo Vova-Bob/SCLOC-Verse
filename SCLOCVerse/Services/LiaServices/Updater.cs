@@ -1,6 +1,8 @@
 ﻿using Newtonsoft.Json;
+using SCLOCVerse.Helpers;
 using SCLOCVerse.Interfaces;
 using SCLOCVerse.Models.LiaModels;
+using SCLOCVerse.Models.LiaServices;
 using SCLOCVerse.Services.Observability;
 using System.ComponentModel;
 using System.Diagnostics;
@@ -196,15 +198,91 @@ namespace SCLOCVerse.Services.LiaServices
         {
             try
             {
-                using var response = await Client.GetAsync(AppSettings.GitHubReleasesUrl, cancellationToken).ConfigureAwait(false);
+                // Conditional GET: читаємо кеш ETag/Last-Modified (патерн LocalizationInstaller).
+                var metadata = ReadReleaseMetadata();
+
+                using var request = new System.Net.Http.HttpRequestMessage(System.Net.Http.HttpMethod.Get, AppSettings.GitHubReleasesUrl);
+                if (metadata?.ETag is not null)
+                    request.Headers.TryAddWithoutValidation("If-None-Match", metadata.ETag);
+                if (metadata?.LastModified is not null)
+                    request.Headers.IfModifiedSince = metadata.LastModified;
+
+                // Retry через єдиний HttpRetryHelper (429/403/5xx + Retry-After ≤10с + backoff).
+                using var response = await HttpRetryHelper.SendWithRetryAsync(Client, request, cancellationToken).ConfigureAwait(false);
+
+                // 304 Not Modified — дані не змінились, повертаємо null (CallingCode вважає "немає нового").
+                if (response.StatusCode == System.Net.HttpStatusCode.NotModified)
+                {
+                    // Зберігаємо lastKnownVersion з кешу, якщо є — CallingCode не викликає повторно.
+                    return null;
+                }
+
                 response.EnsureSuccessStatusCode();
 
                 var json = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-                return JsonConvert.DeserializeObject<GitHubRelease>(json);
+                var release = JsonConvert.DeserializeObject<GitHubRelease>(json);
+
+                // Зберігаємо оновлені ETag/Last-Modified для наступного Conditional GET.
+                if (release is not null)
+                {
+                    var updatedMetadata = new LiaReleaseMetadata
+                    {
+                        ETag = response.Headers.ETag?.Tag,
+                        LastModified = response.Content.Headers.LastModified,
+                        LastKnownVersion = release.TagName
+                    };
+                    WriteReleaseMetadata(updatedMetadata);
+                }
+
+                return release;
+            }
+            catch
+            {
+                // Зберігаємо існуючу поведінку автора: проковтування → null.
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Шлях до кешу метаданих LIA: %LOCALAPPDATA%\SCLOCVerse\cache\lia.meta.json.
+        /// Ідентично LocalizationInstaller.GetMetadataPath.
+        /// </summary>
+        private static string GetMetadataPath()
+        {
+            var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+            var cacheDir = Path.Combine(localAppData, "SCLOCVerse", "cache");
+            Directory.CreateDirectory(cacheDir);
+            return Path.Combine(cacheDir, "lia.meta.json");
+        }
+
+        private static LiaReleaseMetadata? ReadReleaseMetadata()
+        {
+            try
+            {
+                var path = GetMetadataPath();
+                if (!File.Exists(path))
+                    return null;
+
+                var json = File.ReadAllText(path, Encoding.UTF8);
+                return JsonConvert.DeserializeObject<LiaReleaseMetadata>(json);
             }
             catch
             {
                 return null;
+            }
+        }
+
+        private static void WriteReleaseMetadata(LiaReleaseMetadata metadata)
+        {
+            try
+            {
+                var path = GetMetadataPath();
+                var json = JsonConvert.SerializeObject(metadata);
+                File.WriteAllText(path, json, Encoding.UTF8);
+            }
+            catch
+            {
+                // Метадані — не критичні. Проковтуємо.
             }
         }
 
@@ -661,7 +739,8 @@ namespace SCLOCVerse.Services.LiaServices
         private static HttpClient CreateHttpClient()
         {
             var client = new HttpClient();
-            client.DefaultRequestHeaders.UserAgent.ParseAdd("SCLOCVerse-LIA-Installer/1.0");
+            // Єдиний User-Agent для всіх GitHub-запитів SCLOC-Verse (через HttpRetryHelper).
+            client.DefaultRequestHeaders.UserAgent.ParseAdd(HttpRetryHelper.UserAgent);
             client.DefaultRequestHeaders.Accept.ParseAdd("application/vnd.github+json");
             return client;
         }

@@ -1,4 +1,5 @@
-﻿using SCLOCVerse.Interfaces;
+﻿using SCLOCVerse.Helpers;
+using SCLOCVerse.Interfaces;
 using SCLOCVerse.Models;
 using System;
 using System.Collections.Generic;
@@ -20,7 +21,6 @@ namespace SCLOCVerse.Services.LocalizationServices
         private const string UserCfgFileName = "user.cfg";
         private const string GlobalIniFileName = "global.ini";
         private const string ReleasesApiUrl = "https://api.github.com/repos/Vova-Bob/SC_localization_UA/releases";
-        private const int MaxDownloadRetries = 3;
         private static readonly string[] LocalizationPathSegments = { "Data", "Localization", "korean_(south_korea)" };
         private static readonly Encoding UserCfgEncoding = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
         private static readonly HttpClient HttpClient = CreateHttpClient();
@@ -465,42 +465,22 @@ namespace SCLOCVerse.Services.LocalizationServices
         {
             var client = new HttpClient();
             client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/vnd.github+json"));
-            client.DefaultRequestHeaders.UserAgent.ParseAdd("SCLOC-Verse/1.0");
+            client.DefaultRequestHeaders.UserAgent.ParseAdd(HttpRetryHelper.UserAgent);
             return client;
         }
 
-        private static async Task<HttpResponseMessage> SendWithRetryAsync(Func<HttpRequestMessage> requestFactory, CancellationToken ct)
+        private static Task<HttpResponseMessage> SendWithRetryAsync(Func<HttpRequestMessage> requestFactory, CancellationToken ct)
+            => SendWithRetryAsync(requestFactory, HttpCompletionOption.ResponseHeadersRead, ct);
+
+        // Streamed-варіант: великі файли (global.ini) читаємо потоком, без буферизації в пам'ять.
+        private static async Task<HttpResponseMessage> SendWithRetryAsync(
+            Func<HttpRequestMessage> requestFactory,
+            HttpCompletionOption completionOption,
+            CancellationToken ct)
         {
-            var delay = TimeSpan.FromMilliseconds(500);
-            for (var attempt = 0; attempt < MaxDownloadRetries; attempt++)
-            {
-                ct.ThrowIfCancellationRequested();
-                var request = requestFactory();
-                try
-                {
-                    var response = await HttpClient.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false);
-                    if (response.StatusCode == HttpStatusCode.TooManyRequests || response.StatusCode == HttpStatusCode.Forbidden)
-                    {
-                        if (attempt == MaxDownloadRetries - 1)
-                        {
-                            throw new HttpRequestException(LocalizationMessages.HttpError(response.StatusCode));
-                        }
-
-                        response.Dispose();
-                        await Task.Delay(delay, ct).ConfigureAwait(false);
-                        delay = TimeSpan.FromMilliseconds(Math.Min(delay.TotalMilliseconds * 2, 2000));
-                        continue;
-                    }
-
-                    return response;
-                }
-                finally
-                {
-                    request.Dispose();
-                }
-            }
-
-            throw new HttpRequestException(LocalizationMessages.HttpError(HttpStatusCode.ServiceUnavailable));
+            // За замовчуванням ResponseHeadersRead — бо LocalizationInstaller завжди читає потоком.
+            using var request = requestFactory();
+            return await HttpRetryHelper.SendWithRetryAsync(HttpClient, request, completionOption, ct).ConfigureAwait(false);
         }
 
         private static async Task<ReleasePayload?> GetReleaseAsync(string envName, CancellationToken ct)

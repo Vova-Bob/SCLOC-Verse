@@ -82,7 +82,7 @@ namespace SCLOCVerse.Composition
             _updateChannelService = (IUpdateChannelService)_settingsService;
 
             var httpClient = new HttpClient();
-            var gitHubClient = new GitHubReleaseClient(httpClient, UpdateConstants.UserAgent);
+            var gitHubClient = new GitHubReleaseClient(httpClient, HttpRetryHelper.UserAgent);
             var updateCacheService = new UpdateCacheService();
 
             _hangarSettingsService = new HangarSettingsService();

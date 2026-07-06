@@ -1,4 +1,5 @@
 ﻿using Newtonsoft.Json;
+using SCLOCVerse.Helpers;
 using SCLOCVerse.Interfaces;
 using SCLOCVerse.Models.ApplicationUpdate;
 using System;
@@ -36,8 +37,10 @@ namespace SCLOCVerse.Services.ApplicationUpdate
 
             var url = $"https://api.github.com/repos/{owner}/{repo}/releases/latest";
 
-            using var response = await _httpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
-            response.EnsureSuccessStatusCode();
+            using var request = new System.Net.Http.HttpRequestMessage(System.Net.Http.HttpMethod.Get, url);
+            using var response = await HttpRetryHelper.SendWithRetryAsync(_httpClient, request, cancellationToken).ConfigureAwait(false);
+            if (!response.IsSuccessStatusCode)
+                return null;
 
             var json = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
 
@@ -56,8 +59,10 @@ namespace SCLOCVerse.Services.ApplicationUpdate
 
             var url = $"https://api.github.com/repos/{owner}/{repo}/releases";
 
-            using var response = await _httpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
-            response.EnsureSuccessStatusCode();
+            using var request = new System.Net.Http.HttpRequestMessage(System.Net.Http.HttpMethod.Get, url);
+            using var response = await HttpRetryHelper.SendWithRetryAsync(_httpClient, request, cancellationToken).ConfigureAwait(false);
+            if (!response.IsSuccessStatusCode)
+                return new List<GitHubRelease>();
 
             var json = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
 
@@ -71,7 +76,8 @@ namespace SCLOCVerse.Services.ApplicationUpdate
             if (string.IsNullOrWhiteSpace(url))
                 throw new ArgumentException("URL cannot be empty.", nameof(url));
 
-            using var response = await _httpClient.GetAsync(url, cancellationToken).ConfigureAwait(false);
+            using var request = new System.Net.Http.HttpRequestMessage(System.Net.Http.HttpMethod.Get, url);
+            using var response = await HttpRetryHelper.SendWithRetryAsync(_httpClient, request, cancellationToken).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
 
             return await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
