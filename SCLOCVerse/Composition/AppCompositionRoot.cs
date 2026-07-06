@@ -131,7 +131,7 @@ namespace SCLOCVerse.Composition
             var supabaseUrl = GetSupabaseUrl();
             var supabaseAnonKey = GetSupabaseAnonKey();
 
-            _authCompositionRoot = new AuthCompositionRoot(supabaseUrl, supabaseAnonKey, _telemetryClient);
+            _authCompositionRoot = new AuthCompositionRoot(supabaseUrl, supabaseAnonKey, _applicationInstanceService, _telemetryClient);
 
             // Після побудови auth — підключаємо client + install_id, запускаємо відправку.
             _telemetryClient.SetInstallId(_authCompositionRoot.InstallId);

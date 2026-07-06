@@ -23,6 +23,7 @@ namespace SCLOCVerse.Services.Auth
         private readonly ILoopbackCallbackListener _callbackListener;
         private readonly IInstallationService _installationService;
         private readonly IDiscordGuildSyncService _guildSyncService;
+        private readonly IApplicationInstanceService _applicationInstanceService;
         private readonly ITelemetryService? _telemetry;
         private readonly SemaphoreSlim _refreshLock = new(1, 1);
         private bool _disposed;
@@ -33,6 +34,7 @@ namespace SCLOCVerse.Services.Auth
             ILoopbackCallbackListener callbackListener,
             IInstallationService installationService,
             IDiscordGuildSyncService guildSyncService,
+            IApplicationInstanceService applicationInstanceService,
             ITelemetryService? telemetry)
         {
             _supabase = clientFactory?.CreateClient() ?? throw new ArgumentNullException(nameof(clientFactory));
@@ -40,6 +42,7 @@ namespace SCLOCVerse.Services.Auth
             _callbackListener = callbackListener ?? throw new ArgumentNullException(nameof(callbackListener));
             _installationService = installationService ?? throw new ArgumentNullException(nameof(installationService));
             _guildSyncService = guildSyncService ?? throw new ArgumentNullException(nameof(guildSyncService));
+            _applicationInstanceService = applicationInstanceService ?? throw new ArgumentNullException(nameof(applicationInstanceService));
             _telemetry = telemetry;
 
             // Початковий стан: перевірка сесії ще не виконана.
@@ -129,6 +132,10 @@ namespace SCLOCVerse.Services.Auth
                 SaveSession(session);
                 await SyncProfileAsync(session).ConfigureAwait(false);
                 await _installationService.SyncCurrentInstallationAsync(cancellationToken).ConfigureAwait(false);
+
+                // Після успішного входу активуємо головне вікно застосунку.
+                // Це єдиний універсальний канал активації (Toast, IPC, OAuth).
+                _applicationInstanceService.ShowMainWindow();
 
                 TrackAuth("SignIn", "Succeeded", durationMs: sw.ElapsedMilliseconds);
                 return new AuthResult.Success(Profile!);
