@@ -1,6 +1,7 @@
 using SCLOCVerse.Interfaces;
 using System;
 using System.Net;
+using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -10,7 +11,7 @@ namespace SCLOCVerse.Services.Auth
 {
     /// <summary>
     /// Слухає OAuth callback на випадковому loopback порту.
-    /// Повертає callback URL з authorization code.
+    /// Повертає callback URL з authorization code та брендовану HTML-сторінку статусу.
     /// </summary>
     public sealed class LoopbackCallbackListener : ILoopbackCallbackListener, IDisposable
     {
@@ -112,12 +113,23 @@ namespace SCLOCVerse.Services.Auth
 
                 var requestUrl = context.Request.Url;
                 var responseHtml = BuildResponseHtml(requestUrl);
-
                 var buffer = Encoding.UTF8.GetBytes(responseHtml);
-                context.Response.ContentType = "text/html; charset=utf-8";
-                context.Response.ContentLength64 = buffer.Length;
-                await context.Response.OutputStream.WriteAsync(buffer, 0, buffer.Length, cancellationToken).ConfigureAwait(false);
-                context.Response.Close();
+
+                var response = context.Response;
+                response.ContentType = "text/html; charset=utf-8";
+                response.ContentLength64 = buffer.Length;
+                response.KeepAlive = false;
+                response.Headers.Add("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
+                response.Headers.Add("Pragma", "no-cache");
+                response.Headers.Add("Expires", "0");
+                response.Headers.Add("Referrer-Policy", "no-referrer");
+                response.Headers.Add("X-Content-Type-Options", "nosniff");
+                response.Headers.Add("X-Frame-Options", "DENY");
+                response.Headers.Add("Content-Security-Policy",
+                    "default-src 'none'; style-src 'unsafe-inline'; img-src data: svg-sprite; frame-ancestors 'none'; base-uri 'none'; form-action 'none'");
+
+                await response.OutputStream.WriteAsync(buffer, 0, buffer.Length, cancellationToken).ConfigureAwait(false);
+                response.Close();
 
                 tcs.TrySetResult(requestUrl);
             }
@@ -200,63 +212,202 @@ namespace SCLOCVerse.Services.Auth
 
         private static string BuildSuccessHtml()
         {
-            return @"<!DOCTYPE html>
-<html>
-<head>
-<meta charset='utf-8'>
-<title>SCLOC-Verse — Вхід</title>
-<style>
-body { font-family: Arial, sans-serif; background: #0f2c3e; color: #fff; text-align: center; padding-top: 80px; }
-h1 { color: #6db9f8; }
-p { opacity: 0.8; }
-</style>
-</head>
-<body>
-<h1>Вхід успішний</h1>
-<p>Можете закрити це вікно та повернутися до SCLOC-Verse.</p>
-</body>
-</html>";
+            return BuildHtml(
+                title: "SCLOC-Verse — Завершуємо авторизацію",
+                statusTitle: "Завершуємо авторизацію...",
+                statusMessage: "SCLOC-Verse отримав запит на вхід. Застосунок завершує авторизацію, це може зайняти кілька секунд.",
+                statusKind: "success");
         }
 
         private static string BuildCancelledHtml()
         {
-            return @"<!DOCTYPE html>
-<html>
-<head>
-<meta charset='utf-8'>
-<title>SCLOC-Verse — Вхід</title>
-<style>
-body { font-family: Arial, sans-serif; background: #0f2c3e; color: #fff; text-align: center; padding-top: 80px; }
-h1 { color: #6db9f8; }
-p { opacity: 0.8; }
-</style>
-</head>
-<body>
-<h1>Вхід скасовано</h1>
-<p>Можете закрити це вікно та повернутися до SCLOC-Verse.</p>
-</body>
-</html>";
+            return BuildHtml(
+                title: "SCLOC-Verse — Вхід скасовано",
+                statusTitle: "Вхід скасовано",
+                statusMessage: "Авторизацію через Discord було скасовано. Можете закрити це вікно та повернутися до SCLOC-Verse.",
+                statusKind: "cancelled");
         }
 
         private static string BuildErrorHtml(string error)
         {
             var encoded = WebUtility.HtmlEncode(error);
-            return $@"<!DOCTYPE html>
-<html>
-<head>
-<meta charset='utf-8'>
-<title>SCLOC-Verse — Помилка входу</title>
-<style>
-body {{ font-family: Arial, sans-serif; background: #2a0f0f; color: #fff; text-align: center; padding-top: 80px; }}
-h1 {{ color: #ff6b6b; }}
-p {{ opacity: 0.8; }}
-</style>
-</head>
-<body>
-<h1>Помилка входу</h1>
-<p>{encoded}</p>
-</body>
-</html>";
+            return BuildHtml(
+                title: "SCLOC-Verse — Помилка входу",
+                statusTitle: "Помилка входу",
+                statusMessage: encoded,
+                statusKind: "error");
+        }
+
+        private static string BuildHtml(string title, string statusTitle, string statusMessage, string statusKind)
+        {
+            var spinner = statusKind == "success"
+                ? @"<div class=""spinner"" aria-label=""Завантаження"" role=""status""><div></div></div>"
+                : string.Empty;
+
+            var icon = statusKind switch
+            {
+                "success" => @"<svg class=""status-icon"" viewBox=""0 0 24 24"" aria-hidden=""true""><path fill=""currentColor"" d=""M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 15l-4-4 1.41-1.41L11 14.17l6.59-6.59L19 9l-8 8z""/></svg>",
+                "cancelled" => @"<svg class=""status-icon"" viewBox=""0 0 24 24"" aria-hidden=""true""><path fill=""currentColor"" d=""M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm5 13.59L15.59 17 12 13.41 8.41 17 7 15.59 10.59 12 7 8.41 8.41 7 12 10.59 15.59 7 17 8.41 13.41 12 17 15.59z""/></svg>",
+                _ => @"<svg class=""status-icon"" viewBox=""0 0 24 24"" aria-hidden=""true""><path fill=""currentColor"" d=""M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z""/></svg>"
+            };
+
+            var titleColor = statusKind == "error" ? "var(--error)" : "var(--text)";
+            var iconColor = statusKind == "error" ? "var(--error)" : "var(--glow)";
+            var version = GetApplicationVersion();
+            var favicon = BuildInlineSvgFavicon();
+            var logo = BuildInlineSvgLogo();
+
+            var html = new StringBuilder();
+            html.AppendLine("<!DOCTYPE html>");
+            html.AppendLine("<html lang=\"uk\">");
+            html.AppendLine("<head>");
+            html.AppendLine("<meta charset=\"utf-8\">");
+            html.AppendLine("<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">");
+            html.Append("<title>").Append(WebUtility.HtmlEncode(title)).AppendLine("</title>");
+            html.Append("<link rel=\"icon\" type=\"image/svg+xml\" href=\"").Append(favicon).AppendLine("\">");
+            html.AppendLine("<style>");
+            html.AppendLine(":root {");
+            html.AppendLine("  --bg: #0A1D29;");
+            html.AppendLine("  --card-bg: rgba(15, 36, 50, 0.82);");
+            html.AppendLine("  --border: rgba(109, 185, 248, 0.35);");
+            html.AppendLine("  --glow: #6DB9F8;");
+            html.AppendLine("  --text: #FFFFFF;");
+            html.AppendLine("  --text-muted: rgba(255, 255, 255, 0.72);");
+            html.AppendLine("  --error: #FF6B6B;");
+            html.AppendLine("  --font: 'Segoe UI', Arial, sans-serif;");
+            html.AppendLine("}");
+            html.AppendLine("* { box-sizing: border-box; margin: 0; padding: 0; }");
+            html.AppendLine("html, body { height: 100%; }");
+            html.AppendLine("body {");
+            html.AppendLine("  font-family: var(--font);");
+            html.AppendLine("  background: var(--bg);");
+            html.AppendLine("  color: var(--text);");
+            html.AppendLine("  display: flex;");
+            html.AppendLine("  align-items: center;");
+            html.AppendLine("  justify-content: center;");
+            html.AppendLine("  min-height: 100vh;");
+            html.AppendLine("  padding: 24px;");
+            html.AppendLine("  -webkit-font-smoothing: antialiased;");
+            html.AppendLine("}");
+            html.AppendLine(".card {");
+            html.AppendLine("  width: 100%;");
+            html.AppendLine("  max-width: 420px;");
+            html.AppendLine("  background: var(--card-bg);");
+            html.AppendLine("  border: 1px solid var(--border);");
+            html.AppendLine("  border-radius: 16px;");
+            html.AppendLine("  padding: 40px 32px 32px;");
+            html.AppendLine("  text-align: center;");
+            html.AppendLine("  box-shadow: 0 0 40px rgba(109, 185, 248, 0.12), inset 0 1px 0 rgba(255,255,255,0.06);");
+            html.AppendLine("  backdrop-filter: blur(10px);");
+            html.AppendLine("}");
+            html.AppendLine(".logo {");
+            html.AppendLine("  width: 96px;");
+            html.AppendLine("  height: 96px;");
+            html.AppendLine("  margin: 0 auto 24px;");
+            html.AppendLine("  display: block;");
+            html.AppendLine("  filter: drop-shadow(0 0 18px rgba(109, 185, 248, 0.45));");
+            html.AppendLine("}");
+            html.AppendLine(".status-icon {");
+            html.AppendLine("  width: 56px;");
+            html.AppendLine("  height: 56px;");
+            html.AppendLine("  margin: 0 auto 18px;");
+            html.Append("  color: ").Append(iconColor).AppendLine(";");
+            html.AppendLine("}");
+            html.AppendLine(".spinner {");
+            html.AppendLine("  width: 44px;");
+            html.AppendLine("  height: 44px;");
+            html.AppendLine("  margin: 0 auto 18px;");
+            html.AppendLine("  position: relative;");
+            html.AppendLine("}");
+            html.AppendLine(".spinner > div {");
+            html.AppendLine("  position: absolute;");
+            html.AppendLine("  inset: 0;");
+            html.AppendLine("  border-radius: 50%;");
+            html.AppendLine("  border: 3px solid transparent;");
+            html.AppendLine("  border-top-color: var(--glow);");
+            html.AppendLine("  animation: spin 1s linear infinite;");
+            html.AppendLine("}");
+            html.AppendLine("@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }");
+            html.AppendLine("h1 {");
+            html.AppendLine("  font-size: 22px;");
+            html.AppendLine("  font-weight: 600;");
+            html.AppendLine("  margin-bottom: 12px;");
+            html.Append("  color: ").Append(titleColor).AppendLine(";");
+            html.AppendLine("}");
+            html.AppendLine(".message {");
+            html.AppendLine("  font-size: 15px;");
+            html.AppendLine("  line-height: 1.55;");
+            html.AppendLine("  color: var(--text-muted);");
+            html.AppendLine("}");
+            html.AppendLine(".footer {");
+            html.AppendLine("  margin-top: 32px;");
+            html.AppendLine("  font-size: 12px;");
+            html.AppendLine("  color: rgba(255, 255, 255, 0.42);");
+            html.AppendLine("  letter-spacing: 0.3px;");
+            html.AppendLine("}");
+            html.AppendLine("@media (max-width: 480px) {");
+            html.AppendLine("  .card { padding: 32px 24px; }");
+            html.AppendLine("  h1 { font-size: 20px; }");
+            html.AppendLine("}");
+            html.AppendLine("@media (prefers-reduced-motion: reduce) {");
+            html.AppendLine("  .spinner > div { animation: none; border-top-color: var(--glow); }");
+            html.AppendLine("}");
+            html.AppendLine("</style>");
+            html.AppendLine("</head>");
+            html.AppendLine("<body>");
+            html.AppendLine("<div class=\"card\">");
+            html.AppendLine(logo);
+            html.AppendLine(icon);
+            html.AppendLine(spinner);
+            html.Append("<h1>").Append(WebUtility.HtmlEncode(statusTitle)).AppendLine("</h1>");
+            html.Append("<p class=\"message\">").Append(statusMessage).AppendLine("</p>");
+            html.Append("<div class=\"footer\">SCLOC-Verse • ").Append(WebUtility.HtmlEncode(version)).AppendLine("</div>");
+            html.AppendLine("</div>");
+            html.AppendLine("</body>");
+            html.AppendLine("</html>");
+
+            return html.ToString();
+        }
+
+        private static string GetApplicationVersion()
+        {
+            try
+            {
+                var assembly = Assembly.GetEntryAssembly() ?? typeof(LoopbackCallbackListener).Assembly;
+                var version = assembly.GetName().Version;
+                return version?.ToString() ?? "1.0.0.1";
+            }
+            catch
+            {
+                return "1.0.0.1";
+            }
+        }
+
+        private static string BuildInlineSvgFavicon()
+        {
+            // SVG-іконка у форматі data: URI — нуль зовнішніх запитів.
+            var svg = "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'>" +
+                "<rect width='32' height='32' rx='6' fill='%230A1D29'/>" +
+                "<path d='M16 4 L28 28 H4 Z' fill='none' stroke='%236DB9F8' stroke-width='2.5' stroke-linejoin='round'/>" +
+                "<circle cx='16' cy='14' r='3' fill='%236DB9F8'/>" +
+                "</svg>";
+            return "data:image/svg+xml;utf8," + svg;
+        }
+
+        private static string BuildInlineSvgLogo()
+        {
+            return "<svg class=\"logo\" viewBox=\"0 0 200 200\" xmlns=\"http://www.w3.org/2000/svg\" aria-label=\"SCLOC-Verse logo\">" +
+                "<defs>" +
+                "<linearGradient id=\"g\" x1=\"0%\" y1=\"0%\" x2=\"100%\" y2=\"100%\">" +
+                "<stop offset=\"0%\" stop-color=\"#6DB9F8\"/>" +
+                "<stop offset=\"100%\" stop-color=\"#2D9CFF\"/>" +
+                "</linearGradient>" +
+                "</defs>" +
+                "<path d=\"M100 10 L180 55 V145 L100 190 L20 145 V55 Z\" fill=\"none\" stroke=\"url(#g)\" stroke-width=\"6\" stroke-linejoin=\"round\"/>" +
+                "<path d=\"M100 40 L145 65 V115 L100 140 L55 115 V65 Z\" fill=\"none\" stroke=\"#6DB9F8\" stroke-width=\"3\" stroke-linejoin=\"round\" opacity=\"0.7\"/>" +
+                "<circle cx=\"100\" cy=\"100\" r=\"12\" fill=\"#6DB9F8\"/>" +
+                "<path d=\"M100 88 V40 M100 112 V160 M88 100 H40 M112 100 H160\" stroke=\"#6DB9F8\" stroke-width=\"3\" stroke-linecap=\"round\" opacity=\"0.55\"/>" +
+                "</svg>";
         }
     }
 }
