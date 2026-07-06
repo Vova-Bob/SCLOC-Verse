@@ -87,6 +87,17 @@ namespace SCLOCVerse.Services
             Settings.Default.Save();
         }
 
+        public bool GetAdvancedDiagnostics()
+        {
+            return Settings.Default.AdvancedDiagnostics;
+        }
+
+        public void SetAdvancedDiagnostics(bool value)
+        {
+            Settings.Default.AdvancedDiagnostics = value;
+            Settings.Default.Save();
+        }
+
         public string GetLastLocalizationToast()
         {
             return Settings.Default.LastLocalizationToast ?? string.Empty;

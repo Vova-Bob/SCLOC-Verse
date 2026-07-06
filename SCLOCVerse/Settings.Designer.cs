@@ -201,6 +201,18 @@ namespace SCLOCVerse {
 
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool AdvancedDiagnostics {
+            get {
+                return ((bool)(this["AdvancedDiagnostics"]));
+            }
+            set {
+                this["AdvancedDiagnostics"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("")]
         public string LastLocalizationToast {
             get {

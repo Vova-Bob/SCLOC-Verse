@@ -471,6 +471,12 @@
               Content="Автооновлення локалізації"
               Canvas.Left="606" Canvas.Top="140"/>
 
+    <!-- Чекбокс: Розширена діагностика -->
+    <CheckBox x:Name="AdvancedDiagnosticsCheckBox"
+              Style="{StaticResource SettingCheckBox}"
+              Content="Розширена діагностика"
+              Canvas.Left="606" Canvas.Top="171"/>
+
     <!-- README блок -->
     <Border Canvas.Left="70" Canvas.Top="220"
             Width="820" Height="270"

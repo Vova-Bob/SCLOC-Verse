@@ -171,6 +171,8 @@ namespace SCLOCVerse
             CanvasSettings.MinimizeToTrayCheckBoxControl.Unchecked += MinimizeToTrayCheckBox_Changed;
             CanvasSettings.AutoUpdateLocalizationCheckBoxControl.Checked += AutoUpdateLocalizationCheckBox_Changed;
             CanvasSettings.AutoUpdateLocalizationCheckBoxControl.Unchecked += AutoUpdateLocalizationCheckBox_Changed;
+            CanvasSettings.AdvancedDiagnosticsCheckBoxControl.Checked += AdvancedDiagnosticsCheckBox_Changed;
+            CanvasSettings.AdvancedDiagnosticsCheckBoxControl.Unchecked += AdvancedDiagnosticsCheckBox_Changed;
 
             Loaded += MainWindow_Loaded;
             _authService.StatusChanged += OnAuthStatusChanged;
@@ -353,6 +355,7 @@ namespace SCLOCVerse
                 CanvasSettings.RunAtStartupCheckBoxControl.IsChecked = _autostartService.IsEnabled();
                 CanvasSettings.MinimizeToTrayCheckBoxControl.IsChecked = _preferencesService.GetMinimizeToTray();
                 CanvasSettings.AutoUpdateLocalizationCheckBoxControl.IsChecked = _preferencesService.GetAutoUpdateLocalization();
+                CanvasSettings.AdvancedDiagnosticsCheckBoxControl.IsChecked = _preferencesService.GetAdvancedDiagnostics();
             }
             finally
             {
@@ -397,6 +400,14 @@ namespace SCLOCVerse
                 return;
 
             _preferencesService.SetAutoUpdateLocalization(CanvasSettings.AutoUpdateLocalizationCheckBoxControl.IsChecked == true);
+        }
+
+        private void AdvancedDiagnosticsCheckBox_Changed(object sender, RoutedEventArgs e)
+        {
+            if (_isInitializingPreferences)
+                return;
+
+            _preferencesService.SetAdvancedDiagnostics(CanvasSettings.AdvancedDiagnosticsCheckBoxControl.IsChecked == true);
         }
 
         private async Task RunManualUpdateCheckAsync(bool forceRefresh = false)

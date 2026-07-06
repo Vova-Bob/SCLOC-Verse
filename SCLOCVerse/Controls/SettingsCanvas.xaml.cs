@@ -30,5 +30,7 @@ namespace SCLOCVerse.Controls
         public CheckBox MinimizeToTrayCheckBoxControl => MinimizeToTrayCheckBox;
 
         public CheckBox AutoUpdateLocalizationCheckBoxControl => AutoUpdateLocalizationCheckBox;
+
+        public CheckBox AdvancedDiagnosticsCheckBoxControl => AdvancedDiagnosticsCheckBox;
     }
 }

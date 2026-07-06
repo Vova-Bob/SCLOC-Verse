@@ -29,6 +29,13 @@ namespace SCLOCVerse.Interfaces
         bool GetAutoUpdateLocalization();
         void SetAutoUpdateLocalization(bool value);
 
+        /// <summary>
+        /// true, якщо увімкнено розширену діагностику (детальне логування,
+        /// трейс операцій оновлення/IPC/tray). Default: False.
+        /// </summary>
+        bool GetAdvancedDiagnostics();
+        void SetAdvancedDiagnostics(bool value);
+
         // --- Toast Dedup (Етап E/F) ---
 
         /// <summary>Остання версія локалізації, про яку вже був OS-тост.</summary>

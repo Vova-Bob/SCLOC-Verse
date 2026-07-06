@@ -44,6 +44,9 @@
     <Setting Name="AutoUpdateLocalization" Type="System.Boolean" Scope="User">
       <Value Profile="(Default)">False</Value>
     </Setting>
+    <Setting Name="AdvancedDiagnostics" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">False</Value>
+    </Setting>
     <Setting Name="LastLocalizationToast" Type="System.String" Scope="User">
       <Value Profile="(Default)" />
     </Setting>
