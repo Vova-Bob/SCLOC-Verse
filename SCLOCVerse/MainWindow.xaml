@@ -193,6 +193,8 @@
     <Grid x:Name="MainGrid">
         <Image Source="/Images/background_general.png" Stretch="UniformToFill" x:Name="bgImage"/>
 
+        <controls:AppUpdateProgressBanner x:Name="AppUpdateProgressBanner"/>
+
         <Border Background="#0F2C3E" Height="40" VerticalAlignment="Top" MouseDown="TitleBar_MouseDown">
             <Grid>
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="8,0,0,0" Cursor="Hand" MouseLeftButtonUp="About_Click">

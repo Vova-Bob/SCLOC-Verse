@@ -1,4 +1,6 @@
-﻿using System.Threading;
+﻿using SCLOCVerse.Models.ApplicationUpdate;
+using System;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace SCLOCVerse.Interfaces
@@ -8,6 +10,8 @@ namespace SCLOCVerse.Interfaces
         Task<string> DownloadAsync(
             string downloadUrl,
             string targetDirectory,
+            IProgress<UpdateDownloadProgress>? progress = null,
             CancellationToken cancellationToken = default);
     }
 }
+
