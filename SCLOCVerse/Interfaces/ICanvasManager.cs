@@ -6,6 +6,7 @@ namespace SCLOCVerse.Interfaces
     {
         Canvas? GetCurrentVisibleCanvas();
         void SwitchCanvas(Canvas showCanvas, double durationSeconds = 0.3);
+        void SwitchCanvas(Canvas showCanvas, string activeStateKey, double durationSeconds = 0.3);
         void ShowCanvas(string which);
     }
 }

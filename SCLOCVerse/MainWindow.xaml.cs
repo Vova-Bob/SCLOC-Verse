@@ -134,8 +134,8 @@ namespace SCLOCVerse
             var cleaner = new CacheCleaner(options);
             _cacheCleanupController = new CleanupController(inspector, cleaner, _toastService, Dispatcher);
 
-            _canvasManager = new CanvasManager(this);
             _buttonStateManager = new ButtonStateManager(BtnLocalization, BtnAssistant, BtnScTools, BtnSettings, BtnSelectFolder);
+            _canvasManager = new CanvasManager(this, _buttonStateManager);
             _buttonHelper = new ButtonHelper();
             _authStatusPresenter = new AuthStatusPresenter(BtnAccount, _authStatusProvider);
             CanvasScTools.SetHangarTimerService(_hangarTimerService);
@@ -889,14 +889,12 @@ namespace SCLOCVerse
         private void Localization_Click(object sender, RoutedEventArgs e)
         {
             _canvasManager.SwitchCanvas(CanvasLocalization);
-            _buttonStateManager.SetActive("localization");
             isSettingButtonClicked = false;
         }
 
         private async void Assistant_Click(object sender, RoutedEventArgs e)
         {
             _canvasManager.SwitchCanvas(CanvasAssistant);
-            _buttonStateManager.SetActive("assistant");
             isSettingButtonClicked = false;
 
             await UpdateLiaVersionAsync();
@@ -905,27 +903,23 @@ namespace SCLOCVerse
         private void Settings_Click(object sender, RoutedEventArgs e)
         {
             _canvasManager.SwitchCanvas(CanvasSettings);
-            _buttonStateManager.SetActive("settings");
             isSettingButtonClicked = true;
         }
 
         private void ScTools_Click(object sender, RoutedEventArgs e)
         {
             _canvasManager.SwitchCanvas(CanvasScTools);
-            _buttonStateManager.SetActive("sctools");
             isSettingButtonClicked = false;
         }
 
         private void LocalisationSettings_Click(object sender, RoutedEventArgs e)
         {
             _canvasManager.SwitchCanvas(CanvasSettings);
-            _buttonStateManager.SetActive("settings");
         }
 
         private void ReturnToHome_Click(object sender, RoutedEventArgs e)
         {
             _canvasManager.SwitchCanvas(CanvasHome);
-            _buttonStateManager.SetActive("home");
             isSettingButtonClicked = false;
         }
 
@@ -933,21 +927,18 @@ namespace SCLOCVerse
         {
             if (isSettingButtonClicked)
             {
-                _canvasManager.SwitchCanvas(CanvasHome);
-                _buttonStateManager.SetActive("home");
+                _canvasManager.SwitchCanvas(CanvasHome, "home");
                 isSettingButtonClicked = false;
             }
             else
             {
-                _canvasManager.SwitchCanvas(CanvasLocalization);
-                _buttonStateManager.SetActive("localization");
+                _canvasManager.SwitchCanvas(CanvasLocalization, "localization");
             }
         }
 
         private void ReturnToAssistant_Click(object sender, RoutedEventArgs e)
         {
             _canvasManager.SwitchCanvas(CanvasAssistant);
-            _buttonStateManager.SetActive("assistant");
         }
 
         private void EnvSelector_GearClicked(object? sender, EventArgs e)
