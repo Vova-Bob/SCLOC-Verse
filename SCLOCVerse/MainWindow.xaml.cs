@@ -5,6 +5,7 @@ using SCLOCVerse.Interfaces;
 using SCLOCVerse.Models.ApplicationUpdate;
 using SCLOCVerse.Models.Auth;
 using SCLOCVerse.Models.LiaModels;
+using SCLOCVerse.Models.Notifications;
 using SCLOCVerse.Services;
 using SCLOCVerse.Services.ApplicationUpdate;
 using SCLOCVerse.Services.Cache;
@@ -56,6 +57,8 @@ namespace SCLOCVerse
         private readonly IAutostartService _autostartService;
         private readonly IUiInteractionPolicy _uiPolicy;
         private readonly IPreferencesService _preferencesService;
+        private readonly INotificationRouter _notificationRouter;
+        private readonly IToastNotificationService _osToast;
         private IHotkeyMessageSource? _hotkeyMessageSource;
         private bool _showGameFolderToast = true;
         private DateTime? _suppressStartupUpdateCheckUntil;
@@ -90,7 +93,7 @@ namespace SCLOCVerse
         private readonly UpdateCheckerService _updateCheckerService;
         private readonly CleanupController _cacheCleanupController;
 
-        public MainWindow(MainWindowViewModel viewModel, IWindowHelper windowHelper, ILocalizationInstaller localizationInstaller, IReadmeService readmeService,     IUpdater updater, UpdateCheckerService updateCheckerService, IApplicationUpdateService applicationUpdateService, IBackgroundUpdateMonitor backgroundUpdateMonitor, IUpdateChannelService updateChannelService, IApplicationVersionProvider applicationVersionProvider, IUpdateDownloader updateDownloader, IUpdateInstaller updateInstaller, IUpdateHistoryService updateHistoryService, IUpdateVerifier updateVerifier, IGitHubReleaseClient gitHubReleaseClient, IDialogService dialogService, IAuthService authService, IAuthStatusProvider authStatusProvider, IHangarTimerService hangarTimerService, IHotkeyService hotkeyService, ITrayService trayService, IApplicationInstanceService applicationInstanceService, IAutostartService autostartService, IUiInteractionPolicy uiPolicy, IPreferencesService preferencesService)
+        public MainWindow(MainWindowViewModel viewModel, IWindowHelper windowHelper, ILocalizationInstaller localizationInstaller, IReadmeService readmeService,     IUpdater updater, UpdateCheckerService updateCheckerService, IApplicationUpdateService applicationUpdateService, IBackgroundUpdateMonitor backgroundUpdateMonitor, IUpdateChannelService updateChannelService, IApplicationVersionProvider applicationVersionProvider, IUpdateDownloader updateDownloader, IUpdateInstaller updateInstaller, IUpdateHistoryService updateHistoryService, IUpdateVerifier updateVerifier, IGitHubReleaseClient gitHubReleaseClient, IDialogService dialogService, IAuthService authService, IAuthStatusProvider authStatusProvider, IHangarTimerService hangarTimerService, IHotkeyService hotkeyService, ITrayService trayService, IApplicationInstanceService applicationInstanceService, IAutostartService autostartService, IUiInteractionPolicy uiPolicy, IPreferencesService preferencesService, INotificationRouter notificationRouter, IToastNotificationService toastNotificationService)
         {
             InitializeComponent();
 
@@ -119,6 +122,8 @@ namespace SCLOCVerse
             _autostartService = autostartService;
             _uiPolicy = uiPolicy;
             _preferencesService = preferencesService;
+            _notificationRouter = notificationRouter;
+            _osToast = toastNotificationService;
 
             _toastService = new ToastService(AppToast.ToastBorder, AppToast.ToastText);
             _linkService = new LinkService(_toastService);
@@ -152,7 +157,10 @@ namespace SCLOCVerse
 
             CanvasHome.CurrentVersionTextControl.Text = _applicationVersionProvider.GetCurrentVersion().ToString();
 
-            _backgroundUpdateMonitor.UpdateAvailable += OnBackgroundUpdateAvailable;
+            // Оркестратор піднімає UpdateCycleCompleted → NotificationRouter будує
+            // NotificationCandidate[] → NotificationsReady → MainWindow маршрутизує
+            // InApp (IToastService) vs OS Toast (IToastNotificationService) за видимістю.
+            _notificationRouter.NotificationsReady += OnNotificationsReady;
             _backgroundUpdateMonitor.CheckFailed += OnBackgroundUpdateCheckFailed;
 
             CanvasSettings.UpdateChannelSelector.ItemsSource = new[]
@@ -482,10 +490,63 @@ namespace SCLOCVerse
             _backgroundUpdateMonitor.Start();
         }
 
-        private async void OnBackgroundUpdateAvailable(object? sender, UpdateCheckResult result)
+        /// <summary>
+        /// Обробник NotificationsReady від NotificationRouter.
+        /// Event може піднятись з фонового потоку — маршалізуємо в UI через Dispatcher.CheckAccess.
+        /// </summary>
+        private void OnNotificationsReady(object? sender, IReadOnlyList<NotificationCandidate> candidates)
         {
-            await _toastService.ShowToastAsync($"Доступна нова версія SCLOC-Verse {result.LatestVersion}").ConfigureAwait(true);
+            if (!Dispatcher.CheckAccess())
+            {
+                Dispatcher.BeginInvoke(new Action(() => OnNotificationsReady(sender, candidates)));
+                return;
+            }
+
+            foreach (var candidate in candidates)
+                PresentNotification(candidate);
         }
+
+        /// <summary>
+        /// Вибирає канал доставки за NotificationPolicy + видимістю вікна.
+        /// Изольований метод — майбутнє розширення (Discord, sound, flash) додається тут,
+        /// не розростанням OnNotificationsReady.
+        /// </summary>
+        private void PresentNotification(NotificationCandidate candidate)
+        {
+            if (candidate.Policy == NotificationPolicy.Silent)
+                return;
+
+            var useOs = candidate.Policy == NotificationPolicy.OS
+                || (candidate.Policy == NotificationPolicy.Auto && !IsWindowVisible());
+
+            if (useOs)
+            {
+                _osToast.Show(new ToastNotification
+                {
+                    Title = "SCLOC-Verse",
+                    Message = candidate.Message,
+                    SourceTag = candidate.Source switch
+                    {
+                        NotificationSource.Application => "app-update",
+                        NotificationSource.Localization => "localization",
+                        NotificationSource.Lia => "lia",
+                        _ => null
+                    },
+                    Severity = candidate.Severity
+                });
+            }
+            else
+            {
+                _ = _toastService.ShowToastAsync(candidate.Message);
+            }
+        }
+
+        /// <summary>
+        /// Чи видиме головне вікно (не Hidden/Collapsed, не Minimized).
+        /// Використовується NotificationRouter-обробником для маршрутизації InApp vs OS Toast.
+        /// </summary>
+        private bool IsWindowVisible()
+            => Visibility == Visibility.Visible && WindowState != WindowState.Minimized;
 
         private void OnBackgroundUpdateCheckFailed(object? sender, Exception exception)
         {

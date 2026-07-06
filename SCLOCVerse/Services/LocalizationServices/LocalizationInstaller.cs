@@ -120,7 +120,7 @@ namespace SCLOCVerse.Services.LocalizationServices
             ProgressChanged?.Invoke(LocalizationProgressUpdate.Completed(localizationUpdated));
             NotificationRaised?.Invoke(LocalizationNotification.Completed(message, localizationUpdated));
 
-            return new LocalizationInstallResult(localizationUpdated, environmentName, globalIniPath, userCfgPathCreated, message);
+            return new LocalizationInstallResult(localizationUpdated, environmentName, globalIniPath, userCfgPathCreated, message, release.TagName);
         }
 
         public Task<LocalizationDeleteResult> DeleteAsync(string environmentFolder, string environmentName, CancellationToken cancellationToken = default)
@@ -493,7 +493,7 @@ namespace SCLOCVerse.Services.LocalizationServices
                 var releases = await JsonSerializer.DeserializeAsync<List<ReleasePayload>>(responseStream, SerializerOptions, ct).ConfigureAwait(false);
                 if (releases == null || releases.Count == 0) return null;
 
-                bool prereleaseNeeded = envName.Contains("PTU", StringComparison.OrdinalIgnoreCase);
+                bool prereleaseNeeded = StarCitizenEnvironments.IsPrereleaseChannel(envName);
                 return releases.FirstOrDefault(r => r.Prerelease == prereleaseNeeded && r.Assets?.Any(a => a.Name == GlobalIniFileName) == true);
             }
             catch (JsonException ex)

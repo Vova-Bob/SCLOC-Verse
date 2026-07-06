@@ -1,9 +1,10 @@
-﻿using System.Collections.ObjectModel;
+﻿using SCLOCVerse.Helpers;
+using SCLOCVerse.Models;
+using System.Collections.ObjectModel;
 using System.IO;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
-using SCLOCVerse.Models;
 
 namespace SCLOCVerse.Controls
 {
@@ -60,7 +61,7 @@ namespace SCLOCVerse.Controls
             Environments.Clear();
             if (string.IsNullOrWhiteSpace(gameRoot) || !Directory.Exists(gameRoot)) return;
 
-            string[] envNames = new[] { "LIVE", "PTU", "HOTFIX", "EPTU" };
+            string[] envNames = StarCitizenEnvironments.Known;
             foreach (var name in envNames)
             {
                 string envDir = Path.Combine(gameRoot, name);

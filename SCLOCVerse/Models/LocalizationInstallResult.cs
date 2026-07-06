@@ -5,5 +5,6 @@
          string EnvironmentName,
          string GlobalIniPath,
          string? UserCfgPath,
-         string Message);
+         string Message,
+         string? Version);
 }

@@ -1,4 +1,5 @@
-﻿using SCLOCVerse.Interfaces;
+﻿using SCLOCVerse.Helpers;
+using SCLOCVerse.Interfaces;
 using System.IO;
 
 namespace SCLOCVerse.Services.Common
@@ -45,10 +46,9 @@ namespace SCLOCVerse.Services.Common
             }
         }
 
-        // TODO(architecture): список середовищ дублюється у Controls/EnvironmentSelector.xaml.cs.
-        // Свідомо не винесено в спільне місце, щоб не створювати новий файл і не тягнути
-        // залежність шару Services від шару Controls. Винести при появі третього місця використання.
-        private static readonly string[] GameEnvironments = { "LIVE", "PTU", "EPTU", "HOTFIX" };
+        // Список середовищ винесено у єдине джерело StarCitizenEnvironments.Known
+        // (використовується FolderSearchService + EnvironmentSelector + BackgroundUpdateOrchestrator).
+        private static readonly string[] GameEnvironments = StarCitizenEnvironments.Known;
 
         // Папка StarCitizen вважається справжнім коренем гри лише за наявності хоча б одного середовища.
         // Без цієї перевірки будь-яка папка з іменем StarCitizen (бэкап, dev-копія тощо) визнавалася б грою.

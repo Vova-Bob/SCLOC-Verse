@@ -31,7 +31,9 @@ namespace SCLOCVerse.Composition
         private readonly IApplicationVersionProvider _applicationVersionProvider;
         private readonly IUpdateChannelService _updateChannelService;
         private readonly IApplicationUpdateService _applicationUpdateService;
+        private readonly ILocalizationInstaller _localizationInstaller;
         private readonly IBackgroundUpdateMonitor _backgroundUpdateMonitor;
+        private readonly INotificationRouter _notificationRouter;
         private readonly IUpdateDownloader _updateDownloader;
         private readonly IUpdateInstaller _updateInstaller;
         private readonly IUpdateHistoryService _updateHistoryService;
@@ -105,7 +107,20 @@ namespace SCLOCVerse.Composition
                 gitHubClient,
                 updateCacheService);
 
-            _backgroundUpdateMonitor = new BackgroundUpdateMonitor(_applicationUpdateService);
+            _localizationInstaller = new LocalizationInstaller();
+
+            _backgroundUpdateMonitor = new BackgroundUpdateMonitor(
+                _applicationUpdateService,
+                _localizationInstaller,
+                _updater,
+                _settingsService,
+                _preferencesService,
+                _telemetryClient);
+
+            // NotificationRouter — чистий сервіс (не знає WPF). З'єднується з оркестратором
+            // підпискою: UpdateCycleCompleted → Route → NotificationsReady (підписник MainWindow).
+            _notificationRouter = new NotificationRouter(_preferencesService);
+            _backgroundUpdateMonitor.UpdateCycleCompleted += (s, e) => _notificationRouter.Route(e);
 
             // Tray-сервіс інкапсулює H.NotifyIcon.TaskbarIcon. Ініціалізується
             // пізніше (Mainlop), коли UI-диспетчер вже готовий.
@@ -204,13 +219,12 @@ namespace SCLOCVerse.Composition
             var viewModel = new MainWindowViewModel(searchFolder, _settingsService);
 
             var windowHelper = new WindowHelper();
-            var localizationInstaller = new LocalizationInstaller();
             var readmeService = new ReadmeService();
 
             return new MainWindow(
                 viewModel,
                 windowHelper,
-                localizationInstaller,
+                _localizationInstaller,
                 readmeService,
                 _updater,
                 _updateCheckerService,
@@ -232,7 +246,9 @@ namespace SCLOCVerse.Composition
                 _applicationInstanceService,
                 _autostartService,
                 uiPolicy,
-                _preferencesService);
+                _preferencesService,
+                _notificationRouter,
+                _toastNotificationService);
         }
 
         private static string GetSupabaseUrl()
