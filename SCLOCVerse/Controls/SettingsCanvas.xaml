@@ -518,34 +518,27 @@
             Width="170"
             Height="28"/>
 
-    <!-- ============== БЛОК "ПОВЕДІНКА" ============== -->
+    <!-- ============== ЧЕКБОКСИ ПОВЕДІНКИ ============== -->
 
-    <!-- Заголовок блоку -->
-    <TextBlock Canvas.Left="70" Canvas.Top="555"
-               Text="Поведінка:"
-               Foreground="White"
-               FontSize="14"
-               FontWeight="Bold"/>
-
+    <!-- Колонка 1 -->
     <!-- Чекбокс: Запускати з Windows -->
     <CheckBox x:Name="RunAtStartupCheckBox"
               Style="{StaticResource SettingCheckBox}"
               Content="Запускати з Windows"
-              Canvas.Left="70" Canvas.Top="580"/>
+              Canvas.Left="302" Canvas.Top="140"/>
 
     <!-- Чекбокс: Згортати в трей -->
     <CheckBox x:Name="MinimizeToTrayCheckBox"
               Style="{StaticResource SettingCheckBox}"
               Content="Згортати в трей при закритті"
-              Canvas.Left="320" Canvas.Top="580"/>
+              Canvas.Left="302" Canvas.Top="171"/>
 
-    <!-- ============== БЛОК "ОНОВЛЕННЯ ЛОКАЛІЗАЦІЇ" ============== -->
-
-    <!-- Чекбокс: Автоматично оновлювати локалізацію -->
+    <!-- Колонка 2 -->
+    <!-- Чекбокс: Автооновлення локалізації -->
     <CheckBox x:Name="AutoUpdateLocalizationCheckBox"
               Style="{StaticResource SettingCheckBox}"
-              Content="Автоматично оновлювати локалізацію"
-              Canvas.Left="70" Canvas.Top="615"/>
+              Content="Автооновлення локалізації"
+              Canvas.Left="606" Canvas.Top="140"/>
 
     <!-- README блок -->
     <Border Canvas.Left="70" Canvas.Top="220"
