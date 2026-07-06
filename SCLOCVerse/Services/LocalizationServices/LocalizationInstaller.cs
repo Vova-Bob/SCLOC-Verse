@@ -18,6 +18,7 @@ namespace SCLOCVerse.Services.LocalizationServices
 {
     public sealed class LocalizationInstaller : ILocalizationInstaller
     {
+        private const string RepositoryId = "Vova-Bob/SC_localization_UA";
         private const string UserCfgFileName = "user.cfg";
         private const string GlobalIniFileName = "global.ini";
         private const string ReleasesApiUrl = "https://api.github.com/repos/Vova-Bob/SC_localization_UA/releases";
@@ -28,6 +29,18 @@ namespace SCLOCVerse.Services.LocalizationServices
         {
             WriteIndented = false
         };
+
+        // In-memory кеш списку релізів локалізації (/releases) з TTL.
+        // Оркестратор викликає InstallAsync для КОЖНОГО середовища (LIVE/PTU/EPTU/HOTFIX) —
+        // без кешу це 4× GET /releases за цикл. З кешем — 1× за ReleasesTtl (5 хв).
+        // Instance поля — майбутнє розширення (різні репозиторії/конфігурації).
+        private sealed record CachedReleases(IReadOnlyList<ReleasePayload>? Value, DateTimeOffset FetchedAt, string? ETag, DateTimeOffset? LastModified)
+        {
+            public bool IsFresh => Value is not null && DateTimeOffset.UtcNow - FetchedAt < GitHubCacheDefaults.ReleasesTtl;
+        }
+
+        private CachedReleases? _cachedReleases;
+        private readonly SemaphoreSlim _releasesSemaphore = new(1, 1);
 
         public event Action<LocalizationProgressUpdate>? ProgressChanged;
         public event Action<LocalizationNotification>? NotificationRaised;
@@ -483,22 +496,113 @@ namespace SCLOCVerse.Services.LocalizationServices
             return await HttpRetryHelper.SendWithRetryAsync(HttpClient, request, completionOption, ct).ConfigureAwait(false);
         }
 
-        private static async Task<ReleasePayload?> GetReleaseAsync(string envName, CancellationToken ct)
+        private async Task<ReleasePayload?> GetReleaseAsync(string envName, CancellationToken ct)
         {
-            using var response = await SendWithRetryAsync(() => new HttpRequestMessage(HttpMethod.Get, ReleasesApiUrl), ct).ConfigureAwait(false);
-            response.EnsureSuccessStatusCode();
-            await using var responseStream = await response.Content.ReadAsStreamAsync(ct).ConfigureAwait(false);
+            var releases = await GetReleasesWithCacheAsync(ct).ConfigureAwait(false);
+            if (releases is null || releases.Count == 0) return null;
+
+            bool prereleaseNeeded = StarCitizenEnvironments.IsPrereleaseChannel(envName);
+            return releases.FirstOrDefault(r => r.Prerelease == prereleaseNeeded
+                && r.Assets?.Any(a => a.Name == GlobalIniFileName) == true);
+        }
+
+        /// <summary>
+        /// Повертає список релізів з in-memory кешу (TTL 5 хв) або з GitHub.
+        /// Спільний між усіма середовищами (LIVE/PTU/EPTU/HOTFIX) — 1 запит замість 4 за цикл.
+        /// При GitHub-помилці + є кеш младший 24г — fallback на кеш.
+        /// </summary>
+        private async Task<IReadOnlyList<ReleasePayload>?> GetReleasesWithCacheAsync(CancellationToken ct)
+        {
+            // Швидкий шлях: кеш свіжий — без Semaphore, без мережі.
+            if (_cachedReleases is { IsFresh: true } fresh)
+            {
+#if DEBUG
+                System.Diagnostics.Debug.WriteLine($"[Localization Cache][{RepositoryId}] HIT (Age={DateTimeOffset.UtcNow - fresh.FetchedAt:hh\\:mm\\:ss})");
+#endif
+                return fresh.Value;
+            }
+
+            var entered = await _releasesSemaphore.WaitAsync(GitHubCacheDefaults.SemaphoreTimeout, ct).ConfigureAwait(false);
+            if (!entered)
+            {
+                if (_cachedReleases is { } stale && DateTimeOffset.UtcNow - stale.FetchedAt < GitHubCacheDefaults.MaximumStaleAge)
+                {
+#if DEBUG
+                    System.Diagnostics.Debug.WriteLine($"[Localization Cache][{RepositoryId}] SEMAPHORE_TIMEOUT → fallback (Age={DateTimeOffset.UtcNow - stale.FetchedAt:hh\\:mm\\:ss})");
+#endif
+                    return stale.Value;
+                }
+                throw new TimeoutException("Localization releases fetch timed out waiting for another fetch to complete.");
+            }
+
             try
             {
-                var releases = await JsonSerializer.DeserializeAsync<List<ReleasePayload>>(responseStream, SerializerOptions, ct).ConfigureAwait(false);
-                if (releases == null || releases.Count == 0) return null;
+                // Double-check: поки чекали, кеш міг обновитись іншим потоком.
+                if (_cachedReleases is { IsFresh: true } stillFresh)
+                {
+#if DEBUG
+                    System.Diagnostics.Debug.WriteLine($"[Localization Cache][{RepositoryId}] HIT (Age={DateTimeOffset.UtcNow - stillFresh.FetchedAt:hh\\:mm\\:ss})");
+#endif
+                    return stillFresh.Value;
+                }
 
-                bool prereleaseNeeded = StarCitizenEnvironments.IsPrereleaseChannel(envName);
-                return releases.FirstOrDefault(r => r.Prerelease == prereleaseNeeded && r.Assets?.Any(a => a.Name == GlobalIniFileName) == true);
+#if DEBUG
+                System.Diagnostics.Debug.WriteLine(_cachedReleases is null
+                    ? $"[Localization Cache][{RepositoryId}] MISS (Empty)"
+                    : $"[Localization Cache][{RepositoryId}] MISS (Expired)");
+#endif
+
+                using var response = await SendWithRetryAsync(() => new HttpRequestMessage(HttpMethod.Get, ReleasesApiUrl), ct).ConfigureAwait(false);
+                response.EnsureSuccessStatusCode();
+                await using var responseStream = await response.Content.ReadAsStreamAsync(ct).ConfigureAwait(false);
+
+                List<ReleasePayload> releases;
+                try
+                {
+                    releases = await JsonSerializer.DeserializeAsync<List<ReleasePayload>>(responseStream, SerializerOptions, ct).ConfigureAwait(false)
+                        ?? new List<ReleasePayload>();
+                }
+                catch (JsonException ex)
+                {
+                    throw new InvalidOperationException(LocalizationMessages.ReleaseParseError(), ex);
+                }
+
+                // Зберігаємо з ETag/LastModified для майбутнього розширення Conditional GET.
+                _cachedReleases = new CachedReleases(
+                    releases,
+                    DateTimeOffset.UtcNow,
+                    response.Headers.ETag?.Tag,
+                    response.Content.Headers.LastModified);
+
+#if DEBUG
+                System.Diagnostics.Debug.WriteLine($"[Localization Cache][{RepositoryId}] REFRESH (HTTP 200)");
+#endif
+                return releases;
             }
-            catch (JsonException ex)
+            catch (HttpRequestException) when (_cachedReleases is { } stale && DateTimeOffset.UtcNow - stale.FetchedAt < GitHubCacheDefaults.MaximumStaleAge)
             {
-                throw new InvalidOperationException(LocalizationMessages.ReleaseParseError(), ex);
+#if DEBUG
+                System.Diagnostics.Debug.WriteLine($"[Localization Cache][{RepositoryId}] GITHUB_ERROR → fallback (Age={DateTimeOffset.UtcNow - stale.FetchedAt:hh\\:mm\\:ss})");
+#endif
+                return stale.Value;
+            }
+            catch (TaskCanceledException) when (_cachedReleases is { } stale && DateTimeOffset.UtcNow - stale.FetchedAt < GitHubCacheDefaults.MaximumStaleAge)
+            {
+#if DEBUG
+                System.Diagnostics.Debug.WriteLine($"[Localization Cache][{RepositoryId}] GITHUB_ERROR → fallback (Age={DateTimeOffset.UtcNow - stale.FetchedAt:hh\\:mm\\:ss})");
+#endif
+                return stale.Value;
+            }
+            catch (TimeoutException) when (_cachedReleases is { } stale && DateTimeOffset.UtcNow - stale.FetchedAt < GitHubCacheDefaults.MaximumStaleAge)
+            {
+#if DEBUG
+                System.Diagnostics.Debug.WriteLine($"[Localization Cache][{RepositoryId}] GITHUB_ERROR → fallback (Age={DateTimeOffset.UtcNow - stale.FetchedAt:hh\\:mm\\:ss})");
+#endif
+                return stale.Value;
+            }
+            finally
+            {
+                _releasesSemaphore.Release();
             }
         }
 

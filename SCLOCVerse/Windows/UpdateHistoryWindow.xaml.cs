@@ -14,6 +14,7 @@ namespace SCLOCVerse.Windows
 {
     public partial class UpdateHistoryWindow : Window
     {
+        private readonly IApplicationUpdateService _applicationUpdateService;
         private readonly IGitHubReleaseClient _gitHubReleaseClient;
         private readonly IApplicationVersionProvider _applicationVersionProvider;
         private readonly IUpdateChannelService _updateChannelService;
@@ -24,6 +25,7 @@ namespace SCLOCVerse.Windows
         private readonly string _repo = "SCLOC-Verse";
 
         public UpdateHistoryWindow(
+            IApplicationUpdateService applicationUpdateService,
             IGitHubReleaseClient gitHubReleaseClient,
             IApplicationVersionProvider applicationVersionProvider,
             IUpdateChannelService updateChannelService,
@@ -33,6 +35,7 @@ namespace SCLOCVerse.Windows
         {
             InitializeComponent();
 
+            _applicationUpdateService = applicationUpdateService ?? throw new ArgumentNullException(nameof(applicationUpdateService));
             _gitHubReleaseClient = gitHubReleaseClient ?? throw new ArgumentNullException(nameof(gitHubReleaseClient));
             _applicationVersionProvider = applicationVersionProvider ?? throw new ArgumentNullException(nameof(applicationVersionProvider));
             _updateChannelService = updateChannelService ?? throw new ArgumentNullException(nameof(updateChannelService));
@@ -71,7 +74,7 @@ namespace SCLOCVerse.Windows
             {
                 var currentVersion = _applicationVersionProvider.GetCurrentVersion();
                 var currentChannel = GetCurrentChannel();
-                var releases = await _gitHubReleaseClient.GetReleasesAsync(_owner, _repo, CancellationToken.None).ConfigureAwait(true);
+                var releases = await _applicationUpdateService.GetReleasesForHistoryAsync(CancellationToken.None).ConfigureAwait(true);
 
                 var items = releases
                     .Where(r => IsChannelMatch(r, currentChannel))

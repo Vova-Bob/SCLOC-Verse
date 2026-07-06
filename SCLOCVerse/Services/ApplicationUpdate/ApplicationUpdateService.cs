@@ -123,6 +123,16 @@ namespace SCLOCVerse.Services.ApplicationUpdate
             }
         }
 
+        /// <summary>
+        /// Список релізів для історії оновлень — через IUpdateCacheService (forceRefresh=false).
+        /// Замість прямого GitHubReleaseClient.GetReleasesAsync — використовує кеш 30 хв.
+        /// </summary>
+        public async Task<List<GitHubRelease>> GetReleasesForHistoryAsync(CancellationToken cancellationToken = default)
+        {
+            var channel = ResolveChannel(_channelService.GetUpdateChannel());
+            return await GetReleasesAsync(channel, forceRefresh: false, cancellationToken).ConfigureAwait(false);
+        }
+
         private async Task<List<GitHubRelease>> GetReleasesAsync(
             UpdateChannel channel,
             bool forceRefresh,

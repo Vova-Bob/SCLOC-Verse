@@ -486,7 +486,7 @@ namespace SCLOCVerse
                 return;
             }
 
-            await RunManualUpdateCheckAsync(forceRefresh: true).ConfigureAwait(true);
+            await RunManualUpdateCheckAsync(forceRefresh: false).ConfigureAwait(true);
             _backgroundUpdateMonitor.Start();
         }
 
@@ -688,6 +688,7 @@ namespace SCLOCVerse
         private void UpdateHistoryButton_Click(object sender, RoutedEventArgs e)
         {
                 var window = new UpdateHistoryWindow(
+                    _applicationUpdateService,
                     _gitHubReleaseClient,
                     _applicationVersionProvider,
                     _updateChannelService,

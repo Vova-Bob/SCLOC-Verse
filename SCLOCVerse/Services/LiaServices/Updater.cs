@@ -16,8 +16,22 @@ namespace SCLOCVerse.Services.LiaServices
 {
     public class Updater : IUpdater
     {
+        private const string RepositoryId = "AlexLiberty/StarCitizen_VoicePack_Releases";
+
         private static readonly HttpClient Client = CreateHttpClient();
         private readonly ITelemetryService? _telemetry;
+
+        // In-memory кеш remote-статусу LIA з TTL — зменшує GitHub-запити при частих викликах
+        // (Assistant_Click, оркестратор, ручні кнопки). ETag lia.meta.json залишається,
+        // але RAM-кеш прибирає навіть 304-запити протягом TTL.
+        // Static — бо Updater один екземпляр у сесії (патерн автора з static Client).
+        private sealed record CachedStatus(LiaInstallStatus Status, DateTimeOffset FetchedAt)
+        {
+            public bool IsFresh => DateTimeOffset.UtcNow - FetchedAt < GitHubCacheDefaults.StatusTtl;
+        }
+
+        private static CachedStatus? _cachedStatus;
+        private static readonly SemaphoreSlim _statusSemaphore = new(1, 1);
 
         public Updater(ITelemetryService? telemetry = null)
         {
@@ -26,10 +40,104 @@ namespace SCLOCVerse.Services.LiaServices
 
         public async Task<LiaInstallStatus> GetStatusAsync(CancellationToken cancellationToken = default)
         {
-            var installedVersion = await GetInstalledVersionAsync(cancellationToken).ConfigureAwait(false);
-            var release = await TryGetLatestReleaseAsync(cancellationToken).ConfigureAwait(false);
-            var latestVersion = TryParseVersion(release?.TagName, out var remoteVersion) ? remoteVersion : null;
+            // Швидкий шлях: кеш свіжий — повертаємо без Semaphore, без мережі.
+            if (_cachedStatus is { IsFresh: true } fresh)
+            {
+#if DEBUG
+                Debug.WriteLine($"[LIA Cache][{RepositoryId}] HIT (Age={DateTimeOffset.UtcNow - fresh.FetchedAt:hh\\:mm\\:ss})");
+#endif
+                return fresh.Status;
+            }
 
+            // Чекаємо на Semaphore повністю — щоб 20 потоків не отримали прострочені дані,
+            // поки один оновлює кеш. Timeout 15с + fallback на кеш.
+            var entered = await _statusSemaphore.WaitAsync(GitHubCacheDefaults.SemaphoreTimeout, cancellationToken).ConfigureAwait(false);
+            if (!entered)
+            {
+                if (_cachedStatus is { } stale && DateTimeOffset.UtcNow - stale.FetchedAt < GitHubCacheDefaults.MaximumStaleAge)
+                {
+#if DEBUG
+                    Debug.WriteLine($"[LIA Cache][{RepositoryId}] SEMAPHORE_TIMEOUT → fallback (Age={DateTimeOffset.UtcNow - stale.FetchedAt:hh\\:mm\\:ss})");
+#endif
+                    return stale.Status;
+                }
+                throw new TimeoutException("LIA status check timed out waiting for another check to complete.");
+            }
+
+            try
+            {
+                // Double-check: поки чекали, кеш міг обновитись іншим потоком.
+                if (_cachedStatus is { IsFresh: true } stillFresh)
+                {
+#if DEBUG
+                    Debug.WriteLine($"[LIA Cache][{RepositoryId}] HIT (Age={DateTimeOffset.UtcNow - stillFresh.FetchedAt:hh\\:mm\\:ss})");
+#endif
+                    return stillFresh.Status;
+                }
+
+#if DEBUG
+                Debug.WriteLine(_cachedStatus is null
+                    ? $"[LIA Cache][{RepositoryId}] MISS (Empty)"
+                    : $"[LIA Cache][{RepositoryId}] MISS (Expired)");
+#endif
+
+                var installedVersion = await GetInstalledVersionAsync(cancellationToken).ConfigureAwait(false);
+                var release = await TryGetLatestReleaseAsync(cancellationToken).ConfigureAwait(false);
+                var latestVersion = TryParseVersion(release?.TagName, out var remoteVersion) ? remoteVersion : null;
+
+                // 304 → release == null, але LastKnownVersion є в кеші — використовуємо (bug fix).
+                if (release is null && latestVersion is null)
+                {
+                    var lastKnownStr = ReadReleaseMetadata()?.LastKnownVersion;
+                    if (TryParseVersion(lastKnownStr, out var cachedRemote))
+                        latestVersion = cachedRemote;
+                }
+
+                var status = BuildStatus(installedVersion, latestVersion);
+
+                // Оновлюємо кеш з новим FetchedAt — продовжуємо TTL навіть при 304.
+                _cachedStatus = new CachedStatus(status, DateTimeOffset.UtcNow);
+
+#if DEBUG
+                Debug.WriteLine(release is null && latestVersion is not null
+                    ? $"[LIA Cache][{RepositoryId}] REFRESH (HTTP 304)"
+                    : $"[LIA Cache][{RepositoryId}] REFRESH (HTTP 200)");
+#endif
+                return status;
+            }
+            catch (HttpRequestException) when (_cachedStatus is { } stale && DateTimeOffset.UtcNow - stale.FetchedAt < GitHubCacheDefaults.MaximumStaleAge)
+            {
+#if DEBUG
+                Debug.WriteLine($"[LIA Cache][{RepositoryId}] GITHUB_ERROR → fallback (Age={DateTimeOffset.UtcNow - stale.FetchedAt:hh\\:mm\\:ss})");
+#endif
+                return stale.Status;
+            }
+            catch (TaskCanceledException) when (_cachedStatus is { } stale && DateTimeOffset.UtcNow - stale.FetchedAt < GitHubCacheDefaults.MaximumStaleAge)
+            {
+#if DEBUG
+                Debug.WriteLine($"[LIA Cache][{RepositoryId}] GITHUB_ERROR → fallback (Age={DateTimeOffset.UtcNow - stale.FetchedAt:hh\\:mm\\:ss})");
+#endif
+                return stale.Status;
+            }
+            catch (TimeoutException) when (_cachedStatus is { } stale && DateTimeOffset.UtcNow - stale.FetchedAt < GitHubCacheDefaults.MaximumStaleAge)
+            {
+#if DEBUG
+                Debug.WriteLine($"[LIA Cache][{RepositoryId}] GITHUB_ERROR → fallback (Age={DateTimeOffset.UtcNow - stale.FetchedAt:hh\\:mm\\:ss})");
+#endif
+                return stale.Status;
+            }
+            finally
+            {
+                _statusSemaphore.Release();
+            }
+        }
+
+        /// <summary>
+        /// Чиста функція побудови статусу LIA з встановленої та remote-версії.
+        /// Без стану, без залежностей — винесено з GetStatusAsync для читабельності.
+        /// </summary>
+        private static LiaInstallStatus BuildStatus(Version? installedVersion, Version? latestVersion)
+        {
             if (installedVersion == null)
             {
                 return new LiaInstallStatus(
@@ -70,6 +178,18 @@ namespace SCLOCVerse.Services.LiaServices
                 latestVersion,
                 $"Встановлена актуальна версія Л.І.А: {installedVersion}",
                 LiaStatusColor.Green);
+        }
+
+        /// <summary>
+        /// Інвалідує in-memory кеш статусу LIA. Викликається після Install/Uninstall,
+        /// щоб наступний GetStatusAsync підтвердив нову версію з мережі.
+        /// </summary>
+        internal static void InvalidateStatusCache()
+        {
+            _cachedStatus = null;
+#if DEBUG
+            Debug.WriteLine($"[LIA Cache][{RepositoryId}] INVALIDATED");
+#endif
         }
 
         public async Task InstallLatestAsync(
@@ -160,6 +280,12 @@ namespace SCLOCVerse.Services.LiaServices
 
                 throw; // Zero Regression.
             }
+            finally
+            {
+                // Після встановлення (успішного чи ні) — інвалідуємо кеш статусу,
+                // щоб наступний GetStatusAsync підтвердив нову версію з мережі.
+                InvalidateStatusCache();
+            }
         }
 
         public async Task UninstallAsync(Action<string>? onProgress = null, CancellationToken cancellationToken = default)
@@ -181,11 +307,19 @@ namespace SCLOCVerse.Services.LiaServices
                 Write-Output 'UNINSTALLED'
                 """;
 
-            var result = await RunPowerShellAsync(script, cancellationToken).ConfigureAwait(false);
-            if (result.ExitCode != 0)
-                throw new InvalidOperationException(result.Error.Trim());
+            try
+            {
+                var result = await RunPowerShellAsync(script, cancellationToken).ConfigureAwait(false);
+                if (result.ExitCode != 0)
+                    throw new InvalidOperationException(result.Error.Trim());
 
-            onProgress?.Invoke("Л.І.А видалено.");
+                onProgress?.Invoke("Л.І.А видалено.");
+            }
+            finally
+            {
+                // Після видалення — інвалідуємо кеш статусу (встановлена версія змінилась).
+                InvalidateStatusCache();
+            }
         }
 
         private static async Task<GitHubRelease> GetLatestReleaseAsync(CancellationToken cancellationToken)
@@ -210,10 +344,13 @@ namespace SCLOCVerse.Services.LiaServices
                 // Retry через єдиний HttpRetryHelper (429/403/5xx + Retry-After ≤10с + backoff).
                 using var response = await HttpRetryHelper.SendWithRetryAsync(Client, request, cancellationToken).ConfigureAwait(false);
 
-                // 304 Not Modified — дані не змінились, повертаємо null (CallingCode вважає "немає нового").
+                // 304 Not Modified — дані не змінились. Повертаємо release з кешованого
+                // LastKnownVersion, щоб GetStatusAsync міг побудувати статус "актуально/є оновлення".
                 if (response.StatusCode == System.Net.HttpStatusCode.NotModified)
                 {
-                    // Зберігаємо lastKnownVersion з кешу, якщо є — CallingCode не викликає повторно.
+                    var lastKnownTag = ReadReleaseMetadata()?.LastKnownVersion;
+                    if (!string.IsNullOrEmpty(lastKnownTag))
+                        return new GitHubRelease { TagName = lastKnownTag };
                     return null;
                 }
 
