@@ -159,7 +159,7 @@
                                    Margin="0,0,8,0"/>
                         
                         <TextBlock x:Name="TitleText"
-                                   Text="Доступне оновлення"
+                                   Text="Доступна нова версія SCLOC-Verse"
                                    FontFamily="Arial"
                                    FontSize="15"
                                    FontWeight="Bold"

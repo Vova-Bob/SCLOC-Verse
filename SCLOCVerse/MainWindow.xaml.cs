@@ -464,6 +464,12 @@ namespace SCLOCVerse
                     _updateStatusPresenter.ShowUpdateAvailable(result);
                     await _updateHistoryService.AddEntryAsync(CreateHistoryEntry(UpdateOperation.Check, UpdateOperationResult.Success, result)).ConfigureAwait(true);
 
+                    // Background startup (--minimized / автозапуск): модальний діалог не показуємо,
+                    // бо він підніме приховане вікно. App Toast йде через BackgroundUpdateMonitor
+                    // → NotificationRouter → PresentNotification (існуючий єдиний канал сповіщень).
+                    if (!_uiPolicy.CanShowModalDialogs)
+                        break;
+
                     var confirmed = await _dialogService.ShowUpdateDialogAsync(result.LatestVersion.ToString(), this).ConfigureAwait(true);
 
                     if (confirmed)
