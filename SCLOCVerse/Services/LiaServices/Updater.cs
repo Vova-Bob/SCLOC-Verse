@@ -324,8 +324,40 @@ namespace SCLOCVerse.Services.LiaServices
 
         private static async Task<GitHubRelease> GetLatestReleaseAsync(CancellationToken cancellationToken)
         {
-            var release = await TryGetLatestReleaseAsync(cancellationToken).ConfigureAwait(false);
-            return release ?? throw new InvalidOperationException("Не вдалося отримати останній реліз з GitHub.");
+            // Для встановлення потрібен ПОВНИЙ release з Assets (інсталятор, сертифікат).
+            // ETag conditional GET непридатний — 304 не містить Assets.
+            // Тому запит без If-None-Match/If-Modified-Since — гарантований 200 з повним тілом.
+            try
+            {
+                using var request = new System.Net.Http.HttpRequestMessage(System.Net.Http.HttpMethod.Get, AppSettings.GitHubReleasesUrl);
+
+                // Retry через єдиний HttpRetryHelper (429/403/5xx + Retry-After ≤10с + backoff).
+                using var response = await HttpRetryHelper.SendWithRetryAsync(Client, request, cancellationToken).ConfigureAwait(false);
+                response.EnsureSuccessStatusCode();
+
+                var json = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+                var release = JsonConvert.DeserializeObject<GitHubRelease>(json)
+                    ?? throw new InvalidOperationException("Не вдалося отримати останній реліз з GitHub.");
+
+                // Зберігаємо оновлені ETag/Last-Modified для наступного Conditional GET (GetStatusAsync).
+                var updatedMetadata = new LiaReleaseMetadata
+                {
+                    ETag = response.Headers.ETag?.Tag,
+                    LastModified = response.Content.Headers.LastModified,
+                    LastKnownVersion = release.TagName
+                };
+                WriteReleaseMetadata(updatedMetadata);
+
+                return release;
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (HttpRequestException)
+            {
+                throw new InvalidOperationException("Не вдалося отримати останній реліз з GitHub.");
+            }
         }
 
         private static async Task<GitHubRelease?> TryGetLatestReleaseAsync(CancellationToken cancellationToken)
