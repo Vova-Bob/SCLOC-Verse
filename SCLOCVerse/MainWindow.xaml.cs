@@ -62,6 +62,9 @@ namespace SCLOCVerse
         private IHotkeyMessageSource? _hotkeyMessageSource;
         private bool _showGameFolderToast = true;
         private DateTime? _suppressStartupUpdateCheckUntil;
+        // Кешований статус Л.І.А з останнього GetStatusAsync. Використовується для
+        // диспетчеризації кнопки BtnLiaInstall без зайвого мережевого запиту при кліці.
+        private LiaInstallStatus? _lastLiaStatus;
         /// <summary>
         /// Прапець ідемпотентного запуску інтерактивного старту UI.
         /// Перший показ вікна (Tray/IPC) запускає CompleteInteractiveStartupAsync один раз.
@@ -1236,9 +1239,57 @@ namespace SCLOCVerse
 
         private async void BtnLiaInstall_Click(object sender, RoutedEventArgs e)
         {
+            // Диспетчеризація за кешованим статусом (нуль мережі при кліці):
+            //  - не встановлено / доступне оновлення → InstallLatestAsync
+            //  - встановлено + актуально (або Orange) → LaunchAsync (локальний запуск)
+            if (_lastLiaStatus is { IsInstalled: true, IsUpdateAvailable: false })
+            {
+                await LaunchLiaAsync();
+                return;
+            }
+
+            await InstallLiaAsync();
+        }
+
+        /// <summary>
+        /// Локальний запуск встановленого пакунка Л.І.А через shell:AppsFolder.
+        /// Мережа не використовується — лише локальна активація AppX.
+        /// </summary>
+        private async Task LaunchLiaAsync()
+        {
+            BtnLiaInstall.IsEnabled = false;
+            BtnLiaDelete.IsEnabled = false;
+
+            try
+            {
+                await _updater.LaunchAsync().ConfigureAwait(true);
+                await _toastService.ShowToastAsync("Л.І.А запущено.").ConfigureAwait(true);
+            }
+            catch (Exception ex)
+            {
+                TxtLiaSetupe.Text += $"\nПомилка запуску: {ex.Message}";
+                await _toastService.ShowToastAsync("Не вдалося запустити Л.І.А.").ConfigureAwait(true);
+            }
+            finally
+            {
+                BtnLiaInstall.IsEnabled = true;
+                BtnLiaDelete.IsEnabled = true;
+            }
+        }
+
+        /// <summary>
+        /// Інсталяція або оновлення Л.І.А з GitHub. Тост розрізняє встановлення
+        /// та оновлення за статусом до початку операції (_lastLiaStatus.IsInstalled).
+        /// </summary>
+        private async Task InstallLiaAsync()
+        {
             TxtLiaSetupe.Text = string.Empty;
             BtnLiaInstall.IsEnabled = false;
             BtnLiaDelete.IsEnabled = false;
+
+            // Фіксуємо стан до інсталяції: true = було встановлено (значить — оновлення),
+            // false = не було (значить — нова інсталяція).
+            bool wasInstalled = _lastLiaStatus?.IsInstalled ?? false;
 
             try
             {
@@ -1252,7 +1303,11 @@ namespace SCLOCVerse
                 };
 
                 await _updater.InstallLatestAsync(logCallback).ConfigureAwait(true);
-                await _toastService.ShowToastAsync("Л.І.А успішно встановлено або оновлено.").ConfigureAwait(true);
+
+                string toastMessage = wasInstalled
+                    ? "Л.І.А успішно оновлено."
+                    : "Л.І.А успішно встановлено.";
+                await _toastService.ShowToastAsync(toastMessage).ConfigureAwait(true);
             }
             catch (Exception ex)
             {
@@ -1343,10 +1398,13 @@ namespace SCLOCVerse
         {
             var status = await _updater.GetStatusAsync().ConfigureAwait(true);
 
+            // Зберігаємо статус для диспетчеризації кнопки без зайвого мережевого запиту.
+            _lastLiaStatus = status;
+
             TxtLiaVersionPath.Text = status.Message;
             TxtLiaVersionPath.Foreground = MapColor(status.Color);
 
-            BtnLiaInstall.Content = _buttonHelper.GetLiaInstallButtonText(status.Message);
+            BtnLiaInstall.Content = _buttonHelper.GetLiaInstallButtonText(status);
             BtnLiaDelete.IsEnabled = status.IsInstalled;
             BtnLiaInstall.IsEnabled = true;
         }

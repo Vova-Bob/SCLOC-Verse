@@ -59,23 +59,19 @@ namespace SCLOCVerse.Helpers
             return LocalizationInstaller.IsLocalizationInstalled(folder!, env.Name) ? "Оновити" : "Встановити";
         }
 
-        public string GetLiaInstallButtonText(string? updateMessage)
+        public string GetLiaInstallButtonText(LiaInstallStatus status)
         {
-            if (string.IsNullOrWhiteSpace(updateMessage))
+            // Не встановлено — пропонуємо інсталяцію.
+            if (!status.IsInstalled)
                 return "Встановити";
 
-            string msg = updateMessage.ToLowerInvariant();
-
-            if (msg.Contains("не встановлено") || msg.Contains("не знайдено") || msg.Contains("бракує") || msg.Contains("відсутн"))
-                return "Встановити";
-
-            if (msg.Contains("актуальна версія"))
-                return "Актуально";
-
-            if (msg.Contains("доступне оновлення"))
+            // Встановлено + доступне оновлення — пропонуємо оновлення.
+            if (status.IsUpdateAvailable)
                 return "Оновити";
 
-            return "Встановити";
+            // Встановлено + актуальна версія (або не вдалося перевірити оновлення — Orange):
+            // пакунок присутній локально, тож пропонуємо запуск.
+            return "Запустити";
         }
 
         private static bool IsResetState(string? contentText) =>

@@ -14,6 +14,13 @@ namespace SCLOCVerse.Interfaces
         Task UninstallAsync(
             Action<string>? onProgress = null,
             CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Запускає локально встановлений пакунок Л.І.А через стандартний
+        /// Windows AppX activation (shell:AppsFolder). Без мережі — лише
+        /// читання локального реєстру AppX та активація пакунка.
+        /// </summary>
+        Task LaunchAsync(CancellationToken cancellationToken = default);
     }
 
     public sealed record LiaInstallStatus(

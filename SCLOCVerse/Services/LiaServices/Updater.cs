@@ -322,6 +322,41 @@ namespace SCLOCVerse.Services.LiaServices
             }
         }
 
+        public async Task LaunchAsync(CancellationToken cancellationToken = default)
+        {
+            // Локальний запуск встановленого пакунка Л.І.А через Windows AppX activation.
+            // Мережа не використовується: Get-AppxPackage читає локальний реєстр AppX,
+            // shell:AppsFolder активує пакунок через Windows Shell API.
+            var script = $$"""
+                $package = Get-AppxPackage -Name '{{AppSettings.PackageName}}' | Sort-Object Version -Descending | Select-Object -First 1
+                if (-not $package) {
+                    Write-Output 'NOT_INSTALLED'
+                    exit 0
+                }
+
+                $appId = '{{AppSettings.AppId}}'
+                $shellPath = "shell:AppsFolder\$($package.PackageFamilyName)!$appId"
+                Start-Process "explorer.exe" -ArgumentList $shellPath
+                Write-Output 'LAUNCHED'
+                """;
+
+            var result = await RunPowerShellAsync(script, cancellationToken).ConfigureAwait(false);
+
+            if (result.ExitCode != 0)
+                throw new InvalidOperationException(result.Error.Trim());
+
+            // NOT_INSTALLED — пакунок відсутній локально (не мережева помилка).
+            // Кинимо InvalidOperationException з українським повідомленням.
+            var output = result.Output.Trim();
+            if (output == "NOT_INSTALLED" || output.Contains("NOT_INSTALLED"))
+            {
+                throw new InvalidOperationException("Голосовий асистент Л.І.А не встановлено. Спочатку встановіть пакунок.");
+            }
+
+            // LAUNCHED — успішна активація. Windows Shell асинхронна, тож факт появи
+            // вікна Л.І.А не гарантовано миттєво (KISS — не перевіряємо процес).
+        }
+
         private static async Task<GitHubRelease> GetLatestReleaseAsync(CancellationToken cancellationToken)
         {
             // Для встановлення потрібен ПОВНИЙ release з Assets (інсталятор, сертифікат).
