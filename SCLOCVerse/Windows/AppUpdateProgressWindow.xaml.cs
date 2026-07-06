@@ -1,44 +1,32 @@
-﻿using SCLOCVerse.Models.ApplicationUpdate;
+using SCLOCVerse.Models.ApplicationUpdate;
 using System;
+using System.ComponentModel;
 using System.Globalization;
 using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Media.Animation;
+using System.Windows.Input;
+using System.Windows.Media;
 
-namespace SCLOCVerse.Controls
+namespace SCLOCVerse.Windows
 {
-    public partial class AppUpdateProgressBanner : UserControl
+    public partial class AppUpdateProgressWindow : Window
     {
-        private long? _lastTotalBytes;
+        private bool _allowClose;
+        private bool _isCancelled;
 
-        public AppUpdateProgressBanner()
+        public event EventHandler? CancelRequested;
+
+        public AppUpdateProgressWindow()
         {
             InitializeComponent();
-            HideImmediately();
         }
 
-        public void Show(string stage)
+        public void SetStage(string stage)
         {
             StageTextBlock.Text = stage;
-            ProgressBar.IsIndeterminate = false;
-            ProgressBar.Value = 0;
-            PercentageTextBlock.Text = string.Empty;
-            SizeTextBlock.Text = string.Empty;
-            SpeedTextBlock.Text = string.Empty;
-            EtaTextBlock.Text = string.Empty;
-
-            if (Visibility == Visibility.Collapsed)
-            {
-                Visibility = Visibility.Visible;
-                var storyboard = (Storyboard)FindResource("ShowStoryboard");
-                storyboard.Begin(this);
-            }
         }
 
         public void Report(UpdateDownloadProgress progress)
         {
-            _lastTotalBytes = progress.TotalBytes;
-
             var downloadedMb = BytesToMegabytes(progress.DownloadedBytes);
             var totalMb = progress.TotalBytes.HasValue
                 ? BytesToMegabytes(progress.TotalBytes.Value)
@@ -71,27 +59,80 @@ namespace SCLOCVerse.Controls
             EtaTextBlock.Text = etaText;
         }
 
-        public void SetStage(string stage)
+        public void MarkCompleted(string stage)
         {
-            StageTextBlock.Text = stage;
+            SetStage(stage);
+            CancelButton.IsEnabled = false;
+            CancelButton.Content = "Закрити";
+            _allowClose = true;
         }
 
-        public void Hide()
+        public void MarkFailed(string stage)
         {
-            var storyboard = (Storyboard)FindResource("HideStoryboard");
-            storyboard.Begin(this);
+            SetStage(stage);
+            ProgressBar.Foreground = new SolidColorBrush(Color.FromRgb(0xFF, 0x4C, 0x4C));
+            CancelButton.IsEnabled = true;
+            CancelButton.Content = "Закрити";
+            _allowClose = true;
         }
 
-        private void HideStoryboard_Completed(object sender, EventArgs e)
+        private void Window_Closing(object sender, CancelEventArgs e)
         {
-            Visibility = Visibility.Collapsed;
+            if (_allowClose)
+                return;
+
+            e.Cancel = true;
+            PromptCancel();
         }
 
-        private void HideImmediately()
+        private void PromptCancel()
         {
-            Visibility = Visibility.Collapsed;
-            Opacity = 0;
-            RenderTransform = new System.Windows.Media.TranslateTransform(0, -20);
+            if (_isCancelled)
+                return;
+
+            var result = MessageBox.Show(
+                "Завантаження буде перервано. Скасувати встановлення оновлення?",
+                "Скасувати оновлення",
+                MessageBoxButton.YesNo,
+                MessageBoxImage.Question);
+
+            if (result != MessageBoxResult.Yes)
+                return;
+
+            _isCancelled = true;
+            CancelRequested?.Invoke(this, EventArgs.Empty);
+
+            CancelButton.IsEnabled = false;
+            CancelButton.Content = "Скасування...";
+            StageTextBlock.Text = "Скасування...";
+        }
+
+        private void WindowCloseButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_allowClose)
+            {
+                Close();
+                return;
+            }
+
+            PromptCancel();
+        }
+
+        private void CancelButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (_allowClose)
+            {
+                Close();
+                return;
+            }
+
+            PromptCancel();
+        }
+
+        private void TitleBar_MouseDown(object sender, MouseButtonEventArgs e)
+        {
+            if (e.ChangedButton == MouseButton.Left)
+                DragMove();
         }
 
         private static double BytesToMegabytes(long bytes)
