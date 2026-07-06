@@ -155,8 +155,6 @@ namespace SCLOCVerse.Composition
 
         public void Dispose()
         {
-            ShutdownTimingLogger.Log("AppCompositionRoot.Dispose START");
-
             // Спочатку зупиняємо телеметрію: її uploader використовує auth-клієнт,
             // тож глушимо до dispose auth-композиції (reverse-order).
             try { _telemetryClient?.Dispose(); } catch { /* ignore */ }
@@ -190,8 +188,6 @@ namespace SCLOCVerse.Composition
                 hangarDisposable.Dispose();
 
             _authCompositionRoot?.Dispose();
-
-            ShutdownTimingLogger.Log("AppCompositionRoot.Dispose END");
         }
 
         public AuthCompositionRoot AuthCompositionRoot => _authCompositionRoot;

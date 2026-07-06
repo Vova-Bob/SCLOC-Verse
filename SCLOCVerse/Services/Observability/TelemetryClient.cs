@@ -169,17 +169,23 @@ namespace SCLOCVerse.Services.Observability
             // під час фінального (race із завершенням застосунку).
             try { _flushTimer?.Dispose(); } catch { /* ignore */ }
 
-            // Фінальний flush із захистом від зависання (Стаття 1 — non-throwing).
-            // Останні події (≤ FlushInterval) не повинні губитись при закритті —
-            // типовий сценарій: користувач отримав помилку L.I.A. й одразу закрив вікно.
-            // Timeout 5с захищає від зависання через мережу/Supabase.
+            // Фінальний flush при закритті — fire-and-forget, без блокування UI-потоку.
+            // Раніше тут був flushTask.Wait(5s), що гарантувано блокував UI на повні 5с:
+            // Insert до Supabase зависав під час shutdown (Dispatcher гасне, auth-клієнт
+            // у process-of-shutdown), а Wait вичерпував увесь таймаут. Це псувало UX
+            // закриття застосунку (5+ секунд затримки після Tray → Вийти).
+            //
+            // Best-effort: запускаємо FlushAsync і не чекаємо. Uploader.FlushAsync має
+            // внутрішній try/catch (Стаття 1 — non-throwing), тож unobserved exception
+            // безпечний. Події, що не встигли відправитись за час життя процесу після
+            // цього пункту, втрачаються — прийнятно для Operational-категорії телеметрії.
+            // Під час роботи застосунку відправка йде через фоновий timer-flush (30с tick),
+            // який не зачеплений цією зміною.
             if (_uploader is not null)
             {
                 try
                 {
-                    var flushTask = _uploader.FlushAsync();
-                    if (!flushTask.Wait(TimeSpan.FromSeconds(5)))
-                        Debug.WriteLine("[Telemetry] Final flush on dispose timed out after 5s.");
+                    _ = _uploader.FlushAsync();
                 }
                 catch (Exception ex)
                 {

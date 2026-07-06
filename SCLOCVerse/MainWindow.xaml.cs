@@ -996,7 +996,6 @@ namespace SCLOCVerse
         {
             // Прапець _forceExit знімає перехоплення OnClosing, щоб Close()
             // реально завершив процес (а не згорнув у трей за MinimizeToTray).
-            ShutdownTimingLogger.Log("Tray Exit clicked");
             _forceExit = true;
             Close();
         }

@@ -171,8 +171,6 @@ namespace SCLOCVerse
 
         protected override void OnExit(ExitEventArgs e)
         {
-            ShutdownTimingLogger.Log("App.OnExit");
-
             // Спочатку звільняємо всі фонові ресурси: таймери, HttpListener,
             // Supabase refresh timer, pipe-сервер єдиного екземпляра тощо.
             // Інакше Dispatcher залишиться живим і OnExit зависне на мережевих
