@@ -223,6 +223,100 @@
         <Button.Template>
             <ControlTemplate TargetType="{x:Type Button}">
                 <Grid x:Name="Root" RenderTransformOrigin="0.5,0.5">
+                    <VisualStateManager.VisualStateGroups>
+                        <VisualStateGroup x:Name="CommonStates">
+                            <VisualState x:Name="Normal">
+                                <Storyboard RepeatBehavior="Forever" AutoReverse="True">
+                                    <DoubleAnimationUsingKeyFrames Storyboard.TargetName="ArrowPath2" Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)">
+                                        <EasingDoubleKeyFrame KeyTime="0:0:0" Value="1.00"/>
+                                        <EasingDoubleKeyFrame KeyTime="0:0:1.25" Value="1.08">
+                                            <EasingDoubleKeyFrame.EasingFunction>
+                                                <SineEase EasingMode="EaseInOut"/>
+                                            </EasingDoubleKeyFrame.EasingFunction>
+                                        </EasingDoubleKeyFrame>
+                                        <EasingDoubleKeyFrame KeyTime="0:0:2.5" Value="1.00">
+                                            <EasingDoubleKeyFrame.EasingFunction>
+                                                <SineEase EasingMode="EaseInOut"/>
+                                            </EasingDoubleKeyFrame.EasingFunction>
+                                        </EasingDoubleKeyFrame>
+                                    </DoubleAnimationUsingKeyFrames>
+                                    <DoubleAnimationUsingKeyFrames Storyboard.TargetName="ArrowPath2" Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)">
+                                        <EasingDoubleKeyFrame KeyTime="0:0:0" Value="1.00"/>
+                                        <EasingDoubleKeyFrame KeyTime="0:0:1.25" Value="1.08">
+                                            <EasingDoubleKeyFrame.EasingFunction>
+                                                <SineEase EasingMode="EaseInOut"/>
+                                            </EasingDoubleKeyFrame.EasingFunction>
+                                        </EasingDoubleKeyFrame>
+                                        <EasingDoubleKeyFrame KeyTime="0:0:2.5" Value="1.00">
+                                            <EasingDoubleKeyFrame.EasingFunction>
+                                                <SineEase EasingMode="EaseInOut"/>
+                                            </EasingDoubleKeyFrame.EasingFunction>
+                                        </EasingDoubleKeyFrame>
+                                    </DoubleAnimationUsingKeyFrames>
+                                    <DoubleAnimationUsingKeyFrames Storyboard.TargetName="GlowHost" Storyboard.TargetProperty="Opacity">
+                                        <EasingDoubleKeyFrame KeyTime="0:0:0" Value="0.22"/>
+                                        <EasingDoubleKeyFrame KeyTime="0:0:1.25" Value="0.36">
+                                            <EasingDoubleKeyFrame.EasingFunction>
+                                                <SineEase EasingMode="EaseInOut"/>
+                                            </EasingDoubleKeyFrame.EasingFunction>
+                                        </EasingDoubleKeyFrame>
+                                        <EasingDoubleKeyFrame KeyTime="0:0:2.5" Value="0.22">
+                                            <EasingDoubleKeyFrame.EasingFunction>
+                                                <SineEase EasingMode="EaseInOut"/>
+                                            </EasingDoubleKeyFrame.EasingFunction>
+                                        </EasingDoubleKeyFrame>
+                                    </DoubleAnimationUsingKeyFrames>
+                                    <DoubleAnimationUsingKeyFrames Storyboard.TargetName="GlowHost" Storyboard.TargetProperty="(Effect).(DropShadowEffect.Opacity)">
+                                        <EasingDoubleKeyFrame KeyTime="0:0:0" Value="0.45"/>
+                                        <EasingDoubleKeyFrame KeyTime="0:0:1.25" Value="0.75">
+                                            <EasingDoubleKeyFrame.EasingFunction>
+                                                <SineEase EasingMode="EaseInOut"/>
+                                            </EasingDoubleKeyFrame.EasingFunction>
+                                        </EasingDoubleKeyFrame>
+                                        <EasingDoubleKeyFrame KeyTime="0:0:2.5" Value="0.45">
+                                            <EasingDoubleKeyFrame.EasingFunction>
+                                                <SineEase EasingMode="EaseInOut"/>
+                                            </EasingDoubleKeyFrame.EasingFunction>
+                                        </EasingDoubleKeyFrame>
+                                    </DoubleAnimationUsingKeyFrames>
+                                </Storyboard>
+                            </VisualState>
+
+                            <VisualState x:Name="MouseOver">
+                                <Storyboard>
+                                    <ColorAnimation Storyboard.TargetName="ArrowPath2"
+                                                    Storyboard.TargetProperty="(Path.Stroke).(SolidColorBrush.Color)"
+                                                    To="#8DD0FF" Duration="0:0:0.18"/>
+                                    <DoubleAnimation Storyboard.TargetName="ArrowPath2"
+                                                    Storyboard.TargetProperty="StrokeThickness"
+                                                    To="5.2" Duration="0:0:0.18"/>
+                                    <DoubleAnimation Storyboard.TargetName="GlowHost"
+                                                    Storyboard.TargetProperty="Opacity"
+                                                    To="0.55" Duration="0:0:0.18"/>
+                                    <DoubleAnimation Storyboard.TargetName="GlowHost"
+                                                    Storyboard.TargetProperty="(Effect).(DropShadowEffect.Opacity)"
+                                                    To="0.95" Duration="0:0:0.18"/>
+                                    <DoubleAnimation Storyboard.TargetName="GlowHost"
+                                                    Storyboard.TargetProperty="(Effect).(DropShadowEffect.BlurRadius)"
+                                                    To="30" Duration="0:0:0.18"/>
+                                    <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)"
+                                                     To="1.12" Duration="0:0:0.18"/>
+                                    <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)"
+                                                     To="1.12" Duration="0:0:0.18"/>
+                                </Storyboard>
+                            </VisualState>
+
+                            <VisualState x:Name="Pressed">
+                                <Storyboard>
+                                    <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)"
+                                                     To="0.95" Duration="0:0:0.08"/>
+                                    <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)"
+                                                     To="0.95" Duration="0:0:0.08"/>
+                                </Storyboard>
+                            </VisualState>
+                        </VisualStateGroup>
+                    </VisualStateManager.VisualStateGroups>
+
                     <Rectangle Fill="Transparent" Width="50" Height="100"/>
 
                     <Border x:Name="GlowHost"
@@ -259,142 +353,6 @@
                         </Path.Effect>
                     </Path>
                 </Grid>
-
-                <ControlTemplate.Triggers>
-                    <EventTrigger RoutedEvent="Loaded">
-                        <BeginStoryboard>
-                            <Storyboard RepeatBehavior="Forever" AutoReverse="True">
-                                <DoubleAnimationUsingKeyFrames Storyboard.TargetName="ArrowPath2" Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)">
-                                    <EasingDoubleKeyFrame KeyTime="0:0:0" Value="1.00"/>
-                                    <EasingDoubleKeyFrame KeyTime="0:0:1.25" Value="1.08">
-                                        <EasingDoubleKeyFrame.EasingFunction>
-                                            <SineEase EasingMode="EaseInOut"/>
-                                        </EasingDoubleKeyFrame.EasingFunction>
-                                    </EasingDoubleKeyFrame>
-                                    <EasingDoubleKeyFrame KeyTime="0:0:2.5" Value="1.00">
-                                        <EasingDoubleKeyFrame.EasingFunction>
-                                            <SineEase EasingMode="EaseInOut"/>
-                                        </EasingDoubleKeyFrame.EasingFunction>
-                                    </EasingDoubleKeyFrame>
-                                </DoubleAnimationUsingKeyFrames>
-                                <DoubleAnimationUsingKeyFrames Storyboard.TargetName="ArrowPath2" Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)">
-                                    <EasingDoubleKeyFrame KeyTime="0:0:0" Value="1.00"/>
-                                    <EasingDoubleKeyFrame KeyTime="0:0:1.25" Value="1.08">
-                                        <EasingDoubleKeyFrame.EasingFunction>
-                                            <SineEase EasingMode="EaseInOut"/>
-                                        </EasingDoubleKeyFrame.EasingFunction>
-                                    </EasingDoubleKeyFrame>
-                                    <EasingDoubleKeyFrame KeyTime="0:0:2.5" Value="1.00">
-                                        <EasingDoubleKeyFrame.EasingFunction>
-                                            <SineEase EasingMode="EaseInOut"/>
-                                        </EasingDoubleKeyFrame.EasingFunction>
-                                    </EasingDoubleKeyFrame>
-                                </DoubleAnimationUsingKeyFrames>
-                                <DoubleAnimationUsingKeyFrames Storyboard.TargetName="GlowHost" Storyboard.TargetProperty="Opacity">
-                                    <EasingDoubleKeyFrame KeyTime="0:0:0" Value="0.22"/>
-                                    <EasingDoubleKeyFrame KeyTime="0:0:1.25" Value="0.36">
-                                        <EasingDoubleKeyFrame.EasingFunction>
-                                            <SineEase EasingMode="EaseInOut"/>
-                                        </EasingDoubleKeyFrame.EasingFunction>
-                                    </EasingDoubleKeyFrame>
-                                    <EasingDoubleKeyFrame KeyTime="0:0:2.5" Value="0.22">
-                                        <EasingDoubleKeyFrame.EasingFunction>
-                                            <SineEase EasingMode="EaseInOut"/>
-                                        </EasingDoubleKeyFrame.EasingFunction>
-                                    </EasingDoubleKeyFrame>
-                                </DoubleAnimationUsingKeyFrames>
-                                <DoubleAnimationUsingKeyFrames Storyboard.TargetName="GlowHost" Storyboard.TargetProperty="(Effect).(DropShadowEffect.Opacity)">
-                                    <EasingDoubleKeyFrame KeyTime="0:0:0" Value="0.45"/>
-                                    <EasingDoubleKeyFrame KeyTime="0:0:1.25" Value="0.75">
-                                        <EasingDoubleKeyFrame.EasingFunction>
-                                            <SineEase EasingMode="EaseInOut"/>
-                                        </EasingDoubleKeyFrame.EasingFunction>
-                                    </EasingDoubleKeyFrame>
-                                    <EasingDoubleKeyFrame KeyTime="0:0:2.5" Value="0.45">
-                                        <EasingDoubleKeyFrame.EasingFunction>
-                                            <SineEase EasingMode="EaseInOut"/>
-                                        </EasingDoubleKeyFrame.EasingFunction>
-                                    </EasingDoubleKeyFrame>
-                                </DoubleAnimationUsingKeyFrames>
-                            </Storyboard>
-                        </BeginStoryboard>
-                    </EventTrigger>
-
-                    <Trigger Property="IsMouseOver" Value="True">
-                        <Setter TargetName="ArrowPath2" Property="Stroke" Value="#8DD0FF"/>
-                        <Setter TargetName="ArrowPath2" Property="StrokeThickness" Value="5.2"/>
-                        <Setter TargetName="GlowHost" Property="Opacity" Value="0.55"/>
-                        <Setter Property="RenderTransform">
-                            <Setter.Value>
-                                <ScaleTransform ScaleX="1.12" ScaleY="1.12"/>
-                            </Setter.Value>
-                        </Setter>
-                        <Trigger.EnterActions>
-                            <BeginStoryboard>
-                                <Storyboard>
-                                    <DoubleAnimation Storyboard.TargetName="ArrowPath2"
-                                                     Storyboard.TargetProperty="StrokeThickness"
-                                                     To="5.2" Duration="0:0:0.18"/>
-                                    <DoubleAnimation Storyboard.TargetName="GlowHost"
-                                                     Storyboard.TargetProperty="Opacity"
-                                                     To="0.55" Duration="0:0:0.18"/>
-                                    <DoubleAnimation Storyboard.TargetName="GlowHost"
-                                                     Storyboard.TargetProperty="(Effect).(DropShadowEffect.Opacity)"
-                                                     To="0.95" Duration="0:0:0.18"/>
-                                    <DoubleAnimation Storyboard.TargetName="GlowHost"
-                                                     Storyboard.TargetProperty="(Effect).(DropShadowEffect.BlurRadius)"
-                                                     To="30" Duration="0:0:0.18"/>
-                                </Storyboard>
-                            </BeginStoryboard>
-                        </Trigger.EnterActions>
-                        <Trigger.ExitActions>
-                            <BeginStoryboard>
-                                <Storyboard>
-                                    <DoubleAnimation Storyboard.TargetName="ArrowPath2"
-                                                     Storyboard.TargetProperty="StrokeThickness"
-                                                     To="4.5" Duration="0:0:0.25"/>
-                                    <DoubleAnimation Storyboard.TargetName="GlowHost"
-                                                     Storyboard.TargetProperty="Opacity"
-                                                     To="0.22" Duration="0:0:0.25"/>
-                                    <DoubleAnimation Storyboard.TargetName="GlowHost"
-                                                     Storyboard.TargetProperty="(Effect).(DropShadowEffect.Opacity)"
-                                                     To="0.45" Duration="0:0:0.25"/>
-                                    <DoubleAnimation Storyboard.TargetName="GlowHost"
-                                                     Storyboard.TargetProperty="(Effect).(DropShadowEffect.BlurRadius)"
-                                                     To="22" Duration="0:0:0.25"/>
-                                </Storyboard>
-                            </BeginStoryboard>
-                        </Trigger.ExitActions>
-                    </Trigger>
-
-                    <Trigger Property="IsPressed" Value="True">
-                        <Setter Property="RenderTransform">
-                            <Setter.Value>
-                                <ScaleTransform ScaleX="0.95" ScaleY="0.95"/>
-                            </Setter.Value>
-                        </Setter>
-                        <Trigger.EnterActions>
-                            <BeginStoryboard>
-                                <Storyboard>
-                                    <DoubleAnimation Storyboard.TargetProperty="(RenderTransform).(ScaleTransform.ScaleX)"
-                                                     To="0.95" Duration="0:0:0.08"/>
-                                    <DoubleAnimation Storyboard.TargetProperty="(RenderTransform).(ScaleTransform.ScaleY)"
-                                                     To="0.95" Duration="0:0:0.08"/>
-                                </Storyboard>
-                            </BeginStoryboard>
-                        </Trigger.EnterActions>
-                        <Trigger.ExitActions>
-                            <BeginStoryboard>
-                                <Storyboard>
-                                    <DoubleAnimation Storyboard.TargetProperty="(RenderTransform).(ScaleTransform.ScaleX)"
-                                                     To="1.12" Duration="0:0:0.12"/>
-                                    <DoubleAnimation Storyboard.TargetProperty="(RenderTransform).(ScaleTransform.ScaleY)"
-                                                     To="1.12" Duration="0:0:0.12"/>
-                                </Storyboard>
-                            </BeginStoryboard>
-                        </Trigger.ExitActions>
-                    </Trigger>
-                </ControlTemplate.Triggers>
             </ControlTemplate>
         </Button.Template>
     </Button>
