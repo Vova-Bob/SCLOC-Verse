@@ -1,9 +1,13 @@
 ﻿using SCLOCVerse.Composition;
+using SCLOCVerse.Helpers;
 using SCLOCVerse.Interfaces;
 using SCLOCVerse.Models.ApplicationInstance;
 using SCLOCVerse.Services.UiPolicy;
 using System;
+using System.Collections.Specialized;
+using System.Diagnostics;
 using System.Reflection;
+using System.Web;
 using System.Windows;
 
 using CommunityToolkit.WinUI.Notifications;
@@ -38,13 +42,21 @@ namespace SCLOCVerse
 
             // Toast Activation — точка маршрутизації всіх системних подій.
             // App.xaml — природне місце для маршрутизації (як Startup/Exit/SessionEnding).
-            // Toast клік → універсальний ShowMainWindow (не прив'язаний до джерела).
+            // Toast клік → маршрутизація за Arguments (Етап F).
+            // source=lia → ShowLiaAssistant (вікно + вкладка Assistant).
+            // default (без arguments, або app-update/localization) → ShowMainWindow.
             ToastNotificationManagerCompat.OnActivated += toastArgs =>
             {
                 // Маршалінг у UI-потік: OnActivated може викликатись з фонового потоку.
                 Dispatcher.Invoke(() =>
                 {
-                    _compositionRoot?.ApplicationInstance.ShowMainWindow();
+                    var args = ParseToastArguments(toastArgs.Argument);
+                    var source = args[ToastArgumentKeys.Source];
+
+                    if (source == ToastSources.Lia)
+                        _compositionRoot?.ApplicationInstance.ShowLiaAssistant();
+                    else
+                        _compositionRoot?.ApplicationInstance.ShowMainWindow();
                 });
             };
 
@@ -133,6 +145,28 @@ namespace SCLOCVerse
             var version = assembly.GetName().Version;
 
             return version?.ToString() ?? new Version(0, 0, 0, 0).ToString();
+        }
+
+        /// <summary>
+        /// Парсить toast-аргументи (URL-encoded key=value, розділені '&').
+        /// Пріоритет: System.Web.HttpUtility.ParseQueryString (обробляє URL-encoding,
+        /// '+' як пробіл, повторювані ключі). Не підтягує ASP.NET-залежності.
+        /// Майбутнє розширення: args[ToastArgumentKeys.Version], args[ToastArgumentKeys.Environment].
+        /// </summary>
+        private static NameValueCollection ParseToastArguments(string? arguments)
+        {
+            if (string.IsNullOrEmpty(arguments))
+                return new NameValueCollection();
+
+            try
+            {
+                return HttpUtility.ParseQueryString(arguments);
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[Toast] Failed to parse arguments '{arguments}': {ex.Message}");
+                return new NameValueCollection();
+            }
         }
 
         protected override void OnExit(ExitEventArgs e)

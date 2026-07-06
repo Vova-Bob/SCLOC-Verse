@@ -1,4 +1,5 @@
 using CommunityToolkit.WinUI.Notifications;
+using SCLOCVerse.Helpers;
 using SCLOCVerse.Interfaces;
 using SCLOCVerse.Models.Notifications;
 using System.Diagnostics;
@@ -27,13 +28,20 @@ namespace SCLOCVerse.Services.Notifications
                 .AddText(notification.Title)
                 .AddText(notification.Message);
 
+            // Arguments для маршрутизації toast-кліку (App.xaml.cs OnActivated).
+            // SourceTag формується в MainWindow.PresentNotification через ToastSources константи.
+            if (!string.IsNullOrWhiteSpace(notification.SourceTag))
+            {
+                builder.AddArgument(ToastArgumentKeys.Source, notification.SourceTag);
+            }
+
             try
             {
                 if (!string.IsNullOrWhiteSpace(notification.SourceTag))
                 {
                     // SourceTag використовується для групування в Notification Center
-                    // (Етап D/F — ще й для dedup). CustomizeToast делегат дозволяє
-                    // встановити Tag на нативному Windows.UI.Notifications.ToastNotification.
+                    // та для dedup. CustomizeToast делегат дозволяє встановити Tag
+                    // на нативному Windows.UI.Notifications.ToastNotification.
                     builder.Show(toast =>
                     {
                         toast.Tag = notification.SourceTag;

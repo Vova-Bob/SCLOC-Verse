@@ -227,14 +227,29 @@ namespace SCLOCVerse
             // Команда приходить з фонового потоку pipe-сервера — маршалінг у UI.
             Dispatcher.BeginInvoke(new Action(() =>
             {
-                if (command.Kind == Models.ApplicationInstance.InstanceCommandKind.Show)
+                switch (command.Kind)
                 {
-                    Show();
-                    WindowState = WindowState.Normal;
-                    Activate();
-                    Focus();
-                    // Перший показ вікна запускає відкладені промпти (якщо ще не виконувались).
-                    _ = EnsureInteractiveUiInitializedAsync();
+                    case Models.ApplicationInstance.InstanceCommandKind.Show:
+                        Show();
+                        WindowState = WindowState.Normal;
+                        Activate();
+                        Focus();
+                        // Перший показ вікна запускає відкладені промпти (якщо ще не виконувались).
+                        _ = EnsureInteractiveUiInitializedAsync();
+                        break;
+
+                    case Models.ApplicationInstance.InstanceCommandKind.ShowLiaAssistant:
+                        Show();
+                        WindowState = WindowState.Normal;
+                        Activate();
+                        Focus();
+                        _ = EnsureInteractiveUiInitializedAsync();
+                        // Перехід на вкладку Assistant після завершення побудови UI —
+                        // прибирає race condition на повільних ПК (DispatcherPriority.Loaded).
+                        Dispatcher.BeginInvoke(
+                            () => _canvasManager.SwitchCanvas(CanvasAssistant),
+                            System.Windows.Threading.DispatcherPriority.Loaded);
+                        break;
                 }
             }));
         }
@@ -527,9 +542,9 @@ namespace SCLOCVerse
                     Message = candidate.Message,
                     SourceTag = candidate.Source switch
                     {
-                        NotificationSource.Application => "app-update",
-                        NotificationSource.Localization => "localization",
-                        NotificationSource.Lia => "lia",
+                        NotificationSource.Application => ToastSources.AppUpdate,
+                        NotificationSource.Localization => ToastSources.Localization,
+                        NotificationSource.Lia => ToastSources.Lia,
                         _ => null
                     },
                     Severity = candidate.Severity

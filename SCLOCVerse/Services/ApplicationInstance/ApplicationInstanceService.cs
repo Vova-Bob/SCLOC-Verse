@@ -58,6 +58,15 @@ namespace SCLOCVerse.Services.ApplicationInstance
             CommandReceived?.Invoke(this, new InstanceCommand { Kind = InstanceCommandKind.Show });
         }
 
+        /// <summary>
+        /// Показати головне вікно та перейти на вкладку Assistant (L.I.A).
+        /// Викликається при кліку на OS Toast з source=lia (Етап F).
+        /// </summary>
+        public void ShowLiaAssistant()
+        {
+            CommandReceived?.Invoke(this, new InstanceCommand { Kind = InstanceCommandKind.ShowLiaAssistant });
+        }
+
         public Task StartServerAsync(CancellationToken cancellationToken = default)
         {
             if (!_isFirstInstance)

@@ -10,7 +10,13 @@ namespace SCLOCVerse.Models.ApplicationInstance
         /// <summary>
         /// Показати головне вікно та активувати (стандартний повторний запуск).
         /// </summary>
-        Show
+        Show,
+
+        /// <summary>
+        /// Показати головне вікно та перейти на вкладку Assistant (L.I.A).
+        /// Викликається при кліку на OS Toast з source=lia (Етап F).
+        /// </summary>
+        ShowLiaAssistant
 
         // Майбутні команди (НЕ реалізовуються зараз, але wire-формат готовий):
         // OpenSettings — відкрити канвас налаштувань

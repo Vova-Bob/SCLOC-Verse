@@ -52,5 +52,12 @@ namespace SCLOCVerse.Interfaces
         /// Toast Activation, URL Handler, Protocol, Session events тощо.
         /// </summary>
         void ShowMainWindow();
+
+        /// <summary>
+        /// Показати головне вікно та перейти на вкладку Assistant (L.I.A).
+        /// Викликається при кліку на OS Toast з source=lia (Етап F).
+        /// Реалізація піднімає CommandReceived з InstanceCommandKind.ShowLiaAssistant.
+        /// </summary>
+        void ShowLiaAssistant();
     }
 }
