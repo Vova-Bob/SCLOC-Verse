@@ -344,13 +344,12 @@ namespace SCLOCVerse.Services.LiaServices
                 // Retry через єдиний HttpRetryHelper (429/403/5xx + Retry-After ≤10с + backoff).
                 using var response = await HttpRetryHelper.SendWithRetryAsync(Client, request, cancellationToken).ConfigureAwait(false);
 
-                // 304 Not Modified — дані не змінились. Повертаємо release з кешованого
-                // LastKnownVersion, щоб GetStatusAsync міг побудувати статус "актуально/є оновлення".
+                // 304 Not Modified — дані не змінились. Повертаємо null: для GetStatusAsync
+                // цього достатньо (LastKnownVersion зчитується з lia.meta.json окремо),
+                // а InstallLatestAsync вимагатиме повного release з Assets — null кидає
+                // InvalidOperationException, що коректно (не можна встановити з кешу 304).
                 if (response.StatusCode == System.Net.HttpStatusCode.NotModified)
                 {
-                    var lastKnownTag = ReadReleaseMetadata()?.LastKnownVersion;
-                    if (!string.IsNullOrEmpty(lastKnownTag))
-                        return new GitHubRelease { TagName = lastKnownTag };
                     return null;
                 }
 
