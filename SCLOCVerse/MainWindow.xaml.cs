@@ -67,6 +67,15 @@ namespace SCLOCVerse
         /// Перший показ вікна (Tray/IPC) запускає CompleteInteractiveStartupAsync один раз.
         /// </summary>
         private bool _interactiveStartupCompleted;
+
+        /// <summary>
+        /// Прапорець відкладеного показу UpdateDialog.
+        /// Встановлюється при BackgroundUiPolicy, коли знайдено оновлення, але модальний
+        /// діалог не можна показати (він підняв би приховане вікно). Скидається при першому
+        /// переході користувача у головне вікно (Tray_ShowRequested / IPC Show).
+        /// НЕ показується при ShowLiaAssistant — користувач явно запросив LIA.
+        /// </summary>
+        private bool _isAppUpdateDialogPending;
         private EnvironmentSelector EnvSelector => CanvasLocalization.EnvironmentSelector;
         private Button BtnInstall => CanvasLocalization.InstallButton;
         private Button BtnLocalisationDelete => CanvasLocalization.DeleteButton;
@@ -217,6 +226,14 @@ namespace SCLOCVerse
             // вікно, коли користувач запускає другий екземпляр. Маршалінг у
             // UI-потік — через Dispatcher, бо подія приходить з pipe-сервера.
             _applicationInstanceService.CommandReceived += ApplicationInstance_CommandReceived;
+
+            // BackgroundUpdateMonitor — єдина точка запуску життєвого циклу.
+            // Конструктор викликається завжди (CompositionRoot.CreateMainWindow),
+            // незалежно від window.Show()/window.Hide() (--minimized). Всі підписки
+            // (UpdateCycleCompleted→Route, NotificationsReady, CheckFailed) вже виконані.
+            // runImmediately забезпечує Toast про оновлення одразу після старту,
+            // а не через 1 годину першого тику таймера.
+            _backgroundUpdateMonitor.Start(runImmediately: true);
         }
 
         /// <summary>
@@ -236,6 +253,8 @@ namespace SCLOCVerse
                         Focus();
                         // Перший показ вікна запускає відкладені промпти (якщо ще не виконувались).
                         _ = EnsureInteractiveUiInitializedAsync();
+                        // Відкладений UpdateDialog, якщо знайшли оновлення під час фонового старту.
+                        _ = ShowPendingAppUpdateDialogIfNeededAsync();
                         break;
 
                     case Models.ApplicationInstance.InstanceCommandKind.ShowLiaAssistant:
@@ -467,20 +486,11 @@ namespace SCLOCVerse
                     // Background startup (--minimized / автозапуск): модальний діалог не показуємо,
                     // бо він підніме приховане вікно. App Toast йде через BackgroundUpdateMonitor
                     // → NotificationRouter → PresentNotification (існуючий єдиний канал сповіщень).
+                    // Діалог відкладається до першого переходу користувача у головне вікно.
                     if (!_uiPolicy.CanShowModalDialogs)
                         break;
 
-                    var confirmed = await _dialogService.ShowUpdateDialogAsync(result.LatestVersion.ToString(), this).ConfigureAwait(true);
-
-                    if (confirmed)
-                    {
-                        await InstallUpdateAsync(result).ConfigureAwait(true);
-                    }
-                    else
-                    {
-                        await _updateStatusPresenter.ShowUpdateCancelledAsync(result).ConfigureAwait(true);
-                        await _updateHistoryService.AddEntryAsync(CreateHistoryEntry(UpdateOperation.Install, UpdateOperationResult.Cancelled, result, "Користувач відмовився від встановлення.")).ConfigureAwait(true);
-                    }
+                    await ShowUpdateDialogAndInstallAsync(result).ConfigureAwait(true);
                     break;
 
                 case UpdateCheckStatus.CheckFailed:
@@ -497,18 +507,57 @@ namespace SCLOCVerse
             }
         }
 
+        /// <summary>
+        /// Показує модальний UpdateDialog і за підтвердженням запускає встановлення.
+        /// Єдина точка логіки діалогу — використовується як інтерактивним шляхом
+        /// (ApplyUpdateCheckResultAsync), так і відкладеним (ShowPendingAppUpdateDialogIfNeededAsync).
+        /// </summary>
+        private async Task ShowUpdateDialogAndInstallAsync(UpdateCheckResult result)
+        {
+            var confirmed = await _dialogService.ShowUpdateDialogAsync(result.LatestVersion.ToString(), this).ConfigureAwait(true);
+
+            if (confirmed)
+            {
+                await InstallUpdateAsync(result).ConfigureAwait(true);
+            }
+            else
+            {
+                await _updateStatusPresenter.ShowUpdateCancelledAsync(result).ConfigureAwait(true);
+                await _updateHistoryService.AddEntryAsync(CreateHistoryEntry(UpdateOperation.Install, UpdateOperationResult.Cancelled, result, "Користувач відмовився від встановлення.")).ConfigureAwait(true);
+            }
+        }
+
+        /// <summary>
+        /// Відкладений показ UpdateDialog після переходу користувача у головне вікно
+        /// (Tray_ShowRequested / IPC Show). Не викликається з ShowLiaAssistant.
+        /// Скидає прапорець синхронно до await — ідемпотентно проти паралельних викликів.
+        /// </summary>
+        private async Task ShowPendingAppUpdateDialogIfNeededAsync()
+        {
+            if (!_isAppUpdateDialogPending)
+                return;
+
+            _isAppUpdateDialogPending = false;
+
+            // Результат беремо з кешу (TTL 30 хв) — без зайвого HTTP.
+            // Якщо кеш протух або оновлення вже не актуальне — діалог не показуємо.
+            var result = await _applicationUpdateService.CheckForUpdatesAsync(forceRefresh: false, CancellationToken.None).ConfigureAwait(true);
+            if (result?.IsUpdateAvailable != true)
+                return;
+
+            await ShowUpdateDialogAndInstallAsync(result).ConfigureAwait(true);
+        }
+
         private async Task RunStartupUpdateCheckAsync()
         {
             await Task.Delay(UpdateConstants.StartupUpdateCheckDelay).ConfigureAwait(true);
 
+            // BackgroundUpdateMonitor стартує в конструкторі MainWindow (єдине місце),
+            // тут лише Manual-перевірка з модальним діалогом (лише інтерактивний старт).
             if (_suppressStartupUpdateCheckUntil.HasValue && DateTime.Now < _suppressStartupUpdateCheckUntil.Value)
-            {
-                _backgroundUpdateMonitor.Start(runImmediately: true);
                 return;
-            }
 
             await RunManualUpdateCheckAsync(forceRefresh: false).ConfigureAwait(true);
-            _backgroundUpdateMonitor.Start(runImmediately: true);
         }
 
         /// <summary>
@@ -524,7 +573,20 @@ namespace SCLOCVerse
             }
 
             foreach (var candidate in candidates)
+            {
+                // App Update знайдено через BackgroundUpdateMonitor (Pipeline 1).
+                // При BackgroundUiPolicy модальний діалог не можна показати (вікно приховане),
+                // тож позначаємо потребу в відкладеному діалозі ДО показу Toast.
+                // Це усуває race: прапорець встановлюється синхронно до PresentNotification,
+                // а не через ~1с у Manual-пайплайні (Task.Delay у RunStartupUpdateCheckAsync).
+                if (candidate.Source == NotificationSource.Application
+                    && !_uiPolicy.CanShowModalDialogs)
+                {
+                    _isAppUpdateDialogPending = true;
+                }
+
                 PresentNotification(candidate);
+            }
         }
 
         /// <summary>
@@ -876,6 +938,8 @@ namespace SCLOCVerse
             Focus();
             // Перший показ вікна запускає відкладені промпти (якщо ще не виконувались).
             _ = EnsureInteractiveUiInitializedAsync();
+            // Відкладений UpdateDialog, якщо знайшли оновлення під час фонового старту.
+            _ = ShowPendingAppUpdateDialogIfNeededAsync();
         }
 
         /// <summary>Tray: ініціювати ручну перевірку оновлень застосунку.</summary>
