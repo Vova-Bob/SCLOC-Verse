@@ -159,8 +159,10 @@ namespace SCLOCVerse.Services.ApplicationUpdate
         {
             var results = new List<LocalizationInstallResult>();
 
-            if (!_preferencesService.GetAutoUpdateLocalization())
-                return results;
+            // AutoUpdate керує лише встановленням, а не перевіркою та сповіщенням:
+            //   ON  → InstallAsync (оновлення global.ini + metadata.InstalledTag).
+            //   OFF → CheckAsync   (лише порівняння TagName, без запису, Toast про доступне оновлення).
+            var autoUpdate = _preferencesService.GetAutoUpdateLocalization();
 
             var gameRoot = _settingsService.GetGameFolder();
             if (string.IsNullOrEmpty(gameRoot) || !Directory.Exists(gameRoot))
@@ -180,19 +182,23 @@ namespace SCLOCVerse.Services.ApplicationUpdate
                 }
 
 #if DEBUG
-                Debug.WriteLine($"[Orchestrator] {env}: перевірка...");
+                Debug.WriteLine($"[Orchestrator] {env}: перевірка... (AutoUpdate={(autoUpdate ? "ON" : "OFF")})");
 #endif
 
                 try
                 {
-                    var result = await _localizationInstaller.InstallAsync(envFolder, env, cancellationToken).ConfigureAwait(false);
-                    if (result.Success)
+                    var result = autoUpdate
+                        ? await _localizationInstaller.InstallAsync(envFolder, env, cancellationToken).ConfigureAwait(false)
+                        : await _localizationInstaller.CheckAsync(envFolder, env, cancellationToken).ConfigureAwait(false);
+
+                    if (result.HasUpdate)
                     {
                         results.Add(result);
-                        _telemetry.Track("Orchestrator", "LocalizationCheck", "Updated",
+                        var outcome = autoUpdate ? "Updated" : "UpdateAvailable";
+                        _telemetry.Track("Orchestrator", "LocalizationCheck", outcome,
                             new TelemetryContext { Detail = new() { { "environment", env }, { "version", result.Version ?? "" } } });
 #if DEBUG
-                        Debug.WriteLine($"[Orchestrator] {env}: оновлено до {result.Version}");
+                        Debug.WriteLine($"[Orchestrator] {env}: {(autoUpdate ? "оновлено до" : "доступне оновлення")} {result.Version}");
 #endif
                     }
                 }

@@ -95,7 +95,7 @@ namespace SCLOCVerse.Services.LocalizationServices
                     response.Dispose();
                 }
 
-                updatedMetadata = downloadResult.Metadata;
+                updatedMetadata = downloadResult.Metadata with { InstalledTag = release.TagName };
 
                 if (!downloadResult.HashMatchesExisting)
                 {
@@ -134,6 +134,45 @@ namespace SCLOCVerse.Services.LocalizationServices
             NotificationRaised?.Invoke(LocalizationNotification.Completed(message, localizationUpdated));
 
             return new LocalizationInstallResult(localizationUpdated, environmentName, globalIniPath, userCfgPathCreated, message, release.TagName);
+        }
+
+        /// <summary>
+        /// Перевірка оновлення локалізації без встановлення (AutoUpdate=OFF).
+        /// Без побічних ефектів: global.ini не записується, user.cfg не створюється,
+        /// metadata не оновлюється. Лише get release (з кешу) + порівняння remote
+        /// TagName з metadata.InstalledTag. Null InstalledTag означає "версія невідома"
+        /// → вважається, що оновлення доступне (програма має повідомити користувача).
+        /// </summary>
+        public async Task<LocalizationInstallResult> CheckAsync(string environmentFolder, string environmentName, CancellationToken cancellationToken = default)
+        {
+            ValidateEnvironment(environmentFolder, environmentName);
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var release = await GetReleaseAsync(environmentName, cancellationToken).ConfigureAwait(false);
+            if (release is null)
+            {
+                return new LocalizationInstallResult(
+                    Success: false,
+                    environmentName,
+                    GlobalIniPath: string.Empty,
+                    UserCfgPath: null,
+                    Message: LocalizationMessages.ReleaseNotFound(environmentName),
+                    Version: null,
+                    HasUpdate: false);
+            }
+
+            var metadata = await ReadMetadataAsync(environmentName, cancellationToken).ConfigureAwait(false);
+            var installedTag = metadata?.InstalledTag;
+            var hasUpdate = !string.Equals(installedTag, release.TagName, StringComparison.OrdinalIgnoreCase);
+
+            return new LocalizationInstallResult(
+                Success: true,
+                environmentName,
+                GlobalIniPath: string.Empty,
+                UserCfgPath: null,
+                Message: hasUpdate ? LocalizationMessages.UpdateAvailable(environmentName, release.TagName) : string.Empty,
+                Version: release.TagName,
+                HasUpdate: hasUpdate);
         }
 
         public Task<LocalizationDeleteResult> DeleteAsync(string environmentFolder, string environmentName, CancellationToken cancellationToken = default)
@@ -634,6 +673,11 @@ namespace SCLOCVerse.Services.LocalizationServices
             [property: JsonPropertyName("sha256")] public string? Sha256 { get; init; }
             [property: JsonPropertyName("fileSize")] public long? FileSize { get; init; }
             [property: JsonPropertyName("lastModified")] public DateTimeOffset? LastModified { get; init; }
+            // Встановлений тег релізу локалізації (ReleasePayload.TagName).
+            // null означає "версія невідома" (старий metadata до цієї зміни або ще не встановлено).
+            // Записується лише після успішного InstallAsync через 'with { InstalledTag = release.TagName }'.
+            // CheckAsync порівнює InstalledTag з remote TagName для визначення наявності оновлення.
+            [property: JsonPropertyName("installedTag")] public string? InstalledTag { get; init; }
         }
 
         private readonly struct ConditionalRequestResult

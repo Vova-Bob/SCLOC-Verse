@@ -81,6 +81,11 @@ namespace SCLOCVerse.Services.Notifications
 
             foreach (var loc in result.Localization)
             {
+                // Лише ті результати, де remote відрізняється від встановленого.
+                // Install: HasUpdate == localizationUpdated; Check: HasUpdate == TagName розбіжний.
+                if (!loc.HasUpdate)
+                    continue;
+
                 var key = loc.Version ?? loc.Message;
                 if (dedup.TryGetValue(loc.EnvironmentName, out var last) && last == key)
                     continue;

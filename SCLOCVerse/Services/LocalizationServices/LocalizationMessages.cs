@@ -24,6 +24,15 @@ namespace SCLOCVerse.Services.LocalizationServices
                 : $"Локалізація для {environmentName} вже відповідала релізу {releaseTag ?? "невідомому"}.";
         }
 
+        /// <summary>
+        /// Повідомлення про доступне (але не встановлене) оновлення локалізації.
+        /// Використовується CheckAsync при AutoUpdate=OFF.
+        /// </summary>
+        internal static string UpdateAvailable(string environmentName, string? releaseTag)
+            => string.IsNullOrWhiteSpace(releaseTag)
+                ? $"Доступна нова версія локалізації {environmentName}."
+                : $"Доступна нова версія локалізації {environmentName} ({releaseTag}).";
+
         internal static string DeleteAll(string environmentName)
             => $"Файли локалізації для {environmentName} видалено.";
 
