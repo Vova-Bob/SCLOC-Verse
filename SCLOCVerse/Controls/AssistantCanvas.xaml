@@ -5,11 +5,16 @@
     Background="Transparent">
 
     <Canvas.Resources>
-        <!-- Базові кольори -->
-        <SolidColorBrush x:Key="BtnFill"        Color="#30546E"/>
-        <SolidColorBrush x:Key="BtnFillHover"   Color="#3A6682"/>
-        <SolidColorBrush x:Key="BtnStroke"      Color="#8DD0FF"/>
-        <SolidColorBrush x:Key="BtnShadow"      Color="#000000"/>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/SCLOCVerse;component/Resources/Styles.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+
+            <!-- Базові кольори -->
+            <SolidColorBrush x:Key="BtnFill"        Color="#30546E"/>
+            <SolidColorBrush x:Key="BtnFillHover"   Color="#3A6682"/>
+            <SolidColorBrush x:Key="BtnStroke"      Color="#8DD0FF"/>
+            <SolidColorBrush x:Key="BtnShadow"      Color="#000000"/>
 
         <!-- Спільний стиль дійової кнопки з рамкою і анімацією натискання -->
         <Style x:Key="ActionButton" TargetType="{x:Type Button}">
@@ -200,6 +205,7 @@
                 </Setter.Value>
             </Setter>
         </Style>
+        </ResourceDictionary>
 
     </Canvas.Resources>
 
@@ -214,148 +220,11 @@
             Margin="0,20,0,0"/>
     </Grid>
 
-    <!-- Кнопка повернення на головну -->
+    <!-- Кнопка повернення на головний екран -->
     <Button x:Name="BtnReturnHome"
+            Style="{StaticResource ReturnHomeButton}"
             Canvas.Top="240" Canvas.Left="0"
-            Width="50" Height="100"
-            Background="Transparent"
-            Cursor="Hand" HorizontalAlignment="Left" VerticalAlignment="Center">
-        <Button.Template>
-            <ControlTemplate TargetType="{x:Type Button}">
-                <Grid x:Name="Root" RenderTransformOrigin="0.5,0.5">
-                    <VisualStateManager.VisualStateGroups>
-                        <VisualStateGroup x:Name="CommonStates">
-                            <VisualState x:Name="Normal">
-                                <Storyboard RepeatBehavior="Forever" AutoReverse="True">
-                                    <DoubleAnimationUsingKeyFrames Storyboard.TargetName="ArrowPath2" Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)">
-                                        <EasingDoubleKeyFrame KeyTime="0:0:0" Value="1.00"/>
-                                        <EasingDoubleKeyFrame KeyTime="0:0:1.25" Value="1.08">
-                                            <EasingDoubleKeyFrame.EasingFunction>
-                                                <SineEase EasingMode="EaseInOut"/>
-                                            </EasingDoubleKeyFrame.EasingFunction>
-                                        </EasingDoubleKeyFrame>
-                                        <EasingDoubleKeyFrame KeyTime="0:0:2.5" Value="1.00">
-                                            <EasingDoubleKeyFrame.EasingFunction>
-                                                <SineEase EasingMode="EaseInOut"/>
-                                            </EasingDoubleKeyFrame.EasingFunction>
-                                        </EasingDoubleKeyFrame>
-                                    </DoubleAnimationUsingKeyFrames>
-                                    <DoubleAnimationUsingKeyFrames Storyboard.TargetName="ArrowPath2" Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)">
-                                        <EasingDoubleKeyFrame KeyTime="0:0:0" Value="1.00"/>
-                                        <EasingDoubleKeyFrame KeyTime="0:0:1.25" Value="1.08">
-                                            <EasingDoubleKeyFrame.EasingFunction>
-                                                <SineEase EasingMode="EaseInOut"/>
-                                            </EasingDoubleKeyFrame.EasingFunction>
-                                        </EasingDoubleKeyFrame>
-                                        <EasingDoubleKeyFrame KeyTime="0:0:2.5" Value="1.00">
-                                            <EasingDoubleKeyFrame.EasingFunction>
-                                                <SineEase EasingMode="EaseInOut"/>
-                                            </EasingDoubleKeyFrame.EasingFunction>
-                                        </EasingDoubleKeyFrame>
-                                    </DoubleAnimationUsingKeyFrames>
-                                    <DoubleAnimationUsingKeyFrames Storyboard.TargetName="GlowHost" Storyboard.TargetProperty="Opacity">
-                                        <EasingDoubleKeyFrame KeyTime="0:0:0" Value="0.22"/>
-                                        <EasingDoubleKeyFrame KeyTime="0:0:1.25" Value="0.36">
-                                            <EasingDoubleKeyFrame.EasingFunction>
-                                                <SineEase EasingMode="EaseInOut"/>
-                                            </EasingDoubleKeyFrame.EasingFunction>
-                                        </EasingDoubleKeyFrame>
-                                        <EasingDoubleKeyFrame KeyTime="0:0:2.5" Value="0.22">
-                                            <EasingDoubleKeyFrame.EasingFunction>
-                                                <SineEase EasingMode="EaseInOut"/>
-                                            </EasingDoubleKeyFrame.EasingFunction>
-                                        </EasingDoubleKeyFrame>
-                                    </DoubleAnimationUsingKeyFrames>
-                                    <DoubleAnimationUsingKeyFrames Storyboard.TargetName="GlowHost" Storyboard.TargetProperty="(Effect).(DropShadowEffect.Opacity)">
-                                        <EasingDoubleKeyFrame KeyTime="0:0:0" Value="0.45"/>
-                                        <EasingDoubleKeyFrame KeyTime="0:0:1.25" Value="0.75">
-                                            <EasingDoubleKeyFrame.EasingFunction>
-                                                <SineEase EasingMode="EaseInOut"/>
-                                            </EasingDoubleKeyFrame.EasingFunction>
-                                        </EasingDoubleKeyFrame>
-                                        <EasingDoubleKeyFrame KeyTime="0:0:2.5" Value="0.45">
-                                            <EasingDoubleKeyFrame.EasingFunction>
-                                                <SineEase EasingMode="EaseInOut"/>
-                                            </EasingDoubleKeyFrame.EasingFunction>
-                                        </EasingDoubleKeyFrame>
-                                    </DoubleAnimationUsingKeyFrames>
-                                </Storyboard>
-                            </VisualState>
-
-                            <VisualState x:Name="MouseOver">
-                                <Storyboard>
-                                    <ColorAnimation Storyboard.TargetName="ArrowPath2"
-                                                    Storyboard.TargetProperty="(Path.Stroke).(SolidColorBrush.Color)"
-                                                    To="#8DD0FF" Duration="0:0:0.18"/>
-                                    <DoubleAnimation Storyboard.TargetName="ArrowPath2"
-                                                    Storyboard.TargetProperty="StrokeThickness"
-                                                    To="5.2" Duration="0:0:0.18"/>
-                                    <DoubleAnimation Storyboard.TargetName="GlowHost"
-                                                    Storyboard.TargetProperty="Opacity"
-                                                    To="0.55" Duration="0:0:0.18"/>
-                                    <DoubleAnimation Storyboard.TargetName="GlowHost"
-                                                    Storyboard.TargetProperty="(Effect).(DropShadowEffect.Opacity)"
-                                                    To="0.95" Duration="0:0:0.18"/>
-                                    <DoubleAnimation Storyboard.TargetName="GlowHost"
-                                                    Storyboard.TargetProperty="(Effect).(DropShadowEffect.BlurRadius)"
-                                                    To="30" Duration="0:0:0.18"/>
-                                    <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)"
-                                                     To="1.12" Duration="0:0:0.18"/>
-                                    <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)"
-                                                     To="1.12" Duration="0:0:0.18"/>
-                                </Storyboard>
-                            </VisualState>
-
-                            <VisualState x:Name="Pressed">
-                                <Storyboard>
-                                    <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)"
-                                                     To="0.95" Duration="0:0:0.08"/>
-                                    <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleY)"
-                                                     To="0.95" Duration="0:0:0.08"/>
-                                </Storyboard>
-                            </VisualState>
-                        </VisualStateGroup>
-                    </VisualStateManager.VisualStateGroups>
-
-                    <Rectangle Fill="Transparent" Width="50" Height="100"/>
-
-                    <Border x:Name="GlowHost"
-                            Width="50" Height="100"
-                            Background="Transparent"
-                            Opacity="0.28"
-                            CornerRadius="25">
-                        <Border.Effect>
-                            <DropShadowEffect Color="#6DB9F8"
-                                              BlurRadius="22"
-                                              ShadowDepth="0"
-                                              Opacity="0.55"/>
-                        </Border.Effect>
-                    </Border>
-
-                    <Path x:Name="ArrowPath2"
-                          Data="M22,5 L12,22 L22,39"
-                          Stroke="#6DB9F8"
-                          StrokeThickness="4.5"
-                          StrokeStartLineCap="Round"
-                          StrokeEndLineCap="Round"
-                          StrokeLineJoin="Round"
-                          HorizontalAlignment="Center"
-                          VerticalAlignment="Center"
-                          RenderTransformOrigin="0.5,0.5">
-                        <Path.RenderTransform>
-                            <ScaleTransform ScaleX="1" ScaleY="1"/>
-                        </Path.RenderTransform>
-                        <Path.Effect>
-                            <DropShadowEffect Color="#6DB9F8"
-                                              BlurRadius="10"
-                                              ShadowDepth="0"
-                                              Opacity="0.85"/>
-                        </Path.Effect>
-                    </Path>
-                </Grid>
-            </ControlTemplate>
-        </Button.Template>
-    </Button>
+            HorizontalAlignment="Left" VerticalAlignment="Center"/>
 
     <Button x:Name="BtnLiaInstall"
         Style="{StaticResource ActionButton}"

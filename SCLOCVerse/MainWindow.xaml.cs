@@ -74,7 +74,7 @@ namespace SCLOCVerse
         private Button BtnSelectFolder => CanvasSettings.SelectFolderButton;
         private Button BtnAutoSearch => CanvasSettings.AutoSearchButton;
         private Button BtnResetCash => CanvasSettings.ResetCacheButton;
-        private Button BtnSettingsReturn => CanvasSettings.ReturnButton;
+        private Button BtnReturnHome => CanvasSettings.ReturnHomeButton;
         internal TextBox TxtSelectedPath => CanvasSettings.SelectedPathTextBox;
         internal TextBox TxtReadme => CanvasSettings.ReadmeTextBox;
         private Button BtnLiaInstall => CanvasAssistant.InstallButton;
@@ -184,7 +184,7 @@ namespace SCLOCVerse
             BtnReturnLocalizationHome.Click += ReturnToHome_Click;
             BtnAssistantReturnHome.Click += ReturnToHome_Click;
             BtnScToolsReturnHome.Click += ReturnToHome_Click;
-            BtnSettingsReturn.Click += ReturnToLocalization_Click;
+            BtnReturnHome.Click += ReturnToLocalization_Click;
 
             BtnInstall.Click += BtnInstall_Click;
             BtnLocalisationDelete.Click += LocalisationDelete_Click;

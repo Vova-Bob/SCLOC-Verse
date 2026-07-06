@@ -9,7 +9,7 @@ namespace SCLOCVerse.Controls
             InitializeComponent();
         }
 
-        public Button ReturnButton => BtnReturn;
+        public Button ReturnHomeButton => BtnReturnHome;
 
         public Button SelectFolderButton => BtnSelectFolder;
 
