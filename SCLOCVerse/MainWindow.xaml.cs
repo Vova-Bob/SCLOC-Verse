@@ -497,12 +497,12 @@ namespace SCLOCVerse
 
             if (_suppressStartupUpdateCheckUntil.HasValue && DateTime.Now < _suppressStartupUpdateCheckUntil.Value)
             {
-                _backgroundUpdateMonitor.Start();
+                _backgroundUpdateMonitor.Start(runImmediately: true);
                 return;
             }
 
             await RunManualUpdateCheckAsync(forceRefresh: false).ConfigureAwait(true);
-            _backgroundUpdateMonitor.Start();
+            _backgroundUpdateMonitor.Start(runImmediately: true);
         }
 
         /// <summary>

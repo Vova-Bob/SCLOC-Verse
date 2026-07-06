@@ -72,12 +72,18 @@ namespace SCLOCVerse.Services.ApplicationUpdate
         public event EventHandler<UpdateCycleResult>? UpdateCycleCompleted;
         public event EventHandler<Exception>? CheckFailed;
 
-        public void Start()
+        public void Start(bool runImmediately = false)
         {
             if (_disposed)
                 throw new ObjectDisposedException(nameof(BackgroundUpdateMonitor));
 
             _timer.Start();
+
+            // Негайна перша перевірка: Toast про нові Localization/LIA одразу після старту,
+            // а не через 1 годину першого тику таймера. Fire-and-forget — безпечний через
+            // SemaphoreSlim TryEnter guard у CheckOnceAsync (не накладатиметься з Tick).
+            if (runImmediately)
+                _ = CheckOnceAsync(CancellationToken.None);
         }
 
         public void Stop()

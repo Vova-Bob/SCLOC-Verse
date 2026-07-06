@@ -14,7 +14,12 @@ namespace SCLOCVerse.Interfaces
     /// </summary>
     public interface IBackgroundUpdateMonitor
     {
-        void Start();
+        /// <summary>
+        /// Запускає періодичний таймер оновлень. При runImmediately=true перша перевірка
+        /// виконується негайно (fire-and-forget), не чекаючи першого тику таймера (1 год).
+        /// Це забезпечує Toast про нові Localization/LIA одразу після старту.
+        /// </summary>
+        void Start(bool runImmediately = false);
         void Stop();
         Task CheckOnceAsync(CancellationToken cancellationToken = default);
 
