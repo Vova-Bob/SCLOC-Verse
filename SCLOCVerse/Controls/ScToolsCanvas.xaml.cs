@@ -17,6 +17,8 @@ namespace SCLOCVerse.Controls
             Loaded += OnLoaded;
         }
 
+        public Button ReturnHomeButton => BtnReturnHome;
+
         public void SetHangarTimerService(IHangarTimerService service)
         {
             _hangarTimerService = service;

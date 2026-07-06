@@ -70,6 +70,7 @@ namespace SCLOCVerse
         internal TextBox TxtLocalizationReadme => CanvasLocalization.ReadmeTextBox;
         private Button BtnReturnLocalizationHome => CanvasLocalization.ReturnHomeButton;
         private Button BtnAssistantReturnHome => CanvasAssistant.ReturnHomeButton;
+        private Button BtnScToolsReturnHome => CanvasScTools.ReturnHomeButton;
         private Button BtnSelectFolder => CanvasSettings.SelectFolderButton;
         private Button BtnAutoSearch => CanvasSettings.AutoSearchButton;
         private Button BtnResetCash => CanvasSettings.ResetCacheButton;
@@ -134,7 +135,7 @@ namespace SCLOCVerse
             _cacheCleanupController = new CleanupController(inspector, cleaner, _toastService, Dispatcher);
 
             _canvasManager = new CanvasManager(this);
-            _buttonStateManager = new ButtonStateManager(BtnLocalization, BtnAssistant, BtnSettings, BtnScTools, BtnSelectFolder);
+            _buttonStateManager = new ButtonStateManager(BtnLocalization, BtnAssistant, BtnScTools, BtnSettings, BtnSelectFolder);
             _buttonHelper = new ButtonHelper();
             _authStatusPresenter = new AuthStatusPresenter(BtnAccount, _authStatusProvider);
             CanvasScTools.SetHangarTimerService(_hangarTimerService);
@@ -182,6 +183,7 @@ namespace SCLOCVerse
 
             BtnReturnLocalizationHome.Click += ReturnToHome_Click;
             BtnAssistantReturnHome.Click += ReturnToHome_Click;
+            BtnScToolsReturnHome.Click += ReturnToHome_Click;
             BtnSettingsReturn.Click += ReturnToLocalization_Click;
 
             BtnInstall.Click += BtnInstall_Click;
