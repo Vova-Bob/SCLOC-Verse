@@ -1551,6 +1551,62 @@ Blazor Components (.razor)
 
 116. **Phase 3.5 Telemetry Policy OFFICIALLY CLOSED.** Затверджено користувачем після: Event Registry (39 емітерів), Field Registry (Outcome-dependent: L1 Success 16 / L1 Failed 21 / L2 12 / DEPRECATED 2 / L3 0), Reader Validation (усі L1 доведено через C# код), Writer Validation (error_message = Exception.Message через PrivacySanitizer). UI не ламається (чекбокс без перейменування). Data Model не ламається (additive). Політика базується на коді, а не на припущеннях. Подальші зміни — реалізація затвердженого контракту (TelemetryLevel enum + wire AdvancedDiagnostics + 21 L2 емітери).
 
+## 14.19. Phase 3.5 реалізація — архітектурні правила (forensic, 2026-07-07)
+
+117. **`TelemetryLevel` ≠ `Category` — дві різні осі класифікації.** Forensic: `Category` зараз завжди `"Operational"` (`TelemetryClient.cs:136`: `context?.Category ?? "Operational"`, ніхто з 39 емітерів не встановлює `context.Category`). `TelemetryLevel` відповідає на «коли відправляти?» (gate), `Category` — на «що це за подія?» (бізнес-семантика). **НЕ змішувати**: `TelemetryLevel` не визначає `Category` автоматично. `Category` залишається незалежною — встановлюється явно через `TelemetryContext.Category` або default `"Operational"`.
+    - Приклад: `LIA/Install/Failed` → `TelemetryLevel=Mandatory` (відправляється завжди), `Category="Critical"` (бізнес-семантика — критична подія). Це **два незалежні атрибути**.
+    - Приклад: `Updater/Download/Started` → `TelemetryLevel=Diagnostic` (відправляється лише при ON), `Category="Operational"` (бізнес-семантика — нормальна операція). Level ≠ Category.
+
+118. **Єдина точка прийняття рішення** — `TelemetryClient.Track()` є **єдиним місцем**, де перевіряється `AdvancedDiagnostics`. НЕ 21 місце з `if (AdvancedDiagnostics)`. Архітектура:
+    ```
+    .Track(component, operation, outcome, ctx, level)
+        ↓
+    TelemetryClient.Track()  ← ЄДИНА ТОЧКА
+        ↓
+    if (level == Diagnostic && !IsDiagnosticEnabled()) return;
+        ↓
+    BuildEvent() → _queue.Enqueue()
+        ↓
+    TelemetryUploader → Supabase
+    ```
+    `IsDiagnosticEnabled` = `_diagnosticGate?.Invoke() ?? false` (two-phase `AttachDiagnosticGate(Func<bool>)`).
+
+119. **`TelemetryLevel.Local` залишити в enum** — 0 використань зараз, але документує архітектуру (L3 — ніколи не відправляється). Місце для майбутніх локальних подій.
+
+120. **Реалізацій `ITelemetryService` — одна** (`TelemetryClient`). Жодних mock/fake/test. Новий параметр додається лише в 1 інтерфейс + 1 реалізацію. Backward compatible (default = Mandatory).
+
+## 14.20. Telemetry Policy Test Matrix (контракт поведінки)
+
+> Контракт для тестування реалізації по чек-листу. Не форензик, а поведінка системи.
+
+### 14.20.1. Матриця сценаріїв
+
+| Scenario | AdvancedDiagnostics | TelemetryLevel | Очікування |
+|---|---|---|---|
+| Success OFF | false | Mandatory | ✅ L1 Success (16 полів) відправляється |
+| Success ON | true | Mandatory | ✅ L1 Success + L2 (якщо є) |
+| Failed OFF | false | Mandatory | ✅ L1 Failed (21 поле: + error_message, source, hresult, exception_type) |
+| Failed ON | true | Mandatory | ✅ L1 Failed + L2 (detail forensic) |
+| Diagnostic OFF | false | Diagnostic | ❌ подія НЕ відправляється |
+| Diagnostic ON | true | Diagnostic | ✅ L2 відправляється (duration_ms, detail.*) |
+| Telemetry Disabled | будь-який | будь-який | ❌ нічого (env SCLOCVERSE_TELEMETRY_DISABLED) |
+| Gate not attached | — | Diagnostic | ❌ подія НЕ відправляється (`_diagnosticGate == null → false`) |
+
+### 14.20.2. Конкретні події — що піде
+
+| Подія | Scenario | Поля, що відправляються |
+|---|---|---|
+| **Auth/SignIn/Success** | OFF | install_id, user_id, session_id, correlation_id, step, component, operation, outcome, severity, app_version, telemetry_version, channel, occurred_at, received_at, os_version, country (16 = L1 Success) |
+| **Auth/SignIn/Failed** | OFF | L1 Success (16) + error_message, source, hresult, exception_type, detail (21 = L1 Failed) |
+| **Localization/Install/Failed** | OFF | L1 Failed (21) — error_message = "Certificate chain invalid" (PrivacySanitizer), source = "PowerShell", hresult = "0x800B0109", exception_type = "LiaInstallException" |
+| **LIA/Install/Failed** | OFF | L1 Failed (21) — error_message, source, hresult, exception_type, detail (phase, retry_count=0, installer_type, certificate_present) |
+| **LIA/Install/Failed** | ON | L1 Failed (21) + L2 (duration_ms, detail.certificate_subject, certificate_thumbprint, package_version, activity_id, powershell_exit_code, appx_log, signal_name) |
+| **Updater/Download/Started** | OFF | ❌ НЕ відправляється (L2 Diagnostic, gate OFF) |
+| **Updater/Download/Started** | ON | ✅ L2: install_id, session_id, correlation_id, step, component, operation, outcome, severity, app_version, ..., duration_ms, detail.phase, detail.retry_count |
+| **Updater/Download/Failed** | OFF | ✅ L1 Failed (21) — error_message, source, hresult, exception_type |
+| **Application/Start/Started** | OFF | ✅ L1 Success (16) — adoption rate |
+
+
 ## 14.17. Порядок фаз (оновлено)
 
 ```
