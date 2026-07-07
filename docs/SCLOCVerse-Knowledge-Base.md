@@ -155,6 +155,20 @@
 
 **Рішення (Phase 2):** `DEFER` — дослідити походження та погодити `DROP SCHEMA backup_pre_1_0_0_1` окремою міграцією. Жодних продюсерів, 0 зовнішніх залежностей, займає місце в бекапах Supabase.
 
+### 3.2.2. Audit міграцій (Phase 2 forensic, 2026-07-07)
+
+26 міграцій консистентні. Pattern audit:
+
+| Pattern | Приклад | Статус |
+|---|---|---|
+| `CREATE OR REPLACE FUNCTION` | `promote_incident_candidates` (00013→00016), `refresh_knowledge_coverage` (00023→05021100), `tg_promote_after_failed` (05021100→05030000), `knowledge_audit_trigger` (00019→00022), `update_knowledge_entry`/`transition_knowledge`/`add_knowledge_reference`/`remove_knowledge_reference`/`get_knowledge_history` (00021→00022) | ✅ нормальні розвиткові оновлення |
+| `DROP CONSTRAINT + ADD` | `chk_notif_status` (00016→00017, 3→5 станів), `chk_knowledge_ref_type` (00019→00022, +ReleaseNotes), `chk_notification_type` (00016→00023, 3→7 типів) | ✅ необхідні розширення enum |
+| `DROP VIEW + CREATE` | `cc.notifications` (00016→00017, зміна порядку колонок) | ✅ необхідне |
+| `CREATE FUNCTION → DROP FUNCTION` | `archive_knowledge_entry(bigint, text, text)` CREATE 00021 → DROP 00023 (замінено на `transition_knowledge(target=Archived)`) | ✅ refactor у межах релізу |
+| Zombie функція (CREATE, не DROP) | `promote_incident_candidates()` (batch) — створена 00013, REPLACE 00016, продовжує жити (F6) | ⏸ DEFER |
+
+**Migration squash** (об'єднання 00001-00023 в одну) — відхилено (§15 #70): втратить аудит причин. Стандартна migration practice.
+
 ## 3.3. Triggers
 
 | Trigger | Подія | Дія |
@@ -340,7 +354,7 @@
 | Що дублюється | Де | Рішення |
 |---|---|---|
 | ~~`detail.signal_name` ↔ computed `signal` у views~~ | ~~`telemetry_events.detail` JSON~~ | ❌ **ПЕРЕВІРЕНО Phase 2:** у живих даних (705 рядків) ключ `signal_name` **НЕ існує** (0 зустрічей). Твердження застаріле — прибрати з плану. |
-| `detail.retry_count` | завжди 0, 351 з 354 записів | ❌ видалити з C# `UpdateEvents.Track`/`LiaEvents.Track` (signal COALESCE не зачіпає) |
+| `detail.retry_count` | `0` у 351 записі; 4 місця в C# (`ErrorContextExtractor.cs:181`, `InstallationService.cs:149`, `LiaEvents.cs:46`, `UpdateEvents.cs:39`) — додано в Observability Slices 3-5 (коміти `a4f6d39`, `3bb5a3c`, `4db4448`) | ⏸ **НЕ дубль, НЕ мертва.** Заготовка під плановану Retry Policy (коментарі в коді: `// схема готова для майбутньої Retry Policy`). Рішення відкладено до **Retry Policy architectural decision** (§17.4). |
 | LIA cascade 3-4 Failed на 1 відмову | `Updater.cs` | 🔄 об'єднати до 1 термінальної |
 | App self-update Started/Succeeded по фазах | `UpdateDownloader/Installer/Verifier` | 🔄 об'єднати до 1 результату |
 
@@ -605,7 +619,29 @@ Append-only аудит кожної спроби: `queue_id, attempt_no, provide
 | `telemetry_incidents` | `id, component, operation, signal, highest_severity, release` | — |
 | `notification_attempts` | — | `queue_id, attempt_no, provider, status, http_status, provider_message_id, error_message, started_at, finished_at` |
 
-> **Дублікат:** `notification_queue.error_message` ↔ `last_error` — обидва містять помилку (рішення: об'єднати).
+> ~~**Дублікат:** `notification_queue.error_message` ↔ `last_error` — обидва містять помилку (рішення: об'єднати).~~
+>
+> ❌ **ПЕРЕВІРЕНО Phase 2 forensic (2026-07-07): це НЕ дубль, різна семантика.** Див. §12.6.
+
+## 12.6. Семантика `error_message` vs `last_error` (Phase 2 forensic, 2026-07-07)
+
+| Колонка | Створена | Коміт | Первісне призначення | Хто пише |
+|---|---|---|---|---|
+| `error_message` | міграція `00016` (RC6) | `378fc47` Phase 5b/RC6 | фінальна помилка черги (legacy інтенція до retry pipeline) | ❌ ніхто (Notifier не пише) |
+| `last_error` | міграція `00017` (ALTER, audit+retry) | Phase 5b retry pipeline | помилка **останньої спроби** (Стаття 26, оновлюється кожен retry) | ✅ Notifier (фінальний UPDATE queue) |
+
+**Різниця семантик:**
+- `error_message` — фінал (після `max_retries`, остаточний стан черги).
+- `last_error` — остання спроба (проміжна в retry-циклі).
+
+**Статус після 00017:** Notifier перейшов на `last_error`. `error_message` залишилась як **де-факто deprecated**, але не прибрана через additive-only.
+
+**Рішення (Phase 2):** НЕ MERGE (різна семантика). Варіанти:
+- (a) **NOTHING** — лишити статус-кво (поточний стан).
+- (b) **SEMANTIC SPLIT** — додати в Notifier запис `error_message` лише при фінальному `status='Failed'` після `max_retries` (окрема архітектурна задача, поза Database Cleanup).
+- (c) **DEprecate contract** — позначити в SQL-коментарі + KB як deprecated (без зміни коду).
+
+Погоджено варіант **(c)** — фіксація статус-кво в KB без зміни коду.
 
 ---
 
@@ -770,10 +806,19 @@ Materialized VIEW `control_center.knowledge_coverage` (per-release). REFRESH ч�
 
 ## 14.8. Phase 2 Database Cleanup Review (2026-07-07)
 
-78. **Phase 2 Database Cleanup Review виконано** — повний аудит схеми без реалізації. Усі 16 пунктів завдання покриті доказами з живої БД. Matrix: 40 KEEP / 10 ACTIVATE / 2 MERGE / 3 REMOVE (індекси) / 28 DEFER. Деталі в §16.5.
+78. **Phase 2 Database Cleanup Review виконано** — повний аудит схеми без реалізації. Усі 16 пунктів завдання покриті доказами з живої БД. Matrix (поновлено після forensic §14.9): 40 KEEP / 10 ACTIVATE / **0 MERGE** (обидва кандидати зняті) / 3 REMOVE (індекси) / 28 DEFER. Деталі в §16.5.
 79. **`DROP INDEX` — additive-only** (не порушує схематичний контракт): дозволено для 3 доведених дублів/невикористань (`idx_app_installations_install_id`, `idx_app_installations_machine_id`, `idx_user_discord_guilds_user_id`).
 80. **Generated column PostgreSQL 12** — additive спосіб кешувати `incident_code` замість формування в 4 views + Notifier. Zero Regression.
 81. **`SET search_path = public, pg_catalog` у SECURITY DEFINER функціях** — additive виправлення SEC-11 (26 функцій), не змінює сигнатур (дозволено API Freeze §13.8).
+
+## 14.9. Phase 2 forensic-аудит (2026-07-07, post-Review)
+
+82. **26 міграцій Supabase консистентні** — pattern audit (CREATE OR REPLACE / DROP+CREATE / CREATE→DROP) підтвердив, що всі зміни необхідні для розвитку схеми. **Migration squash відхилено** (§15 #70).
+83. **Dependency graph 4 VIEW** (`incidents`, `incident_timeline`, `incident_notes_view`, `notifications`): **0 inbound залежностей** в БД (ані views, ані функцій, ані тригерів). OR REPLACE безпечний — єдині залежні C# SQL-запити з явним списком колонок.
+84. **`error_message` ≠ `last_error`** — різна семантика (фінал черги vs остання спроба retry). НЕ MERGE. `error_message` де-факто deprecated з міграції 00017. Деталі в §12.6.
+85. **`detail.retry_count` ≠ мертва** — заготовка під плановану Retry Policy (додана в Observability Slices 3-5, коментарі в коді: `// схема готова для майбутньої Retry Policy`). НЕ REMOVE. Рішення відкладено до Retry Policy architectural decision (§17.4).
+86. **`archive_knowledge_entry(bigint, text, text)`** — створена 00021, DROP 00023 (замінено на `transition_knowledge(target=Archived)`). Коректний lifecycle, не борг.
+87. **`promote_incident_candidates()` (batch)** — zombie з міграції 00013 (REPLACE 00016, але не DROP). Підтверджено на рівні БД через `pg_depend=[]`. DEFER (DROP заборонено API Freeze §13.8).
 
 ---
 
@@ -853,6 +898,9 @@ Materialized VIEW `control_center.knowledge_coverage` (per-release). REFRESH ч�
 65. **Phase 2: твердження «`detail.signal_name` дублює computed signal» відхилено** — у живих даних (705 рядків) ключ `signal_name` взагалі не існує (0 зустрічей). Було планованим, але не реалізованим у C# `ErrorContextExtractor`.
 66. **Phase 2: DROP COLUMN заборонено і для `http_status`/`supabase_code`** — хоча 100% NULL (705/705), CHECK `chk_telemetry_failed_has_signal` посилається на обидві. Additive-only (§13).
 67. **Phase 2: DROP зарезервованих таблиць (`error_reports`, `admin_audit_log`, `user_discord_guilds`)** — підтверджує Rejected #39; 0 продюсерів не є підставою для DROP (майбутнє використання).
+68. **Phase 2 forensic: MERGE `notification_queue.error_message` ↔ `last_error` відхилено** — різна семантика (фінал черги vs остання спроба retry). Деталі в §12.6.
+69. **Phase 2 forensic: REMOVE `detail.retry_count` з C# відхилено** — заготовка під плановану Retry Policy (коментарі в коді: `// схема готова для майбутньої Retry Policy`). Рішення відкладено до Retry Policy architectural decision (§17.4).
+70. **Phase 2: Migration squash відхилено** — об'єднання 26 міграцій втратить аудит причин. Стандартна migration practice (див. §3.2.2).
 
 ---
 
@@ -929,9 +977,9 @@ Materialized VIEW `control_center.knowledge_coverage` (per-release). REFRESH ч�
 
 **🟡 ACTIVATE (10):** 4 активації `app_installations.*` через `IInstallationContextProvider`; `git_commit` (MSBuild); `category` диференційована; Phase 0 (3 partial-індекси KB #70); Phase 3 (3 матв'юхи KB #73); generated column `incident_code` (замість формування в 4 views + Notifier); чекбокс AdvancedDiagnostics → Category A/B.
 
-**🔄 MERGE (2):**
-- `notification_queue.error_message` ↔ `last_error` → одна колонка `last_error` (Notifier контракт).
-- `telemetry_events.detail.retry_count` (351 записів, завжди 0) → видалити з C# `UpdateEvents.Track`/`LiaEvents.Track`.
+**~~🔄 MERGE (2)~~** → ❌ **MERGE (0)** — обидва кандидати зняті після forensic:
+- ~~`notification_queue.error_message` ↔ `last_error`~~ — **різна семантика** (фінал vs остання спроба retry), НЕ дубль. Див. §12.6, Rejected #68.
+- ~~`telemetry_events.detail.retry_count`~~ — **заготовка під Retry Policy**, НЕ мертва. Див. §14.9 #85, Rejected #69.
 
 **🔴 REMOVE (3 індекси — доведено дубль/невикористання):**
 - `idx_app_installations_install_id` — дублює UNIQUE `app_installations_install_id_key`.
@@ -939,6 +987,8 @@ Materialized VIEW `control_center.knowledge_coverage` (per-release). REFRESH ч�
 - `idx_user_discord_guilds_user_id` — дублює провідний стовпець UNIQUE `(user_id, discord_guild_id)`.
 
 > Усі 3 — `DROP INDEX` (additive, не порушує схематичний контракт).
+
+**📊 Trivia — dependency graph 4 VIEW** (що змінюватимуться через generated column): `incidents`, `incident_timeline`, `incident_notes_view`, `notifications` — **0 inbound залежностей** у БД (ані views, ані функцій, ані тригерів на них не посилаються). OR REPLACE безпечний. Залежні лише C# SQL-запити з явним списком колонок (`ControlCenterRepository`). Див. §14.9 #83.
 
 **⏸ DEFER (28):** схема `backup_pre_1_0_0_1`; таблиці `error_reports`/`admin_audit_log`/`user_discord_guilds` (Rejected #39); 11 невикористовуваних views (additive view-контракт); функції `promote_incident_candidates`/`ecosystem_stats`/`get_knowledge_version_detail` (DROP заборонено API Freeze §13.8); `app_installations.os_build`/`install_source`; `telemetry_events.country` (Rejected #35).
 
@@ -970,7 +1020,7 @@ Materialized VIEW `control_center.knowledge_coverage` (per-release). REFRESH ч�
 | Phase 0: 3 індекси (partial Failed, version_window, occurred) | Optimization-Plan | низька |
 | Phase 1: скоротити LIA chain 9→2, app-update 6→1 | Optimization-Matrix | середня |
 | Phase 2: видалити `detail.retry_count` з C# `UpdateEvents.Track`/`LiaEvents.Track` (завжди 0) | Optimization-Plan + Phase 2 Review | низька |
-| Phase 2: MERGE `notification_queue.error_message` ↔ `last_error` → `last_error` | Phase 2 Review (2026-07-07) | низька |
+| ~~Phase 2: MERGE `notification_queue.error_message` ↔ `last_error` → `last_error`~~ | ~~Phase 2 Review (2026-07-07)~~ | ~~низька~~ — **ВІДХИЛЕНО forensic (різна семантика, див. §12.6, Rejected #68)** |
 | Phase 2: REMOVE 3 індекси-дублікати (`idx_app_installations_install_id`, `idx_app_installations_machine_id`, `idx_user_discord_guilds_user_id`) | Phase 2 Review — DROP INDEX additive | низька |
 | Phase 2: дослідити та погодити DROP SCHEMA `backup_pre_1_0_0_1` (12 дублів, 55 рядків, 0 залежностей) | Phase 2 Review | низька |
 | Phase 2: generated column `incident_code` (`INC-YYYY-NNNNN`) замість формування в 4 views + Notifier | Phase 2 Review — additive PostgreSQL 12 | низька |
@@ -1002,6 +1052,14 @@ Materialized VIEW `control_center.knowledge_coverage` (per-release). REFRESH ч�
 - **Рік 1 (стабілізація):** P0-борг, оптимізація БД, app_installations, чекбокс.
 - **Рік 2 (масштабування):** config-driven OAuth, Email/Telegram providers, Edge Function ingest, CC auth + Supabase Auth, rollup tables/MATVIEW, партиціювання при >50M рядків/рік.
 - **Рік 3 (еволюція):** `ITelemetryBackend`, plugin-system notification, localization integrity, Authenticode enforcement, multi-tenant CC.
+
+## 17.4. Phase 2 forensic-задачі (відкриті питання після аудиту 2026-07-07)
+
+| Задача | Призначення | Складність |
+|---|---|---|
+| **Retry Policy architectural decision** — прийняти або відхилити Retry Policy для `UpdateEvents`/`LiaEvents`/`InstallationService`. Визначити долю `detail.retry_count` (зараз завжди 0, схема готова). Якщо відхилити — прибрати ключ з 4 місць C# + зафіксувати в KB §15. Якщо прийняти — спроєктувати retry pipeline (бекенд-логіка). | усуває неоднозначність: «мертва чи заготовка?» | середня (рішення) / висока (реалізація) |
+| **`error_message` semantic activation (варіант b з §12.6)** — додати в Notifier SQL запис `error_message` лише при фінальному `status='Failed'` після `max_retries` (фінал проміжного `last_error`). | розділити семантику фінальної помилки черги від проміжної retry | низька |
+| **Phase 2: позначити `error_message` deprecated у SQL-коментарі** (варіант c з §12.6) — фіксація статус-кво без зміни коду. | предупредити наступних агентів | низька |
 
 ---
 
