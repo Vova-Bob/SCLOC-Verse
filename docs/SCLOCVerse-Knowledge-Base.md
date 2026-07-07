@@ -1677,6 +1677,13 @@ Phase 5 (Retention Pipeline) — Backlog (pg_cron)
 Phase 3.7 (Security Hardening) — Backlog (DEFAULT PRIVILEGES + SEC-11)
 ```
 
+## 14.18. UI: Кастомний ToolTip для CheckBox (2026-07-07) — ✅ IMPL
+
+146. **Кастомний ToolTip-інфраструктура реалізована.** Замість стандартного Windows ToolTip створено єдиний implicit `Style TargetType=ToolTip` у `Resources/Styles.xaml` (DRY/KISS — будь-який елемент з `ToolTip="..."` у Canvas, що підключає `Styles.xaml`, автоматично отримує стиль). Палітра повторно використовує існуючі кольори додатку: картка `#102A3A` (= ComboBox/CheckBox bg), рамка `#2478A9` (= accent), текст `#E8F3FF` (= ComboBoxItem foreground), тінь `DropShadowEffect` як у кнопок, `CornerRadius=8` як у карток. Шрифт `Segoe UI` 14 (як у SettingCheckBox).
+147. **Поведінка ToolTip.** Позиція `Right` + `HorizontalOffset=8` (не перекриває елемент). `MaxWidth=300` + `TextWrapping=Wrap` (автоперенос). `InitialShowDelay=250` (поява ~250 мс), `ShowDuration=60000` (тримається довго — контрольно-налаштункова підказка). Плавний fade забезпечується OS-рівневим `ToolTipPopupAnimation` (за замовчуванням Fade). `UseFading`/`PopupAnimation` — НЕ властивості ToolTip (це attached `ToolTipService.*`, але таких attached немає; WPF делегує OS). Спроба додати `ToolTipService.UseFading`/`PopupAnimation` у Style викликає MC4005 — прибрано.
+148. **Застосування.** `SettingCheckBox` стиль у `SettingsCanvas.xaml` розширено 5 сеттерами `ToolTipService.*`. 4 чекбокси (`RunAtStartupCheckBox`, `MinimizeToTrayCheckBox`, `AutoUpdateLocalizationCheckBox`, `AdvancedDiagnosticsCheckBox`) отримали `ToolTip="..."` з українськими текстами. Новий CheckBox автоматично отримує підказку через властивість `ToolTip` (інфраструктура готова).
+149. **Scope.** Implicit ToolTip-стиль у `Styles.xaml` застосовується лише в Canvas, що підключають `Styles.xaml` (Settings, ScTools, Assistant, Localization). MainWindow та діалоги НЕ підключають `Styles.xaml` → їхні існуючі ToolTip (`ToolTip="Обліковий запис"`, `ToolTip="Закрити"`) не змінюються (zero side-effect). Зміна не зачіпає C#, схему, телеметрію. Лише XAML-ресурси (+51 рядок Styles.xaml, +12 рядків SettingsCanvas.xaml).
+
 ---
 
 # 15. Rejected Decisions (майстер-список)
