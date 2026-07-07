@@ -1547,6 +1547,10 @@ Blazor Components (.razor)
 114. **Outcome-dependent Field Policy** — L1 розділено на **L1 Success** (мінімальний набір, 16 полів) та **L1 Failed** (розширений мінімальний, 21 поле). Failed-події збирають error_context (error_message, source, hresult, exception_type) **завжди**, навіть без чекбокса. Mature systems так працюють: критична інформація про збої — завжди, глибока діагностика — за згодою. Деталі в §5.11.3.
 115. **`error_message` повернуто в L1 Failed** (forensic: Writer = `Exception.Message` через PrivacySanitizer — людяне пояснення "Certificate chain invalid", не дубль exception_type). Без нього розробник бачить лише тип винятку без причини. Не можна змушувати "перезапустити з діагностикою" для критичної помилки.
 
+## 14.18. Phase 3.5 CLOSED (2026-07-07)
+
+116. **Phase 3.5 Telemetry Policy OFFICIALLY CLOSED.** Затверджено користувачем після: Event Registry (39 емітерів), Field Registry (Outcome-dependent: L1 Success 16 / L1 Failed 21 / L2 12 / DEPRECATED 2 / L3 0), Reader Validation (усі L1 доведено через C# код), Writer Validation (error_message = Exception.Message через PrivacySanitizer). UI не ламається (чекбокс без перейменування). Data Model не ламається (additive). Політика базується на коді, а не на припущеннях. Подальші зміни — реалізація затвердженого контракту (TelemetryLevel enum + wire AdvancedDiagnostics + 21 L2 емітери).
+
 ## 14.17. Порядок фаз (оновлено)
 
 ```
