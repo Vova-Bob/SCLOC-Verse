@@ -3,6 +3,7 @@ using SCLOCVerse.Helpers;
 using SCLOCVerse.Interfaces;
 using SCLOCVerse.Models.LiaModels;
 using SCLOCVerse.Models.LiaServices;
+using SCLOCVerse.Models.Observability;
 using SCLOCVerse.Services.Observability;
 using System.ComponentModel;
 using System.Diagnostics;
@@ -198,7 +199,7 @@ namespace SCLOCVerse.Services.LiaServices
             CancellationToken cancellationToken = default)
         {
             var sw = System.Diagnostics.Stopwatch.StartNew();
-            LiaEvents.Track(_telemetry, "Install", "Started", orchestrationPhase: "Download");
+            LiaEvents.Track(_telemetry, "Install", "Started", orchestrationPhase: "Download", level: TelemetryLevel.Diagnostic);
 
             try
             {
@@ -214,7 +215,7 @@ namespace SCLOCVerse.Services.LiaServices
                 // --- Download ---
                 // Кожен Download.Started зобов'язаний мати terminal (інваріант платформи).
                 // EnsureAssetDownloadedAsync кидає → обов'язково Download.Failed + FlushAsync до throw.
-                LiaEvents.Track(_telemetry, "Download", "Started", orchestrationPhase: "InstallerAsset");
+                LiaEvents.Track(_telemetry, "Download", "Started", orchestrationPhase: "InstallerAsset", level: TelemetryLevel.Diagnostic);
                 var downloadSw = System.Diagnostics.Stopwatch.StartNew();
                 string installerPath;
                 try
@@ -228,14 +229,14 @@ namespace SCLOCVerse.Services.LiaServices
                         await _telemetry.FlushAsync(TimeSpan.FromSeconds(5), cancellationToken).ConfigureAwait(false);
                     throw;
                 }
-                LiaEvents.Track(_telemetry, "Download", "Succeeded", downloadSw.ElapsedMilliseconds, orchestrationPhase: "InstallerAsset");
+                LiaEvents.Track(_telemetry, "Download", "Succeeded", downloadSw.ElapsedMilliseconds, orchestrationPhase: "InstallerAsset", level: TelemetryLevel.Diagnostic);
 
                 string? certificatePath = null;
 
                 if (certificateAsset != null)
                 {
                     onProgress?.Invoke("Завантаження сертифіката...");
-                    LiaEvents.Track(_telemetry, "Download", "Started", orchestrationPhase: "CertificateAsset");
+                    LiaEvents.Track(_telemetry, "Download", "Started", orchestrationPhase: "CertificateAsset", level: TelemetryLevel.Diagnostic);
                     var certSw = System.Diagnostics.Stopwatch.StartNew();
                     try
                     {
@@ -248,7 +249,7 @@ namespace SCLOCVerse.Services.LiaServices
                             await _telemetry.FlushAsync(TimeSpan.FromSeconds(5), cancellationToken).ConfigureAwait(false);
                         throw;
                     }
-                    LiaEvents.Track(_telemetry, "Download", "Succeeded", certSw.ElapsedMilliseconds, orchestrationPhase: "CertificateAsset");
+                    LiaEvents.Track(_telemetry, "Download", "Succeeded", certSw.ElapsedMilliseconds, orchestrationPhase: "CertificateAsset", level: TelemetryLevel.Diagnostic);
                 }
 
                 // --- Install ---
@@ -258,7 +259,7 @@ namespace SCLOCVerse.Services.LiaServices
                 onProgress?.Invoke("Запуск інсталяції Л.І.А...");
                 LiaEvents.Track(_telemetry, "Install", "Started", orchestrationPhase: "RunInstallerScript",
                     installerType: GetInstallerType(installerPath), certificatePresent: certificatePath != null,
-                    packageVersion: release.TagName);
+                    packageVersion: release.TagName, level: TelemetryLevel.Diagnostic);
 
                 var installSw = System.Diagnostics.Stopwatch.StartNew();
                 await RunInstallerScriptAsync(installerPath, certificatePath, cancellationToken).ConfigureAwait(false);
@@ -552,7 +553,7 @@ namespace SCLOCVerse.Services.LiaServices
             // покаже LIA.RunInstallerScript.Failed замість «Install.Failed десь усередині».
             // detail.phase несе точне місце (CertificateImport / AddAppxPackage) з forensic.
             var scriptSw = System.Diagnostics.Stopwatch.StartNew();
-            LiaEvents.Track(_telemetry, "RunInstallerScript", "Started");
+            LiaEvents.Track(_telemetry, "RunInstallerScript", "Started", level: TelemetryLevel.Diagnostic);
 
             PowerShellResult result;
             try
@@ -572,7 +573,7 @@ namespace SCLOCVerse.Services.LiaServices
                 // Process.Start/WaitForExitAsync/IO винятки — PowerShell навіть не стартував
                 // або стартував і впав до completion. Фаза невідома (ExitCode відсутній).
                 LiaEvents.Track(_telemetry, "RunInstallerScript", "Failed", scriptSw.ElapsedMilliseconds, ex,
-                    orchestrationPhase: "ProcessExecution");
+                    orchestrationPhase: "ProcessExecution", level: TelemetryLevel.Diagnostic);
                 if (_telemetry is not null)
                     await _telemetry.FlushAsync(TimeSpan.FromSeconds(5), cancellationToken).ConfigureAwait(false);
                 throw;
@@ -586,7 +587,7 @@ namespace SCLOCVerse.Services.LiaServices
                 {
                     forensic.InstallerType ??= GetInstallerType(installerPath);
                     var liaEx = new LiaInstallException(forensic, result.ExitCode, result.Error);
-                    LiaEvents.Track(_telemetry, "RunInstallerScript", "Failed", scriptSw.ElapsedMilliseconds, liaEx);
+                    LiaEvents.Track(_telemetry, "RunInstallerScript", "Failed", scriptSw.ElapsedMilliseconds, liaEx, level: TelemetryLevel.Diagnostic);
                     if (_telemetry is not null)
                         await _telemetry.FlushAsync(TimeSpan.FromSeconds(5), cancellationToken).ConfigureAwait(false);
                     throw liaEx;
@@ -595,13 +596,13 @@ namespace SCLOCVerse.Services.LiaServices
                 // Forensic-блок відсутній — fallback на InvalidOperationException (Zero Regression).
                 var fallbackEx = new InvalidOperationException(string.IsNullOrWhiteSpace(result.Error) ? result.Output.Trim() : result.Error.Trim());
                 LiaEvents.Track(_telemetry, "RunInstallerScript", "Failed", scriptSw.ElapsedMilliseconds, fallbackEx,
-                    orchestrationPhase: "UnknownExitCode");
+                    orchestrationPhase: "UnknownExitCode", level: TelemetryLevel.Diagnostic);
                 if (_telemetry is not null)
                     await _telemetry.FlushAsync(TimeSpan.FromSeconds(5), cancellationToken).ConfigureAwait(false);
                 throw fallbackEx;
             }
 
-            LiaEvents.Track(_telemetry, "RunInstallerScript", "Succeeded", scriptSw.ElapsedMilliseconds);
+            LiaEvents.Track(_telemetry, "RunInstallerScript", "Succeeded", scriptSw.ElapsedMilliseconds, level: TelemetryLevel.Diagnostic);
         }
 
         private static string GetInstallerType(string installerPath)

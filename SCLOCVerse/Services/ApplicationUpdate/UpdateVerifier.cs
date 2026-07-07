@@ -1,4 +1,5 @@
 ﻿using SCLOCVerse.Interfaces;
+using SCLOCVerse.Models.Observability;
 using SCLOCVerse.Services.Observability;
 using System;
 using System.Diagnostics;
@@ -31,13 +32,13 @@ namespace SCLOCVerse.Services.ApplicationUpdate
             cancellationToken.ThrowIfCancellationRequested();
 
             var sw = Stopwatch.StartNew();
-            UpdateEvents.Track(_telemetry, "Verify", "Started");
+            UpdateEvents.Track(_telemetry, "Verify", "Started", level: TelemetryLevel.Diagnostic);
 
             try
             {
                 if (string.IsNullOrWhiteSpace(expectedChecksum))
                 {
-                    UpdateEvents.Track(_telemetry, "Verify", "Skipped", sw.ElapsedMilliseconds, phase: "NoChecksum");
+                    UpdateEvents.Track(_telemetry, "Verify", "Skipped", sw.ElapsedMilliseconds, phase: "NoChecksum", level: TelemetryLevel.Diagnostic);
                     return false;
                 }
 
@@ -56,8 +57,10 @@ namespace SCLOCVerse.Services.ApplicationUpdate
                 var actualChecksum = BitConverter.ToString(hash).Replace("-", string.Empty);
 
                 var ok = string.Equals(actualChecksum, trimmedChecksum, StringComparison.OrdinalIgnoreCase);
-                UpdateEvents.Track(_telemetry, "Verify", ok ? "Succeeded" : "Failed", sw.ElapsedMilliseconds,
-                    phase: ok ? null : "ChecksumMismatch");
+                if (ok)
+                    UpdateEvents.Track(_telemetry, "Verify", "Succeeded", sw.ElapsedMilliseconds, level: TelemetryLevel.Diagnostic);
+                else
+                    UpdateEvents.Track(_telemetry, "Verify", "Failed", sw.ElapsedMilliseconds, phase: "ChecksumMismatch");
                 return ok;
             }
             catch (Exception ex)

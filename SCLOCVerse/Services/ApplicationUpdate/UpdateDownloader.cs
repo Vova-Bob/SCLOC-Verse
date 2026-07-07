@@ -1,5 +1,6 @@
 ﻿using SCLOCVerse.Interfaces;
 using SCLOCVerse.Models.ApplicationUpdate;
+using SCLOCVerse.Models.Observability;
 using SCLOCVerse.Services.Observability;
 using System;
 using System.Diagnostics;
@@ -43,7 +44,7 @@ namespace SCLOCVerse.Services.ApplicationUpdate
 
             // Спостережуваність: лише фактичне завантаження (арг-валідація вище — без подій).
             var sw = Stopwatch.StartNew();
-            UpdateEvents.Track(_telemetry, "Download", "Started");
+            UpdateEvents.Track(_telemetry, "Download", "Started", level: TelemetryLevel.Diagnostic);
 
             try
             {
@@ -61,7 +62,7 @@ namespace SCLOCVerse.Services.ApplicationUpdate
                     progress,
                     cancellationToken).ConfigureAwait(false);
 
-                UpdateEvents.Track(_telemetry, "Download", "Succeeded", sw.ElapsedMilliseconds);
+                UpdateEvents.Track(_telemetry, "Download", "Succeeded", sw.ElapsedMilliseconds, level: TelemetryLevel.Diagnostic);
                 return filePath;
             }
             catch (Exception ex)

@@ -14,6 +14,9 @@ namespace SCLOCVerse.Interfaces
     ///  - синхронний, O(1), ніколи не кидає (Стаття 1 — Absolute Isolation);
     ///  - не блокує UI (Стаття 2) — лише кладе в неблокуючу чергу;
     ///  - жоден викликач не обробляє результат.
+    ///  - <paramref name="level"/> визначає, чи відправляється подія (Phase 3.5 Telemetry Policy,
+    ///    KB §5.8). Рішення приймає виключно реалізація (TelemetryClient.Track) —
+    ///    заборонено if(AdvancedDiagnostics) у викликачах (KB §14.19 #121).
     ///
     /// Контракт методу <see cref="FlushAsync"/>:
     ///  - гарантовано відправляє чергу до таймауту (Стаття 16 — Terminal Flush);
@@ -30,7 +33,8 @@ namespace SCLOCVerse.Interfaces
         /// <param name="operation">Операція всередині компонента (Start, SignIn, Sync, Install, ...).</param>
         /// <param name="outcome">Started/Succeeded/Failed/Cancelled/Skipped.</param>
         /// <param name="context">Опціональний diagnostic-контекст (обов'язковий для Failed).</param>
-        void Track(string component, string operation, string outcome, TelemetryContext? context = null);
+        /// <param name="level">Рівень телеметрії (KB §5.8): Mandatory (default, завжди), Diagnostic (при AdvancedDiagnostics ON), Local (ніколи). НЕ визначає Category — це окрема вісь (KB §14.19 #117).</param>
+        void Track(string component, string operation, string outcome, TelemetryContext? context = null, TelemetryLevel level = TelemetryLevel.Mandatory);
 
         /// <summary>
         /// Примусово відправити накопичену чергу подій упродовж <paramref name="timeout"/>.

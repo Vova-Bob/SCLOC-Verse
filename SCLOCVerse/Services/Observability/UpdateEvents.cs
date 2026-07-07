@@ -19,7 +19,8 @@ namespace SCLOCVerse.Services.Observability
             string outcome,
             long? durationMs = null,
             Exception? exception = null,
-            string? phase = null)
+            string? phase = null,
+            TelemetryLevel level = TelemetryLevel.Mandatory)
         {
             if (telemetry is null)
                 return;
@@ -39,7 +40,7 @@ namespace SCLOCVerse.Services.Observability
                         ctx.Detail = new Dictionary<string, object?> { ["phase"] = phase, ["retry_count"] = 0 };
                 }
 
-                telemetry.Track("Updater", operation, outcome, ctx);
+                telemetry.Track("Updater", operation, outcome, ctx, level);
             }
             catch (Exception ex)
             {

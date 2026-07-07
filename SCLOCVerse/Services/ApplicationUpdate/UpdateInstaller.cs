@@ -1,4 +1,5 @@
 ﻿using SCLOCVerse.Interfaces;
+using SCLOCVerse.Models.Observability;
 using SCLOCVerse.Services.Observability;
 using System;
 using System.Diagnostics;
@@ -37,7 +38,7 @@ namespace SCLOCVerse.Services.ApplicationUpdate
             cancellationToken.ThrowIfCancellationRequested();
 
             var sw = Stopwatch.StartNew();
-            UpdateEvents.Track(_telemetry, "Install", "Started");
+            UpdateEvents.Track(_telemetry, "Install", "Started", level: TelemetryLevel.Diagnostic);
 
             try
             {
@@ -73,8 +74,10 @@ namespace SCLOCVerse.Services.ApplicationUpdate
                 // Реальне завершення інсталяції відбувається у відокремленому процесі після shutdown
                 // додатка — його результат фіксується bridge-event з історії оновлень (окремий слайс).
                 // Тут фіксуємо лише запуск інсталятора.
-                UpdateEvents.Track(_telemetry, "Install", launched ? "Succeeded" : "Failed", sw.ElapsedMilliseconds,
-                    phase: launched ? "LauncherStarted" : "LaunchFailed");
+                if (launched)
+                    UpdateEvents.Track(_telemetry, "Install", "Succeeded", sw.ElapsedMilliseconds, phase: "LauncherStarted", level: TelemetryLevel.Diagnostic);
+                else
+                    UpdateEvents.Track(_telemetry, "Install", "Failed", sw.ElapsedMilliseconds, phase: "LaunchFailed");
                 return launched;
             }
             catch (Exception ex)

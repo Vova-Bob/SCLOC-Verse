@@ -151,6 +151,9 @@ namespace SCLOCVerse.Composition
             // Після побудови auth — підключаємо client + install_id, запускаємо відправку.
             _telemetryClient.SetInstallId(_authCompositionRoot.InstallId);
             _telemetryClient.AttachClientFactory(_authCompositionRoot.ClientFactory);
+            // Phase 3.5 Telemetry Policy: gate для Diagnostic-рівня (KB §5.8, §14.19 #118).
+            // Єдиний споживач AdvancedDiagnostics (KB §14.19 #122).
+            _telemetryClient.AttachDiagnosticGate(() => _preferencesService.GetAdvancedDiagnostics());
         }
 
         public void Dispose()

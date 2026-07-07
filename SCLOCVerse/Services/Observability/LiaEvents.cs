@@ -22,7 +22,8 @@ namespace SCLOCVerse.Services.Observability
             string? orchestrationPhase = null,
             string? installerType = null,
             bool? certificatePresent = null,
-            string? packageVersion = null)
+            string? packageVersion = null,
+            TelemetryLevel level = TelemetryLevel.Mandatory)
         {
             if (telemetry is null)
                 return;
@@ -52,7 +53,7 @@ namespace SCLOCVerse.Services.Observability
                         ctx.Detail["package_version"] = packageVersion;
                 }
 
-                telemetry.Track("LIA", operation, outcome, ctx);
+                telemetry.Track("LIA", operation, outcome, ctx, level);
             }
             catch (Exception ex)
             {

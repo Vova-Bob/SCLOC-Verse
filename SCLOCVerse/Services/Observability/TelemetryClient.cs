@@ -33,6 +33,13 @@ namespace SCLOCVerse.Services.Observability
         private TelemetryUploader? _uploader;
         private Timer? _flushTimer;
 
+        // Phase 3.5 Telemetry Policy (KB §5.8, §14.19 #118).
+        // Two-phase init: TelemetryClient конструюється ДО IPreferencesService
+        // (розрив циклу auth↔telemetry), тож gate підключається пізніше через
+        // AttachDiagnosticGate — аналогічно SetInstallId / AttachClientFactory.
+        // Єдиний споживач AdvancedDiagnostics (KB §14.19 #122).
+        private Func<bool>? _diagnosticGate;
+
         public TelemetryClient(BuildInfo buildInfo, bool enabled)
         {
             _buildInfo = buildInfo ?? throw new ArgumentNullException(nameof(buildInfo));
@@ -66,12 +73,34 @@ namespace SCLOCVerse.Services.Observability
             }
         }
 
+        /// <summary>
+        /// Підключає gate для TelemetryLevel.Diagnostic (Phase 3.5, KB §5.8, §14.19 #118).
+        /// Two-phase init: викликається після побудови IPreferencesService.
+        /// Gate null → Diagnostic блокується (conservative), Mandatory — ніколи (KB §14.19 #123).
+        /// Єдиний споживач AdvancedDiagnostics (KB §14.19 #122).
+        /// </summary>
+        public void AttachDiagnosticGate(Func<bool> isDiagnosticEnabled)
+        {
+            try { _diagnosticGate = isDiagnosticEnabled; }
+            catch (Exception ex) { Debug.WriteLine($"[Telemetry] AttachDiagnosticGate failed: {ex.Message}"); }
+        }
+
         /// <inheritdoc/>
-        public void Track(string component, string operation, string outcome, TelemetryContext? context = null)
+        public void Track(string component, string operation, string outcome, TelemetryContext? context = null, TelemetryLevel level = TelemetryLevel.Mandatory)
         {
             try
             {
                 if (!_enabled)
+                    return;
+
+                // Phase 3.5 Telemetry Policy (KB §5.8, §14.19 #118, #121, #123).
+                // Єдина точка прийняття рішення. Local — завжди блокується (ніколи не йде в БД).
+                // Diagnostic — лише при gate ON. Gate null → false (conservative).
+                // Mandatory — завжди проходить (gate null не блокує L1).
+                if (level == TelemetryLevel.Local)
+                    return;
+
+                if (level == TelemetryLevel.Diagnostic && !IsDiagnosticEnabled())
                     return;
 
                 var evt = BuildEvent(component, operation, outcome, context);
@@ -82,6 +111,16 @@ namespace SCLOCVerse.Services.Observability
                 // Стаття 1: телеметрія ніколи не кидає у бізнес-код.
                 Debug.WriteLine($"[Telemetry] Track failed: {ex.Message}");
             }
+        }
+
+        /// <summary>
+        /// Gate перевірка для TelemetryLevel.Diagnostic (KB §14.19 #118, #123).
+        /// Gate null → false (conservative: не відправляємо L2 до підключення gate).
+        /// </summary>
+        private bool IsDiagnosticEnabled()
+        {
+            try { return _diagnosticGate?.Invoke() ?? false; }
+            catch { return false; }
         }
 
         /// <inheritdoc/>
