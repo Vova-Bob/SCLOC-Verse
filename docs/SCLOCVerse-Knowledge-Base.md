@@ -901,6 +901,64 @@ if (level == TelemetryLevel.Diagnostic && !settings.DeveloperDiagnostics) return
 
 **Реалізація:** кожен з 21 L2 емітерів додасть `level: TelemetryLevel.Diagnostic` у виклик `.Track()`. Інші 18 — дефолтний L1 (без параметра).
 
+## 5.11. Reader Validation — доказ споживача для L1 (Phase 3.5 forensic, 2026-07-07)
+
+> **Forensic за вимогою користувача:** для кожного L1 емітера та поля — довести реального Reader (хто читає), а не «на око». Якщо Reader = ніхто → переглянути рівень.
+
+### 5.11.1. Reader Validation для 18 L1 емітерів
+
+> Production факт (705 рядків): Started=429 (61%), Succeeded=271 (38%), Failed=10 (1.4%). **Більшість L1 Failed-емітерів НІКОЛИ не траплялись у даних** (бо система працювала успішно). Але вони залишаються L1, бо при збій — потрібні для Incident Pipeline.
+
+| # | Event | Reader (view/function/C#) | Mandatory because | Production факт |
+|---|---|---|---|---|
+| 1 | Application/Start/Started | `cc.platform_stats` (events_24h), `cc.telemetry_events` | adoption rate — скільки користувачів запустило | 130 рядків |
+| 2 | Auth/RestoreSession/Success | `cc.release_health` (Succeeded count), `cc.platform_stats` | OAuth success rate — Release Health | 104 рядків |
+| 3 | Auth/RestoreSession/Failed | `cc.incident_candidates_live/24h` (Failed filter), `cc.release_health` (Failed count), `trg_telemetry_failed_promote` | Auth failure rate — критичний інцидент | 0 рядків (не траплялось) |
+| 4 | Auth/SignIn/Success | `cc.release_health`, `cc.platform_stats` | Auth success rate | 7 рядків |
+| 5 | Installation/Sync/Success | `cc.release_health` (Succeeded), `cc.platform_stats` | Installation sync success rate | 111 рядків |
+| 6 | Installation/Sync/Failed | `cc.incident_candidates_live/24h`, `trg_telemetry_failed_promote` | 42501 або інша помилка (критичний) | 0 рядків (не траплялось) |
+| 7 | Orchestrator/Cycle/Failed | `cc.incident_candidates_live/24h`, `trg_telemetry_failed_promote` | Збій циклу оновлень | 0 рядків (не траплялось) |
+| 8 | Orchestrator/AppCheck/UpdateFound | `cc.platform_stats`, `cc.telemetry_events` | Adoption нових релізів | 0 рядків (не траплялось) |
+| 9 | Orchestrator/AppCheck/Failed | `cc.incident_candidates_live/24h`, `trg_telemetry_failed_promote` | Не вдалося перевірити оновлення | 0 рядків |
+| 10 | Orchestrator/LocalizationCheck/{outcome} | `cc.platform_stats`, `cc.telemetry_events` | Localization pipeline health | 0 рядків |
+| 11 | Orchestrator/LocalizationCheck/Failed | `cc.incident_candidates_live/24h`, `trg_telemetry_failed_promote` | Критичний збій локалізації | 0 рядків |
+| 12 | Orchestrator/LiaCheck/UpdateFound | `cc.platform_stats`, `cc.telemetry_events` | LIA adoption | 0 рядків |
+| 13 | Orchestrator/LiaCheck/Failed | `cc.incident_candidates_live/24h`, `trg_telemetry_failed_promote` | Не вдалося перевірити LIA | 0 рядків |
+| 14 | Updater/Download/Failed | `cc.incident_candidates_live/24h`, `cc.release_health` (Failed), `trg_telemetry_failed_promote` | Критичний збій завантаження | 0 рядків |
+| 15 | Updater/Verify/Failed | `cc.incident_candidates_live/24h`, `trg_telemetry_failed_promote` | Критичний збій перевірки | 0 рядків |
+| 16 | Updater/Install/Failed | `cc.incident_candidates_live/24h`, `trg_telemetry_failed_promote` | Критичний збій встановлення | 0 рядків |
+| 17 | LIA/Install/Succeeded | `cc.release_health` (Succeeded), `cc.platform_stats` | LIA install success rate | 8 рядків |
+| 18 | LIA/Install/Failed | `cc.incident_candidates_live/24h`, `cc.release_health` (Failed), `trg_telemetry_failed_promote` | Критичний збій LIA | 9 рядків |
+
+> **Note:** `cc.incident_candidates_live/24h` читає `outcome='Failed'` + `received_at > now()-10min/24h`. `trg_telemetry_failed_promote` — тригер `AFTER INSERT WHEN outcome='Failed'`. `cc.release_health` — `count FILTER (outcome='Succeeded') / count FILTER (outcome='Failed')`. Усі L1 Failed-події мають **мінімум 2 Readers**.
+
+### 5.11.2. Reader Validation для ключових полів
+
+> Forensic за вимогою користувача: `correlation_id`, `session_id`, `hresult`, `exception_type`, `error_message`, `source` — довести Reader.
+
+| Поле | Reader (view) | Reader (C#) | Mandatory because | Висновок |
+|---|---|---|---|---|
+| **`correlation_id`** | `cc.traces` (ORDER BY correlation_id, step), `cc.telemetry_events` | `TraceRepository.cs:19` (GetTraceAsync WHERE correlation_id=$1), `:37,40` (SearchTracesAsync filter), `ControlCenterRepository.cs:44,538,555,568` | Traces page: кроки події з одним correlation_id утворюють trace. Без нього — неможливо відновити послідовність. | ✅ **L1 Mandatory** |
+| **`session_id`** | `cc.traces`, `cc.unfinished_started` (JOIN), `cc.telemetry_events` | `TraceRepository.cs:73,91,107,125` (SearchTracesAsync + GetTraceAsync), `TraceModels.cs:8,54` | Traces page: групування подій за session. `unfinished_started` — детект Started без термінальної (JOIN по session_id+component+operation). | ✅ **L1 Mandatory** |
+| **`hresult`** | `cc.incident_candidates_live/24h` (signal COALESCE priority 3), `cc.release_health_detail` (top_fingerprint), `cc.traces` (signal) | `ControlCenterRepository.cs:539,540,553,569,573` (COALESCE signal), `TraceRepository.cs:110,141` (trace detail), `TraceModels.cs:24` | **Incident fingerprint**: COALESCE(source, hresult, supabase_code, http_status, exception_type). Без hresult → fingerprint деградує до exception_type/'-'. Змінює grouping інцидентів. | ✅ **L1 Mandatory** (Incident Pipeline) |
+| **`exception_type`** | `cc.incident_candidates_live/24h` (signal COALESCE priority 5), `cc.release_health_detail`, `cc.traces` | `ControlCenterRepository.cs:539,553,569,573` (COALESCE), `TraceRepository.cs:110,143` | **Incident fingerprint fallback** (priority 5). Якщо source/hresult/supabase_code/http_status — NULL, exception_type дає signal. | ✅ **L1 Mandatory** (Incident Pipeline fallback) |
+| **`source`** | `cc.incident_candidates_live/24h` (signal COALESCE priority 1), `cc.release_health_detail`, `cc.traces` | `ControlCenterRepository.cs:539,540,553,569,573`, `TraceRepository.cs:110` | **Incident fingerprint priority 1**. `source` класифікує джерело (Supabase/Network/PowerShell/COM/CLR). Без нього → fallback на hresult (priority 3). Змінює grouping. | ✅ **L1 Mandatory** (Incident Pipeline priority 1) |
+| **`error_message`** | `cc.traces`, `cc.telemetry_events` | `ControlCenterRepository.cs:540,554,570` (trace detail SELECT), `TraceRepository.cs:111,144` | Traces page: відображення тексту помилки. **НЕ бере участь у fingerprint COALESCE** (не впливає на incident grouping). | ⚠ **Переоцінено → L2 Diagnostic** (лише Traces display) |
+
+### 5.11.3. Коригування Field Registry (за результатами Reader Validation)
+
+| Поле | Було | Стало | Reason |
+|---|---|---|---|
+| `error_message` | L1 Mandatory | **L2 Diagnostic** | Тільки Traces page display, НЕ в fingerprint COALESCE. Не впливає на incident grouping. |
+| `hresult` | L1 Mandatory | **L1 Mandatory** ✅ | Incident fingerprint priority 3. Без нього grouping деградує. |
+| `exception_type` | L1 Mandatory | **L1 Mandatory** ✅ | Incident fingerprint priority 5 fallback. |
+| `source` | L1 Mandatory | **L1 Mandatory** ✅ | Incident fingerprint priority 1. Без нього grouping змінюється. |
+| `correlation_id` | L1 Mandatory | **L1 Mandatory** ✅ | Traces page — trace reconstruction. |
+| `session_id` | L1 Mandatory | **L1 Mandatory** ✅ | Traces page — session grouping + unfinished_started. |
+
+**Підсумок:** `error_message` переведено з L1 на L2 (єдине коригування). Решта 8 полів підтверджено як L1.
+
+
 
 
 
