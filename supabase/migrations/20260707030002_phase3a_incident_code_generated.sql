@@ -34,17 +34,45 @@
 -- =========================================================================
 
 ALTER TABLE public.telemetry_incidents
-    ADD COLUMN IF NOT EXISTS incident_code text
-    GENERATED ALWAYS AS (
-        'INC-' || (EXTRACT(YEAR FROM opened_at)::int)::text || '-' || lpad(id::text, 5, '0')
-    ) STORED;
+    ADD COLUMN IF NOT EXISTS incident_code text;
 
--- ЗАУВАЖЕННЯ щодо IMMUTABLE:
+-- =========================================================================
+-- 1b. Тригер для автоматичного обчислення incident_code
+-- =========================================================================
+--
+-- ЗАУВАЖЕННЯ щодо generated column (IMMUTABLE вимога):
 --   PostgreSQL generated column вимагає IMMUTABLE expression.
---   `to_char(opened_at, 'YYYY')` — STABLE (залежить від DateStyle), НЕ ПРОЙДЕ.
---   `EXTRACT(YEAR FROM opened_at)` — IMMUTABLE. Повертає numeric, через
---   ::int гарантує ціле значення без trailing zeros, ::text → '2026'.
---   Результат ідентичний to_char версії: 'INC-2026-00001'.
+--   Початковий варіант `'INC-' || EXTRACT(YEAR FROM opened_at)::int::text || '-' || lpad(id::text, 5, '0')`
+--   НЕ ПРОЙШОВ на replica: EXTRACT для timestamptz — STABLE (залежить від
+--   session TimeZone), навіть через ::int::text. Жодна функція перетворення
+--   timestamptz → int не може бути IMMUTABLE.
+--
+--   Рішення: звичайна text-колонка + BEFORE INSERT/UPDATE тригер.
+--   Семантика ідентична generated column (автоматичне обчислення), але
+--   без вимоги IMMUTABLE. Перевірено Post-Implementation Forensic:
+--     * INSERT → автоматичне `INC-YYYY-NNNNN` (тест: INC-2026-00001);
+--     * UPDATE opened_at → автоматичне оновлення (тест: 2026 → 2027);
+--     * контракт 4 views збережено.
+--
+--   ADDITIVE-ONLY. Не порушує жодного існуючого контракту.
+
+CREATE OR REPLACE FUNCTION public.set_incident_code()
+RETURNS trigger LANGUAGE plpgsql AS $$
+BEGIN
+    NEW.incident_code := 'INC-' || (EXTRACT(YEAR FROM NEW.opened_at)::int)::text || '-' || lpad(NEW.id::text, 5, '0');
+    RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_set_incident_code ON public.telemetry_incidents;
+CREATE TRIGGER trg_set_incident_code
+    BEFORE INSERT OR UPDATE OF opened_at, id ON public.telemetry_incidents
+    FOR EACH ROW EXECUTE FUNCTION public.set_incident_code();
+
+-- Backfill існуючих рядків (на production — 4 інциденти)
+UPDATE public.telemetry_incidents
+SET incident_code = 'INC-' || (EXTRACT(YEAR FROM opened_at)::int)::text || '-' || lpad(id::text, 5, '0')
+WHERE incident_code IS NULL;
 
 -- =========================================================================
 -- 2. control_center.incidents — computed колонка називається `incident_id`
