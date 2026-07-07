@@ -10,7 +10,7 @@ param (
 
 $ErrorActionPreference = 'Stop'
 
-$publishDir = Join-Path $ProjectDir "bin\$Configuration\net9.0-windows\$RuntimeIdentifier\publish"
+$publishDir = Join-Path $ProjectDir "bin\$Configuration\net9.0-windows10.0.18362.0\$RuntimeIdentifier\publish"
 $installerOutputDir = Join-Path $PSScriptRoot "Output"
 $setupExeName = "SCLOC-Verse_Setup.exe"
 

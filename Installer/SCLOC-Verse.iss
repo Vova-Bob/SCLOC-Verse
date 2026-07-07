@@ -1,9 +1,9 @@
 #define MyAppName "SCLOC-Verse"
-#define MyAppVersion GetFileVersion("..\SCLOCVerse\bin\Release\net9.0-windows\win-x64\publish\SCLOCVerse.exe")
+#define MyAppVersion GetFileVersion("..\SCLOCVerse\bin\Release\net9.0-windows10.0.18362.0\win-x64\publish\SCLOCVerse.exe")
 #define MyAppPublisher "VALDEUS"
 #define MyAppExeName "SCLOCVerse.exe"
 #define MyAppIcoName "app_icon.ico"
-#define PublishDir "..\SCLOCVerse\bin\Release\net9.0-windows\win-x64\publish"
+#define PublishDir "..\SCLOCVerse\bin\Release\net9.0-windows10.0.18362.0\win-x64\publish"
 
 [Setup]
 AppId=SCLOCVerse
