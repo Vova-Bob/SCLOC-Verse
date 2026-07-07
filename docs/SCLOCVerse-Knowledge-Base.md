@@ -109,13 +109,15 @@
 
 | Тип | Кількість | Примітка |
 |---|---:|---|
-| Схеми | 2 | `public`, `control_center` |
-| Базові таблиці | 15 | 14 у `public` + 1 singleton у `control_center` |
-| Звичайні VIEW | 19 | 18 у `control_center` + `public.user_analytics` |
+| Схеми (SCLOC-Verse) | 3 | `public`, `control_center`, `backup_pre_1_0_0_1` (резерв до 1.0.0.1 — див. §3.5) |
+| Базові таблиці | 15 (+12 backup) | 14 у `public` + 1 singleton у `control_center` + 12 у `backup_pre_1_0_0_1` |
+| Звичайні VIEW | 25 | 24 у `control_center` + `public.user_analytics` |
 | Materialized VIEW | 1 | `control_center.knowledge_coverage` |
-| SECURITY DEFINER функції | ~24 | promotion, incident workflow, knowledge lifecycle |
+| SECURITY DEFINER функції | 28 | promotion, incident workflow, knowledge lifecycle; лише 2 з 28 мають `SET search_path` (SEC-11) |
 | Triggers | 4 | geoip, failed-promote, incident-refresh, knowledge-audit |
 | БД-ролі | 4 | `anon`, `authenticated`, `cc_readonly`, `cc_notifier` |
+| RLS policies (`public`) | 28 | deny-all RESTRICTIVE + owner-only permissive + cc_notifier |
+| pg_cron | 0 | **НЕ встановлений** — план «Retention 14д» з Observability-Architecture не виконано |
 
 ## 3.2. Таблиці (призначення)
 
@@ -136,6 +138,22 @@
 | `admin_audit_log` | public | Зарезервовано | **ніхто** | 🔴 reserved/future |
 | `user_discord_guilds` | public | Синхронізація гільдій | вимкнений код | 🔴 reserved |
 | `pipeline_health_meta` | control_center | Singleton health | `refresh_knowledge_coverage()` | ✅ singleton |
+
+### 3.2.1. Резервна схема `backup_pre_1_0_0_1` (поза основним контрактом)
+
+> Знахідка Phase 2 Database Cleanup Review (2026-07-07).
+
+Схема створена перед міграцією 1.0.0.1 як ручний backup основних таблиць. Містить 12 таблиць-дублів (структура копія `public`):
+
+| Таблиця | Рядків | Примітка |
+|---|---:|---|
+| `app_installations` | 36 | дублює public (55 заг.) |
+| `telemetry_events` | 18 | |
+| `telemetry_incidents` | 1 | |
+| `incident_notes`, `incident_policy`, `incident_status_log`, `notification_queue`, `notification_attempts` | 0 | |
+| `knowledge_*` | відсутні | створені пізніше 1.0.0.1 |
+
+**Рішення (Phase 2):** `DEFER` — дослідити походження та погодити `DROP SCHEMA backup_pre_1_0_0_1` окремою міграцією. Жодних продюсерів, 0 зовнішніх залежностей, займає місце в бекапах Supabase.
 
 ## 3.3. Triggers
 
@@ -312,6 +330,7 @@
 | F5 | Terminal `FlushAsync` пропущено у 5 `ApplicationUpdate` Failed-емітерів | `UpdateDownloader.cs:59`, `UpdateInstaller.cs:46,76,82`, `UpdateVerifier.cs:65` |
 | F7 | `LiaForensicParser.TryParseMinimal` — мертвий код (0 викликів) | `LiaForensicParser.cs:67` |
 | F8 | `telemetry_events.country` — мертва (тригер лише на installations) | міграції 2 + 9 |
+| F8a | `telemetry_events.http_status` + `supabase_code` — **100% NULL** (705/705 рядків); ніколи не пишуться з C# (TelemetryContext має поля, але ErrorContextExtractor їх не заповнює) | Phase 2 forensic (2026-07-07) |
 | F9 | 6 з 19 колонок `app_installations` завжди NULL/DEFAULT | див. розділ 4 |
 | — | LIA cascade: 1 фізична відмова → 3-4 Failed-події | `Updater.cs` |
 | — | `Localization.*` телеметрія відсутня (сліпа зона встановлення локалізації) | `LocalizationInstaller.cs` |
@@ -320,8 +339,8 @@
 
 | Що дублюється | Де | Рішення |
 |---|---|---|
-| `detail.signal_name` ↔ computed `signal` у views | `telemetry_events.detail` JSON | 🔄 видалити `detail.signal_name` |
-| `detail.retry_count` | завжди 0, 3 місця | ❌ видалити |
+| ~~`detail.signal_name` ↔ computed `signal` у views~~ | ~~`telemetry_events.detail` JSON~~ | ❌ **ПЕРЕВІРЕНО Phase 2:** у живих даних (705 рядків) ключ `signal_name` **НЕ існує** (0 зустрічей). Твердження застаріле — прибрати з плану. |
+| `detail.retry_count` | завжди 0, 351 з 354 записів | ❌ видалити з C# `UpdateEvents.Track`/`LiaEvents.Track` (signal COALESCE не зачіпає) |
 | LIA cascade 3-4 Failed на 1 відмову | `Updater.cs` | 🔄 об'єднати до 1 термінальної |
 | App self-update Started/Succeeded по фазах | `UpdateDownloader/Installer/Verifier` | 🔄 об'єднати до 1 результату |
 
@@ -749,6 +768,13 @@ Materialized VIEW `control_center.knowledge_coverage` (per-release). REFRESH ч�
 76. Активація `localization_version`, `game_folder_path`, `selected_environment` через `IInstallationContextProvider` (НЕ дублювати в Settings).
 77. `game_folder_path` — діагностичне поле, не PII (валідація `IsValidGameRoot`).
 
+## 14.8. Phase 2 Database Cleanup Review (2026-07-07)
+
+78. **Phase 2 Database Cleanup Review виконано** — повний аудит схеми без реалізації. Усі 16 пунктів завдання покриті доказами з живої БД. Matrix: 40 KEEP / 10 ACTIVATE / 2 MERGE / 3 REMOVE (індекси) / 28 DEFER. Деталі в §16.5.
+79. **`DROP INDEX` — additive-only** (не порушує схематичний контракт): дозволено для 3 доведених дублів/невикористань (`idx_app_installations_install_id`, `idx_app_installations_machine_id`, `idx_user_discord_guilds_user_id`).
+80. **Generated column PostgreSQL 12** — additive спосіб кешувати `incident_code` замість формування в 4 views + Notifier. Zero Regression.
+81. **`SET search_path = public, pg_catalog` у SECURITY DEFINER функціях** — additive виправлення SEC-11 (26 функцій), не змінює сигнатур (дозволено API Freeze §13.8).
+
 ---
 
 # 15. Rejected Decisions (майстер-список)
@@ -824,6 +850,9 @@ Materialized VIEW `control_center.knowledge_coverage` (per-release). REFRESH ч�
 62. Варіант A «ничого не відновлювати» (cleanup).
 63. DROP `idx_telemetry_source_signal` без перевірки `pg_stat_user_indexes`.
 64. **Signal normalization** (вигода 16 MB/1M не виправдовує перепис 6 views + 33 CC-запитів).
+65. **Phase 2: твердження «`detail.signal_name` дублює computed signal» відхилено** — у живих даних (705 рядків) ключ `signal_name` взагалі не існує (0 зустрічей). Було планованим, але не реалізованим у C# `ErrorContextExtractor`.
+66. **Phase 2: DROP COLUMN заборонено і для `http_status`/`supabase_code`** — хоча 100% NULL (705/705), CHECK `chk_telemetry_failed_has_signal` посилається на обидві. Additive-only (§13).
+67. **Phase 2: DROP зарезервованих таблиць (`error_reports`, `admin_audit_log`, `user_discord_guilds`)** — підтверджує Rejected #39; 0 продюсерів не є підставою для DROP (майбутнє використання).
 
 ---
 
@@ -875,6 +904,48 @@ Materialized VIEW `control_center.knowledge_coverage` (per-release). REFRESH ч�
 - **Вплив на телеметрію: відсутній.** `TelemetryClient` залежить лише від env `SCLOCVERSE_TELEMETRY_DISABLED`.
 - Цільова схема (Категорія A завжди / Категорія B лише при ввімкненому) — див. розділ 17.1.
 
+## 16.5. Phase 2 Database Cleanup Review (2026-07-07)
+
+> Повний аналітичний аудит схеми Supabase без реалізації. Усі цифри — з живої БД через `pg_catalog`/`pg_stat_user_indexes`/`pg_stat_*`.
+
+### 16.5.1. Нові знахідки (10 пунктів)
+
+| # | Знахідка | Доказ (жива БД) |
+|---|---|---|
+| C-1 | Резервна схема `backup_pre_1_0_0_1` (12 таблиць-дублів, 55 рядків) | `pg_class` по схемі; жодних продюсерів, 0 залежностей |
+| C-2 | `telemetry_events.http_status` + `supabase_code` 100% NULL (705/705) | `count(*) FILTER (WHERE … IS NULL)`; ErrorContextExtractor не заповнює |
+| C-3 | `detail.signal_name` НЕ існує в живих даних (0 зустрічей) | `jsonb_object_keys` частотний аналіз; KB §5.7 було неточне |
+| C-4 | VIEWs у KB §3.1 занижено: 19 → 25 фактично (24 cc + 1 public) | `pg_class WHERE relkind IN ('v','m')` |
+| C-5 | SECURITY DEFINER функцій: ~24 → 28 фактично; лише 2 з 28 мають `SET search_path` | `pg_proc WHERE prosecdef=true` + `proconfig` |
+| C-6 | `pg_cron` НЕ встановлений — план «Retention 14д» з Observability-Architecture не виконано | `relation cron.jobs does not exist` |
+| C-7 | Дубль індексу `app_installations.install_id`: NON-UNIQUE (1266 scans) + UNIQUE constraint (18 scans) | `pg_stat_user_indexes` — планувальник обходить UNIQUE |
+| C-8 | `ecosystem_stats()` — мертва (`.Rpc(` в C# не знайдено; `pg_depend=[]`) | лише docs як RPC-контракт (KB §181, app-installations-forensic) |
+| C-9 | `promote_incident_candidates()` (batch) — мертва (`pg_depend=[]`, F6 на рівні БД) | тригер викликає лише `_for_event` |
+| C-10 | 11 з 24 control_center views НЕ викликаються з C#/Blazor | grep `.razor`+`.cs`: contract_info (контракт), errors, health, installations, incident_candidates_24h, knowledge_list, observability_health, statistics, traces, unfinished_started, users, notifications |
+
+### 16.5.2. Database Cleanup Matrix
+
+**🟢 KEEP (40):** `public`, `control_center`; 13 живих таблиць; усі 13 FK; 4 triggers; 13 активних views; 24 активні функції; усі 28 RLS; 29 структурних/використовуваних індексів.
+
+**🟡 ACTIVATE (10):** 4 активації `app_installations.*` через `IInstallationContextProvider`; `git_commit` (MSBuild); `category` диференційована; Phase 0 (3 partial-індекси KB #70); Phase 3 (3 матв'юхи KB #73); generated column `incident_code` (замість формування в 4 views + Notifier); чекбокс AdvancedDiagnostics → Category A/B.
+
+**🔄 MERGE (2):**
+- `notification_queue.error_message` ↔ `last_error` → одна колонка `last_error` (Notifier контракт).
+- `telemetry_events.detail.retry_count` (351 записів, завжди 0) → видалити з C# `UpdateEvents.Track`/`LiaEvents.Track`.
+
+**🔴 REMOVE (3 індекси — доведено дубль/невикористання):**
+- `idx_app_installations_install_id` — дублює UNIQUE `app_installations_install_id_key`.
+- `idx_app_installations_machine_id` — `idx_scan=0`, machine_id не шукається.
+- `idx_user_discord_guilds_user_id` — дублює провідний стовпець UNIQUE `(user_id, discord_guild_id)`.
+
+> Усі 3 — `DROP INDEX` (additive, не порушує схематичний контракт).
+
+**⏸ DEFER (28):** схема `backup_pre_1_0_0_1`; таблиці `error_reports`/`admin_audit_log`/`user_discord_guilds` (Rejected #39); 11 невикористовуваних views (additive view-контракт); функції `promote_incident_candidates`/`ecosystem_stats`/`get_knowledge_version_detail` (DROP заборонено API Freeze §13.8); `app_installations.os_build`/`install_source`; `telemetry_events.country` (Rejected #35).
+
+### 16.5.3. SEC-11 — підтверджено на рівні БД
+
+Лише `ecosystem_stats` та `set_country_from_cf` мають `SET search_path=public`. **26 з 28 SECURITY DEFINER функцій вразливі до schema-poisoning.** Виправлення: `add SET search_path = public, pg_catalog` — additive-only, не змінює сигнатур (дозволено API Freeze §13.8).
+
 ---
 
 # 17. Backlog
@@ -898,7 +969,11 @@ Materialized VIEW `control_center.knowledge_coverage` (per-release). REFRESH ч�
 | MSBuild target для `git_commit` у BuildInfo | forensic | низька |
 | Phase 0: 3 індекси (partial Failed, version_window, occurred) | Optimization-Plan | низька |
 | Phase 1: скоротити LIA chain 9→2, app-update 6→1 | Optimization-Matrix | середня |
-| Phase 2: видалити `detail.signal_name`, `detail.retry_count`, `Country` C# | Optimization-Plan | низька |
+| Phase 2: видалити `detail.retry_count` з C# `UpdateEvents.Track`/`LiaEvents.Track` (завжди 0) | Optimization-Plan + Phase 2 Review | низька |
+| Phase 2: MERGE `notification_queue.error_message` ↔ `last_error` → `last_error` | Phase 2 Review (2026-07-07) | низька |
+| Phase 2: REMOVE 3 індекси-дублікати (`idx_app_installations_install_id`, `idx_app_installations_machine_id`, `idx_user_discord_guilds_user_id`) | Phase 2 Review — DROP INDEX additive | низька |
+| Phase 2: дослідити та погодити DROP SCHEMA `backup_pre_1_0_0_1` (12 дублів, 55 рядків, 0 залежностей) | Phase 2 Review | низька |
+| Phase 2: generated column `incident_code` (`INC-YYYY-NNNNN`) замість формування в 4 views + Notifier | Phase 2 Review — additive PostgreSQL 12 | низька |
 | Phase 3: single-scan candidates + матеріалізувати 3 views | Optimization-Plan | середня |
 | Control Center auth (SEC-1) | Final-Review | середня |
 | Cert pin L.I.A. (SEC-3) | Final-Review | середня |
@@ -918,7 +993,7 @@ Materialized VIEW `control_center.knowledge_coverage` (per-release). REFRESH ч�
 - `app_installations`: `machine_id, os_version, os_build, game_folder_path, selected_environment, localization_version`.
 - `telemetry_events` з `outcome ∈ {Started, Succeeded, Cancelled, Skipped}`.
 - `telemetry_events`: `duration_ms, detail, http_status, hresult, supabase_code, exception_type, error_message`.
-- LIA forensic payload (`appx_log`, cert-поля, `activity_id`, `phase`, `signal_name`).
+- LIA forensic payload (`appx_log`, cert-поля, `activity_id`, `phase`).
 - Update Started/Succeeded/Failed detail.
 - `telemetry_events.git_commit`.
 
