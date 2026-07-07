@@ -1624,6 +1624,10 @@ Blazor Components (.razor)
 
 143. **Контракт поведінки (оновлено):** `telemetry_events` при AdvancedDiagnostics OFF містить **тільки Failed події**. При ON — Failed + усі diagnostic деталі (Started, Succeeded, duration_ms, phases). Це не втрата даних — це розділення сигнал/шум.
 
+144. **Zero Noise Policy — VERIFIED on production (2026-07-07):** OFF: успішний запуск → **0 подій** ✅. ON: успішний запуск → **9 L2 diagnostic** ✅. Failed pipeline (DB-side): `LIA/Install/Failed` → trigger → `INC-2026-00023` → notification_queue ✅. Усі поля Failed заповнені: `error_message`, `exception_type`, `hresult`, `source` ✅.
+
+145. **Fire-and-forget dispose — TD (виявлено під час тестування).** `TelemetryClient.Dispose()` (рядок 227): `_ = _uploader.FlushAsync()` запускає upload, але **не await'ить** — процес завершується до відправки. Події відправляються лише фоновим таймером (30с tick). Якщо додаток закрито <30с після помилки → подія втрачена. Автор свідомо прибрав `Wait(5s)` (блокував UI при shutdown). TD: disk-based queue persistence або deferred upload на наступний запуск. Pre-existing, не регресія Zero Noise.
+
 ## 14.20. Telemetry Policy Test Matrix (контракт поведінки)
 
 > Контракт для тестування реалізації по чек-листу. Не форензик, а поведінка системи.
@@ -1654,7 +1658,8 @@ Blazor Components (.razor)
 | **Updater/Download/Started** | OFF | ❌ НЕ відправляється (L2 Diagnostic, gate OFF) |
 | **Updater/Download/Started** | ON | ✅ L2: install_id, session_id, correlation_id, step, component, operation, outcome, severity, app_version, ..., duration_ms, detail.phase, detail.retry_count |
 | **Updater/Download/Failed** | OFF | ✅ L1 Failed (21) — error_message, source, hresult, exception_type |
-| **Application/Start/Started** | OFF | ✅ L1 Success (16) — adoption rate |
+| **Application/Start/Started** | OFF | ❌ НЕ відправляється (L2 Diagnostic, gate OFF) — Zero Noise Policy #139 |
+| **Application/Start/Started** | ON | ✅ L2: diagnostic detail (pre-auth launch signal) |
 
 
 ## 14.17. Порядок фаз (оновлено)
@@ -1664,7 +1669,7 @@ Phase 1 (Telemetry Cleanup) — ✅ Closed (замінено Release Cleanup 202
 Phase 2 (Database Cleanup Review) — ✅ Closed
 Phase 3 (Database Model + Freeze) — ✅ Closed
 Phase 3.5 (Telemetry Policy) — ✅ Closed + Implemented
-Phase 3.6 (Replica Synchronization) — ✅ Closed (replica буде видалена)
+Phase 3.6 (Replica Synchronization) — ✅ Closed (replica paused 2026-07-07, Dashboard deletion pending)
 Phase 3A (3 міграції) — ✅ **DEPLOYED to production** (2026-07-07, Post-Impl Forensic PASSED)
 Phase 3.5.1 (Mandatory Event Optimization) — ✅ **Implemented as Zero Noise Policy** (2026-07-07)
 Phase 4 (Data Presentation Layer) — ⏸
@@ -2052,21 +2057,24 @@ auth.users (TABLE, 35 columns)  +  public.app_installations (TABLE)
 | Checksum-fail замість Verify.Skipped (SEC-4) | Final-Review | низька |
 | `SET search_path` у SECURITY DEFINER функціях (SEC-11) | Final-Review | низька |
 
-## 17.2. Цільова політика збору даних (для чекбокса)
+## 17.2. Цільова політика збору даних — Zero Noise Policy (Verified #144)
 
-**Категорія A — передається ЗАВЖДИ** (навіть при вимкненому чекбоксі):
-- `app_installations`: `install_id, user_id, app_version, platform, first_seen, last_seen, is_active`.
-- `telemetry_events` з `outcome='Failed'` або `severity ∈ {Error, Critical}`.
-- `telemetry_events`: `component, operation, outcome, severity, app_version`.
-- `telemetry_incidents` + `notification_queue`.
+> **Оновлено 2026-07-07.** Замінює попередню Категорію A/B. Принцип: `telemetry_events` — журнал відхилень (Failed only). Нормальний стан — в `auth.users` + `app_installations`.
 
-**Категорія B — лише при увімкненому чекбоксі**:
-- `app_installations`: `machine_id, os_version, os_build, game_folder_path, selected_environment, localization_version`.
-- `telemetry_events` з `outcome ∈ {Started, Succeeded, Cancelled, Skipped}`.
-- `telemetry_events`: `duration_ms, detail, http_status, hresult, supabase_code, exception_type, error_message`.
+**L1 Mandatory — відправляється ЗАВЖДИ (навіть при вимкненому чекбоксі):**
+- `telemetry_events` з `outcome='Failed'` (усі 13 Failed типів: Auth, Installation, Orchestrator, Updater, LIA).
+- `telemetry_incidents` + `notification_queue` (авто-створюються trigger/promote).
+
+**L2 Diagnostic — лише при AdvancedDiagnostics ON:**
+- Усі non-Failed: Started, Succeeded, Cancelled, UpdateFound, Updated, UpdateAvailable (13 типів).
+- `duration_ms, detail, http_status, hresult, supabase_code, exception_type, error_message` (у Failed завжди L1, у non-Failed — L2).
 - LIA forensic payload (`appx_log`, cert-поля, `activity_id`, `phase`).
-- Update Started/Succeeded/Failed detail.
 - `telemetry_events.git_commit`.
+
+**НЕ в `telemetry_events` (живе в інших таблицях):**
+- User identity → `auth.users` (`created_at`, `last_sign_in_at`, `email`).
+- Installation activity → `app_installations` (`last_seen`, `app_version`, `country`, `platform`).
+- Adoption metrics → `app_installations.first_seen` / `created_at`.
 
 ## 17.3. Roadmap (Роки 1–3)
 
