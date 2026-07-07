@@ -36,8 +36,15 @@
 ALTER TABLE public.telemetry_incidents
     ADD COLUMN IF NOT EXISTS incident_code text
     GENERATED ALWAYS AS (
-        'INC-' || to_char(opened_at, 'YYYY') || '-' || lpad(id::text, 5, '0')
+        'INC-' || (EXTRACT(YEAR FROM opened_at)::int)::text || '-' || lpad(id::text, 5, '0')
     ) STORED;
+
+-- ЗАУВАЖЕННЯ щодо IMMUTABLE:
+--   PostgreSQL generated column вимагає IMMUTABLE expression.
+--   `to_char(opened_at, 'YYYY')` — STABLE (залежить від DateStyle), НЕ ПРОЙДЕ.
+--   `EXTRACT(YEAR FROM opened_at)` — IMMUTABLE. Повертає numeric, через
+--   ::int гарантує ціле значення без trailing zeros, ::text → '2026'.
+--   Результат ідентичний to_char версії: 'INC-2026-00001'.
 
 -- =========================================================================
 -- 2. control_center.incidents — computed колонка називається `incident_id`
