@@ -2,6 +2,7 @@
 using SCLOCVerse.Helpers;
 using SCLOCVerse.Interfaces;
 using SCLOCVerse.Models.ApplicationInstance;
+using SCLOCVerse.Models.Observability;
 using SCLOCVerse.Services.UiPolicy;
 using System;
 using System.Collections.Specialized;
@@ -78,7 +79,7 @@ namespace SCLOCVerse
             // SCLOC Observability Platform — фіксуємо запуск (Slice 1).
             // Не блокує, не кидає (Конституція, Стаття 1/3). Pre-auth подія
             // буферується й відправляється після авторизації.
-            _compositionRoot.Telemetry.Track("Application", "Start", "Started");
+            _compositionRoot.Telemetry.Track("Application", "Start", "Started", level: TelemetryLevel.Diagnostic);
 
             // Політика взаємодії з UI: визначає, які UI-елементи дозволені.
             // --minimized → BackgroundUiPolicy (модальні діалоги/стартові промпти заборонені,

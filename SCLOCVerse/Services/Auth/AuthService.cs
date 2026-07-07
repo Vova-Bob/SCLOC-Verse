@@ -63,7 +63,7 @@ namespace SCLOCVerse.Services.Auth
 
             SetState(AuthState.SigningIn);
             var sw = Stopwatch.StartNew();
-            TrackAuth("SignIn", "Started");
+            TrackAuth("SignIn", "Started", level: TelemetryLevel.Diagnostic);
 
             try
             {
@@ -92,7 +92,7 @@ namespace SCLOCVerse.Services.Auth
 
                 if (callbackUrl == null)
                 {
-                    TrackAuth("SignIn", "Cancelled");
+                    TrackAuth("SignIn", "Cancelled", level: TelemetryLevel.Diagnostic);
                     return new AuthResult.Cancelled();
                 }
 
@@ -104,7 +104,7 @@ namespace SCLOCVerse.Services.Auth
                 // щоб UI не показував діалогове вікно з помилкою.
                 if (string.Equals(errorCode, "access_denied", StringComparison.OrdinalIgnoreCase))
                 {
-                    TrackAuth("SignIn", "Cancelled");
+                    TrackAuth("SignIn", "Cancelled", level: TelemetryLevel.Diagnostic);
                     return new AuthResult.Cancelled();
                 }
 
@@ -137,12 +137,12 @@ namespace SCLOCVerse.Services.Auth
                 // Це єдиний універсальний канал активації (Toast, IPC, OAuth).
                 _applicationInstanceService.ShowMainWindow();
 
-                TrackAuth("SignIn", "Succeeded", durationMs: sw.ElapsedMilliseconds);
+                TrackAuth("SignIn", "Succeeded", durationMs: sw.ElapsedMilliseconds, level: TelemetryLevel.Diagnostic);
                 return new AuthResult.Success(Profile!);
             }
             catch (OperationCanceledException)
             {
-                TrackAuth("SignIn", "Cancelled");
+                TrackAuth("SignIn", "Cancelled", level: TelemetryLevel.Diagnostic);
                 return new AuthResult.Cancelled();
             }
             catch (Exception ex)
@@ -179,7 +179,7 @@ namespace SCLOCVerse.Services.Auth
             }
 
             var sw = Stopwatch.StartNew();
-            TrackAuth("RestoreSession", "Started");
+            TrackAuth("RestoreSession", "Started", level: TelemetryLevel.Diagnostic);
 
             try
             {
@@ -213,7 +213,7 @@ namespace SCLOCVerse.Services.Auth
                     // про мінімізацію даних (identify scope). Сервіс залишається в композиції
                     // як Future Capability для Community Center.
 
-                    TrackAuth("RestoreSession", "Succeeded", durationMs: sw.ElapsedMilliseconds);
+                    TrackAuth("RestoreSession", "Succeeded", durationMs: sw.ElapsedMilliseconds, level: TelemetryLevel.Diagnostic);
                     return true;
                 }
                 finally
@@ -281,7 +281,7 @@ namespace SCLOCVerse.Services.Auth
         // TrackAuth НЕ знає про Supabase: отримує вже готовий структурований контекст помилки
         // від універсального ErrorContextExtractor (Стаття 12 — DRY). Лише технічні атрибути;
         // повідомлення санітарить PrivacySanitizer; без токенів/email/шляхів (Стаття 4).
-        private void TrackAuth(string operation, string outcome, TelemetryContext? error = null, long? durationMs = null)
+        private void TrackAuth(string operation, string outcome, TelemetryContext? error = null, long? durationMs = null, TelemetryLevel level = TelemetryLevel.Mandatory)
         {
             if (_telemetry is null)
                 return;
@@ -294,7 +294,7 @@ namespace SCLOCVerse.Services.Auth
                     error.DurationMs = (int)durationMs.Value;
                 }
 
-                _telemetry.Track("Auth", operation, outcome, error);
+                _telemetry.Track("Auth", operation, outcome, error, level);
             }
             catch
             {

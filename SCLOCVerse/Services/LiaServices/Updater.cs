@@ -263,7 +263,7 @@ namespace SCLOCVerse.Services.LiaServices
 
                 var installSw = System.Diagnostics.Stopwatch.StartNew();
                 await RunInstallerScriptAsync(installerPath, certificatePath, cancellationToken).ConfigureAwait(false);
-                LiaEvents.Track(_telemetry, "Install", "Succeeded", installSw.ElapsedMilliseconds, orchestrationPhase: "Complete");
+                LiaEvents.Track(_telemetry, "Install", "Succeeded", installSw.ElapsedMilliseconds, orchestrationPhase: "Complete", level: TelemetryLevel.Diagnostic);
 
                 onProgress?.Invoke("Інсталяцію завершено.");
             }

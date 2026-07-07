@@ -43,7 +43,7 @@ namespace SCLOCVerse.Services.Auth
             // Винятки далі поширюються незмінно (re-throw) → Zero Regression для бізнес-логіки.
             var sw = Stopwatch.StartNew();
             var phase = "LoadCurrentInstallation";
-            TrackSync("Started", phase);
+            TrackSync("Started", phase, level: TelemetryLevel.Diagnostic);
 
             try
             {
@@ -111,7 +111,7 @@ namespace SCLOCVerse.Services.Auth
                 }
 
                 phase = "Complete";
-                TrackSync("Succeeded", phase, sw.ElapsedMilliseconds);
+                TrackSync("Succeeded", phase, sw.ElapsedMilliseconds, level: TelemetryLevel.Diagnostic);
             }
             catch (Exception ex)
             {
@@ -129,7 +129,7 @@ namespace SCLOCVerse.Services.Auth
         // Спостережуваність Installation (Стаття 15 — Observable by Default; Стаття 1 — non-throwing).
         // ErrorContextExtractor — спільний для всієї платформи (Стаття 12 — DRY; НЕ Installation-specific).
         // detail: phase (де саме впав Sync) + retry_count (0 зараз; схема готова для майбутньої Retry Policy).
-        private void TrackSync(string outcome, string phase, long? durationMs = null, Exception? exception = null)
+        private void TrackSync(string outcome, string phase, long? durationMs = null, Exception? exception = null, TelemetryLevel level = TelemetryLevel.Mandatory)
         {
             if (_telemetry is null)
                 return;
@@ -149,7 +149,7 @@ namespace SCLOCVerse.Services.Auth
                     ["retry_count"] = 0
                 };
 
-                _telemetry.Track("Installation", "Sync", outcome, ctx);
+                _telemetry.Track("Installation", "Sync", outcome, ctx, level);
             }
             catch
             {

@@ -1610,6 +1610,20 @@ Blazor Components (.razor)
 
 138. **Replica functional testing пропущено (архітектурне рішення).** Replica `zhdtcxvnzlvbgxariyww` пройшла структурний аудит (47/47 таблиць, 0 drift) + data import validation, але клієнтське тестування не виконувалось (OAuth redirect URL потребував би втручання в Discord Developer Portal). Phase 3A міграції additive-only з rollback — ризик оцінено як низький. Production functional testing виконується безпосередньо на production після backup.
 
+## 14.24. Zero Noise Telemetry Policy (2026-07-07)
+
+> **Новий архітектурний принцип.** `telemetry_events` не є журналом роботи застосунку. Це **журнал відхилень від нормальної роботи** (exception-driven log). Нормальний стан системи відображається в `auth.users` (`created_at`, `last_sign_in_at`) та `app_installations` (`last_seen`, `app_version`, `country`, `platform`).
+
+139. **Zero Noise Policy затверджено.** L1 Mandatory = **тільки Failed події**. Усі non-Failed (Started, Succeeded, Cancelled, UpdateFound, Updated, UpdateAvailable) переведені в L2 Diagnostic. При AdvancedDiagnostics OFF `telemetry_events` росте виключно при реальних помилках.
+
+140. **Mandatory Event Audit — повний (26 L1 викликів, 62 total).** 13 Failed типів → KEEP L1 (trigger + release_health). 13 non-Failed типів → L2 Diagnostic (0 автоматичних споживачів). Build: 0 warnings, 0 errors. `TrackAuth`/`TrackSync` отримали `level` параметр (default Mandatory → backward compatible).
+
+141. **Вплив на обсяг:** успішний запуск → **0 L1 подій** (було 5). 1000 юзерів × 2 запуски/день: 10K/день → **~0/день**. За місяць: ~300K → **<100** (тільки реальні Failed). Free Tier telemetry_events практично не росте.
+
+142. **Відоме обмеження `release_health_detail`:** `success_rate` показує 0% (0 Succeeded / N Failed). `active_installs` рахує лише юзерів з помилками. Це прийнятно — точні active install counts доступні з `app_installations` таблиці. Фікс presentation layer — Phase 4 scope.
+
+143. **Контракт поведінки (оновлено):** `telemetry_events` при AdvancedDiagnostics OFF містить **тільки Failed події**. При ON — Failed + усі diagnostic деталі (Started, Succeeded, duration_ms, phases). Це не втрата даних — це розділення сигнал/шум.
+
 ## 14.20. Telemetry Policy Test Matrix (контракт поведінки)
 
 > Контракт для тестування реалізації по чек-листу. Не форензик, а поведінка системи.
@@ -1652,7 +1666,7 @@ Phase 3 (Database Model + Freeze) — ✅ Closed
 Phase 3.5 (Telemetry Policy) — ✅ Closed + Implemented
 Phase 3.6 (Replica Synchronization) — ✅ Closed (replica буде видалена)
 Phase 3A (3 міграції) — ✅ **DEPLOYED to production** (2026-07-07, Post-Impl Forensic PASSED)
-Phase 3.5.1 (Mandatory Event Optimization) — ⏸ Backlog (після стабільного релізу)
+Phase 3.5.1 (Mandatory Event Optimization) — ✅ **Implemented as Zero Noise Policy** (2026-07-07)
 Phase 4 (Data Presentation Layer) — ⏸
 Phase 5 (Retention Pipeline) — Backlog (pg_cron)
 Phase 3.7 (Security Hardening) — Backlog (DEFAULT PRIVILEGES + SEC-11)
@@ -2029,7 +2043,7 @@ auth.users (TABLE, 35 columns)  +  public.app_installations (TABLE)
 | **Phase 3.5: `IInstallationContextProvider`** — активувати L1 FUTURE колонки (`localization_version`, `game_folder_path`→L2, `selected_environment`, `update_channel`). | наповнити test Supabase "правильними" даними | середня |
 | **Phase 3.5: filter L2 при OFF** — TelemetryClient skip L2 events when `AdvancedDiagnostics=false`. Очікується суттєве зменшення навантаження. | скоротити telemetry_events volume | низька |
 | **Phase 3.5: позначити 21 L2 емітерів** — додати `level: TelemetryLevel.Diagnostic` до 21 викликів з §5.10.1 (Updater Started/Succeeded, LIA cascade, RunInstallerScript). | реалізувати Policy в коді | низька |
-| **Phase 3.5.1: Mandatory Event Optimization** — перевести `Auth/RestoreSession/Started` + `Installation/Sync/Started` з L1→L2 (forensic #136: 0 автоматичних споживачів, −40% подій/запуск). Додати `level` параметр у `TrackAuth`/`TrackSync` (default Mandatory). | §16.11.4 Mandatory Event Audit | низька |
+| **Phase 3.5.1: Mandatory Event Optimization** — перевести `Auth/RestoreSession/Started` + `Installation/Sync/Started` з L1→L2 (forensic #136: 0 автоматичних споживачів, −40% подій/запуск). Додати `level` параметр у `TrackAuth`/`TrackSync` (default Mandatory). | §16.11.4 Mandatory Event Audit | низька — **✅ DONE 2026-07-07: розширено до Zero Noise Policy (13 non-Failed → L2)** |
 | ~~Phase 2: generated column~~ **trigger-based `incident_code`** (`INC-YYYY-NNNNN`) замість формування в 4 views + Notifier | Phase 2 Review → Phase 3A Post-Impl: generated column неможливий для timestamptz (STABLE), замінено на trigger | низька — **✅ DONE: Phase 3A production 2026-07-07** |
 | Phase 3: single-scan candidates + матеріалізувати 3 views | Optimization-Plan | середня |
 | Control Center auth (SEC-1) | Final-Review | середня |
