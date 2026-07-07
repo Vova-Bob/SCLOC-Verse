@@ -1586,6 +1586,16 @@ Blazor Components (.razor)
 124. **Phase 3.5 Telemetry Policy реалізовано.** `TelemetryLevel` enum + `ITelemetryService.Track()` параметр + `TelemetryClient` gate + `AttachDiagnosticGate` + 18 L2 емітерів позначено. Build: 0 warnings, 0 errors. UTF-8 коректний.
 125. **Post-Implementation Forensic PASSED (7/7 перевірок):** 18 L2 емітерів (фактично, KB казав 21 — уточнено), 0 `AdvancedDiagnostics` у діловому коді, 21 L1 через default Mandatory, 0 Local використань, 1 AttachDiagnosticGate виклик, Category незмінний, Incident Pipeline без регресії. Деталі в §5.10.4.
 
+## 14.22. Phase 3.6 — Replica Synchronization (2026-07-07)
+
+126. **Replica = одноразовий полігон.** Test-проєкт `zhdtcxvnzlvbgxariyww` — НЕ довгострокова replica. Після тестування Phase 3.5/3A + Production Deployment + Post-Impl Forensic — буде повністю видалений. Не будувати політику довгострокової еквівалентності.
+127. **Структурний аудит: 0 несподіваного drift.** 47/47 таблиць, 24/24 views, 28/28 SECURITY DEFINER, 29/29 RLS — ідентично. 3 розбіжності (function/index/trigger) — артефакти Phase 3A. Деталі §16.9.1.
+128. **Data Import: 3 таблиці + 1 skip.** auth.users (55→56), auth.identities (generated from users), app_installations (54→55), incident_policy (skip — вже з міграцій). 14 таблиць + 25 views skip (historical/reserved/derived/0-rows). Деталі §16.9.2.
+129. **Replica Validation PASSED.** 0 FK orphan, country preserved (6 distinct), views повертають дані, Discord-метадані коректні. Деталі §16.9.3.
+130. **DEFAULT PRIVILEGES Drift — корінь VER (§16.7 оновлено).** Production = `Dxtm` (manually hardened, не в міграціях). Replica = `arwdDxtm` (Supabase baseline). RLS однаково блокує. Винесено в Phase 3.7 (§16.10).
+131. **3-критеріальний Mandatory-фреймворк:** Writer + Reader + Empty Consequence. pipeline_health_meta → SKIP (cache, auto-recover). incident_policy → IMPORT (empty = silent incident death). auth.users → IMPORT (empty = FK violation).
+132. **auth.identities генерується на самій replica** з auth.users (identity_data = raw_user_meta_data; provider_id з JSON). Не потрібен transfer з production.
+
 ## 14.20. Telemetry Policy Test Matrix (контракт поведінки)
 
 > Контракт для тестування реалізації по чек-листу. Не форензик, а поведінка системи.
@@ -1834,11 +1844,17 @@ Phase 5 (Retention Pipeline) — Backlog (pg_cron)
 
 **Кастомні ролі (`cc_readonly`, `cc_notifier`) — ідентичні.** Різниця в anon/authenticated/service_role — через `ALTER DEFAULT PRIVILEGES` у міграції 00008 (control_center_readonly_role). У production міграції застосовувались історично в іншому порядку/часі, тож DEFAULT PRIVILEGES НЕ активувались на вже створених об'єктах. У replica — застосувались коректно до всіх об'єктів.
 
-**Два можливі діагнози:**
-- (a) Production історично не застосували DEFAULT PRIVILEGES → replica має правильніший стан.
-- (b) Replica права видані ширше, ніж потрібно → можливе over-granting.
+**🟢 VER (Phase 3.6, 2026-07-07) — корінь розкрито:** DEFAULT PRIVILEGES для `public`/`postgres`/`TABLES` **різні**:
 
-**Рішення:** НЕ змішувати з Phase 3A (оптимізація БД). Окремий **Security Forensic** після завершення оптимізації БД.
+| Grantee | PROD DEFAULT PRIV | REPLICA DEFAULT PRIV |
+|---|---|---|
+| `anon` | `Dxtm` (TRUNCATE+REF+TRIG+MAINT) | `arwdDxtm` (FULL DML) |
+| `authenticated` | `Dxtm` | `arwdDxtm` |
+| `service_role` | `Dxtm` | `arwdDxtm` |
+
+**Діагноз (b) підтверджено частково:** Replica over-grants. АЛЕ причина — НЕ помилка replica. **Production був ручно захищений** (REVOKE DML з DEFAULT PRIVILEGES для `postgres` у `public`). Цей hardening **НЕ в жодній міграції** SCLOC-Verse. Replica має Supabase baseline (insecure default для fresh projects). Кастомні ролі (`cc_readonly`=27, `cc_notifier`=7) — ідентичні ✅. RLS однаково блокує доступ в обох.
+
+**Рішення:** Винесено в **Phase 3.7 Security Hardening** (Backlog §17) — окремо від імпорту даних. Production hardening задокументувати в міграції (audit trail). Replica REVOKE — окремо.
 
 ## 16.8. Dependency graph `control_center.users` (Phase 3A Verification, 2026-07-07)
 
@@ -1855,6 +1871,68 @@ auth.users (TABLE, 35 columns)  +  public.app_installations (TABLE)
 - Ланцюг ідентичний в обох проєктах (PROD + REPL).
 - Жодної власної `public.users` таблиці немає — лише системна `auth.users`.
 - `user_analytics` — плоский LEFT JOIN `auth.users × app_installations × user_country_agg` CTE (при мульти-інсталяціях → декартів добуток, кожен рядок з різним `country`, однаковим `user_countries`).
+
+## 16.9. Phase 3.6 — Production Replica Synchronization (2026-07-07)
+
+> **Одноразовий полігон** для перевірки Phase 3.5, Phase 3A та Production Deployment. Після завершення тестів проєкт буде видалено. НЕ довгострокова replica.
+
+### 16.9.1. Replica Synchronization Audit
+
+Структурний аудит Replica (`zhdtcxvnzlvbgxariyww`) ↔ Production (`nrytczdbhehiotflaagl`):
+
+| Тип | PROD | REPL | Δ |
+|---|---:|---:|---|
+| Таблиці (public+cc+auth+storage+vault) | 47 | 47 | ✅ ідентично |
+| VIEW | 24 | 24 | ✅ |
+| Materialized VIEW | 1 | 1 | ✅ |
+| SECURITY DEFINER функцій | 28 | 28 | ✅ |
+| Triggers | 4 | 5 | +1 REPL (`trg_set_incident_code` — Phase 3A) |
+| Indexes | 47 | 48 | +1 REPL (Phase 3A: −2 drop +3 add) |
+| RLS policies | 29 | 29 | ✅ |
+| Extensions | 5 | 5 | ✅ |
+| Publications | 1 | 1 | ✅ |
+
+**Усі 3 розбіжності — артефакти виключно Phase 3A** (3 міграції на replica). 0 несподіваного drift.
+
+### 16.9.2. Data Import — завершено
+
+| Таблиця | Рядків (PROD) | Імпортовано (REPL) | Метод |
+|---|---:|---:|---|
+| `auth.users` | 55 | 56 | SQL INSERT (13 essential колонок; 22 nullable GoTree-колонки отримали DEFAULT/NULL) |
+| `auth.identities` | 55 | 56 | **GENERATED FROM auth.users** на самій replica (identity_data = raw_user_meta_data; provider_id з JSON) |
+| `app_installations` | 54 | 55 | SQL INSERT (19 колонок, повний клон) |
+| `incident_policy` | 5 | 5 | SKIP (вже з міграцій, ідентично) |
+
+**SKIP (14 таблиць + 25 views + 1 matview + 1 function):** telemetry_events/incidents, notification_queue/attempts, incident_status_log/notes, knowledge_*, error_reports, admin_audit_log, user_discord_guilds, storage, vault — історичні runtime / reserved / 0 рядків / derived.
+
+### 16.9.3. Replica Validation — PASSED
+
+| Перевірка | Результат |
+|---|---|
+| Row counts | ✅ ~відповідають production (+1 можливий фоновий тест-юзер) |
+| FK integrity (app_installations → auth.users) | ✅ 0 orphan |
+| FK integrity (identities → auth.users) | ✅ 56/56 valid |
+| identities.email generated column | ✅ 54/56 (2 без email = discord без email scope) |
+| country preserved (trigger no-op) | ✅ 6 distinct (matches PROD) |
+| cc.users / cc.installations / cc.statistics | ✅ повертають дані |
+| Discord-метадані (display_name, avatar_url) | ✅ 59/59 rows parsed |
+
+### 16.9.4. Forensic знахідки
+
+1. **`set_country_from_cf` trigger безпечний для прямого SQL**: `headers_json IS NULL → RETURN NEW` → country з production зберігається. Тригер спрацьовує лише через PostgREST (з Cloudflare header).
+2. **`incident_policy` порожня = silent death**: `promote()` → `IF NOT FOUND THEN RETURN` → 0 інцидентів. SOFT failure, без помилок.
+3. **`pipeline_health_meta` = CACHE** (не config): `refresh_knowledge_coverage()` перезаписує `last_knowledge_refresh`. SKIP імпорту — авто-відновлюється.
+4. **auth.identities.email — GENERATED column** у Supabase PG17 (з `identity_data->>'email'`). Не можна INSERT напряму.
+5. **DEFAULT PRIVILEGES drift** — §16.7 оновлено (VER: production manually hardened, replica = Supabase baseline).
+
+## 16.10. Phase 3.7 — Security Hardening (Backlog)
+
+> Окрема фаза, відокремлена від імпорту даних (Phase 3.6).
+
+- **Replica:** REVOKE DML з DEFAULT PRIVILEGES для `postgres` у `public` (привести до production-стану `Dxtm`).
+- **Production:** задокументувати існуючий manual hardening у міграції (audit trail — чому production Dxtm, не arwdDxtm).
+- **SEC-11:** `SET search_path = public, pg_catalog` у 26 SECURITY DEFINER функцій (additive, Approved #81).
+- Не блокує Production Deployment (RLS блокує доступ в обох БД; over-granting — лише defense-in-depth gap).
 
 ---
 
