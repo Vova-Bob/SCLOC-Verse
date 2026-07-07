@@ -866,40 +866,65 @@ if (level == TelemetryLevel.Diagnostic && !settings.DeveloperDiagnostics) return
 
 **Всього: 18 L1 + 21 L2 = 39 емітерів** (уточнено: раніше 16/23, фактично 18/21 після перегляду Succeeded/Skipped).
 
-### 5.10.2. Field Registry — поля `TelemetryContext` за рівнями
+### 5.10.2. Field Registry — поля `TelemetryContext` за рівнями (Outcome-dependent, §5.11.3)
 
-> Подія може бути L1, але окремі її поля L2. Наприклад `LIA/Install/Failed` (L1) несе `detail.certificate_thumbprint` (L2 forensic).
+> **Оновлено forensic:** L1 розділено на **L1 Success** (мінімальний) та **L1 Failed** (розширений мінімальний — error context завжди, навіть без чекбокса). `error_message` повернуто в L1 (для Failed).
 
-| Поле | Level | Reason |
-|---|---|---|
-| `error_message` (text) | **L1** (для Failed) | Обов'язкове для аналізу інциденту |
-| `source` (text) | **L1** | Класифікація джерела помилки (Supabase/Network/PowerShell/COM/CLR) — для signal COALESCE |
-| `hresult` (text) | **L1** (для LIA Failed) | Signal для incident fingerprint (priority 3 в COALESCE) |
-| `exception_type` (text) | **L1** (для Failed) | Тип винятку для класифікації |
-| `supabase_code` (text) | **L2** (DEPRECATED, завжди NULL) | Зараз ніколи не пишеться, але CHECK вимагає колонку (див. §5.6) |
-| `http_status` (int) | **L2** (DEPRECATED, завжди NULL) | Те саме |
-| `duration_ms` (int) | **L2** | Тривалість операції — оптимізація performance, не release health |
-| `detail.phase` | **L2** | orchestrationPhase для cascade trace |
-| `detail.retry_count` | **L2** | FUTURE (Retry Policy заготовка, §5.7) |
-| `detail.installer_type` | **L2** | LIA forensic (MSIX/AppX/Zip) |
-| `detail.package_version` | **L2** | LIA forensic — конкретна версія package |
-| `detail.certificate_present` | **L2** | LIA forensic — чи був cert |
-| `detail.certificate_subject` | **L2** | LIA forensic — суб'єкт cert (publisher) |
-| `detail.certificate_thumbprint` | **L2** | LIA forensic — thumbprint cert |
-| `detail.powershell_exit_code` | **L2** | LIA forensic — exit code PowerShell script |
-| `detail.activity_id` | **L2** | LIA forensic — correlation ActivityId |
-| `detail.appx_log` | **L2** | LIA forensic — Event Viewer AppX dump |
-| `detail.signal_name` | **L2** | LIA forensic — HResultCatalog.ResolveSymbol (в коді ErrorContextExtractor:204, але 0 зустрічей у даних — LiaInstallException з Hresult рідкісний) |
+| Поле | L1 Success | L1 Failed | L2 Diagnostic | Reader (доведено §5.11.2) | Reason |
+|---|---|---|---|---|---|
+| `install_id` | ✅ | ✅ | — | FK + cc.release_health + incident_candidates | Identity |
+| `user_id` | ✅ | ✅ | — | FK + cc.platform_stats + cc.release_health_detail | Identity |
+| `session_id` | ✅ | ✅ | — | TraceRepository.cs:73,125 + cc.unfinished_started | Trace grouping |
+| `correlation_id` | ✅ | ✅ | — | TraceRepository.cs:19,37,40 + cc.traces | Trace reconstruction |
+| `step` | ✅ | ✅ | — | cc.traces (ORDER BY step) | Trace ordering |
+| `component` | ✅ | ✅ | — | cc.release_health + incident_candidates + fingerprint | Classification |
+| `operation` | ✅ | ✅ | — | cc.release_health + incident_candidates + fingerprint | Classification |
+| `outcome` | ✅ | ✅ | — | cc.release_health (Succeeded/Failed count) + trg_telemetry_failed_promote | Status |
+| `severity` | ✅ | ✅ | — | cc.telemetry_events | Status |
+| `app_version` | ✅ | ✅ | — | cc.release_health (GROUP BY app_version) + fingerprint | Version |
+| `telemetry_version` | ✅ | ✅ | — | cc.telemetry_events | Schema |
+| `channel` | ✅ | ✅ | — | cc.telemetry_events | Config |
+| `occurred_at` | ✅ | ✅ | — | cc.traces + cc.unfinished_started | Time |
+| `received_at` | ✅ | ✅ | — | cc.release_health + incident_candidates + platform_stats + observability_health | Time |
+| `os_version` | ✅ | ✅ | — | cc.telemetry_events | Environment |
+| `country` | ✅ | ✅ | — | cc.telemetry_events | Geography |
+| `error_message` | ❌ | ✅ | — | ControlCenterRepository.cs:540,570 + TraceRepository.cs:111,144 | **Human-readable** error (Exception.Message через PrivacySanitizer). Не дубль exception_type — дає пояснення ("Certificate chain invalid"), не тип. |
+| `source` | ❌ | ✅ | — | ControlCenterRepository.cs:539,573 (COALESCE priority 1) | Incident fingerprint priority 1 (Supabase/Network/PowerShell/COM/CLR). Змінює grouping. |
+| `hresult` | ❌ | ✅ | — | ControlCenterRepository.cs:539,573 (COALESCE priority 3) | Incident fingerprint priority 3. Без нього grouping деградує. |
+| `exception_type` | ❌ | ✅ | — | ControlCenterRepository.cs:539,573 (COALESCE priority 5) | Incident fingerprint fallback. |
+| `supabase_code` | ❌ | ❌ | ❌ (DEPRECATED) | — | 100% NULL (§5.6 F8a). CHECK вимагає колонку. |
+| `http_status` | ❌ | ❌ | ❌ (DEPRECATED) | — | 100% NULL (§5.6 F8a). |
+| `duration_ms` | — | — | ✅ | cc.traces + cc.telemetry_events | Performance diagnostics |
+| `detail.phase` | — | — | ✅ | cc.telemetry_events (jsonb) | Cascade trace |
+| `detail.retry_count` | — | — | ✅ | cc.telemetry_events (jsonb) | FUTURE (Retry Policy) |
+| `detail.certificate_present` | — | — | ✅ | cc.telemetry_events (jsonb) | LIA forensic |
+| `detail.certificate_subject` | — | — | ✅ | cc.telemetry_events (jsonb) | LIA forensic |
+| `detail.certificate_thumbprint` | — | — | ✅ | cc.telemetry_events (jsonb) | LIA forensic |
+| `detail.installer_type` | — | — | ✅ | cc.telemetry_events (jsonb) | LIA forensic |
+| `detail.package_version` | — | — | ✅ | cc.telemetry_events (jsonb) | LIA forensic |
+| `detail.activity_id` | — | — | ✅ | cc.telemetry_events (jsonb) | LIA forensic |
+| `detail.powershell_exit_code` | — | — | ✅ | cc.telemetry_events (jsonb) | LIA forensic |
+| `detail.appx_log` | — | — | ✅ | cc.telemetry_events (jsonb) | LIA forensic |
+| `detail.signal_name` | — | — | ✅ | cc.telemetry_events (jsonb) | LIA forensic (0 у даних) |
+| `detail` (jsonb container) | ❌ | ✅ (LIA forensic) | ✅ | cc.telemetry_events | Container для forensic keys |
 
-### 5.10.3. Підсумок
+### 5.10.3. Підсумок (оновлено)
 
-- **18 L1 подій** (Failed термінальні + lifecycle Succeeded) — завжди.
-- **21 L2 подій** (проміжні Started/Succeeded/Skipped, Cascade trace).
-- **9 L1 полів** у context (error_message, source, hresult, exception_type, + БД-колонки install_id/user_id/occurred_at/received_at/session_id/correlation_id).
-- **10 L2 полів** (duration_ms, detail.phase, detail.retry_count, cert-поля, appx_log, signal_name).
+- **16 L1 Success полів** (мінімальний набір для Succeeded/Started/UpdateFound).
+- **21 L1 Failed полів** (L1 Success + 4 error-context: error_message, source, hresult, exception_type + detail container для LIA forensic).
+- **12 L2 Diagnostic полів** (duration_ms, detail.phase, retry_count, certificate_*, installer_type, package_version, activity_id, powershell_exit_code, appx_log, signal_name).
+- **2 DEPRECATED полів** (supabase_code, http_status — 100% NULL, CHECK вимагає).
 - **0 L3 полів** у .Track() (всі L3 — debug, hotkeys, perf — вже локальні).
 
-**Реалізація:** кожен з 21 L2 емітерів додасть `level: TelemetryLevel.Diagnostic` у виклик `.Track()`. Інші 18 — дефолтний L1 (без параметра).
+**Реалізація:** `ErrorContextExtractor.Extract(exception)` вже викликається лише при `exception != null` (Failed). Для Success — `ctx = null` або мінімальний. Тобто **нова Outcome-dependent модель не вимагає переписування коду** — лише чітке документування, що L1 Failed ≠ L1 Success.
+
+**Перевірка `TelemetryClient.Track()`:**
+```
+if (level == TelemetryLevel.Diagnostic && !settings.AdvancedDiagnostics) return;
+// L1 Succeeded/Started → мінімальний (без error-context)
+// L1 Failed → + error_message + source + hresult + exception_type (через ErrorContextExtractor.Extract)
+// L2 → + duration_ms + detail.* (через LiaEvents/UpdateEvents параметри)
+```
 
 ## 5.11. Reader Validation — доказ споживача для L1 (Phase 3.5 forensic, 2026-07-07)
 
@@ -936,27 +961,64 @@ if (level == TelemetryLevel.Diagnostic && !settings.DeveloperDiagnostics) return
 
 > Forensic за вимогою користувача: `correlation_id`, `session_id`, `hresult`, `exception_type`, `error_message`, `source` — довести Reader.
 
-| Поле | Reader (view) | Reader (C#) | Mandatory because | Висновок |
-|---|---|---|---|---|
-| **`correlation_id`** | `cc.traces` (ORDER BY correlation_id, step), `cc.telemetry_events` | `TraceRepository.cs:19` (GetTraceAsync WHERE correlation_id=$1), `:37,40` (SearchTracesAsync filter), `ControlCenterRepository.cs:44,538,555,568` | Traces page: кроки події з одним correlation_id утворюють trace. Без нього — неможливо відновити послідовність. | ✅ **L1 Mandatory** |
-| **`session_id`** | `cc.traces`, `cc.unfinished_started` (JOIN), `cc.telemetry_events` | `TraceRepository.cs:73,91,107,125` (SearchTracesAsync + GetTraceAsync), `TraceModels.cs:8,54` | Traces page: групування подій за session. `unfinished_started` — детект Started без термінальної (JOIN по session_id+component+operation). | ✅ **L1 Mandatory** |
-| **`hresult`** | `cc.incident_candidates_live/24h` (signal COALESCE priority 3), `cc.release_health_detail` (top_fingerprint), `cc.traces` (signal) | `ControlCenterRepository.cs:539,540,553,569,573` (COALESCE signal), `TraceRepository.cs:110,141` (trace detail), `TraceModels.cs:24` | **Incident fingerprint**: COALESCE(source, hresult, supabase_code, http_status, exception_type). Без hresult → fingerprint деградує до exception_type/'-'. Змінює grouping інцидентів. | ✅ **L1 Mandatory** (Incident Pipeline) |
-| **`exception_type`** | `cc.incident_candidates_live/24h` (signal COALESCE priority 5), `cc.release_health_detail`, `cc.traces` | `ControlCenterRepository.cs:539,553,569,573` (COALESCE), `TraceRepository.cs:110,143` | **Incident fingerprint fallback** (priority 5). Якщо source/hresult/supabase_code/http_status — NULL, exception_type дає signal. | ✅ **L1 Mandatory** (Incident Pipeline fallback) |
-| **`source`** | `cc.incident_candidates_live/24h` (signal COALESCE priority 1), `cc.release_health_detail`, `cc.traces` | `ControlCenterRepository.cs:539,540,553,569,573`, `TraceRepository.cs:110` | **Incident fingerprint priority 1**. `source` класифікує джерело (Supabase/Network/PowerShell/COM/CLR). Без нього → fallback на hresult (priority 3). Змінює grouping. | ✅ **L1 Mandatory** (Incident Pipeline priority 1) |
-| **`error_message`** | `cc.traces`, `cc.telemetry_events` | `ControlCenterRepository.cs:540,554,570` (trace detail SELECT), `TraceRepository.cs:111,144` | Traces page: відображення тексту помилки. **НЕ бере участь у fingerprint COALESCE** (не впливає на incident grouping). | ⚠ **Переоцінено → L2 Diagnostic** (лише Traces display) |
-
-### 5.11.3. Коригування Field Registry (за результатами Reader Validation)
-
-| Поле | Було | Стало | Reason |
+| Поле | Reader (view) | Reader (C#) | Висновок |
 |---|---|---|---|
-| `error_message` | L1 Mandatory | **L2 Diagnostic** | Тільки Traces page display, НЕ в fingerprint COALESCE. Не впливає на incident grouping. |
-| `hresult` | L1 Mandatory | **L1 Mandatory** ✅ | Incident fingerprint priority 3. Без нього grouping деградує. |
-| `exception_type` | L1 Mandatory | **L1 Mandatory** ✅ | Incident fingerprint priority 5 fallback. |
-| `source` | L1 Mandatory | **L1 Mandatory** ✅ | Incident fingerprint priority 1. Без нього grouping змінюється. |
-| `correlation_id` | L1 Mandatory | **L1 Mandatory** ✅ | Traces page — trace reconstruction. |
-| `session_id` | L1 Mandatory | **L1 Mandatory** ✅ | Traces page — session grouping + unfinished_started. |
+| **`correlation_id`** | `cc.traces` (ORDER BY correlation_id, step), `cc.telemetry_events` | `TraceRepository.cs:19,37,40` (GetTraceAsync WHERE correlation_id=$1), `:37,40` (SearchTracesAsync filter), `ControlCenterRepository.cs:44,538,555,568` | ✅ **L1** (Traces page — trace reconstruction) |
+| **`session_id`** | `cc.traces`, `cc.unfinished_started` (JOIN), `cc.telemetry_events` | `TraceRepository.cs:73,91,107,125` (SearchTracesAsync + GetTraceAsync), `TraceModels.cs:8,54` | ✅ **L1** (session grouping + unfinished detection) |
+| **`hresult`** | `cc.incident_candidates_live/24h` (signal COALESCE priority 3), `cc.release_health_detail` (top_fingerprint), `cc.traces` (signal) | `ControlCenterRepository.cs:539,540,553,569,573` (COALESCE signal), `TraceRepository.cs:110,141` (trace detail), `TraceModels.cs:24` | ✅ **L1 Failed** (Incident fingerprint priority 3 — без нього grouping деградує) |
+| **`exception_type`** | `cc.incident_candidates_live/24h` (signal COALESCE priority 5), `cc.release_health_detail`, `cc.traces` | `ControlCenterRepository.cs:539,553,569,573` (COALESCE), `TraceRepository.cs:110,143` | ✅ **L1 Failed** (Incident fingerprint priority 5 fallback) |
+| **`source`** | `cc.incident_candidates_live/24h` (signal COALESCE priority 1), `cc.release_health_detail`, `cc.traces` | `ControlCenterRepository.cs:539,540,553,569,573`, `TraceRepository.cs:110` | ✅ **L1 Failed** (Incident fingerprint priority 1 — Supabase/Network/PowerShell/COM/CLR) |
+| **`error_message`** | `cc.traces`, `cc.telemetry_events` | `ControlCenterRepository.cs:540,554,570` (trace detail SELECT), `TraceRepository.cs:111,144` | ✅ **L1 Failed** (Traces page — людяне пояснення помилки) |
 
-**Підсумок:** `error_message` переведено з L1 на L2 (єдине коригування). Решта 8 полів підтверджено як L1.
+> **Writer forensic:** `error_message` = `Exception.Message` через `PrivacySanitizer.Sanitize()`. Це НЕ дубль `exception_type` — `exception_type` дає тип винятку (напр. "LiaInstallException"), а `error_message` дає **людяне пояснення** ("Certificate chain invalid", "Access denied", "Package not found"). Без `error_message` при Failed — розробник бачить лише тип, без причини. Користувач правий: не можна змушувати "перезапустити з діагностикою" для критичної помилки.
+
+### 5.11.3. Outcome-dependent Field Policy (нова модель)
+
+> **Forensic (2026-07-07, за пропозицією користувача):** розділити L1 не лише за рівнем, а й за **Outcome**. Failed-події збирають розширений мінімальний набір (навіть без чекбокса). Mature systems так і працюють: критична інформація про збої — завжди, глибока діагностика — лише за згодою.
+
+```
+L1 Success (мінімальний набір):
+    install_id, user_id, session_id, correlation_id, step
+    component, operation, outcome, severity, category
+    app_version, telemetry_version, channel
+    occurred_at, received_at
+    os_version, country (trigger)
+    → без error-context (немає exception)
+
+L1 Failed (розширений мінімальний набір — навіть без чекбокса):
+    + error_message (Exception.Message через PrivacySanitizer)
+    + source (ErrorContextExtractor.ClassifySource: Supabase/Network/PowerShell/COM/CLR)
+    + hresult (priority 3 в signal COALESCE)
+    + exception_type (priority 5 fallback в signal COALESCE)
+    → ErrorContextExtractor.Extract(exception) — завжди для Failed
+
+L2 Diagnostic (лише при AdvancedDiagnostics ON — будь-який outcome):
+    + duration_ms
+    + detail.phase (orchestrationPhase)
+    + detail.retry_count (FUTURE — Retry Policy)
+    + detail.certificate_present / certificate_subject / certificate_thumbprint
+    + detail.installer_type, package_version
+    + detail.activity_id, powershell_exit_code, appx_log
+    + detail.signal_name (HResultCatalog.ResolveSymbol)
+    + game_folder_path, install_source, os_build (app_installations L2)
+
+L3 Local Only (ніколи не відправляється):
+    hotkeys, debug.WriteLine, performance, FPS, input traces
+    → file journal (future), 0 .Track() викликів
+```
+
+**Реалізація:** `ErrorContextExtractor.Extract(exception)` вже викликається лише при `exception != null` (Failed). Для Success — `ctx = null` або мінімальний. Тобто **нова модель не вимагає переписування коду** — лише чітке документування, що:
+- L1 Success ≠ L1 Failed (поля різні, бо ErrorContextExtractor додає error-context лише для Failed).
+- L2 — додаткові поля поверх L1 (через `level: TelemetryLevel.Diagnostic` параметр).
+
+**Перевірка `TelemetryClient.Track()`:**
+```
+if (level == TelemetryLevel.Diagnostic && !settings.AdvancedDiagnostics) return;
+// L1 events проходять завжди (Succeeded + Failed)
+// L1 Failed events несуть error_message + source + hresult + exception_type (через ErrorContextExtractor)
+// L2 events несуть + duration_ms + detail.* (через LiaEvents/UpdateEvents параметри)
+```
+
 
 
 
@@ -1482,6 +1544,8 @@ Blazor Components (.razor)
 113. **Активація `app_installations` FUTURE колонок прив'язана до Policy (оновлено forensic §5.8b):**
     - L1 Mandatory: `app_version`, `os_version`, `machine_id`, `country`, `platform`, `localization_version`, `selected_environment`, `update_channel`.
     - L2 Diagnostic: `game_folder_path` (немає доведеного споживача в Release Health/Incidents), `install_source` (не доведено), `os_build` (деталізація OS).
+114. **Outcome-dependent Field Policy** — L1 розділено на **L1 Success** (мінімальний набір, 16 полів) та **L1 Failed** (розширений мінімальний, 21 поле). Failed-події збирають error_context (error_message, source, hresult, exception_type) **завжди**, навіть без чекбокса. Mature systems так працюють: критична інформація про збої — завжди, глибока діагностика — за згодою. Деталі в §5.11.3.
+115. **`error_message` повернуто в L1 Failed** (forensic: Writer = `Exception.Message` через PrivacySanitizer — людяне пояснення "Certificate chain invalid", не дубль exception_type). Без нього розробник бачить лише тип винятку без причини. Не можна змушувати "перезапустити з діагностикою" для критичної помилки.
 
 ## 14.17. Порядок фаз (оновлено)
 
