@@ -1,0 +1,992 @@
+# SCLOC-Verse — Unified Knowledge Base
+
+> **Single Source of Truth.** Цей документ — єдина точка входу для будь-якого AI-агента.
+> Якщо інформація тут є — не перечитуй десятки forensic-документів.
+> Якщо інформація тут суперечить сирому документу — сирий документ має пріоритет, але повідом про розбіжність (розділ 19).
+>
+> **Дата збірки:** 2026-07-07
+> **Версія застосунку:** 1.0.0.1 (Observability Release, RC)
+> **Supabase project:** `nrytczdbhehiotflaagl` (eu-west-1)
+> **Режим підтримки:** Read-Only / Aggregation. Новий код і SQL НЕ створюються цим документом.
+
+---
+
+## 0. Як користуватися цією базою знань
+
+1. **Пошук по розділах** — розділи 1–18 покривають усю систему.
+2. **Розділи 14 (Approved) та 15 (Rejected)** — першочергова перевірка перед тим, як пропонувати рішення. Більшість «очевидних» ідей уже прийнято або відхилено.
+3. **Розділ 16 (Technical Debt) та 17 (Backlog)** — що вже відомо як борг і що заплановано. Не вигадувати нових задач, не перевіривши їх.
+4. **Розділ 18 (Cross References)** — покажчик «який сирцевий документ підтверджує який факт».
+5. **Джерельні forensic** — відкривати лише для верифікації першоджерела. Список у розділі 18.1.
+
+> ⚠ **Конституція проєкту (AGENTS.md) має найвищий пріоритет** над цим документом у випадку конфлікту. Далі — Observability-Constitution, потім ця KB, потім окремі forensic.
+
+---
+
+# 1. Executive Summary
+
+**SCLOC-Verse** — настільний WPF-клієнт (.NET 9) української локалізації Star Citizen з навісною observability-платформою (Supabase + Blazor Control Center + Worker Notifier + Knowledge Engine).
+
+### 1.1. Підсистеми
+
+| Підсистема | Призначення | Статус |
+|---|---|---|
+| **SCLOCVerse** (WPF) | Клієнт: локалізація, оновлення гри/L.I.A., hangar-timer, hotkeys, tray | ✅ RC |
+| **Control Center** (Blazor Server) | Дашборд операційної команди: інциденти, трейси, release health, knowledge base | ✅ RC |
+| **Notifier** (Worker) | Доставка сповіщень про інциденти (Discord) | ✅ RC |
+| **Observability pipeline** (Supabase) | telemetry → incidents → notifications → knowledge | ✅ RC |
+| **L.I.A.** | Голосовий асистент (MSIX/AppX) стороннього автора AlexLiberty — оркеструється клієнтом | ✅ (із відкладеними ризиками) |
+| **Knowledge Engine** | Ручна база знань з auto-verify | ✅ Phase 6 завершено (API Freeze v1.0) |
+
+### 1.2. Ключові факти одним рядком
+
+- **4 процесоізольовані** проєкти монорепо; спілкуються **тільки через Postgres/Supabase** (2 схеми, 26 міграцій, ~24 SECURITY DEFINER функції).
+- **Ручна композиція залежностей** (без IoC-контейнерів, без Generic Host).
+- **Discord OAuth + Supabase GoTrue** (PKCE, scope `identify` only) — обов'язкова авторизація.
+- **RLS скрізь**: `anon` deny-all, `authenticated` owner-only, `telemetry_events` append-only, `cc_readonly`/`cc_notifier` least-privilege.
+- **Additive-only контракт** схеми (Стаття 13 Конституції Observability). DROP COLUMN заборонено.
+- **Zero Regression** — стабільний код не чіпати без потреби (AGENTS.md).
+- **PII-мінімізація**: збираються лише discord_user_id/username/avatar + технічні метадані; email, паролі, поведінкова телеметрія — ніколи.
+- **Code signing** через SignPath.io + SignPath Foundation.
+- **Українська мова**: коментарі, документація, commit-повідомлення. UTF-8 як P0 для всіх текстових файлів.
+
+---
+
+# 2. Архітектура
+
+> Деталі: `docs/architecture/Final-Architecture-Review.md`, `ARCHITECTURE_DECISIONS.md`, `README.md`, `AGENTS.md`.
+
+## 2.1. Монорепо (4 проєкти)
+
+| Проєкт | Технологія | Роль | БД-роль |
+|---|---|---|---|
+| `SCLOCVerse` | WPF .NET 9, Nullable | Клієнт — пише телеметрію + app_installations | `authenticated` |
+| `SCLOCVerse.ControlCenter` | Blazor Server | UI Dashboard + Knowledge workflow | `cc_readonly` |
+| `SCLOCVerse.Notifier` | Worker (BackgroundService) | Notification dispatcher | `cc_notifier` |
+| `SCLOCVerse.Notifications` | Class Library | Контракт `INotificationProvider` | — |
+
+## 2.2. Composition Root / DI (ручний)
+
+- `AppCompositionRoot` (fan-out ~24 залежності) + `AuthCompositionRoot` (fan-out ~6) з ручним `new`-компонуванням.
+- **Two-phase init** для розриву циклу auth↔telemetry: `TelemetryClient` конструюється ДО `AuthCompositionRoot` (без Supabase-клієнта), потім доін'єктується через `SetInstallId` + `AttachClientFactory` (`AppCompositionRoot.cs:78, 145-146`).
+- **Без IoC-контейнерів** (ADR-001 ARCHITECTURE_DECISIONS). **Без Generic Host** (ADR-007).
+- Структура папок: `Services/<Feature>/`, `Interfaces/`, `Models/`, `Controls/`; нові залежності — через `AppCompositionRoot`.
+
+## 2.3. Життєвий цикл
+
+`App.OnExit → AppCompositionRoot.Dispose()` → каскад reverse-order:
+`TelemetryClient.Dispose` (Timer stop + best-effort flush + Uploader dispose) → `BackgroundUpdateMonitor.Dispose` → `HangarOverlayService.Dispose` → `HangarTimerService.Dispose` → `AuthCompositionRoot.Dispose` (`AuthService.Shutdown` + `ClientFactory.Shutdown`).
+
+- **Жодного app-wide `CancellationTokenSource`.** Кожен сервіс зупиняє власні таймери; in-flight async не скасовується централізовано.
+- Таймери: telemetry flush **30с**; background update **30 хв**; overlay countdown **200мс**; hangar card **250мс**; home smooth scroll **16мс**.
+
+## 2.4. UI-координація
+
+- `MainWindow` — WPF code-behind-координатор (ADR-004); бізнес-логіка в сервісах і presenter-ах. **Проте ~903 рядки, ~20 ctor-параметрів, ~31 field → God Class** (TD-6).
+- Canvas-навігація через `CanvasManager` (ADR-006) — перемикає видимість Canvas-ів у межах одного `MainWindow`.
+- Overlay — окреме вікно `HangarOverlayWindow` + `HangarOverlayService` (Win32 `WS_EX_TRANSPARENT`/`WS_EX_LAYERED`, ADR-005).
+
+## 2.5. Гарячі клавіші
+
+`IHotkeyBackend` + 2 реалізації: `RawInputBackend` (default, через `RIDEV_INPUTSINK`/`WM_INPUT`, key-up) і `RegisterHotkeyBackend` (fallback). Вибір через env `SCLOCVERSE_HOTKEY_BACKEND`. `IKeyStateBackend` (ISP) виділено для `KeyUp` — реалізує лише `RawInputBackend`.
+
+## 2.6. Бекенд-абстракції (seam-и для розширення)
+
+| Абстракція | Призначення | Найкращий seam для розширення |
+|---|---|---|
+| `ITelemetryService` | Єдиний санкціонований sink спостережуваності | — |
+| `INotificationProvider` | Канал доставки сповіщень | Новий канал = 1 клас + 1 DI-рядок |
+| `SupabaseClientFactory` | Supabase-клієнт (singleton, lazy, double-check lock) | — |
+| `IHotkeyBackend` | Бекенд гарячих клавіш | Новий бекенд = 1 клас |
+| Control Center схему `control_center` | Read-only views під роллю `cc_readonly` | — |
+
+---
+
+# 3. Database
+
+> Деталі: `docs/observability/FORENSIC-DATA-PIPELINE-RAW.md` (повні CREATE), `FORENSIC-DATA-PIPELINE-DETAIL.md`.
+
+## 3.1. Об'єкти
+
+| Тип | Кількість | Примітка |
+|---|---:|---|
+| Схеми | 2 | `public`, `control_center` |
+| Базові таблиці | 15 | 14 у `public` + 1 singleton у `control_center` |
+| Звичайні VIEW | 19 | 18 у `control_center` + `public.user_analytics` |
+| Materialized VIEW | 1 | `control_center.knowledge_coverage` |
+| SECURITY DEFINER функції | ~24 | promotion, incident workflow, knowledge lifecycle |
+| Triggers | 4 | geoip, failed-promote, incident-refresh, knowledge-audit |
+| БД-ролі | 4 | `anon`, `authenticated`, `cc_readonly`, `cc_notifier` |
+
+## 3.2. Таблиці (призначення)
+
+| Таблиця | Схема | Призначення | Продюсер | Статус |
+|---|---|---|---|---|
+| `app_installations` | public | Метадані інсталяції клієнта | C# `InstallationService` | ✅ жива (6 колонок dead/inactive — див. розділ 4) |
+| `telemetry_events` | public | Append-only події | C# `TelemetryUploader` | ✅ ядро |
+| `telemetry_incidents` | public | Згруповані інциденти | trigger `tg_promote_after_failed` | ✅ жива |
+| `incident_policy` | public | Пороги детекції per-component | seed + адмін | ✅ config |
+| `incident_status_log` | public | Історія переходів (immutable) | `transition_incident()` | ✅ жива |
+| `incident_notes` | public | Примітки до інцидентів | `add_incident_note()` | ✅ жива |
+| `notification_queue` | public | Черга сповіщень | trigger (при промоції) | ✅ жива |
+| `notification_attempts` | public | Аудит спроб доставки | Notifier Worker | ✅ жива |
+| `knowledge_entries` | public | База знань | CC workflow функції | ✅ жива |
+| `knowledge_references` | public | Посилання 1:N | CC функції | ✅ жива |
+| `knowledge_version_history` | public | Append-only audit | `knowledge_audit` trigger | ✅ жива |
+| `error_reports` | public | Зарезервовано | **ніхто** | 🔴 reserved/future |
+| `admin_audit_log` | public | Зарезервовано | **ніхто** | 🔴 reserved/future |
+| `user_discord_guilds` | public | Синхронізація гільдій | вимкнений код | 🔴 reserved |
+| `pipeline_health_meta` | control_center | Singleton health | `refresh_knowledge_coverage()` | ✅ singleton |
+
+## 3.3. Triggers
+
+| Trigger | Подія | Дія |
+|---|---|---|
+| `trg_app_installations_set_country` | BEFORE INSERT/UPDATE на `app_installations` | GeoIP з Cloudflare `cf-ipcountry` → `country` |
+| `trg_telemetry_failed_promote` | AFTER INSERT `telemetry_events` WHEN `outcome='Failed'` | `promote_incident_candidates_for_event()` |
+| `trg_incident_refresh_coverage` | AFTER INSERT/UPDATE `telemetry_incidents` | `refresh_knowledge_coverage()` |
+| `knowledge_audit` | AFTER INSERT/UPDATE `knowledge_entries` | snapshot → `knowledge_version_history` |
+
+> ⚠ Зауваження: `trg_*_set_country` існує лише на `app_installations`. На `telemetry_events` тригера GeoIP немає → `telemetry_events.country` завжди NULL (див. розділ 5.6).
+
+## 3.4. RLS-модель
+
+| Роль | Доступ |
+|---|---|
+| `anon` | deny-all скрізь |
+| `authenticated` | `app_installations` SELECT+INSERT+UPDATE owner-only (`user_id = auth.uid()`); `telemetry_events` SELECT+INSERT owner-only (append-only); `user_discord_guilds` owner-only |
+| `cc_readonly` | `USAGE`+`SELECT` лише на схему `control_center` + EXECUTE на workflow/knowledge функції |
+| `cc_notifier` | ALL на `notification_queue`/`notification_attempts` + SELECT `telemetry_incidents` |
+
+**Відома пастка:** `RETURNING`-вирази вимагають `GRANT SELECT` (спричинила історичний інцидент `42501`).
+
+---
+
+# 4. `app_installations` (детально, по колонках)
+
+> Деталі: `docs/observability/app-installations-forensic-2026-07-05.md`, `app-installations-implementation-plan.md`, `post-cleanup-forensic-app-installations.md`.
+
+## 4.1. Стан полів (19 колонок)
+
+| Колонка | Тип | Nullable | Default | Хто пише | Хто читає | Стан | Категорія | Рішення |
+|---|---|---|---|---|---|---|---|---|
+| `id` | uuid | NO | `gen_random_uuid()` | DB | PK/FK | жива | 🟢 Critical | ✅ |
+| `created_at` | timestamptz | NO | `now()` | DB | CC `installations` | жива | 🟢 Critical | ✅ |
+| `install_id` | text | NO | — | C# `InstallationService` | FK, CC, telemetry | жива | 🟢 Critical | ✅ |
+| `user_id` | uuid | YES | — | C# | RLS, CC `users` | жива | 🟢 Critical | ✅ |
+| `app_version` | text | YES | — | C# | CC release health | жива | 🟢 Critical | ✅ |
+| `platform` | text | YES | — | C# | CC platform stats | жива | 🟢 Critical | ✅ |
+| `machine_id` | text | YES | — | C# | CC installations | жива | 🟡 Diagnostic | ✅ |
+| `os_version` | text | YES | — | C# | CC installations | жива | 🟡 Diagnostic | ✅ |
+| `first_seen` | timestamptz | YES | `now()` | DB | CC views | жива | 🟢 Critical | ✅ |
+| `last_seen` | timestamptz | YES | — | C# | CC health, `ecosystem_stats()` | жива | 🟢 Critical | ✅ |
+| `is_active` | boolean | YES | `true` | C# | CC health/statistics | жива | 🟢 Critical | ✅ |
+| `updated_at` | timestamptz | YES | — | C# | CC installations | жива | 🟢 Critical | ✅ |
+| `country` | text | YES | — | Cloudflare trigger | CC `users` | жива (через тригер) | 🟢 Critical | ✅ |
+| `localization_version` | text | YES | — | **ніколи** | CC `installations` | завжди NULL | 🔴 Dead | 🟡 активувати |
+| `game_folder_path` | text | YES | — | **ніколи** | CC `installations` | завжди NULL | 🔴 Dead | 🟡 активувати |
+| `selected_environment` | text | YES | — | **ніколи** | CC `users`, `installations` | завжди NULL | 🔴 Dead | 🟡 активувати |
+| `os_build` | text | YES | — | **ніколи** | CC `installations` | завжди NULL | 🔴 Dead | 🟡 опц. активувати |
+| `update_channel` | text | YES | `'stable'` | DB default | CC views | завжди DEFAULT | 🔴 Dead | 🟡 активувати |
+| `install_source` | text | YES | `'unknown'` | DB default | CC views | завжди DEFAULT | 🔴 Dead | 🟡 опц. активувати |
+
+**Підсумок:** 11 живих від C#, 1 від тригера, 2 завжди DEFAULT, 5 завжди NULL. Усі 7 «мертвих» можна активувати (additive-only), нічого не видаляти.
+
+## 4.2. Неактивовані можливості (детально)
+
+| Поле | Що готово | Чого не вистачає | Складність |
+|---|---|---|---|
+| `localization_version` | Колонка + CC view читає | C# не фіксує `release.TagName` після Install/Update | низька |
+| `game_folder_path` | Колонка + CC view читає | C# не прокидає `Settings.Default.GameFolder` | низька |
+| `selected_environment` | Колонка + `cc.users/installations` читають | C# не зберігає вибір `EnvironmentSelector` (transient) | середня |
+| `os_build` | Колонка + CC view читає | C# не читає `Environment.OSVersion.Version.Build` | низька |
+| `update_channel` | DEFAULT в БД | C# не оновлює при зміні в SettingsCanvas | низька |
+| `install_source` | DEFAULT в БД | InnoSetup не передає runtime-параметр | середня |
+
+> **Архітектурне рішення (погоджено):** для `selected_environment` + `localization_version` + `game_folder_path` — ввести `IInstallationContextProvider` (read) + `IInstallationContextUpdater` (write), а НЕ дублювати в `Settings`. План: `docs/observability/app-installations-implementation-plan.md` (v2).
+
+## 4.3. Cleanup-політика
+
+- **НЕ повне очищення** (втрата `first_seen`/`created_at` — adoption-історія).
+- Лише тестові записи: `DELETE FROM app_installations WHERE install_id !~ '^[0-9a-f]{32}$'`.
+- Production UUID-записи зберігаються.
+
+---
+
+# 5. Telemetry
+
+> Деталі: `docs/observability/FORENSIC-DATA-PIPELINE-DETAIL.md` (всі `.Track()` з рядками), `Observability-Constitution.md`, `Optimization-Matrix.md`, `Observability-Database-Optimization-Plan.md`.
+
+## 5.1. Конституція (29 статей) — цільові інваріанти
+
+1. Absolute Isolation — телеметрія не кидає винятки в бізнес-код.
+2. Never Block the UI — sync O(1), I/O у фоновому потоці.
+3. Never Break Startup — конструювання дешеве й синхронне.
+4. Zero PII — `PrivacySanitizer` як єдине вузьке горло.
+5. Append-Only — `telemetry_events` лише INSERT.
+6. Idempotent Retries — `UNIQUE(client_event_id)` + `ON CONFLICT DO NOTHING`.
+7. Single Sanctioned Sink — лише `ITelemetryService`.
+8. Critical Failures Auto-Captured — глобальні exception handlers.
+9. Incidents Forensable From Platform Alone.
+10. Kill-Switch Transparent — вимкнення не ламає додаток.
+11. Trace Mandatory — `correlation_id` + `step` NOT NULL.
+12. Single Ingestion Contract.
+13. Additive-Only Schema.
+14. Offline First — bounded JSONL-черга + flush-on-connect.
+15. Observable by Default — Start/Success/Failure/Duration.
+16. Backward Compatibility.
+17. Production Database Verification — runtime під роллю `authenticated`.
+18. Production Pending — статус для непридушених сценаріїв.
+19. Promotion Immutability — promotion лише SELECT events.
+20. Dashboard Purity — `cc_readonly` лише SELECT VIEWs.
+21. Incident Identity — інцидент = `incident_id`, не fingerprint.
+22. Incident History Is Immutable.
+23. Incident Workflow Access.
+24. Notification Independence — Incident Engine не знає про канали.
+25. Notification Idempotency — `UNIQUE(incident_id, notification_type)`.
+26. Delivery Audit — append-only `notification_attempts` + Zombie Recovery.
+27. Provider Independence — `INotificationProvider` у окремій бібліотеці.
+28. Knowledge Preservation — Knowledge Engine ручного походження.
+29. Secret Independence — тришарова Git/DB/App модель.
+
+## 5.2. Реалізовано vs Цільовий дизайн (ВАЖЛИВО)
+
+> Багато артефактів у Конституції/Architecture — **цільовий дизайн**. Реальний стан станом на 1.0.0.1 (за forensic):
+
+| Компонент | Цільовий дизайн | Реалізовано |
+|---|---|---|
+| `ITelemetryService` (single sink) | ✅ | ✅ `TelemetryClient` — єдина impl |
+| In-memory bounded queue | cap 5000 | ✅ `TelemetryEventQueue` cap 5000 drop-oldest |
+| Background flush Timer | 30с | ✅ `TelemetryClient.FlushInterval=30s` |
+| `TelemetryUploader` batch+backoff | ≤100, 2с/8с/30с | ✅ SemaphoreSlim-серіалізований |
+| Idempotency по `client_event_id` | UNIQUE + ON CONFLICT | ✅ |
+| `PrivacySanitizer` | рекурсивно по всьому payload | ⚠ **лише `ErrorMessage`** (F4) — `Detail` не санітарити |
+| Offline JSONL-черга (Стаття 14) | bounded 10K, flush-on-connect | ❌ **не реалізовано** (тільки in-memory) |
+| `SamplingGate` (duplicate-suppression 60с) | yes | ❌ не реалізовано |
+| `FeatureFlagService` (remote→env→setting→default, reload 10 хв) | yes | ❌ не реалізовано — лише env kill-switch |
+| Конфігурований endpoint → Edge Function ingest (Phase 5) | yes | ❌ PostgREST напряму |
+| `telemetry_rollup_mv` MATVIEW (2 роки) | yes | ❌ не реалізовано |
+| Retention 14д pg_cron purge | yes | ⚠ план у release-runbook; перевірити деплой |
+| Global `UnhandledException` handler (Стаття 8) | yes | ❌ **GAP** — WPF-краш минає спостережуваність (F3) |
+| `git_commit` на кожній події | MSBuild target | ❌ завжди NULL (target відкладено) |
+| `category` диференційована | Critical/Operational/Diagnostic/Analytics | ⚠ завжди `'Operational'` |
+| `country` через тригер | yes | ❌ тригер лише на `app_installations` |
+| Terminal Flush на всіх Failed (Стаття 16) | yes | ⚠ 5 Failed-емітерів без `FlushAsync` |
+
+## 5.3. Identity та Build info
+
+- **`install_id`** — machine identity, файл `%LOCALAPPDATA%\SCLOCVerse\install-id` + registry `HKCU\Software\VALDEUS\SCLOCVerse\InstallId` (dual-store). Ніколи `MachineName`.
+- **`user_id`** — nullable (null для pre-auth подій), встановлюється `TelemetryUploader` перед INSERT.
+- **Build info** на кожній події: `app_version`, `channel`, `telemetry_version=1`, `os_version`. `git_commit` — завжди NULL.
+
+## 5.4. Kill-switch
+
+- **Єдиний реалізований:** env `SCLOCVERSE_TELEMETRY_DISABLED=1|true` (`AppCompositionRoot.cs:282`).
+- Вимикає **всю** телеметрію бінарно. Усі `Track()` повертаються, Flush не запускається.
+
+## 5.5. Карта всіх 44 `.Track()` емітерів
+
+> Точні file:line у `FORENSIC-DATA-PIPELINE-DETAIL.md`. Тут — зведення.
+
+| Компонент | К-ть подій | Файли | Примітка |
+|---|---:|---|---|
+| `Application` | 1 | `App.xaml.cs:81` | `Start.Started` |
+| `Auth` | 13 | `AuthService.cs:66-229` | SignIn + RestoreSession |
+| `Installation` | 3 | `InstallationService.cs:46-118` | Sync |
+| `Orchestrator` | 4 | `BackgroundUpdateMonitor.cs:131-229` | Cycle/AppCheck/LiaCheck (Failed) |
+| `Updater` (self-update) | 9 | `UpdateDownloader.cs`, `UpdateInstaller.cs`, `UpdateVerifier.cs` | Download/Install/Verify |
+| `LIA` | 18 | `Updater.cs:79-323` | Install/Download/RunInstallerScript |
+| `Localization` | **0** | — | **GAP** — сліпа зона |
+
+**Severity/Outcome/Categoria модель:**
+- `outcome ∈ {Started, Succeeded, Failed, Cancelled, Skipped}` (CHECK).
+- `severity ∈ {Info, Warning, Error, Critical, Crash}` (CHECK).
+- `category ∈ {Critical, Operational, Diagnostic, Analytics}` (CHECK) — **завжди `'Operational'`** у реальності.
+- Default severity: `Failed → Error`, інакше `Info`.
+
+## 5.6. Відомі проблеми телеметрії
+
+| # | Проблема | Де |
+|---|---|---|
+| F3 | Відсутній global `UnhandledException` handler | `App.xaml.cs` |
+| F4 | `PrivacySanitizer` покриває лише `ErrorMessage`; `Detail` (appx_log, cert-поля) проходить неочищеним | `TelemetryClient.cs:142` |
+| F5 | Terminal `FlushAsync` пропущено у 5 `ApplicationUpdate` Failed-емітерів | `UpdateDownloader.cs:59`, `UpdateInstaller.cs:46,76,82`, `UpdateVerifier.cs:65` |
+| F7 | `LiaForensicParser.TryParseMinimal` — мертвий код (0 викликів) | `LiaForensicParser.cs:67` |
+| F8 | `telemetry_events.country` — мертва (тригер лише на installations) | міграції 2 + 9 |
+| F9 | 6 з 19 колонок `app_installations` завжди NULL/DEFAULT | див. розділ 4 |
+| — | LIA cascade: 1 фізична відмова → 3-4 Failed-події | `Updater.cs` |
+| — | `Localization.*` телеметрія відсутня (сліпа зона встановлення локалізації) | `LocalizationInstaller.cs` |
+
+## 5.7. Дублікати всередині телеметрії
+
+| Що дублюється | Де | Рішення |
+|---|---|---|
+| `detail.signal_name` ↔ computed `signal` у views | `telemetry_events.detail` JSON | 🔄 видалити `detail.signal_name` |
+| `detail.retry_count` | завжди 0, 3 місця | ❌ видалити |
+| LIA cascade 3-4 Failed на 1 відмову | `Updater.cs` | 🔄 об'єднати до 1 термінальної |
+| App self-update Started/Succeeded по фазах | `UpdateDownloader/Installer/Verifier` | 🔄 об'єднати до 1 результату |
+
+---
+
+# 6. Observability
+
+> Observability = Telemetry (розділ 5) + Incident Pipeline + Notification System (розділ 12) + Knowledge Engine (розділ 13) + Control Center (розділ 11).
+
+## 6.1. Incident Pipeline (детально)
+
+> Деталі: `Observability-RC1-Release.md`, `FORENSIC-DATA-PIPELINE-DETAIL.md`.
+
+**Потік:**
+```
+telemetry_events (Failed) ─trigger─▶ promote_incident_candidates_for_event()
+                                              │
+                                              ▼
+                                  telemetry_incidents (INSERT/UPDATE)
+                                              │
+                          ┌───────────────────┼───────────────────┐
+                          ▼                   ▼                   ▼
+                  notification_queue    match_knowledge_*    CC views
+                          │
+                          ▼
+                  Notifier Worker ──▶ notification_attempts + Discord
+```
+
+**Детекція:**
+- Trigger `trg_telemetry_failed_promote` AFTER INSERT WHEN `outcome='Failed'` → `promote_incident_candidates_for_event(event_id)`.
+- Signal-групування: `signal = COALESCE(source, hresult, supabase_code, http_status::text, exception_type, '-')`.
+- Поріг per-component з `incident_policy`: failure_pct + sample-guard.
+- Severity: Critical (≥10 affected OR failure_pct>50%) / Warning.
+
+**Lifecycle:** `Detected → Confirmed (≥15 хв анти-флап) → Monitoring → Resolved (rate<поріг ≥30 хв) → Closed`.
+- Усі переходи через `transition_incident()` (SECURITY DEFINER, forward-only валідація) → UPDATE status + INSERT в `incident_status_log` (immutable).
+- Додатково: `add_incident_note()` (append-only), `assign_incident_owner()`, `auto_close_stale_incidents()`.
+
+> ⚠ **F2 (P0):** enum `telemetry_incidents.status` (CHECK) НЕ містить `Mitigated`/`Acknowledged`, які використовують `transition_incident` та `create_knowledge_from_incident`. Потрібно розширити CHECK.
+
+## 6.2. Release Health (цільовий vs реальний)
+
+| Артефакт | Стан |
+|---|---|
+| `control_center.release_health` VIEW | ✅ жива (`app_version, succeeded, failed, active_installs`) |
+| `control_center.release_health_detail` VIEW | ✅ створена (міграція 05021200) — раніше була P0-прогалина (F1) |
+| `control_center.component_health`, `platform_stats` | ✅ живі |
+| Матеріалізація 3 views (Phase 3) | ❌ відкладено (medium risk, потребує тестування) |
+
+---
+
+# 7. Authentication
+
+> Деталі: `SCLOCVerse/docs/Auth-StateMachine.md`, `.kilo/adr/ADR-001`, `.kilo/adr/ADR-002`, `PRIVACY.md`.
+
+## 7.1. Модель
+
+- **Обов'язкова Discord-авторизація.** Без неї користувач не потрапляє в Main UI.
+- **Єдине джерело істини:** enum `AuthState = { Unknown, Checking, SignedOut, SigningIn, SignedIn, Error }` через `IAuthStatusProvider.State` + `StatusChanged`. **Без прапорців** `IsAuthenticated`.
+- 2 режими: Auth Gate Mode / Main UI Mode (перемикання лише за `AuthState`).
+
+## 7.2. Провайдер
+
+Supabase GoTrue + Discord OAuth, **PKCE**, scope `identify` only.
+- Discord `client_id=1519140665940770946`.
+- Redirect: Supabase-проксі `https://nrytczdbhehiotflaagl.supabase.co/auth/v1/callback` + локальний loopback у клієнті.
+
+## 7.3. Redirect-механізм
+
+**Loopback Redirect** (ADR-001 .kilo): `LoopbackCallbackListener` через `HttpListener` на `http://127.0.0.1:<випадковий порт>/auth/callback`. Supabase allow-list `http://localhost:*/auth/callback`. Custom Protocol Handler відхилено.
+
+## 7.4. Сесія
+
+- `SecureSessionStorage`, файл `.auth` у `%LocalAppData%\SCLOCVerse`, **DPAPI CurrentUser**.
+- SignOut = global token revoke.
+- `access_denied` → SignedOut без діалогу помилки.
+
+## 7.5. Installation Sync
+
+`InstallationService.SyncCurrentInstallationAsync` викликається при SignIn/RestoreSession — SELECT (filter `install_id`) + INSERT (нова) / UPDATE (існуюча). Мапить 11 з 19 колонок `app_installations` (див. розділ 4).
+
+## 7.6. Відомий борг
+
+- OAuth provider **hardcoded to Discord** (`AuthService.cs:69-76`) — config-driven у roadmap Року 2.
+- OAuth `state` **не валідується** (PKCE-only) — SEC-8.
+- `AuthService.State`/`Profile` non-atomic read-modify-write з background thread — TD-30.
+- `DiscordGuildSyncService` — dead (`SyncGuildsAsync` never called).
+
+---
+
+# 8. Localization
+
+> Деталі: `LocalizationInstaller.cs`, `EnvironmentSelector.xaml.cs`, `FolderSearchService.cs`.
+
+## 8.1. Компоненти
+
+| Компонент | Файл | Призначення |
+|---|---|---|
+| `LocalizationInstaller` | `Services/LocalizationServices/LocalizationInstaller.cs` | Install/Update `global.ini` з GitHub releases (ETag-умовний download) |
+| `EnvironmentSelector` | `Controls/EnvironmentSelector.xaml.cs` | UI вибір середовища: `LIVE`/`PTU`/`EPTU`/`HOTFIX` |
+| `FolderSearchService` | `Services/Common/FolderSearchService.cs` | Валідація `StarCitizen` root (потрібна підтримувана підпапка середовища) |
+| `GitHubReleaseClient` | `Services/.../GitHubReleaseClient.cs` | Fetch релізів локалізації |
+| `LocalizationMetadata` | (record) | Per-environment meta.json: `assetId, etag, sha256, fileSize, lastModified` |
+
+## 8.2. Дані
+
+- Зберігається у `%LocalAppData%\SCLOCVerse\<envName>.meta.json` (per-environment).
+- **`tagName` (semver версія локалізації) НЕ зберігається** в meta.json — лише `assetId/etag/sha256`. Відомо лише під час Install/Update з `release.TagName`.
+- Після перезапуску програма не знає встановленої версії локалізації (див. розділ 4: план `IInstallationContextProvider`).
+
+## 8.3. Game Folder
+
+- Джерело: `Settings.Default.GameFolder` (string, User scope) через `ISettingsService.GetGameFolder()`.
+- Валідація `FolderSearchService.IsValidGameRoot`: лише папка `StarCitizen` з підтримуваною підпапкою середовища.
+- **PII-ризик відсутній** — шлях не містить імені користувача Windows (RSI Launcher → `C:\Program Files\Roberts Space Industries\StarCitizen\` або окремий диск).
+
+## 8.4. Телеметрія
+
+**0 телеметричних подій** у `LocalizationInstaller` — сліпа зона. Встановлення/оновлення локалізації не фіксується.
+
+---
+
+# 9. L.I.A.
+
+> Деталі: `docs/LIA_INSTALLATION.md`, `FORENSIC-DATA-PIPELINE-DETAIL.md`.
+
+## 9.1. Продукт
+
+Голосовий асистент, MSIX/AppX-пакет; автор — AlexLiberty (Alexuß). Встановлюється через `Add-AppxPackage` (PowerShell). Оркеструє оновлення `Updater` (інтерфейс `IUpdater`, `static readonly HttpClient` без timeout).
+
+## 9.2. Сертифікат (self-signed)
+
+- `CN=Alexuß`, thumbprint `33DD2416B9CC3DA94A84A479AD63D07C4B322833`.
+- Імпорт у **`Cert:\LocalMachine\Root` ТА `Cert:\LocalMachine\TrustedPeople`** через `Import-Certificate` (CryptoAPI `CertAddCertificateContextToStore`). `CurrentUser` відкинуто як недостатній для AppX/MSIX deployment trust (перевіряє лише `HKLM`).
+
+## 9.3. Elevation
+
+- Лише під час Install L.I.A. через `Process.Start` з `Verb="runas"` (принцип найменших привілеїв). **НЕ** `requireAdministrator` app.manifest.
+- `RunPowerShellAsync(script, ct, requireElevation)`:
+  - `requireElevation=false`: `UseShellExecute=false` + `RedirectStandardOutput=true`.
+  - `requireElevation=true`: `UseShellExecute=true` + `Verb="runas"`; транспорт stdout через `wrapper.ps1` + тимчасові файли **UTF-8 без BOM**.
+- Контракт `PowerShellResult = (int ExitCode, string Output, string Error)` — однаковий в обох режимах.
+
+## 9.4. Forensic-контракт
+
+Маркер `##SCLOC_FORENSIC##` + JSON у stdout (hresult, phase, message, activityId, appxLog, cert context). Парсинг через `LiaForensicParser.TryParse` → `LiaInstallException` → `ErrorContextExtractor.ApplyLiaForensic` → `TelemetryContext.Detail`.
+
+## 9.5. Кодування
+
+`EncodingPreamble` + `[Console]::OutputEncoding=UTF8` + `StandardOutputEncoding=UTF8` — коректна обробка OEM/UTF-8 пастки PowerShell 5.1.
+
+## 9.6. Відкриті ризики (additive-only)
+
+| # | Ризик | Стан |
+|---|---|---|
+| SEC-2 | Інсталятор без integrity check (тільки розмір) + elevation | відкрито |
+| SEC-3 | Довільний `.cer` → `LocalMachine\Root`+`TrustedPeople` **без pin** | відкрито |
+| — | `CERT_E_UNTRUSTEDROOT` (0x800B0109) на свіжих Windows | навмисно відкладено до 1.0.0.2 |
+| TD-10 | PowerShell без timeout (`ct=None` з UI) | відкрито |
+| L-A6 | Orphaned elevated PowerShell-процес при cancellation | відкрито |
+
+---
+
+# 10. Security
+
+> Деталі: `PRIVACY.md`, `SCLOCVerse/docs/Privacy-Design.md`, `CODE_SIGNING_POLICY.md`, `docs/architecture/Final-Architecture-Review.md`.
+
+## 10.1. PII-політика (мінімізація)
+
+- **Identity Layer:** `discord_user_id`, `username`/`global_name`, `avatar_url`.
+- **Technical Metadata:** `install_id`, `machine_id`, `platform`, `os_version`, `app_version`, UTC-мітки.
+- **НЕ збираються:** email (ігнорується), паролі, платіжні, адреси, біометрія, guild list, поведінкова телеметрія.
+- `EXTERNAL_DISCORD_EMAIL_OPTIONAL` увімкнено.
+
+## 10.2. RLS
+
+Скрізь. `anon` deny-all; `authenticated` owner-only; `telemetry_events` append-only. Контроль через `Database-Verification.md` (DO-блок під реальною роллю `authenticated`).
+
+## 10.3. OAuth-захист
+
+PKCE, HTML-encoding на callback, SignOut = global revoke, **без `service_role` у клієнті**, SQL parameterized, PowerShell single-quote escaping.
+
+## 10.4. Code signing (supply chain)
+
+**SignPath.io** + сертифікат **SignPath Foundation**. Підписуються `SCLOCVerse.exe` та `SCLOC-Verse_Setup.exe` у верифікованому автоматичному білді з вихідного коду GitHub. Без DLL injection / зміни пам'яті / античиту.
+
+## 10.5. Цілісність/ланцюг постачання — прогалини
+
+| # | Ризик | Severity |
+|---|---|---|
+| SEC-1 | Control Center без auth (`Program.cs`, 0 `[Authorize]`) | 🔴 CRITICAL |
+| SEC-2 | L.I.A. інсталятор без integrity check + elevation | 🔴 CRITICAL |
+| SEC-3 | Довільний `.cer` → `LocalMachine\Root`+`TrustedPeople` без pin | 🔴 CRITICAL |
+| SEC-4 | Checksum-bypass при порожньому checksum (`Verify.Skipped` замість `Verify.Failed`) | 🔴 CRITICAL |
+| SEC-5/6/7 | `MachineName`/`Detail` не sanitized; `PrivacySanitizer` regex занадто вузький | 🟠 |
+| SEC-8 | OAuth `state` не валідується (PKCE-only) | 🟠 |
+| SEC-9 | TOCTOU verify→install | 🟠 |
+| SEC-10 | SHA256 = byte-equality, не Authenticode publisher identity | 🟠 |
+| SEC-11 | `SECURITY DEFINER` без `SET search_path` (~20 функцій) | 🟠 |
+| SEC-12 | `cc_readonly` фактично write-capable через definer-функції | 🟠 |
+
+## 10.6. Права користувача
+
+Інформація, виправлення, видалення акаунта, відкликання OAuth. Повернення додаткових scope (email/guilds) — gated на Product Review.
+
+---
+
+# 11. Control Center
+
+> Деталі: `docs/contracts/control_center.md`, `FORENSIC-DATA-PIPELINE-RAW.md` (розділ 5).
+
+## 11.1. Структура
+
+Blazor Server. 6 сторінок: `Home.razor`, `Incidents.razor`, `Traces.razor`, `Releases.razor`, `Knowledge.razor`, `Settings.razor` (placeholder).
+2 репозиторії: `ControlCenterRepository` (Npgsql + `control_center` схему + SECURITY DEFINER функції), `TraceRepository` (`control_center.telemetry_events`).
+Сервіс: `PiiSanitizer`.
+
+## 11.2. Колонки, що реально використовуються по сторінках
+
+| Сторінка | Джерело | Критичні колонки |
+|---|---|---|
+| `Home` | `observability_health`, `component_health`, `release_health`, `platform_stats`, `knowledge_coverage`, `top_missing_knowledge` | `active_installations_last_7d`, `component`, `health`, `active_incidents`, `app_version`, `success_rate`, `failed`, `events_24h`, `active_users_24h`, `open_incidents`, `coverage_pct` |
+| `Incidents` | `incidents`, `incident_timeline`, `incident_notes_view`, knowledge функції | `incident_id`, `status`, `highest_severity`, `component`, `signal`, `event_count`, `affected_users`, `affected_installs`, `peak_failure_pct`, `opened_at`, `last_event_at`, `owner` |
+| `Traces` | `telemetry_events` | `correlation_id`, `session_id`, `step`, `install_id`, `occurred_at`, `component`, `operation`, `outcome`, `severity`, `error_message`, `duration_ms`, `detail` |
+| `Releases` | `release_health_detail`, `knowledge_coverage` | `app_version`, `success_rate`, `succeeded`, `failed`, `active_installs`, `new_incidents`, `critical_incidents`, `top_fingerprint` |
+| `Knowledge` | `knowledge_coverage`, `top_missing_knowledge`, `knowledge_list`, knowledge функції | `coverage_pct`, `component`, `signal`, `title`, `status`, `confidence`, `fixed_version` |
+| `Settings` | — | placeholder, без запитів |
+
+## 11.3. Контракт
+
+- Supabase = SSOT; read-only View-контракт `control_center`; versioning через `contract_info`.
+- `cc_readonly` — `USAGE`+`SELECT` лише на `control_center` + EXECUTE на workflow/knowledge функції (Стаття 20+23).
+- Бізнес-логіка в SQL VIEWs/функціях, не в Blazor (Стаття 20).
+
+---
+
+# 12. Notification System
+
+> Деталі: `Observability-RC1-Release.md`, `FORENSIC-DATA-PIPELINE-DETAIL.md` (розділ 6).
+
+## 12.1. Архітектура
+
+Incident Engine НЕ відправляє повідомлення напряму (Стаття 24). Пише в `notification_queue` → `SCLOCVerse.Notifier` Worker → `INotificationProvider` (контракт у `SCLOCVerse.Notifications`) → `DiscordNotificationProvider`.
+
+## 12.2. `notification_queue` (16 колонок)
+
+Стани: `Pending → Sending → Delivered | RetryScheduled | Failed`. Zombie Recovery `Sending>10хв → RetryScheduled`. `UNIQUE(incident_id, notification_type) WHERE status != 'Failed'`. Worker poll 30с, `FOR UPDATE SKIP LOCKED` (безпечно для 2+ інстансів).
+
+## 12.3. `notification_attempts` (10 колонок)
+
+Append-only аудит кожної спроби: `queue_id, attempt_no, provider, status, http_status, provider_message_id, error_message, started_at, finished_at`.
+
+## 12.4. Retry/backoff
+
+`next_attempt_at = now + 2^attemptNo секунд`. `max_retries` default 3.
+
+## 12.5. Поля, що реально потрібні Notifier
+
+| Таблиця | Читання | Запис |
+|---|---|---|
+| `notification_queue` | `id, incident_id, notification_type, provider, payload, retry_count, max_retries, status, next_attempt_at, claimed_at, claimed_by, created_at` | `status, retry_count, next_attempt_at, claimed_at, claimed_by, last_attempt_at, delivered_at, last_error, error_message` |
+| `telemetry_incidents` | `id, component, operation, signal, highest_severity, release` | — |
+| `notification_attempts` | — | `queue_id, attempt_no, provider, status, http_status, provider_message_id, error_message, started_at, finished_at` |
+
+> **Дублікат:** `notification_queue.error_message` ↔ `last_error` — обидва містять помилку (рішення: об'єднати).
+
+---
+
+# 13. Knowledge Engine
+
+> Деталі: `docs/observability/Knowledge-Engine-Design.md`, `Knowledge-Engine-Design-Review.md`. **Phase 6 завершено** (commit `e1357dc`), **API Freeze v1.0**.
+
+## 13.1. Таблиці (схема `public`)
+
+1. **`knowledge_entries`** (18 колонок): PK, `FingerprintKey`/`FingerprintHash`, `Title`/`Symptoms`/`KnownCause`/`Workaround`/`PermanentFix`, `AffectedVersions text[]`, `FixedVersion`, `Confidence`/`Status` enums, `CreatedBy`/`UpdatedBy`.
+2. **`knowledge_references`** (5 колонок): 1:N, `ReferenceType ∈ {GitCommit, GitHubIssue, Documentation, ReleaseNotes, External}`, `ON DELETE RESTRICT`.
+3. **`knowledge_version_history`** (8+1 колонок): append-only audit, `Version, Snapshot jsonb, ChangedBy (клієнт) + SessionUser (БД current_user), ChangeType`.
+
+## 13.2. Інваріант (CHECK на рівні схеми)
+
+- `status='Verified' → confidence ∈ {High, Verified}`.
+- `status ∈ {Draft, Reviewed} → confidence ∈ {Low, Medium, High}`.
+- `status ∈ {Deprecated, Archived}` — будь-яка.
+
+## 13.3. Workflow
+
+`Draft → Reviewed → Verified → Deprecated → Archived`.
+- Publish (Draft→Reviewed), Verify (Reviewed→Verified, вимагає Confidence ≥ High), ReturnForRevision, Deprecate (обов'язковий ChangeReason), Reopen (Deprecated→Reviewed, Verified→Reviewed), Archive (фінальний).
+- ❌ `Archived → *` заборонено.
+- Усі переходи через `transition_knowledge()` (SECURITY DEFINER, optimistic concurrency через `expected_version`).
+
+## 13.4. Confidence
+
+`Low → Medium → High → Verified`.
+- Low автоматично (початкове).
+- Low → Medium вручну.
+- Medium → High: додано `PermanentFix` + ≥1 `GitCommit` reference.
+- High → Verified: **автоматично** через `verify_knowledge_auto()`.
+
+## 13.5. Auto-verify (5 детермінованих умов)
+
+1. `FixedVersion IS NOT NULL`.
+2. Реліз R з `install_count ≥ 50` за 14 днів.
+3. `success_rate(component, operation, FixedVersion) ≥ 0.95`.
+4. 0 інцидентів з тим самим `fingerprint_key` з `opened_at >= release_date(FixedVersion)`.
+5. Confidence = High.
+
+## 13.6. Matching (3 рівні)
+
+- **Priority 1 (Exact Fingerprint):** `fingerprint_hash` + `status='Verified'` LIMIT 1.
+- **Priority 2 (Component + Signal):** Verified + AffectedVersions match + FixedVersion > release; ORDER BY confidence DESC, updated_at DESC.
+- **Priority 3 (Manual):** оператор через `search_knowledge`.
+- UI: 🟢 Priority 1 / 🟡 Priority 2 / ⚪ кнопка Search.
+
+## 13.7. Coverage
+
+Materialized VIEW `control_center.knowledge_coverage` (per-release). REFRESH через `refresh_knowledge_coverage()` після Workflow + trigger на incidents. `top_missing_knowledge` VIEW для пріоритезації досліджень.
+
+## 13.8. API Freeze v1.0 (Phase 7 межі)
+
+- **Дозволено:** нові таблиці (embeddings, ai_suggestions), нові функції, нові VIEW, адитивні nullable-колонки з DEFAULT, окремі extensions.
+- **Заборонено:** `ALTER TABLE NOT NULL`, зміна сигнатур існуючих функцій, DROP функцій/VIEW, зміна CHECK-інваріантів, зміна workflow-правил/алгоритму matching/auto-verify.
+
+---
+
+# 14. Approved Decisions (майстер-список)
+
+> Об'єднано архітектурні (38) + observability (66) рішення, дедупліковано. Джерела в розділі 18.
+
+## 14.1. Архітектура / DI / Проєкт
+
+1. Ручний Composition Root (`AppCompositionRoot` + `AuthCompositionRoot`), без IoC.
+2. 4 процесоізольовані проєкти; спілкування лише через Postgres.
+3. Без `Microsoft.Extensions.Hosting` (Generic Host); lifetime через WPF Application.
+4. `MainWindow` як UI-координатор (code-behind); бізнес-логіка в сервісах/presenter-ах.
+5. Overlay як окреме вікно + `HangarOverlayService` (Win32 click-through).
+6. Canvas-навігація через `CanvasManager` у межах одного `MainWindow`.
+7. 2 бекенди гарячих клавіш; `RawInputBackend` — default; env `SCLOCVERSE_HOTKEY_BACKEND`.
+8. Виділення `IKeyStateBackend` (ISP) для `KeyUp`.
+9. .NET 9, Nullable Enabled; код англійською; коментарі/документація українською.
+10. UTF-8 як P0 для всіх текстових файлів; явний `Encoding.UTF8`.
+11. Async-суфікс; `CancellationToken`; `ConfigureAwait(false)` вибірково; без `async void` окрім WPF-обробників.
+12. Zero Regression — стабільний код не чіпати без потреби.
+
+## 14.2. Auth / Privacy / Supply Chain
+
+13. Loopback Redirect для OAuth (allow-list `http://localhost:*/auth/callback`).
+14. Кнопка акаунта у верхньому тайтлбарі (`BtnAccount`, `AccountDialog`, `AuthStatusPresenter`).
+15. Обов'язкова Discord-авторизація; єдиний `AuthState` (6 станів); 2 режими; `MainWindow` stateless re auth.
+16. OAuth scope лише `identify`; мінімізація даних.
+17. DPAPI CurrentUser для локальних сесійних токенів.
+18. RLS everywhere.
+19. Least-privilege `cc_readonly`.
+20. Supabase = SSOT; read-only View-контракт `control_center`; versioning через `contract_info`.
+21. Code signing через SignPath.io + SignPath Foundation.
+22. MIT-ліцензія застосунку.
+23. Без DLL injection / зміни пам'яті / античиту.
+24. `EXTERNAL_DISCORD_EMAIL_OPTIONAL`; email не зберігається/відображається.
+25. `access_denied` → SignedOut без діалогу помилки.
+
+## 14.3. L.I.A.
+
+26. Cert → `LocalMachine\Root` + `LocalMachine\TrustedPeople`.
+27. Elevation лише під час Install через `Verb="runas"` (не `requireAdministrator`).
+28. Elevated-транспорт через `wrapper.ps1` + UTF-8-no-BOM файли.
+29. Forensic-контракт `##SCLOC_FORENSIC##` + JSON; `LiaForensicParser.TryParse`.
+30. Єдиний контракт `PowerShellResult (ExitCode, Output, Error)`.
+
+## 14.4. Observability / Telemetry / Інциденти
+
+31. `ITelemetryService` — єдиний санкціонований канал (Стаття 7/12).
+32. Additive-only контракт схеми (Стаття 13).
+33. Append-only `telemetry_events` з RLS authenticated-INSERT-only (Стаття 5).
+34. `promote_incident_candidates()` SECURITY DEFINER, лише SELECT events + INSERT incidents (Стаття 19).
+35. Dashboard Purity: `cc_readonly` лише SELECT VIEWs (Стаття 20).
+36. Workflow через SECURITY DEFINER функції + GRANT EXECUTE (Стаття 23).
+37. `INotificationProvider` контракт у окремій бібліотеці (Стаття 27).
+38. Knowledge Engine виключно ручного походження (Стаття 28).
+39. Three-tier secret model Git/DB/App, P0 для порушень (Стаття 29).
+40. Runtime DB verification під роллю `authenticated` (Стаття 17).
+41. Ambient `TraceContext` з `Application.Start` (Стаття 11).
+42. Глобальні exception handlers у `App.OnStartup` (Стаття 8).
+43. `PrivacySanitizer` як єдине вузьке горло (Стаття 4).
+44. Idempotent retries через `UNIQUE(client_event_id)` + `ON CONFLICT DO NOTHING` (Стаття 6).
+45. Sync O(1) hot path; усе I/O у фоновому потоці з `ConfigureAwait(false)` (Стаття 2).
+46. `install_id` (file+registry) як machine identity; ніколи `MachineName`.
+47. Bounded in-memory черга (cap 5000, drop-oldest).
+48. Pre-auth події буферуються локально (in-memory), флешаються після логіну.
+49. Інцидент = `incident_id`, не fingerprint; рецидив = новий інцидент (Стаття 21).
+50. Forward-only workflow transitions в append-only `incident_status_log` (Стаття 22).
+51. Per-component пороги в `incident_policy`.
+52. Анти-флап ≥15 хв (Confirmed); ≥30 хв (Resolved).
+53. Incident Engine не відправляє напряму; пише в `notification_queue` (Стаття 24).
+54. `UNIQUE(incident_id, notification_type) WHERE status != 'Failed'` (Стаття 25).
+55. Кожна спроба → append-only `notification_attempts` (Стаття 26).
+56. Zombie Recovery `Sending>10хв → RetryScheduled`.
+57. Worker `FOR UPDATE SKIP LOCKED`.
+58. Retry backoff `2^attemptNo секунд`.
+59. `cc_notifier` роль (least privilege).
+60. `NotificationPayload` версіонований.
+
+## 14.5. Knowledge Engine
+
+61. Human Verified; автогенерація заборонена.
+62. Append-Only History; DELETE заборонено RLS.
+63. Dual-identity audit: `ChangedBy` + `SessionUser`.
+64. CHECK-інваріант Status ↔ Confidence на рівні схеми.
+65. Materialized VIEW `knowledge_coverage` з REFRESH.
+66. 3 рівні matching.
+67. Auto-verify `verify_knowledge_auto()` (5 умов).
+68. Optimistic concurrency через `expected_version`.
+69. API Freeze v1.0 (Phase 7 лише адитивні розширення).
+
+## 14.6. Оптимізація БД (затверджені Phases)
+
+70. Phase 0: 3 індекси (`idx_telemetry_failed` partial WHERE outcome='Failed', `idx_telemetry_version_window`, `idx_telemetry_occurred`).
+71. Phase 1: видалити 11 проміжних `.Started`/`.Succeeded` емітів + перетворити `Verify.Skipped`→`Verify.Failed(Warning)`.
+72. Phase 2: прибрати `detail.signal_name`, `detail.retry_count`, `Country` з C# `TelemetryEvent`.
+73. Phase 3: single-scan candidates + матеріалізувати `release_health`/`platform_stats`/`component_health`.
+74. Cleanup script ідемпотентний, в одній транзакції.
+75. **app_installations cleanup:** лише не-UUID тестові (`install_id !~ '^[0-9a-f]{32}$'`).
+
+## 14.7. app_installations
+
+76. Активація `localization_version`, `game_folder_path`, `selected_environment` через `IInstallationContextProvider` (НЕ дублювати в Settings).
+77. `game_folder_path` — діагностичне поле, не PII (валідація `IsValidGameRoot`).
+
+---
+
+# 15. Rejected Decisions (майстер-список)
+
+> Щоб більше ніхто не пропонував. Об'єднано архітектурні (18) + observability (54).
+
+## 15.1. Архітектурні
+
+1. Сторонні IoC-контейнери.
+2. MVVM-фреймворки.
+3. `Microsoft.Extensions.Hosting` (Generic Host).
+4. `RegisterHotKey` як default бекенд.
+5. Custom Protocol Handler (`sclocverse://`) для OAuth.
+6. `requireAdministrator` app.manifest.
+7. `CurrentUser` store для cert L.I.A.
+8. Pipe-based stdout для elevated PowerShell.
+9. Нова плитка «ПРОФІЛЬ» у лівій панелі.
+10. Інтеграція акаунта в діалог Налаштування.
+11. Додаткові прапорці `IsAuthenticated`.
+12. Рішення `AuthGateCanvas` про видимість Main UI (це робить `MainWindow`).
+13. Scope `email`.
+14. Scope `guilds` (future, gated на Product Review).
+15. Повне очищення `app_installations`.
+16. Повне очищення `auth.users`.
+17. Поведінкова телеметрія.
+18. Глобальний рефакторинг/переписування.
+
+## 15.2. Observability
+
+19. ILogger / `Microsoft.Extensions.Logging`.
+20. AppInsights / Sentry / OpenTelemetry.
+21. Сторінкові таблиці статистики замість VIEWs.
+22. Ad-hoc логери (Стаття 7).
+23. Прямі вставки в БД поза `ITelemetryService` (Стаття 12).
+24. Власні HTTP-клієнти телеметрії.
+25. `throw` у публічній поверхні телеметрії (Стаття 1).
+26. `await` на UI-потоку для телеметрії (Стаття 2).
+27. Телеметрія у критичному шляху `MainWindow_Loaded` (Стаття 3).
+28. Бізнес-логіка розгалужується на результат телеметрії (Стаття 10).
+29. Токени/JWT/email/IP/шляхи/MachineName/MAC у payload (Стаття 4).
+30. Будь-який секрет у репозиторії (Стаття 29).
+31. Міграції з PASSWORD.
+32. Реальні секрети в `appsettings*.json`.
+33. Зміна семантики колонок, NOT NULL без backfill (Стаття 13).
+34. Зміна PK/RLS-контракту (Стаття 13).
+35. DROP COLUMN `telemetry_events.country` (additive-only).
+36. Нормалізація signal → signal_id.
+37. Перепис promotion engine.
+38. Перенос country-тригера на events.
+39. DROP порожніх таблиць (error_reports, admin_audit_log, user_discord_guilds).
+40. `UPDATE` на `telemetry_events` (Стаття 5).
+41. `Archived → *` переходи.
+42. Пряме UPDATE `telemetry_incidents.status` мимо функції.
+43. Прямі writes в `incident_status_log`/`incident_notes`.
+44. Будь-які переходи `notification_queue` поза дозволеними.
+45. Створення фейкових релізів/аварій заради тесту (Стаття 18).
+46. Бізнес-логіка в Blazor/C# (усі рішення у SQL VIEWs).
+47. Side-effect виклики з Dashboard (Стаття 20).
+48. `cc_readonly` INSERT/UPDATE/DELETE напряму.
+49. Автогенерація знань з телеметрії/LLM (Стаття 28).
+50. Knowledge Engine як джерело правди.
+51. Семантичний/LLM matching у v1.
+52. Роль `cc_knowledge_editor`.
+53. Варіант A (друге підключення cc_knowledge_editor у Blazor).
+54. Варіант C (окремий застосунок Knowledge Management).
+55. Об'єднати Status+Confidence в одну шкалу.
+56. Confidence як похідне від Status.
+57. Окремого Evidence поля в KnowledgeEntry.
+58. Phase 7: LLM-розширення (порушує Free Tier).
+59. Phase 7: embeddings (pgvector складність).
+60. Phase 7: Auto-Draft.
+61. Phase 7: DROP FUNCTION / ALTER NOT NULL / зміна сигнатур / зміна CHECK-інваріантів.
+62. Варіант A «ничого не відновлювати» (cleanup).
+63. DROP `idx_telemetry_source_signal` без перевірки `pg_stat_user_indexes`.
+64. **Signal normalization** (вигода 16 MB/1M не виправдовує перепис 6 views + 33 CC-запитів).
+
+---
+
+# 16. Known Technical Debt
+
+> Деталі: `docs/architecture/Final-Architecture-Review.md` (TD-1…TD-60: 6 P0 + 18 P1 + 26 P2 + 8 P3; ZR-1…ZR-24 phased).
+
+## 16.1. P0 (6)
+
+| ID | Опис | Де |
+|---|---|---|
+| TD-1 / SEC-1 | Control Center без auth | `Program.cs` |
+| TD-2 / SEC-3 | Cert L.I.A. без pin → `LocalMachine\Root`+`TrustedPeople` | L.I.A. installer |
+| TD-3 / SEC-2 | Інсталятор L.I.A. без integrity check | L.I.A. installer |
+| TD-4 / SEC-4 | Checksum-bypass при порожньому checksum | `UpdateVerifier.cs` |
+| TD-5 | HomeCanvas mojibake (UTF-8) | `HomeCanvas.xaml` |
+| F1 (закрито) | `release_health_detail` не існувала | ✅ створена міграцією 05021200 |
+
+## 16.2. Forensic-знахідки (F2–F10)
+
+| ID | Опис |
+|---|---|
+| F2 | enum `telemetry_incidents.status` не містить `Mitigated`/`Acknowledged` (CHECK vs функції) |
+| F3 | Відсутній global `UnhandledException` handler — WPF-краш минає спостережуваність |
+| F4 | `PrivacySanitizer` покриває лише `ErrorMessage`; `Detail` неочищений |
+| F5 | Terminal `FlushAsync` пропущено у 5 Failed-емітерів ApplicationUpdate |
+| F6 | Три копії promotion-engine (m13 batch, m16 batch+notify, m05021100 per-event); batch — мертвий |
+| F7 | `LiaForensicParser.TryParseMinimal` — мертвий код |
+| F8 | `telemetry_events.country` — мертва (тригер лише на installations) |
+| F9 | 6 з 19 колонок `app_installations` завжди NULL/DEFAULT |
+| F10 | Мертві таблиці без продюсера: `admin_audit_log`, `error_reports`, `user_discord_guilds` |
+
+## 16.3. Додатковий борг
+
+- `MainWindow` God Class (~903 рядки, ~20 ctor-параметрів, ~31 field) — TD-6.
+- Жодного app-wide `CancellationTokenSource`.
+- OAuth `state` не валідується (SEC-8 / TD-36).
+- `AuthService.State`/`Profile` non-atomic з background thread (R-5 / TD-30).
+- `DiscordGuildSyncService` — dead код.
+- UI чекбокс `AdvancedDiagnostics` — **не підключений до телеметрії** (див. розділ 16.4).
+- PowerShell без timeout у L.I.A. (TD-10).
+- Orphaned elevated PowerShell-процес при cancellation (L-A6).
+- `TECHDEBT-001`: `FolderBrowserDialog` → `OpenFolderDialog` (SCLOC-Verse 2.0).
+- `SECURITY DEFINER` без `SET search_path` (~20 функцій) — SEC-11.
+
+## 16.4. Чекбокс «Розширена діагностика»
+
+- UI: `SettingsCanvas.xaml:475` `AdvancedDiagnosticsCheckBox`; Settings: `Settings.Default.AdvancedDiagnostics`; читання `MainWindow.xaml.cs:403`; запис `:450-456`.
+- **Вплив на телеметрію: відсутній.** `TelemetryClient` залежить лише від env `SCLOCVERSE_TELEMETRY_DISABLED`.
+- Цільова схема (Категорія A завжди / Категорія B лише при ввімкненому) — див. розділ 17.1.
+
+---
+
+# 17. Backlog
+
+> Лише підтверджені задачі з існуючих документів. Не вигадувати нових без перевірки.
+
+## 17.1. Підтверджені задачі
+
+| Задача | Джерело | Складність |
+|---|---|---|
+| Активація `localization_version` + `game_folder_path` + `selected_environment` через `IInstallationContextProvider` | `app-installations-implementation-plan.md` | низька–середня |
+| Підключити чекбокс `AdvancedDiagnostics` до телеметрії (Категорія A/B) | forensic + ця KB | середня |
+| Фікс `CERT_E_UNTRUSTEDROOT` (0x800B0109) у L.I.A. — реліз 1.0.0.2 | `LIA_INSTALLATION.md` | середня |
+| Enrichment deployment HRESULT з message у L.I.A. | backlog | низька |
+| Cleanup cert trust chain L.I.A. (orphaned root cert) | backlog | середня |
+| Global `UnhandledException` handler (F3) | forensic | низька |
+| Розширити `PrivacySanitizer` на `Detail` (F4) | forensic | низька |
+| Terminal `FlushAsync` у 5 ApplicationUpdate Failed (F5) | forensic | низька |
+| Розширити enum `telemetry_incidents.status` (F2) | forensic | низька |
+| Видалити мертвий `LiaForensicParser.TryParseMinimal` (F7) | forensic | низька |
+| MSBuild target для `git_commit` у BuildInfo | forensic | низька |
+| Phase 0: 3 індекси (partial Failed, version_window, occurred) | Optimization-Plan | низька |
+| Phase 1: скоротити LIA chain 9→2, app-update 6→1 | Optimization-Matrix | середня |
+| Phase 2: видалити `detail.signal_name`, `detail.retry_count`, `Country` C# | Optimization-Plan | низька |
+| Phase 3: single-scan candidates + матеріалізувати 3 views | Optimization-Plan | середня |
+| Control Center auth (SEC-1) | Final-Review | середня |
+| Cert pin L.I.A. (SEC-3) | Final-Review | середня |
+| L.I.A. installer integrity check (SEC-2) | Final-Review | середня |
+| Checksum-fail замість Verify.Skipped (SEC-4) | Final-Review | низька |
+| `SET search_path` у SECURITY DEFINER функціях (SEC-11) | Final-Review | низька |
+
+## 17.2. Цільова політика збору даних (для чекбокса)
+
+**Категорія A — передається ЗАВЖДИ** (навіть при вимкненому чекбоксі):
+- `app_installations`: `install_id, user_id, app_version, platform, first_seen, last_seen, is_active`.
+- `telemetry_events` з `outcome='Failed'` або `severity ∈ {Error, Critical}`.
+- `telemetry_events`: `component, operation, outcome, severity, app_version`.
+- `telemetry_incidents` + `notification_queue`.
+
+**Категорія B — лише при увімкненому чекбоксі**:
+- `app_installations`: `machine_id, os_version, os_build, game_folder_path, selected_environment, localization_version`.
+- `telemetry_events` з `outcome ∈ {Started, Succeeded, Cancelled, Skipped}`.
+- `telemetry_events`: `duration_ms, detail, http_status, hresult, supabase_code, exception_type, error_message`.
+- LIA forensic payload (`appx_log`, cert-поля, `activity_id`, `phase`, `signal_name`).
+- Update Started/Succeeded/Failed detail.
+- `telemetry_events.git_commit`.
+
+## 17.3. Roadmap (Роки 1–3)
+
+- **Рік 1 (стабілізація):** P0-борг, оптимізація БД, app_installations, чекбокс.
+- **Рік 2 (масштабування):** config-driven OAuth, Email/Telegram providers, Edge Function ingest, CC auth + Supabase Auth, rollup tables/MATVIEW, партиціювання при >50M рядків/рік.
+- **Рік 3 (еволюція):** `ITelemetryBackend`, plugin-system notification, localization integrity, Authenticode enforcement, multi-tenant CC.
+
+---
+
+# 18. Cross References
+
+## 18.1. Джерельні документи (що підтверджує що)
+
+| Документ | Що підтверджує |
+|---|---|
+| `AGENTS.md` | Конституція проєкту (Zero Regression, UTF-8 P0, українські commits, additive-only, структура) |
+| `ARCHITECTURE_DECISIONS.md` | ADR-001…008 (DI, hotkeys, MainWindow, overlay, canvas, lifetime, ISP) |
+| `.kilo/adr/ADR-001-oauth-redirect-loopback.md` | Loopback Redirect для OAuth |
+| `.kilo/adr/ADR-002-oauth-ux-integration.md` | Кнопка акаунта у тайтлбарі |
+| `docs/architecture/Final-Architecture-Review.md` | Повна архітектура, TD-1…60, ZR-1…24, SEC-1…12 |
+| `docs/contracts/control_center.md` | Контракт Control Center, role `cc_readonly` |
+| `docs/LIA_INSTALLATION.md` | L.I.A. installer/cert/elevation/forensic |
+| `docs/checklists/Database-Verification.md` | Чеклист RLS/таблиць (Стаття 17) |
+| `docs/release/release-runbook-1.0.0.1.md` | Ранбук, cleanup-класифікація |
+| `docs/release/db-cleanup-forensic-analysis.md` | Початкова cleanup-політика (частково застаріла) |
+| `docs/release/post-cleanup-forensic-app-installations.md` | Актуальна cleanup-політика (B+C) |
+| `PRIVACY.md` + `SCLOCVerse/docs/Privacy-Design.md` | PII-політика, scopes |
+| `SCLOCVerse/docs/Auth-StateMachine.md` | Auth state machine |
+| `CODE_SIGNING_POLICY.md` | SignPath code signing |
+| `docs/observability/Observability-Constitution.md` | 29 статей |
+| `docs/observability/Observability-Architecture.md` | Цільова архітектура телеметрії |
+| `docs/observability/Observability-Roadmap.md` | Roadmap (увага: згадує застарілі «21 статтю») |
+| `docs/observability/Observability-RC1-Release.md` | Incident/Notification engine |
+| `docs/observability/Observability-Database-Optimization-Plan.md` | Phase 0–4 оптимізації |
+| `docs/observability/Optimization-Matrix.md` | 30 сигналів → 18 |
+| `docs/observability/Knowledge-Engine-Design.md` + `Knowledge-Engine-Design-Review.md` | Knowledge Engine |
+| `docs/observability/app-installations-forensic-2026-07-05.md` | Колонки app_installations |
+| `docs/observability/app-installations-implementation-plan.md` | План `IInstallationContextProvider` (v2) |
+| `docs/observability/FORENSIC-DATA-PIPELINE-RAW.md` | Сирі SQL/C# факти (25 міграцій, всі views) |
+| `docs/observability/FORENSIC-DATA-PIPELINE-DETAIL.md` | Повні CREATE/ALTER + всі `.Track()` з рядками |
+| `docs/KB-INVENTORY-1.md` + `docs/KB-INVENTORY-2.md` | Проміжні інвентаризації (можна видалити після верифікації KB) |
+
+## 18.2. Карта залежностей розділів
+
+```
+1 Executive Summary
+   ├─ 2 Архітектура ──── 7 Auth ──── 8 Localization ──── 9 L.I.A.
+   ├─ 3 Database ─────── 4 app_installations
+   ├─ 5 Telemetry ────── 6 Observability ─┬─ 11 Control Center
+   │                                      ├─ 12 Notification System
+   │                                      └─ 13 Knowledge Engine
+   ├─ 10 Security (cross-cutting)
+   ├─ 14 Approved ←── 15 Rejected (перевіряти перед пропозиціями)
+   ├─ 16 Technical Debt ── 17 Backlog
+   └─ 18 Cross References
+```
+
+## 18.3. Відомі неузгодженості (вирішити окремо)
+
+1. **Roadmap** згадує «Constitution (21 стаття)» — фактично **29** (Конституція розширена).
+2. **`db-cleanup-forensic-analysis`** — політика повного очищення `app_installations` частково застаріла; актуальна в `post-cleanup-forensic-app-installations.md` (B+C).
+3. **Optimization-Matrix vs Database-Optimization-Plan** — цифри економії дещо різняться (Matrix ~−68%; Plan ~−70%). **Plan авторитетніший** (детальніший).
+4. **Колізія нумерації ADR** — `ARCHITECTURE_DECISIONS.md` (ADR-001…008) і `.kilo/adr/` (ADR-001, ADR-002) описують різні рішення під однаковими номерами. Джерело вказувати явно.
+5. **Версія** — `control_center.md` декларує `product_version=1.8.0`; застосунок `1.0.0.1`.
+
+---
+
+> **Підтримка:** ця KB — живий документ. При нових погоджених рішеннях — додавати в розділ 14; при нових відхиленнях — в розділ 15; при нових forensic — спочатку перевірити, чи факт вже тут, і лише потім доповнити цю KB + за потреби сирцевий документ.
