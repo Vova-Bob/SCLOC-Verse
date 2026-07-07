@@ -697,42 +697,62 @@
 | **L2** | **Diagnostic** | ✅ Так (Developer Diagnostics) | Розширена діагностика для розробника: проміжні кроки, трейси, forensic payload (cert, hresult, stack), duration_ms, detail.phase. |
 | **L3** | **Local Only** | ❌ Ніколи не відправляється | Hotkeys, debug log, performance, FPS, input traces, verbose. Лише локальний журнал (якщо буде). |
 
-### 5.8.2. Архітектура Policy (не чекбокс перевіряє подію, а Policy)
+### 5.8.2. Архітектура Policy — варіант E (Enum level, обраний після forensic)
 
+> **Forensic (2026-07-07, після критики користувача):** `TelemetryPolicy.Classify(component, operation)` занадто крихке — перейменування `LocalizationInstall`→`LocalizationInstaller` ламає політику. Розглянуто 5 варіантів (Attribute/StronglyTyped/Registry/ContextTag/EnumLevel). **Обрано Enum level**.
+
+```csharp
+public enum TelemetryLevel { Mandatory, Diagnostic, Local }
+
+public interface ITelemetryService {
+    Task Track(string component, string operation, string outcome,
+               TelemetryContext? ctx = null,
+               TelemetryLevel level = TelemetryLevel.Mandatory);  // default для backward compat
+}
 ```
-TelemetryClient
-    ↓
-BuildEvent(component, operation, outcome, context)
-    ↓
-TelemetryPolicy.Classify(component, operation) → L1 | L2 | L3
-    ↓
-L1 → send always (якщо не SCLOCVERSE_TELEMETRY_DISABLED env)
-L2 → send only if Settings.DeveloperDiagnostics == true
-L3 → drop (log local only)
+
+**Переваги:**
+- Не крихке до перейменувань `component/operation` (Level вшитий у виклик).
+- Існуючі 39 викликів `.Track()` за замовчуванням стають L1 (default параметр) — не ламає код.
+- L2 виклики додають `level: TelemetryLevel.Diagnostic` явно.
+- Читається одразу в коді емітера.
+
+**Перевірка `IsDiagnosticEnabled`** всередині `Track`:
+```
+if (level == TelemetryLevel.Diagnostic && !settings.DeveloperDiagnostics) return;
 ```
 
-**Перевага:** будь-яка нова подія одразу отримує категорію через реєстр `TelemetryPolicy`. Чекбокс `DeveloperDiagnostics` не перевіряє кожну подію, а лише вмикає/вимикає Level 2.
-
-### 5.8.3. Чекбокс `DeveloperDiagnostics` (раніше `AdvancedDiagnostics`)
+### 5.8.3. Чекбокс — БЕЗ перейменування (forensic correction)
 
 | Аспект | Станом |
 |---|---|
-| UI | `SettingsCanvas.xaml:475` `AdvancedDiagnosticsCheckBox` — **перейменувати** на `DeveloperDiagnosticsCheckBox` + label «Надсилати розширені діагностичні дані для допомоги розробнику» |
-| Settings | `Settings.Default.AdvancedDiagnostics` → `DeveloperDiagnostics` |
+| UI id | `AdvancedDiagnosticsCheckBox` — **НЕ чіпати** (частина UI, релізований контракт) |
+| Label | `Content="Розширена діагностика"` — **НЕ чіпати** |
+| Settings key | `Settings.Default.AdvancedDiagnostics` — лишити (внутрішнє ім'я) |
 | Читання | `MainWindow.xaml.cs:403` |
 | Запис | `MainWindow.xaml.cs:450-456` |
-| Вплив на телеметрію | зараз ❌ відсутній; після Phase 3.5 — вмикає Level 2 |
+| Вплив на телеметрію | зараз ❌ відсутній; після Phase 3.5 — `ITelemetryService` перевіряє `settings.AdvancedDiagnostics` для L2 |
 | Default | `false` (opt-in) |
 
-### 5.8.4. Поле Category в telemetry_events (FUTURE → ACTIVATE)
+**Changes тільки внутрішньо:** `TelemetryClient.Track()` перевіряє `settings.AdvancedDiagnostics` перед відправкою L2. UI не змінюється.
 
-Зараз `category` завжди `'Operational'` (DEFAULT). Після Phase 3.5 — `TelemetryPolicy` встановлює:
-- `category = 'Critical'` для L1 подій (Failed/Succeeded фінальні + Critical exceptions).
-- `category = 'Operational'` для L1 подій (Success/Sync).
-- `category = 'Diagnostic'` для L2 подій (Started, forensic).
-- `category = 'Analytics'` для майбутніх product analytics.
+### 5.8.4. Очікуваний ефект (без точних цифр)
 
-**CHECK constraint** (міграція 00009) вже дозволяє всі 4 значення — additive activation.
+Зараз усі 39 викликів L1+L2 відправляються завжди. Після Phase 3.5 реалізації: L2 (Diagnostic) відправляється лише при ON. **Очікується суттєве зменшення навантаження на БД для користувачів з OFF** (попередня оцінка, не підтверджена вимірюваннями — реальний ефект буде виміряно post-implementation).
+
+## 5.8b. Прив'язка `app_installations` FUTURE колонок до Policy (оновлено після forensic)
+
+> Forensic (2026-07-07): `game_folder_path` і `install_source` перенесені з L1 на L2 (немає доказу, що потрібні для Release Health/Incident Pipeline/Statistics/Dashboard).
+
+| Колонка | Policy Level | Reason |
+|---|---|---|
+| `app_version`, `os_version`, `machine_id`, `country`, `platform` | **L1 Mandatory** | базова статистика релізів + Release Health |
+| `localization_version`, `selected_environment`, `update_channel` | **L1 Mandatory** | контекст установки, потрібен для статистики релізів |
+| `game_folder_path` | **L2 Diagnostic** | немає доведеного споживача в Release Health/Incidents/Statistics → Diagnostic (для пошуку конкретної машини) |
+| `install_source` | **L2 Diagnostic** | не доведено, що потрібен для дашборду → Diagnostic |
+| `os_build` | **L2 Diagnostic** | деталізація OS, корисна для debug |
+
+
 
 ## 5.9. Аудит .Track() емітерів за рівнями Policy (39 викликів у коді)
 
@@ -800,7 +820,87 @@ L3 → drop (log local only)
 | **L2 Diagnostic** | ~23 | ~500 000 подій при ON, 0 при OFF (opt-in) |
 | **L3 Local** | 0 .Track() | локально (file journal) |
 
-**Зараз у production:** усі 39 викликів L1+L2 відправляються завжди (чекбокс мертвий). Після Phase 3.5: L2 відправляється лише при ON → зменшення навантаження на БД у **~30 разів** для користувачів з OFF.
+**Зараз у production:** усі 39 викликів L1+L2 відправляються завжди (чекбокс мертвий). Після Phase 3.5: L2 відправляється лише при ON → **очікується суттєве зменшення** навантаження на БД для користувачів з OFF (попередня оцінка, не підтверджена вимірюваннями).
+
+---
+
+## 5.10. Telemetry Event Registry (Phase 3.5 forensic, 2026-07-07)
+
+> **Single Source of Truth для кожного `.Track()` емітера.** Кожен має Level + Reason. Після цього рішення ніхто не гадатиме, чому саме ця подія Mandatory.
+
+### 5.10.1. Event Registry — 39 емітерів
+
+| # | Component/Operation/Outcome | Level | Файл:рядок | Reason (чому цей рівень) |
+|---|---|---|---|---|
+| 1 | Application/Start/Started | **L1** | `App.xaml.cs:81` | Release adoption rate — скільки користувачів запустило застосунок |
+| 2 | Auth/Login (або /Callback)/Success | **L1** | `AuthService.cs:297` | OAuth success rate, без нього не працює Release Health |
+| 3 | Auth/Login (або /Callback)/Failed | **L1** | `AuthService.cs:297` | Auth failure rate — критичний інцидент |
+| 4 | Installation/Sync/Success | **L1** | `InstallationService.cs:152` | Installation sync success rate |
+| 5 | Installation/Sync/Failed | **L1** | `InstallationService.cs:152` | 42501 або інша помилка синхронізації (критичний інцидент) |
+| 6 | Orchestrator/Cycle/Failed | **L1** | `BackgroundUpdateMonitor.cs:131` | Збій циклу оновлень — інфраструктурна проблема |
+| 7 | Orchestrator/AppCheck/UpdateFound | **L1** | `BackgroundUpdateMonitor.cs:148` | Adoption нових релізів |
+| 8 | Orchestrator/AppCheck/Failed | **L1** | `BackgroundUpdateMonitor.cs:153` | Не вдалося перевірити оновлення |
+| 9 | Orchestrator/LocalizationCheck/{outcome} | **L1** | `BackgroundUpdateMonitor.cs:198` | Localization pipeline health |
+| 10 | Orchestrator/LocalizationCheck/Failed | **L1** | `BackgroundUpdateMonitor.cs:207` | Критичний збій локалізації |
+| 11 | Orchestrator/LiaCheck/UpdateFound | **L1** | `BackgroundUpdateMonitor.cs:224` | LIA adoption |
+| 12 | Orchestrator/LiaCheck/Failed | **L1** | `BackgroundUpdateMonitor.cs:229` | Не вдалося перевірити LIA оновлення |
+| 13 | Updater/Download/Failed (terminal) | **L1** | `UpdateDownloader.cs:69` | Критичний збій завантаження оновлення застосунку |
+| 14 | Updater/Verify/Failed (terminal) | **L1** | `UpdateVerifier.cs:46,59,65` | Критичний збій перевірки checksum/Authenticode |
+| 15 | Updater/Install/Failed (terminal) | **L1** | `UpdateInstaller.cs:46,76,82` | Критичний збій встановлення оновлення |
+| 16 | LIA/Install/Succeeded | **L1** | `Updater.cs:265` | LIA install success rate (фінальний) |
+| 17 | LIA/Install/Failed (terminal) | **L1** | `Updater.cs:273` | Критичний збій LIA встановлення (фінальний) |
+| 18 | LIA/Download/Failed (terminal) | **L1** | `Updater.cs:226,246` | Не вдалося завантажити LIA package або cert |
+| 19 | Updater/Download/Started | **L2** | `UpdateDownloader.cs:46` | Проміжний крок, корисний лише для trace діагностики |
+| 20 | Updater/Download/Succeeded | **L2** | `UpdateDownloader.cs:64` | Не потрібно для release health (маємо Failed фінальний) |
+| 21 | Updater/Verify/Started | **L2** | `UpdateVerifier.cs:34` | Проміжний крок verify |
+| 22 | Updater/Verify/Skipped | **L2** | `UpdateVerifier.cs:40` | NoChecksum — діагностична інформація |
+| 23 | Updater/Verify/Succeeded | **L2** | `UpdateVerifier.cs:59` | Проміжний крок verify |
+| 24 | Updater/Install/Started | **L2** | `UpdateInstaller.cs:40` | Проміжний крок install |
+| 25 | Updater/Install/Succeeded | **L2** | `UpdateInstaller.cs:76` | Проміжний (для cascade trace) |
+| 26 | LIA/Install/Started (orchestration) | **L2** | `Updater.cs:201,259` | Проміжний крок LIA install |
+| 27 | LIA/Download/Started | **L2** | `Updater.cs:217,238` | Проміжний крок LIA download (InstallerAsset, CertificateAsset) |
+| 28 | LIA/Download/Succeeded | **L2** | `Updater.cs:231,251` | Проміжний крок LIA download |
+| 29 | LIA/RunInstallerScript/Started | **L2** | `Updater.cs:555` | Детальний trace PowerShell script execution |
+| 30 | LIA/RunInstallerScript/Succeeded | **L2** | `Updater.cs:604` | Детальний trace |
+| 31 | LIA/RunInstallerScript/Failed ×3 (cascade) | **L2** | `Updater.cs:574,589,597` | Детальний trace з different fallback exception |
+
+**Всього: 18 L1 + 21 L2 = 39 емітерів** (уточнено: раніше 16/23, фактично 18/21 після перегляду Succeeded/Skipped).
+
+### 5.10.2. Field Registry — поля `TelemetryContext` за рівнями
+
+> Подія може бути L1, але окремі її поля L2. Наприклад `LIA/Install/Failed` (L1) несе `detail.certificate_thumbprint` (L2 forensic).
+
+| Поле | Level | Reason |
+|---|---|---|
+| `error_message` (text) | **L1** (для Failed) | Обов'язкове для аналізу інциденту |
+| `source` (text) | **L1** | Класифікація джерела помилки (Supabase/Network/PowerShell/COM/CLR) — для signal COALESCE |
+| `hresult` (text) | **L1** (для LIA Failed) | Signal для incident fingerprint (priority 3 в COALESCE) |
+| `exception_type` (text) | **L1** (для Failed) | Тип винятку для класифікації |
+| `supabase_code` (text) | **L2** (DEPRECATED, завжди NULL) | Зараз ніколи не пишеться, але CHECK вимагає колонку (див. §5.6) |
+| `http_status` (int) | **L2** (DEPRECATED, завжди NULL) | Те саме |
+| `duration_ms` (int) | **L2** | Тривалість операції — оптимізація performance, не release health |
+| `detail.phase` | **L2** | orchestrationPhase для cascade trace |
+| `detail.retry_count` | **L2** | FUTURE (Retry Policy заготовка, §5.7) |
+| `detail.installer_type` | **L2** | LIA forensic (MSIX/AppX/Zip) |
+| `detail.package_version` | **L2** | LIA forensic — конкретна версія package |
+| `detail.certificate_present` | **L2** | LIA forensic — чи був cert |
+| `detail.certificate_subject` | **L2** | LIA forensic — суб'єкт cert (publisher) |
+| `detail.certificate_thumbprint` | **L2** | LIA forensic — thumbprint cert |
+| `detail.powershell_exit_code` | **L2** | LIA forensic — exit code PowerShell script |
+| `detail.activity_id` | **L2** | LIA forensic — correlation ActivityId |
+| `detail.appx_log` | **L2** | LIA forensic — Event Viewer AppX dump |
+| `detail.signal_name` | **L2** | LIA forensic — HResultCatalog.ResolveSymbol (в коді ErrorContextExtractor:204, але 0 зустрічей у даних — LiaInstallException з Hresult рідкісний) |
+
+### 5.10.3. Підсумок
+
+- **18 L1 подій** (Failed термінальні + lifecycle Succeeded) — завжди.
+- **21 L2 подій** (проміжні Started/Succeeded/Skipped, Cascade trace).
+- **9 L1 полів** у context (error_message, source, hresult, exception_type, + БД-колонки install_id/user_id/occurred_at/received_at/session_id/correlation_id).
+- **10 L2 полів** (duration_ms, detail.phase, detail.retry_count, cert-поля, appx_log, signal_name).
+- **0 L3 полів** у .Track() (всі L3 — debug, hotkeys, perf — вже локальні).
+
+**Реалізація:** кожен з 21 L2 емітерів додасть `level: TelemetryLevel.Diagnostic` у виклик `.Track()`. Інші 18 — дефолтний L1 (без параметра).
+
 
 
 
@@ -1317,15 +1417,13 @@ Blazor Components (.razor)
     - **L1 Mandatory** — не вимикається (статистика життя продукту).
     - **L2 Diagnostic** — лише при `DeveloperDiagnostics` ON (розширена діагностика).
     - **L3 Local Only** — ніколи не відправляється (hotkeys, debug, perf, input).
-109. **`TelemetryPolicy` архітектура** — НЕ чекбокс перевіряє кожну подію, а центральний реєстр. Кожен `.Track()` класифікується автоматично через `TelemetryPolicy.Classify(component, operation)`.
-110. **Чекбокс перейменовано:** `AdvancedDiagnostics` → `DeveloperDiagnostics` (label: «Надсилати розширені діагностичні дані для допомоги розробнику»). Opt-in (default false).
-111. **Audit 39 .Track() емітерів:** 16 L1 + ~23 L2 + 0 L3 (всі L3 вже локальні). Деталі в §5.9.
-112. **Активація `category` поля** — `TelemetryPolicy` встановлює Critical/Operational/Diagnostic/Analytics (CHECK вже дозволяє, міграція 00009). Additive.
-113. **Активація `app_installations` FUTURE колонок прив'язана до Policy:**
-    - `app_version`, `os_version`, `platform` → L1 Mandatory (базова статистика).
-    - `machine_id`, `country` → L1 Mandatory (географія + diagnostics).
-    - `localization_version`, `selected_environment`, `game_folder_path` → L1 Mandatory (контекст установки).
-    - `update_channel`, `install_source`, `os_build` → L2 Diagnostic (опціонально).
+109. **`TelemetryPolicy` архітектура — варіант E (Enum level)** (обрано після forensic #5.8.2). Замість крихкого `Classify(component, operation)` — enum-параметр `TelemetryLevel` у `ITelemetryService.Track()`. Default = Mandatory → існуючі 39 викликів не ламаються. L2 виклики додають `level: TelemetryLevel.Diagnostic` явно. Не крихке до перейменувань.
+110. **Чекбокс — БЕЗ перейменування.** `AdvancedDiagnosticsCheckBox` + `Content="Розширена діагностика"` — НЕ чіпати (частина UI). Тільки внутрішня логіка: `TelemetryClient.Track()` перевіряє `settings.AdvancedDiagnostics` для L2 (§5.8.3).
+111. **Audit 39 .Track() емітерів — Event Registry (§5.10):** 18 L1 + 21 L2 + 0 L3. Кожен емітер має Reason (чому цей рівень). Кожне поле TelemetryContext має Level (Field Registry §5.10.2).
+112. **Активація `category` поля** — `TelemetryClient.BuildEvent()` встановлює Critical/Operational/Diagnostic/Analytics (CHECK вже дозволяє, міграція 00009). Additive.
+113. **Активація `app_installations` FUTURE колонок прив'язана до Policy (оновлено forensic §5.8b):**
+    - L1 Mandatory: `app_version`, `os_version`, `machine_id`, `country`, `platform`, `localization_version`, `selected_environment`, `update_channel`.
+    - L2 Diagnostic: `game_folder_path` (немає доведеного споживача в Release Health/Incidents), `install_source` (не доведено), `os_build` (деталізація OS).
 
 ## 14.17. Порядок фаз (оновлено)
 
@@ -1592,11 +1690,12 @@ auth.users (TABLE, 35 columns)  +  public.app_installations (TABLE)
 | ~~Phase 2: REMOVE 3 індекси-дублікати~~ (`idx_app_installations_install_id`, `idx_app_installations_machine_id`, `idx_user_discord_guilds_user_id`) | ~~Phase 2 Review — DROP INDEX additive~~ | низька — **2/3 виконано на replica Phase 3A (install_id + user_discord_guilds_user_id); machine_id → DEFER (Pre-Impl Forensic виявив ризик regression)** |
 | Phase 2: дослідити та погодити DROP SCHEMA `backup_pre_1_0_0_1` (12 дублів, 55 рядків, 0 залежностей) | Phase 2 Review | низька |
 | Phase 3A: описати незадокументовані об'єкти в міграції `20260708000000_describe_unschema_objects.sql` (release_health_detail, unfinished_started, ecosystem_stats) | Post-Impl Forensic Phase 3A — §16.6 TD-NEW | низька |
-| **Phase 3.5: реєстр `TelemetryPolicy`** — інтерфейс `ITelemetryPolicy` + реалізація з класифікацією всіх (component, operation) пар на L1/L2/L3. Реєстрація в `AppCompositionRoot`. | архітектурна основа Policy | середня |
-| **Phase 3.5: чекбокс `DeveloperDiagnostics`** — перейменувати з `AdvancedDiagnostics`, label «Надсилати розширені діагностичні дані для допомоги розробнику», wire до `ITelemetryPolicy.IsDiagnosticEnabled`. | увімкнути мертвий UI-контракт §16.4 | низька |
-| **Phase 3.5: `category` активація** — `TelemetryClient.BuildEvent()` встановлює `category` (Critical/Operational/Diagnostic/Analytics) через Policy. Additive. | диференціація подій у БД | низька |
-| **Phase 3.5: `IInstallationContextProvider`** — активувати 4 L1 FUTURE колонки (`localization_version`, `game_folder_path`, `selected_environment`, `update_channel`). | наповнити test Supabase "правильними" даними | середня |
-| **Phase 3.5: filter L2 при OFF** — TelemetryClient skip L2 events when `DeveloperDiagnostics=false`. Оптимізація навантаження ~30×. | скоротити telemetry_events volume | низька |
+| **Phase 3.5: `TelemetryLevel` enum в `ITelemetryService.Track()`** — додати enum-параметр `level` (default Mandatory). Існуючі 39 викликів не ламаються. Реєстрація в `AppCompositionRoot`. | архітектурна основа Policy (варіант E, §5.8.2) | низька |
+| **Phase 3.5: wire `AdvancedDiagnostics` чекбокс** — `TelemetryClient.Track()` перевіряє `settings.AdvancedDiagnostics` для L2. **БЕЗ перейменування UI** (§5.8.3). | увімкнути мертвий UI-контракт §16.4 | низька |
+| **Phase 3.5: `category` активація** — `TelemetryClient.BuildEvent()` встановлює `category` (Critical/Operational/Diagnostic/Analytics) через Level. Additive. | диференціація подій у БД | низька |
+| **Phase 3.5: `IInstallationContextProvider`** — активувати L1 FUTURE колонки (`localization_version`, `game_folder_path`→L2, `selected_environment`, `update_channel`). | наповнити test Supabase "правильними" даними | середня |
+| **Phase 3.5: filter L2 при OFF** — TelemetryClient skip L2 events when `AdvancedDiagnostics=false`. Очікується суттєве зменшення навантаження. | скоротити telemetry_events volume | низька |
+| **Phase 3.5: позначити 21 L2 емітерів** — додати `level: TelemetryLevel.Diagnostic` до 21 викликів з §5.10.1 (Updater Started/Succeeded, LIA cascade, RunInstallerScript). | реалізувати Policy в коді | низька |
 | Phase 2: ~~generated column~~ **trigger-based `incident_code`** (`INC-YYYY-NNNNN`) замість формування в 4 views + Notifier | Phase 2 Review → Phase 3A Post-Impl: generated column неможливий для timestamptz (STABLE), замінено на trigger | низька |
 | Phase 3: single-scan candidates + матеріалізувати 3 views | Optimization-Plan | середня |
 | Control Center auth (SEC-1) | Final-Review | середня |
