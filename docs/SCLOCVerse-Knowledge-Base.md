@@ -831,6 +831,12 @@ Materialized VIEW `control_center.knowledge_coverage` (per-release). REFRESH ч�
 
 92. **Generated column IMMUTABLE вимога** — занотовано в Migration Review чеклист AGENTS.md: `to_char(ts,…)` → STABLE, не підходить; `EXTRACT` для timestamptz → також STABLE; єдине рішення для timestamptz-derived computed — звичайна колонка + тригер.
 
+## 14.12. Control Center Presentation Forensic (2026-07-07)
+
+93. **`country` ≠ `user_countries` — НЕ дубль (forensic).** `country` = країна конкретної інсталяції (per-installation, з `app_installations.country` через тригер `set_country_from_cf`/Cloudflare cf-ipcountry). `user_countries` = агрегат `string_agg(DISTINCT country, ', ')` per-user. Production факт: 0 з 50 користувачів мають розходження (3 з мульти-інсталяціями, але всі в 1 країні). Сценарій розходження доведено: користувач з установками в UA + PL → 2 рядки в `user_analytics` (UA/UA,PL і PL/UA,PL). KEEP обидві.
+94. **`control_center.users` view НЕ має споживача в C#/Blazor** (grep: 0 згадок `country`/`user_countries`/`cc.users`). Доступний лише через SQL/Dashboard. TD: вирішити долю view (використати в Phase 4 UX або визнати застарілим).
+95. **Production deployment Phase 3A відкладено** до завершення Phase 4 Control Center UX & Data Presentation Optimization. Причина: за останні дні ≥5 forensic змінили матрицю рішень (error_message, retry_count, generated column, machine_id, country) → процес forensic ще активний, міграції незрілі для production. Сигнал до стабілізації: ≥3 forensic поспіль без зміни матриці.
+
 ---
 
 # 15. Rejected Decisions (майстер-список)
@@ -1019,6 +1025,43 @@ Materialized VIEW `control_center.knowledge_coverage` (per-release). REFRESH ч�
 
 **TD-NEW:** Створити окрему міграцію `20260708000000_describe_unschema_objects.sql` що описує ці 3 об'єкти як частину міграційної історії (ідемпотентно — `CREATE OR REPLACE` / `CREATE OR REPLACE FUNCTION`). Відновлює audit trail схеми.
 
+## 16.7. Security Drift: DEFAULT PRIVILEGES (Phase 3A Replica Verification, 2026-07-07)
+
+> Schema Verification на Production Replica виявила розбіжність grants між production та replica.
+
+| Grantee | PROD | REPL | Δ |
+|---|---:|---:|---|
+| `postgres` | 273 | 273 | ✅ |
+| `cc_readonly` | 27 | 27 | ✅ |
+| `cc_notifier` | 7 | 7 | ✅ |
+| `authenticated` | 49 | 93 | +44 |
+| `anon` | 39 | 91 | +52 |
+| `service_role` | 45 | 105 | +60 |
+
+**Кастомні ролі (`cc_readonly`, `cc_notifier`) — ідентичні.** Різниця в anon/authenticated/service_role — через `ALTER DEFAULT PRIVILEGES` у міграції 00008 (control_center_readonly_role). У production міграції застосовувались історично в іншому порядку/часі, тож DEFAULT PRIVILEGES НЕ активувались на вже створених об'єктах. У replica — застосувались коректно до всіх об'єктів.
+
+**Два можливі діагнози:**
+- (a) Production історично не застосували DEFAULT PRIVILEGES → replica має правильніший стан.
+- (b) Replica права видані ширше, ніж потрібно → можливе over-granting.
+
+**Рішення:** НЕ змішувати з Phase 3A (оптимізація БД). Окремий **Security Forensic** після завершення оптимізації БД.
+
+## 16.8. Dependency graph `control_center.users` (Phase 3A Verification, 2026-07-07)
+
+Доведено через `pg_rewrite`:
+
+```
+control_center.users (VIEW)
+    ↓
+public.user_analytics (VIEW)
+    ↓
+auth.users (TABLE, 35 columns)  +  public.app_installations (TABLE)
+```
+
+- Ланцюг ідентичний в обох проєктах (PROD + REPL).
+- Жодної власної `public.users` таблиці немає — лише системна `auth.users`.
+- `user_analytics` — плоский LEFT JOIN `auth.users × app_installations × user_country_agg` CTE (при мульти-інсталяціях → декартів добуток, кожен рядок з різним `country`, однаковим `user_countries`).
+
 ---
 
 # 17. Backlog
@@ -1084,6 +1127,23 @@ Materialized VIEW `control_center.knowledge_coverage` (per-release). REFRESH ч�
 | **Retry Policy architectural decision** — прийняти або відхилити Retry Policy для `UpdateEvents`/`LiaEvents`/`InstallationService`. Визначити долю `detail.retry_count` (зараз завжди 0, схема готова). Якщо відхилити — прибрати ключ з 4 місць C# + зафіксувати в KB §15. Якщо прийняти — спроєктувати retry pipeline (бекенд-логіка). | усуває неоднозначність: «мертва чи заготовка?» | середня (рішення) / висока (реалізація) |
 | **`error_message` semantic activation (варіант b з §12.6)** — додати в Notifier SQL запис `error_message` лише при фінальному `status='Failed'` після `max_retries` (фінал проміжного `last_error`). | розділити семантику фінальної помилки черги від проміжної retry | низька |
 | **Phase 2: позначити `error_message` deprecated у SQL-коментарі** (варіант c з §12.6) — фіксація статус-кво без зміни коду. | предупредити наступних агентів | низька |
+
+## 17.5. Phase 4 — Control Center UX & Data Presentation Optimization (перед production deployment)
+
+> Не змінює дані в БД (UTC `timestamptz` лишається canonical). Оптимізує лише presentation layer — Views (re-format) + C# Blazor (display).
+
+| Задача | Призначення | Складність |
+|---|---|---|
+| **Time Zone Audit** — перевірити всі часові поля (`created_at`/`updated_at`/`occurred_at`/`received_at`/`opened_at`/`closed_at`/`first_seen`/`last_seen`/`last_login`/`expires_at`/`processed_at`/`last_attempt_at`/`delivered_at`/`next_attempt_at`/`last_event_at`/`banned_until`/`email_confirmed_at`/`synced_at`): хто пише, у якому timezone, хто читає, який формат відображати. | виявити TZ inconsistency | низька |
+| **Presentation: дати → `Europe/Kyiv`** — у Views або Blazor формат `DD.MM.YYYY HH:MI:SS` без мікросекунд. БД лишається `timestamptz` (UTC canonical). | усунути шум `2026-07-03 10:11:08.489922+00` | низька |
+| **Display Order** — логічні блоки в сторінках CC: Installation → User → Activity → Diagnostics (не плоский список колонок). | читабельність | середня |
+| **Display Formatting** — boolean → `✔ Active`/`✖ Disabled`; status → color-coded; severity → badge. | читабельність | середня |
+| **NULL Audit** — замість `NULL` показувати `—`/`Not collected`/`Unknown` залежно від семантики. | читабельність | низька |
+| **Human-readable IDs** — UUIDs скорочені `b4a7d7f7…` у списках; повний лише в деталях. | читабельність | низька |
+| **Sorting & Filtering** — додати клікабельні headers + search для основних сторінок. | UX | середня |
+| **`control_center.users` доле** — використати view у Phase 4 UI або визнати застарілим (§16.8 + Approved #94). | усунути мертвий контракт | низька |
+
+**Принцип:** спочатку сформувати ідеальну модель presentation, потім production deployment Phase 3A + Phase 4 разом. Уникнути серії дрібних змін після релізу.
 
 ---
 
