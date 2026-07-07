@@ -244,7 +244,308 @@
 
 ---
 
+# 4.10. Data Model — Single Source of Truth (Phase 3 Freeze, 2026-07-07)
+
+> **Data Model Freeze артефакт.** Цей розділ — фінальний довідник моделі даних SCLOC-Verse. Кожна колонка має Classification, Ownership, Lifetime, Confidence. Після цієї моделі будь-яка зміна БД проходить через зміну цієї моделі (а не через припущення).
+
+## 4.10.1. Легенда
+
+**Classification (Approved #99):**
+- `CORE` — обов'язкове для роботи системи (NOT NULL або постійно заповнюється).
+- `OPTIONAL` — необов'язкове, але корисне (NULL допустимий, заповнюється за обставин).
+- `DIAGNOSTIC` — діагностична інформація (для форензики).
+- `FUTURE` — заготовка під плановану фічу (зараз NULL/DEFAULT, активується пізніше).
+- `DEPRECATED` — застаріле, не прибране через additive-only.
+
+**Confidence (Approved #100):**
+- `VER` 🟢 — доведено фактом (жива БД, код, EXPLAIN).
+- `IMPL` ✅ — реалізовано в системі (Verified + активне).
+- `HYP` 🔵 — припущення (не перевірялось або очікує рішення).
+- `REJ` ❌ — спростовано.
+
+**Lifetime (retention policy):**
+- `FOREVER` — не видаляється (audit, reference data).
+- `1y closed` — 1 рік після `closed_at` (потім archive/purge).
+- `90d` — 90 днів (потім purge через service_role).
+- `30d delivered` — 30 днів після фінального статусу.
+- `RESERVED` — таблиця порожня, retention не визначено.
+
+## 4.10.2. app_installations (19 cols, 51 rows, FOREVER)
+
+| Колонка | Тип | NN | Default | Source (Writer) | Reader | Category | Class | Conf |
+|---|---|---|---|---|---|---|---|---|
+| id | uuid | ✓ | gen_random_uuid() | DB | all FK | Identification | CORE | IMPL |
+| created_at | timestamptz | ✓ | now() | DB | cc.installations/users | Audit | CORE | IMPL |
+| install_id | text | ✓ | — | C# InstallationService (stable machine id) | FK telemetry_events/error_reports/admin_audit_log; cc.installations | Identification | CORE | IMPL |
+| app_version | text | ✗ | — | C# InstallationService | cc.installations/users | Version | OPTIONAL | IMPL |
+| localization_version | text | ✗ | — | ❌ не пише (PLAN IInstallationContextProvider) | cc.installations/users | Version | **FUTURE** | HYP |
+| country | text | ✗ | — | trigger `set_country_from_cf` (Cloudflare cf-ipcountry) | cc.installations/users, user_analytics.country | Geography | CORE | IMPL |
+| platform | text | ✗ | — | C# InstallationService | cc.installations/users | Environment | OPTIONAL | IMPL |
+| first_seen | timestamptz | ✗ | now() | DB | cc.installations/users | Audit | CORE | IMPL |
+| last_seen | timestamptz | ✗ | — | C# InstallationService (UtcNow) | cc.installations/users | Activity | CORE | IMPL |
+| user_id | uuid | ✗ | — | C# AuthService | FK auth.users; cc.installations/users | Identity | CORE | IMPL |
+| machine_id | text | ✗ | — | C# InstallationService | cc.installations/users | Diagnostics | OPTIONAL | VER |
+| os_version | text | ✗ | — | C# InstallationService | cc.installations/users | Environment | OPTIONAL | IMPL |
+| os_build | text | ✗ | — | ❌ не пише | cc.installations | Environment | **FUTURE** | HYP |
+| update_channel | text | ✗ | 'stable' | DB DEFAULT (PLAN: C# SettingsCanvas) | cc.installations/users | Config | **FUTURE** | HYP |
+| install_source | text | ✗ | 'unknown' | DB DEFAULT (PLAN: InnoSetup) | cc.installations/users | Diagnostics | **FUTURE** | HYP |
+| game_folder_path | text | ✗ | — | ❌ не пише (PLAN IInstallationContextProvider) | cc.installations/users | Diagnostics | **FUTURE** | HYP |
+| selected_environment | text | ✗ | — | ❌ не пише (PLAN IInstallationContextProvider) | cc.installations/users | Config | **FUTURE** | HYP |
+| is_active | boolean | ✗ | true | C# InstallationService | cc.installations/users | Status | CORE | IMPL |
+| updated_at | timestamptz | ✗ | — | C# InstallationService (UtcNow) | cc.installations/users | Audit | CORE | IMPL |
+
+**Trivia (VER #93):** `country` — per-installation; `user_countries` (computed у user_analytics) — per-user aggregate (string_agg DISTINCT). НЕ дубль.
+
+## 4.10.3. telemetry_events (28 cols, 705 rows, 90d retention planned)
+
+| Колонка | Тип | NN | Default | Source | Reader | Category | Class | Conf |
+|---|---|---|---|---|---|---|---|---|
+| id | uuid | ✓ | gen_random_uuid() | DB | cc.telemetry_events/traces; FK incidents root/last | Identification | CORE | IMPL |
+| client_event_id | uuid | ✓ | — | C# TelemetryClient | uniq_telemetry_client_event_id (dedup) | Dedup | CORE | IMPL |
+| session_id | uuid | ✓ | — | C# TelemetryClient | cc.telemetry_events/traces | Trace | CORE | IMPL |
+| correlation_id | uuid | ✓ | — | C# TelemetryClient | cc.telemetry_events/traces | Trace | CORE | IMPL |
+| step | int | ✓ | — | C# TelemetryClient | cc.telemetry_events/traces | Trace | CORE | IMPL |
+| install_id | text | ✗ | — | C# TelemetryClient | FK app_installations | Identity | OPTIONAL | IMPL |
+| user_id | uuid | ✗ | — | C# TelemetryClient | FK auth.users | Identity | OPTIONAL | IMPL |
+| occurred_at | timestamptz | ✓ | — | C# TelemetryClient (UtcNow) | cc.telemetry_events/traces; incident detection windows | Time | CORE | IMPL |
+| received_at | timestamptz | ✓ | now() | DB | cc.telemetry_events/traces; idx_telemetry_received | Time | CORE | IMPL |
+| app_version | text | ✓ | — | C# TelemetryClient | cc.telemetry_events; release_health | Version | CORE | IMPL |
+| git_commit | text | ✗ | — | ❌ завжди NULL (PLAN MSBuild target) | cc.telemetry_events | Diagnostics | **FUTURE** | HYP |
+| channel | text | ✓ | 'stable' | C# TelemetryClient | cc.telemetry_events | Config | OPTIONAL | IMPL |
+| telemetry_version | int | ✓ | 1 | C# TelemetryClient | cc.telemetry_events | Schema | CORE | IMPL |
+| os_version | text | ✗ | — | C# TelemetryClient | cc.telemetry_events | Environment | OPTIONAL | IMPL |
+| country | text | ✗ | — | ❌ ніколи (trigger лише на installations, Rejected #35/#38) | — | — | **DEPRECATED** | REJ |
+| component | text | ✓ | — | C# TelemetryClient | cc.telemetry_events; incidents fingerprint | Classification | CORE | IMPL |
+| operation | text | ✓ | — | C# TelemetryClient | cc.telemetry_events; incidents fingerprint | Classification | CORE | IMPL |
+| outcome | text | ✓ | — | C# TelemetryClient (CHECK 5 значень) | cc.telemetry_events; signal COALESCE; trigger Failed | Status | CORE | IMPL |
+| severity | text | ✓ | 'Info' | C# TelemetryClient (CHECK 5 значень) | cc.telemetry_events | Status | CORE | IMPL |
+| category | text | ✓ | 'Operational' | C# (завжди Operational; PLAN Critical/Diagnostic/Analytics) | cc.telemetry_events | Classification | **FUTURE** | HYP |
+| source | text | ✗ | — | C# ErrorContextExtractor | signal COALESCE (priority 1) | Diagnostics | OPTIONAL | IMPL |
+| http_status | int | ✗ | — | ❌ ніколи з C# (100% NULL 705/705) | signal COALESCE (priority 4) | Diagnostics | **DEPRECATED** | VER |
+| hresult | text | ✗ | — | C# ErrorContextExtractor (LIA) | signal COALESCE (priority 3) | Diagnostics | OPTIONAL | IMPL |
+| supabase_code | text | ✗ | — | ❌ ніколи з C# (100% NULL 705/705) | signal COALESCE (priority 2) | Diagnostics | **DEPRECATED** | VER |
+| exception_type | text | ✗ | — | C# ErrorContextExtractor | signal COALESCE (priority 5) | Diagnostics | OPTIONAL | IMPL |
+| error_message | text | ✗ | — | C# TelemetryClient | cc.telemetry_events | Diagnostics | OPTIONAL | IMPL |
+| duration_ms | int | ✗ | — | C# TelemetryClient (Started без duration) | cc.telemetry_events | Diagnostics | OPTIONAL | IMPL |
+| detail | jsonb | ✗ | — | C# (UpdateEvents/LiaEvents/InstallationService) | cc.telemetry_events; JSON keys: phase, retry_count(0), certificate_*, installer_type, package_version, activity_id | Diagnostics | OPTIONAL | IMPL |
+
+**Trivia:** `detail.retry_count` — `FUTURE` заготовка під Retry Policy (Slices 3-5, §14.9 #85). НЕ мертва. `detail.signal_name` — НЕ існує (Rejected #65).
+
+## 4.10.4. telemetry_incidents (19 cols, 4 rows, 1y closed)
+
+| Колонка | Тип | NN | Default | Source | Reader | Category | Class | Conf |
+|---|---|---|---|---|---|---|---|---|
+| id | bigserial | ✓ | seq | DB | cc.incidents; incident_code (trigger) | Identification | CORE | IMPL |
+| fingerprint_key | text | ✓ | — | promote_incident_candidates_for_event | cc.incidents | Classification | CORE | IMPL |
+| fingerprint_hash | text | ✓ | — | promote (md5(fingerprint_key)) | cc.incidents; idx_incidents_fp_open | Classification | CORE | IMPL |
+| release | text | ✓ | — | promote (= app_version) | cc.incidents | Version | CORE | IMPL |
+| component | text | ✓ | — | promote | cc.incidents; knowledge matching | Classification | CORE | IMPL |
+| operation | text | ✓ | — | promote | cc.incidents; knowledge matching | Classification | CORE | IMPL |
+| signal | text | ✓ | — | promote (COALESCE) | cc.incidents; knowledge matching | Classification | CORE | IMPL |
+| root_event_id | uuid | ✗ | — | promote (ASC first Failed) | FK telemetry_events | Trace | OPTIONAL | IMPL |
+| last_event_id | uuid | ✗ | — | promote (DESC last Failed) | FK telemetry_events | Trace | OPTIONAL | IMPL |
+| opened_at | timestamptz | ✓ | now() | DB | cc.incidents; incident_code trigger | Time | CORE | IMPL |
+| last_event_at | timestamptz | ✓ | now() | promote | cc.incidents; auto_close policy | Time | CORE | IMPL |
+| closed_at | timestamptz | ✗ | — | transition_incident (when status=Closed) | cc.incidents | Status | OPTIONAL | IMPL |
+| status | text | ✓ | 'Active' | promote/transition_incident (CHECK 5 станів) | cc.incidents | Status | CORE | IMPL |
+| highest_severity | text | ✓ | 'Warning' | promote (CHECK Critical/Warning) | cc.incidents | Status | CORE | IMPL |
+| peak_failure_pct | numeric(5,1) | ✗ | — | promote (GREATEST) | cc.incidents | Metrics | OPTIONAL | IMPL |
+| affected_users | int | ✓ | 0 | promote (GREATEST) | cc.incidents | Metrics | CORE | IMPL |
+| affected_installs | int | ✓ | 0 | promote (GREATEST) | cc.incidents; severity calc | Metrics | CORE | IMPL |
+| event_count | bigint | ✓ | 0 | promote (increment) | cc.incidents | Metrics | CORE | IMPL |
+| owner | text | ✗ | — | assign_incident_owner | cc.incidents; can_create_knowledge_for_incident | Workflow | OPTIONAL | IMPL |
+| incident_code | text | ✗ | — | trigger set_incident_code (Post-Phase 3A) | cc.incidents AS incident_id; cc.incident_timeline/notes_view/notifications AS incident_code | Display | CORE | IMPL (Phase 3A) |
+
+## 4.10.5. notification_queue (16 cols, 4 rows, 30d delivered)
+
+| Колонка | Тип | NN | Default | Source | Reader | Category | Class | Conf |
+|---|---|---|---|---|---|---|---|---|
+| id | bigserial | ✓ | seq | DB | FK notification_attempts; cc.notifications | Identification | CORE | IMPL |
+| incident_id | bigint | ✓ | — | promote (when incident created) | FK telemetry_incidents; cc.notifications | Identity | CORE | IMPL |
+| notification_type | text | ✓ | — | promote (CHECK 7 типів) | cc.notifications | Classification | CORE | IMPL |
+| provider | text | ✓ | 'Discord' | promote | cc.notifications | Config | CORE | IMPL |
+| status | text | ✓ | 'Pending' | promote/Notifier (CHECK 5 станів) | cc.notifications; uniq_notification_dedup | Status | CORE | IMPL |
+| payload | jsonb | ✗ | — | promote (10 keys: version, incident_id, component, operation, signal, severity, release, affected_installs, affected_users, failure_pct) | Notifier (claim) | Diagnostics | OPTIONAL | IMPL |
+| retry_count | int | ✓ | 0 | Notifier | cc.notifications | Workflow | CORE | IMPL |
+| last_attempt_at | timestamptz | ✗ | — | Notifier | cc.notifications | Time | OPTIONAL | IMPL |
+| delivered_at | timestamptz | ✗ | — | Notifier (when Delivered) | cc.notifications | Status | OPTIONAL | IMPL |
+| error_message | text | ✗ | — | ❌ Notifier не пише (де-факто deprecated з 00017) | cc.notifications | Diagnostics | **DEPRECATED** | VER |
+| created_at | timestamptz | ✓ | now() | DB | cc.notifications; idx_notif_pending | Audit | CORE | IMPL |
+| next_attempt_at | timestamptz | ✗ | — | Notifier (retry calc) | cc.notifications | Workflow | OPTIONAL | IMPL |
+| max_retries | int | ✓ | 3 | DB DEFAULT | cc.notifications | Config | CORE | IMPL |
+| claimed_at | timestamptz | ✗ | — | Notifier (claim) | cc.notifications | Workflow | OPTIONAL | IMPL |
+| claimed_by | text | ✗ | — | Notifier (instance id) | cc.notifications | Workflow | OPTIONAL | IMPL |
+| last_error | text | ✗ | — | Notifier (when Failed/RetryScheduled) | cc.notifications | Diagnostics | OPTIONAL | IMPL |
+
+**Trivia (VER #84):** `error_message` ≠ `last_error` — різна семантика (фінал vs остання спроба retry).
+
+## 4.10.6. notification_attempts (10 cols, 0 rows, 90d)
+
+| Колонка | Тип | NN | Default | Source | Reader | Category | Class | Conf |
+|---|---|---|---|---|---|---|---|---|
+| id | bigserial | ✓ | seq | DB | FK; cc.notifications | Identification | CORE | IMPL |
+| queue_id | bigint | ✓ | — | Notifier | FK notification_queue CASCADE | Identity | CORE | IMPL |
+| attempt_no | int | ✓ | — | Notifier | cc.notifications | Workflow | CORE | IMPL |
+| provider | text | ✓ | — | Notifier | cc.notifications | Config | CORE | IMPL |
+| status | text | ✓ | — | Notifier (CHECK Sending/Delivered/Failed) | cc.notifications | Status | CORE | IMPL |
+| http_status | int | ✗ | — | Notifier (provider response) | cc.notifications | Diagnostics | OPTIONAL | IMPL |
+| provider_message_id | text | ✗ | — | Notifier (Discord message id) | cc.notifications | Trace | OPTIONAL | IMPL |
+| error_message | text | ✗ | — | Notifier (when Failed) | cc.notifications | Diagnostics | OPTIONAL | IMPL |
+| started_at | timestamptz | ✓ | now() | DB | cc.notifications | Time | CORE | IMPL |
+| finished_at | timestamptz | ✗ | — | Notifier | cc.notifications | Time | OPTIONAL | IMPL |
+
+## 4.10.7. incident_policy (8 cols, 5 rows, FOREVER)
+
+| Колонка | Тип | NN | Default | Source | Reader | Category | Class | Conf |
+|---|---|---|---|---|---|---|---|---|
+| component | text | ✓ | — | seed (PK part) | promote_incident_candidates_for_event | Classification | CORE | IMPL |
+| operation | text | ✓ | '_' | seed ('_' = будь-яка) | promote | Classification | CORE | IMPL |
+| signal | text | ✓ | '_' | seed ('_' = будь-який) | promote | Classification | CORE | IMPL |
+| min_sample | int | ✓ | 5 | seed | promote | Threshold | CORE | IMPL |
+| failure_threshold_pct | numeric(5,1) | ✓ | 20.0 | seed | promote | Threshold | CORE | IMPL |
+| critical_affected_threshold | int | ✓ | 10 | seed | promote (severity calc) | Threshold | CORE | IMPL |
+| auto_close_after_minutes | int | ✓ | 60 | seed | auto_close_stale_incidents | Threshold | CORE | IMPL |
+| enabled | boolean | ✓ | true | seed/manual | promote | Status | CORE | IMPL |
+
+## 4.10.8. incident_status_log (7 cols, 0 rows, 1y)
+
+| Колонка | Тип | NN | Default | Source | Reader | Category | Class | Conf |
+|---|---|---|---|---|---|---|---|---|
+| id | bigserial | ✓ | seq | DB | cc.incident_timeline | Identification | CORE | IMPL |
+| incident_id | bigint | ✓ | — | transition_incident/assign_owner | FK CASCADE; cc.incident_timeline | Identity | CORE | IMPL |
+| from_status | text | ✓ | — | transition_incident | cc.incident_timeline | Workflow | CORE | IMPL |
+| to_status | text | ✓ | — | transition_incident | cc.incident_timeline | Workflow | CORE | IMPL |
+| changed_by | text | ✓ | 'system' | transition_incident (admin/system) | cc.incident_timeline | Audit | CORE | IMPL |
+| changed_at | timestamptz | ✓ | now() | DB | cc.incident_timeline | Time | CORE | IMPL |
+| note | text | ✗ | — | transition_incident (optional) | cc.incident_timeline | Diagnostics | OPTIONAL | IMPL |
+
+## 4.10.9. incident_notes (5 cols, 0 rows, 1y)
+
+| Колонка | Тип | NN | Default | Source | Reader | Category | Class | Conf |
+|---|---|---|---|---|---|---|---|---|
+| id | bigserial | ✓ | seq | DB | cc.incident_notes_view | Identification | CORE | IMPL |
+| incident_id | bigint | ✓ | — | add_incident_note | FK CASCADE; cc.incident_notes_view | Identity | CORE | IMPL |
+| content | text | ✓ | — | add_incident_note | cc.incident_notes_view | Content | CORE | IMPL |
+| created_by | text | ✓ | 'admin' | add_incident_note | cc.incident_notes_view | Audit | CORE | IMPL |
+| created_at | timestamptz | ✓ | now() | DB | cc.incident_notes_view | Time | CORE | IMPL |
+
+## 4.10.10. knowledge_entries (19 cols, 0 rows, FOREVER)
+
+| Колонка | Тип | NN | Default | Source | Reader | Category | Class | Conf |
+|---|---|---|---|---|---|---|---|---|
+| id | bigserial | ✓ | seq | DB | cc.knowledge_*; FK | Identification | CORE | IMPL |
+| fingerprint_key | text | ✓ | — | create_knowledge_from_incident | cc.knowledge_* | Classification | CORE | IMPL |
+| fingerprint_hash | text | ✓ | — | create_knowledge_from_incident | idx_knowledge_fingerprint; match_knowledge_for_incident | Classification | CORE | IMPL |
+| component | text | ✓ | — | create_knowledge_from_incident | cc.knowledge_*; match_knowledge_priority2 | Classification | CORE | IMPL |
+| operation | text | ✓ | — | create_knowledge_from_incident | cc.knowledge_* | Classification | CORE | IMPL |
+| signal | text | ✓ | — | create_knowledge_from_incident | cc.knowledge_*; match_knowledge_priority2 | Classification | CORE | IMPL |
+| title | text | ✓ | — | create/update_knowledge_entry | cc.knowledge_* | Content | CORE | IMPL |
+| symptoms | text | ✗ | — | update_knowledge_entry | cc.knowledge_* | Content | OPTIONAL | IMPL |
+| known_cause | text | ✓ | — | create/update_knowledge_entry | cc.knowledge_* | Content | CORE | IMPL |
+| workaround | text | ✗ | — | create/update_knowledge_entry | cc.knowledge_* | Content | OPTIONAL | IMPL |
+| permanent_fix | text | ✗ | — | update_knowledge_entry | cc.knowledge_* | Content | OPTIONAL | IMPL |
+| affected_versions | text[] | ✗ | — | update_knowledge_entry (parse_version_list) | cc.knowledge_list | Version | OPTIONAL | IMPL |
+| fixed_version | text | ✗ | — | update_knowledge_entry | cc.knowledge_*; verify_knowledge_auto | Version | OPTIONAL | IMPL |
+| confidence | text | ✓ | 'Low' | create/transition (CHECK Low/Medium/High/Verified) | cc.knowledge_*; verify_knowledge_auto | Status | CORE | IMPL |
+| status | text | ✓ | 'Draft' | create/transition (CHECK Draft/Reviewed/Verified/Deprecated/Archived) | cc.knowledge_*; matching | Status | CORE | IMPL |
+| created_by | text | ✓ | — | create_knowledge_from_incident | cc.knowledge_* | Audit | CORE | IMPL |
+| created_at | timestamptz | ✓ | now() | DB | cc.knowledge_* | Audit | CORE | IMPL |
+| updated_by | text | ✓ | — | update/transition_knowledge | cc.knowledge_*; knowledge_audit_trigger | Audit | CORE | IMPL |
+| updated_at | timestamptz | ✓ | now() | DB/update | cc.knowledge_*; idx_knowledge_status_updated | Audit | CORE | IMPL |
+
+## 4.10.11. knowledge_references (5 cols, 0 rows, FOREVER)
+
+| Колонка | Тип | NN | Default | Source | Reader | Category | Class | Conf |
+|---|---|---|---|---|---|---|---|---|
+| id | bigserial | ✓ | seq | DB | FK | Identification | CORE | IMPL |
+| knowledge_id | bigint | ✓ | — | add_knowledge_reference | FK RESTRICT; cc.knowledge_entry_detail (jsonb_agg) | Identity | CORE | IMPL |
+| reference_type | text | ✓ | — | add_knowledge_reference (CHECK 5 типів) | cc.knowledge_entry_detail | Classification | CORE | IMPL |
+| url | text | ✗ | — | add_knowledge_reference | cc.knowledge_entry_detail | Content | OPTIONAL | IMPL |
+| label | text | ✗ | — | add_knowledge_reference | cc.knowledge_entry_detail | Content | OPTIONAL | IMPL |
+
+## 4.10.12. knowledge_version_history (9 cols, 0 rows, FOREVER)
+
+| Колонка | Тип | NN | Default | Source | Reader | Category | Class | Conf |
+|---|---|---|---|---|---|---|---|---|
+| id | bigserial | ✓ | seq | DB | get_knowledge_version_detail | Identification | CORE | IMPL |
+| knowledge_id | bigint | ✓ | — | knowledge_audit_trigger | FK RESTRICT; get_knowledge_history | Identity | CORE | IMPL |
+| version | int | ✓ | — | knowledge_audit_trigger (MAX+1) | get_knowledge_history; optimistic concurrency | Audit | CORE | IMPL |
+| snapshot | jsonb | ✓ | — | knowledge_audit_trigger (to_jsonb NEW) | get_knowledge_version_detail | Audit | CORE | IMPL |
+| changed_by | text | ✗ | — | knowledge_audit_trigger (NEW.updated_by/created_by) | get_knowledge_history | Audit | OPTIONAL | IMPL |
+| db_user | text | ✓ | CURRENT_USER | DB | get_knowledge_history (dual-identity) | Audit | CORE | IMPL |
+| changed_at | timestamptz | ✓ | now() | DB | get_knowledge_history | Time | CORE | IMPL |
+| change_reason | text | ✗ | — | set_knowledge_change_context | get_knowledge_history | Audit | OPTIONAL | IMPL |
+| change_type | text | ✓ | 'Updated' | set_knowledge_change_context (Created/Updated/Archived/WorkflowTransition/ReferenceAdded/ReferenceRemoved) | get_knowledge_history | Audit | CORE | IMPL |
+
+## 4.10.13. error_reports (13 cols, 0 rows, RESERVED)
+
+> **Зарезервована таблиця.** Жодного продюсера, 0 рядків. KEEP через Rejected #39. Всі колонки — RESERVED lifetime, Class=FUTURE (до появи клієнтського "Report bug").
+
+| Колонка | Тип | NN | Source | Class |
+|---|---|---|---|---|
+| id, user_id, install_id, error_type, message, stack_trace, app_version, localization_version, game_folder_path, selected_environment, context, is_resolved, created_at | — | — | — | FUTURE (зарезервовано) |
+
+## 4.10.14. admin_audit_log (7 cols, 0 rows, RESERVED)
+
+> **Зарезервована для майбутньої адмін-панелі.** 0 продюсерів, 0 рядків.
+
+| Колонка | Тип | NN | Source | Class |
+|---|---|---|---|---|
+| id, admin_discord_id, action, target_user_id, target_install_id, details, created_at | — | — | — | FUTURE |
+
+## 4.10.15. user_discord_guilds (5 cols, 0 rows, RESERVED)
+
+> **Код DiscordGuildSyncService мертвий (identify scope only).** 0 рядків.
+
+| Колонка | Тип | NN | Default | Source | Class |
+|---|---|---|---|---|---|
+| id | uuid | ✓ | gen_random_uuid() | DB | FUTURE |
+| user_id | uuid | ✓ | — | (DEAD) DiscordGuildSyncService | FUTURE |
+| discord_guild_id | text | ✓ | — | (DEAD) | FUTURE |
+| guild_name | text | ✗ | — | (DEAD) | FUTURE |
+| synced_at | timestamptz | ✓ | now() | DB | FUTURE |
+
+## 4.10.16. pipeline_health_meta (2 cols, 1 row singleton, FOREVER)
+
+| Колонка | Тип | NN | Default | Source | Reader | Category | Class | Conf |
+|---|---|---|---|---|---|---|---|---|
+| singleton | boolean | ✓ | true (CHECK singleton=true) | DB | cc.observability_health | Config | CORE | IMPL |
+| last_knowledge_refresh | timestamptz | ✗ | — | refresh_knowledge_coverage | cc.observability_health | Time | CORE | IMPL |
+
+## 4.10.17. auth.users (35 cols, 54 rows, Supabase-managed)
+
+> **Системна таблиця Supabase GoTrue.** Не керується міграціями SCLOC-Verse. Структура 35 колонок ідентична в production та replica (verified Schema Verification). Залежить від неї: `user_analytics`, `cc.users`, `cc.statistics` (dependency graph §16.8).
+
+**Використовувані в SCLOC-Verse колонки:** `id`, `email`, `raw_user_meta_data` (provider_id, full_name, custom_claims.global_name, avatar_url), `created_at`, `last_sign_in_at`, `email_confirmed_at`, `is_anonymous`, `banned_until`, `deleted_at`.
+
+## 4.10.18. Data Lifetime — зведена таблиця
+
+| Таблиця | Lifetime | Reason | Tool (future) |
+|---|---|---|---|
+| app_installations | FOREVER (поки user_id існує) | історія установок | — |
+| telemetry_events | 90d (план) | append-only, retention | service_role purge (Phase 5) |
+| telemetry_incidents | 1y після closed_at | інциденти — коротка пам'ять | service_role archive (Phase 5) |
+| incident_policy | FOREVER | reference data | — |
+| incident_status_log | 1y | audit journal | service_role archive |
+| incident_notes | 1y | audit journal | service_role archive |
+| notification_queue | 30d після delivered_at | транзиція | service_role purge |
+| notification_attempts | 90d | audit | service_role purge |
+| knowledge_entries | FOREVER | knowledge base | — |
+| knowledge_references | FOREVER | audit | — |
+| knowledge_version_history | FOREVER | audit | — |
+| error_reports | RESERVED | не визначено (таблиця порожня) | — |
+| admin_audit_log | RESERVED | не визначено | — |
+| user_discord_guilds | RESERVED | не визначено (код мертвий) | — |
+| pipeline_health_meta | FOREVER | singleton | — |
+| auth.users | Supabase-managed | GoTrue lifecycle | auth.admin API |
+
+> ⚠ **Retention (90d/30d) НЕ реалізовано** — `pg_cron` не встановлений (KB §3.1, Rejected TBD). Backlog: Phase 5 Retention Pipeline.
+
+---
+
 # 5. Telemetry
+
+
 
 > Деталі: `docs/observability/FORENSIC-DATA-PIPELINE-DETAIL.md` (всі `.Track()` з рядками), `Observability-Constitution.md`, `Optimization-Matrix.md`, `Observability-Database-Optimization-Plan.md`.
 
@@ -836,6 +1137,14 @@ Materialized VIEW `control_center.knowledge_coverage` (per-release). REFRESH ч�
 93. **`country` ≠ `user_countries` — НЕ дубль (forensic).** `country` = країна конкретної інсталяції (per-installation, з `app_installations.country` через тригер `set_country_from_cf`/Cloudflare cf-ipcountry). `user_countries` = агрегат `string_agg(DISTINCT country, ', ')` per-user. Production факт: 0 з 50 користувачів мають розходження (3 з мульти-інсталяціями, але всі в 1 країні). Сценарій розходження доведено: користувач з установками в UA + PL → 2 рядки в `user_analytics` (UA/UA,PL і PL/UA,PL). KEEP обидві.
 94. **`control_center.users` view НЕ має споживача в C#/Blazor** (grep: 0 згадок `country`/`user_countries`/`cc.users`). Доступний лише через SQL/Dashboard. TD: вирішити долю view (використати в Phase 4 UX або визнати застарілим).
 95. **Production deployment Phase 3A відкладено** до завершення Phase 4 Control Center UX & Data Presentation Optimization. Причина: за останні дні ≥5 forensic змінили матрицю рішень (error_message, retry_count, generated column, machine_id, country) → процес forensic ще активний, міграції незрілі для production. Сигнал до стабілізації: ≥3 forensic поспіль без зміни матриці.
+
+## 14.13. Phase 3 завершення — Data Model Freeze (2026-07-07)
+
+96. **Phase 3 не завершується міграціями, а Data Model Freeze.** Модель даних вважається оптимізованою лише після повного Data Dictionary (Source/Reader/Nullable/Category/Classification/Lifetime/Confidence для кожної колонки). Див. §4.10.
+97. **Phase 4 (UX/Blazor) починається лише після Phase 3 Freeze.** НЕ змішувати оптимізацію БД з оптимізацією UI — різні фази, різні ризики.
+98. **Time Zone реалізація через `ITimeZoneService`** (НЕ хардкодити `Europe/Kyiv`). БД лишається canonical UTC `timestamptz`. UI — конфігурований через інтерфейс (сьогодні Kyiv, завтра UTC або Local User Time).
+99. **Classification 5 станів для кожної колонки:** `CORE` (обов'язкове для роботи), `OPTIONAL` (корисне), `DIAGNOSTIC` (діагностика), `FUTURE` (заготовка під майбутнє, напр. `retry_count`), `DEPRECATED` (застаріле, напр. `notification_queue.error_message` після 00017).
+100. **Confidence (HYP/VER/IMPL/REJ) поширюється на ВСІ рішення** в KB, не лише forensic-знахідки. Кожне Approved/Rejected Decision має маркер ступеня доведеності.
 
 ---
 
