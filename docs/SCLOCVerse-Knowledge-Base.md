@@ -1669,7 +1669,7 @@ Phase 1 (Telemetry Cleanup) — ✅ Closed (замінено Release Cleanup 202
 Phase 2 (Database Cleanup Review) — ✅ Closed
 Phase 3 (Database Model + Freeze) — ✅ Closed
 Phase 3.5 (Telemetry Policy) — ✅ Closed + Implemented
-Phase 3.6 (Replica Synchronization) — ✅ Closed (replica paused 2026-07-07, Dashboard deletion pending)
+Phase 3.6 (Replica Synchronization) — ✅ Closed (replica deleted 2026-07-07)
 Phase 3A (3 міграції) — ✅ **DEPLOYED to production** (2026-07-07, Post-Impl Forensic PASSED)
 Phase 3.5.1 (Mandatory Event Optimization) — ✅ **Implemented as Zero Noise Policy** (2026-07-07)
 Phase 4 (Data Presentation Layer) — ⏸
