@@ -1500,7 +1500,7 @@ Materialized VIEW `control_center.knowledge_coverage` (per-release). REFRESH ч�
 
 93. **`country` ≠ `user_countries` — НЕ дубль (forensic).** `country` = країна конкретної інсталяції (per-installation, з `app_installations.country` через тригер `set_country_from_cf`/Cloudflare cf-ipcountry). `user_countries` = агрегат `string_agg(DISTINCT country, ', ')` per-user. Production факт: 0 з 50 користувачів мають розходження (3 з мульти-інсталяціями, але всі в 1 країні). Сценарій розходження доведено: користувач з установками в UA + PL → 2 рядки в `user_analytics` (UA/UA,PL і PL/UA,PL). KEEP обидві.
 94. **`control_center.users` view НЕ має споживача в C#/Blazor** (grep: 0 згадок `country`/`user_countries`/`cc.users`). Доступний лише через SQL/Dashboard. TD: вирішити долю view (використати в Phase 4 UX або визнати застарілим).
-95. **Production deployment Phase 3A відкладено** до завершення Phase 4 Control Center UX & Data Presentation Optimization. Причина: за останні дні ≥5 forensic змінили матрицю рішень (error_message, retry_count, generated column, machine_id, country) → процес forensic ще активний, міграції незрілі для production. Сигнал до стабілізації: ≥3 forensic поспіль без зміни матриці.
+95. ~~**Production deployment Phase 3A відкладено** до завершення Phase 4~~ — **SUPERSEDED (#133, 2026-07-07):** Phase 3A розгорнуто на production ДО Phase 4. Рішення змінено після Phase 3.5 (Telemetry Policy implemented + verified) + Phase 3.6 (Replica structural audit PASSED). Міграції additive-only, rollback-готові, verified на replica.
 
 ## 14.13. Phase 3 завершення — Data Model Freeze (2026-07-07)
 
@@ -1513,7 +1513,7 @@ Materialized VIEW `control_center.knowledge_coverage` (per-release). REFRESH ч�
 ## 14.14. Phase 3 Freeze Validation + Closure (2026-07-07)
 
 101. **Freeze Validation PASSED.** Усі 172 колонки 15 таблиць мають чіткі відповіді на 6 атрибутів: Writer, Reader, Classification (CORE/OPTIONAL/DIAGNOSTIC/FUTURE/DEPRECATED), Confidence (HYP/VER/IMPL/REJ), Lifetime (FOREVER/1y/90d/30d/RESERVED), Рішення (KEEP/ACTIVATE/DEPRECATED/RESERVED). Прогалини в error_reports/admin_audit_log/user_discord_guilds усунуто (розгорнуто per-column у §4.10.13-15).
-102. **Phase 3 OFFICIALLY CLOSED.** Data Model заморожено як Single Source of Truth. Подальші зміни БД — лише через зміну цієї моделі (спочатку модель → потім міграція). Phase 3A міграції (idx DROP/ADD, generated→trigger) залишаються в git, готові до production deployment **після** Phase 4.
+102. **Phase 3 OFFICIALLY CLOSED.** Data Model заморожено як Single Source of Truth. Подальші зміни БД — лише через зміну цієї моделі (спочатку модель → потім міграція). ~~Phase 3A міграції (idx DROP/ADD, generated→trigger) залишаються в git, готові до production deployment **після** Phase 4.~~ — **DEPLOYED 2026-07-07 (#133).**
 
 ## 14.15. Phase 4 — Data Presentation Layer (2026-07-07)
 
@@ -1596,6 +1596,20 @@ Blazor Components (.razor)
 131. **3-критеріальний Mandatory-фреймворк:** Writer + Reader + Empty Consequence. pipeline_health_meta → SKIP (cache, auto-recover). incident_policy → IMPORT (empty = silent incident death). auth.users → IMPORT (empty = FK violation).
 132. **auth.identities генерується на самій replica** з auth.users (identity_data = raw_user_meta_data; provider_id з JSON). Не потрібен transfer з production.
 
+## 14.23. Phase 3A Production Deployment + Release Cleanup (2026-07-07)
+
+133. **Phase 3A DEPLOYED to production.** 3 міграції застосовані послідовно з верифікацією після кожної: (1) DROP 2 дубль-індексів, (2) ADD 3 partial індексів, (3) `incident_code` column + trigger + 4 views OR REPLACE. Post-Impl Forensic PASSED: +1 function, +1 index net (−2+3), +1 trigger, 0 RLS/policy/grant changes. Trigger functional test: `INC-2026-00022` ✅. Деталі §16.11.
+
+134. **Release Cleanup — одноразова підготовка production до релізу.** НЕ Retention Pipeline (Phase 5). Видалено 717 telemetry_events + 4 telemetry_incidents + 4 notification_queue (усі — тестові дані періоду розробки Jul 4-7, версії 0.9.0.0–1.0.0.1). Збережено: auth.users (56), app_installations (55), incident_policy (5). In-database backup `backup_pre_phase3a` (11 таблиць) створено до cleanup.
+
+135. **Backup `backup_pre_phase3a`** — in-database snapshot (аналог `backup_pre_1_0_0_1`). 11/11 таблиць верифіковано (row counts ідентичні public). Локальний `pg_dump` неможливий (Docker не встановлено, org plan=FREE). In-database backup + rollback scripts = повне покриття.
+
+136. **Mandatory Event Audit (forensic).** 5 L1 подій на запуск проаналізовано. Висновок: `Auth/RestoreSession/Started` та `Installation/Sync/Started` — **кандидати на L2** (VER: 0 автоматичних споживачів, інформація повністю виводима з Succeeded/Failed outcomes). `Application/Start/Started` — KEEP L1 (єдина pre-auth подія, термінальний outcome). `RestoreSession/Succeeded` + `Sync/Succeeded` — KEEP L1 (читаються `release_health_detail.success_rate`). Економія: 5→3 подій/запуск (−40%), ~120K рядків/місяць при 1000 юзерів. Перенесено в Phase 3.5.1.
+
+137. **Phase 3.5.1 (Mandatory Event Optimization) відкладено до після стабільного релізу.** Причина: ще одна поведінкова зміна перед релізом ускладнює аналіз при регресії. Мінімальний рефакторинг: додати `level` параметр у `TrackAuth`/`TrackSync` (default Mandatory), позначити 2 Started-події Diagnostic.
+
+138. **Replica functional testing пропущено (архітектурне рішення).** Replica `zhdtcxvnzlvbgxariyww` пройшла структурний аудит (47/47 таблиць, 0 drift) + data import validation, але клієнтське тестування не виконувалось (OAuth redirect URL потребував би втручання в Discord Developer Portal). Phase 3A міграції additive-only з rollback — ризик оцінено як низький. Production functional testing виконується безпосередньо на production після backup.
+
 ## 14.20. Telemetry Policy Test Matrix (контракт поведінки)
 
 > Контракт для тестування реалізації по чек-листу. Не форензик, а поведінка системи.
@@ -1632,13 +1646,16 @@ Blazor Components (.razor)
 ## 14.17. Порядок фаз (оновлено)
 
 ```
-Phase 1 (Telemetry Cleanup) — DEFERRED до Phase 3.5 (має стати основою)
+Phase 1 (Telemetry Cleanup) — ✅ Closed (замінено Release Cleanup 2026-07-07)
 Phase 2 (Database Cleanup Review) — ✅ Closed
 Phase 3 (Database Model + Freeze) — ✅ Closed
-Phase 3.5 (Telemetry Policy) — 🔄 Active
-Phase 3A (3 міграції) — ⏸ Pending production deployment (після Phase 3.5 + Phase 4)
-Phase 4 (Data Presentation Layer) — ⏸ після Phase 3.5
+Phase 3.5 (Telemetry Policy) — ✅ Closed + Implemented
+Phase 3.6 (Replica Synchronization) — ✅ Closed (replica буде видалена)
+Phase 3A (3 міграції) — ✅ **DEPLOYED to production** (2026-07-07, Post-Impl Forensic PASSED)
+Phase 3.5.1 (Mandatory Event Optimization) — ⏸ Backlog (після стабільного релізу)
+Phase 4 (Data Presentation Layer) — ⏸
 Phase 5 (Retention Pipeline) — Backlog (pg_cron)
+Phase 3.7 (Security Hardening) — Backlog (DEFAULT PRIVILEGES + SEC-11)
 ```
 
 ---
@@ -1934,6 +1951,50 @@ auth.users (TABLE, 35 columns)  +  public.app_installations (TABLE)
 - **SEC-11:** `SET search_path = public, pg_catalog` у 26 SECURITY DEFINER функцій (additive, Approved #81).
 - Не блокує Production Deployment (RLS блокує доступ в обох БД; over-granting — лише defense-in-depth gap).
 
+## 16.11. Phase 3A Production Deployment Report (2026-07-07)
+
+> Production `nrytczdbhehiotflaagl`, PostgreSQL 17.6, UTC. 3 міграції застосовані послідовно з верифікацією після кожної.
+
+### 16.11.1. Pre-Deployment
+
+- **Backup:** `backup_pre_phase3a` schema (11 таблиць, 11/11 row counts match public).
+- **Release Cleanup:** 717 telemetry_events + 4 telemetry_incidents + 4 notification_queue видалено (тестові дані Jul 4-7, pre-release). app_installations (55), auth.users (56), incident_policy (5) — preserved.
+- **Pre-migration state verified:** 2 DROP targets exist, 3 CREATE targets not found, incident_code/fn/trigger not found.
+
+### 16.11.2. Migration Results
+
+| Міграція | Зміна | Verification |
+|---|---|---|
+| phase3a_drop_dup_indexes | DROP `idx_app_installations_install_id` + `idx_user_discord_guilds_user_id` | ✅ DROPPED, UNIQUE constraints KEPT, query by install_id OK |
+| phase3a_add_partial_indexes | CREATE `idx_telemetry_failed` (partial) + `idx_telemetry_version_window` (partial) + `idx_telemetry_occurred` | ✅ CREATED з коректними definitions |
+| phase3a_incident_code_generated | ADD `incident_code` column + `set_incident_code()` fn + `trg_set_incident_code` trigger + OR REPLACE 4 views + backfill | ✅ EXISTS, trigger test `INC-2026-00022` OK, views return without error, grants cc_readonly OK |
+
+### 16.11.3. Post-Impl Object Count Diff
+
+| Метрика | Before | After | Δ | Expected |
+|---|---|---|---|---|
+| TABLES public | 14 | 14 | 0 | 0 ✅ |
+| VIEWS cc | 23 | 23 | 0 | 0 ✅ |
+| INDEXES public | 45 | 46 | +1 | −2+3=+1 ✅ |
+| FUNCTIONS public | 29 | 30 | +1 | +1 ✅ |
+| TRIGGERS public | 4 | 5 | +1 | +1 ✅ |
+| RLS policies | 29 | 29 | 0 | 0 ✅ |
+| SECURITY DEFINER | 28 | 28 | 0 | 0 ✅ |
+
+### 16.11.4. Mandatory Event Audit (forensic)
+
+5 L1 подій на запуск проаналізовано. Readers identified via `pg_get_viewdef`:
+
+| Подія | Reader (automated) | Reader (human) | Вердикт |
+|---|---|---|---|
+| Application/Start/Started | None | cc.traces | **KEEP L1** (єдина pre-auth подія) |
+| Auth/RestoreSession/Started | **None** | cc.traces | **→ L2** (кандидат, Phase 3.5.1) |
+| Auth/RestoreSession/Succeeded | release_health_detail | cc.traces | **KEEP L1** (success_rate) |
+| Installation/Sync/Started | **None** | cc.traces | **→ L2** (кандидат, Phase 3.5.1) |
+| Installation/Sync/Succeeded | release_health_detail | cc.traces | **KEEP L1** (success_rate) |
+
+**Факт:** `release_health_detail` фільтрує `outcome IN ('Succeeded', 'Failed')`. `trg_telemetry_failed_promote` fires on `outcome = 'Failed'` only. `cc.statistics` не читає telemetry_events. → "Started" події не мають автоматичних споживачів.
+
 ---
 
 # 17. Backlog
@@ -1955,11 +2016,11 @@ auth.users (TABLE, 35 columns)  +  public.app_installations (TABLE)
 | Розширити enum `telemetry_incidents.status` (F2) | forensic | низька |
 | Видалити мертвий `LiaForensicParser.TryParseMinimal` (F7) | forensic | низька |
 | MSBuild target для `git_commit` у BuildInfo | forensic | низька |
-| Phase 0: 3 індекси (partial Failed, version_window, occurred) | Optimization-Plan | низька |
+| ~~Phase 0: 3 індекси (partial Failed, version_window, occurred)~~ | ~~Optimization-Plan~~ | ~~низька~~ — **✅ DONE: Phase 3A production 2026-07-07** |
 | Phase 1: скоротити LIA chain 9→2, app-update 6→1 | Optimization-Matrix | середня |
 | Phase 2: видалити `detail.retry_count` з C# `UpdateEvents.Track`/`LiaEvents.Track` (завжди 0) | Optimization-Plan + Phase 2 Review | низька |
 | ~~Phase 2: MERGE `notification_queue.error_message` ↔ `last_error` → `last_error`~~ | ~~Phase 2 Review (2026-07-07)~~ | ~~низька~~ — **ВІДХИЛЕНО forensic (різна семантика, див. §12.6, Rejected #68)** |
-| ~~Phase 2: REMOVE 3 індекси-дублікати~~ (`idx_app_installations_install_id`, `idx_app_installations_machine_id`, `idx_user_discord_guilds_user_id`) | ~~Phase 2 Review — DROP INDEX additive~~ | низька — **2/3 виконано на replica Phase 3A (install_id + user_discord_guilds_user_id); machine_id → DEFER (Pre-Impl Forensic виявив ризик regression)** |
+| ~~Phase 2: REMOVE 3 індекси-дублікати~~ (`idx_app_installations_install_id`, `idx_app_installations_machine_id`, `idx_user_discord_guilds_user_id`) | ~~Phase 2 Review — DROP INDEX additive~~ | низька — **2/3 ✅ DONE: Phase 3A production 2026-07-07 (install_id + user_discord_guilds_user_id); machine_id → DEFER (Pre-Impl Forensic виявив ризик regression)** |
 | Phase 2: дослідити та погодити DROP SCHEMA `backup_pre_1_0_0_1` (12 дублів, 55 рядків, 0 залежностей) | Phase 2 Review | низька |
 | Phase 3A: описати незадокументовані об'єкти в міграції `20260708000000_describe_unschema_objects.sql` (release_health_detail, unfinished_started, ecosystem_stats) | Post-Impl Forensic Phase 3A — §16.6 TD-NEW | низька |
 | **Phase 3.5: `TelemetryLevel` enum в `ITelemetryService.Track()`** — додати enum-параметр `level` (default Mandatory). Існуючі 39 викликів не ламаються. Реєстрація в `AppCompositionRoot`. | архітектурна основа Policy (варіант E, §5.8.2) | низька |
@@ -1968,7 +2029,8 @@ auth.users (TABLE, 35 columns)  +  public.app_installations (TABLE)
 | **Phase 3.5: `IInstallationContextProvider`** — активувати L1 FUTURE колонки (`localization_version`, `game_folder_path`→L2, `selected_environment`, `update_channel`). | наповнити test Supabase "правильними" даними | середня |
 | **Phase 3.5: filter L2 при OFF** — TelemetryClient skip L2 events when `AdvancedDiagnostics=false`. Очікується суттєве зменшення навантаження. | скоротити telemetry_events volume | низька |
 | **Phase 3.5: позначити 21 L2 емітерів** — додати `level: TelemetryLevel.Diagnostic` до 21 викликів з §5.10.1 (Updater Started/Succeeded, LIA cascade, RunInstallerScript). | реалізувати Policy в коді | низька |
-| Phase 2: ~~generated column~~ **trigger-based `incident_code`** (`INC-YYYY-NNNNN`) замість формування в 4 views + Notifier | Phase 2 Review → Phase 3A Post-Impl: generated column неможливий для timestamptz (STABLE), замінено на trigger | низька |
+| **Phase 3.5.1: Mandatory Event Optimization** — перевести `Auth/RestoreSession/Started` + `Installation/Sync/Started` з L1→L2 (forensic #136: 0 автоматичних споживачів, −40% подій/запуск). Додати `level` параметр у `TrackAuth`/`TrackSync` (default Mandatory). | §16.11.4 Mandatory Event Audit | низька |
+| ~~Phase 2: generated column~~ **trigger-based `incident_code`** (`INC-YYYY-NNNNN`) замість формування в 4 views + Notifier | Phase 2 Review → Phase 3A Post-Impl: generated column неможливий для timestamptz (STABLE), замінено на trigger | низька — **✅ DONE: Phase 3A production 2026-07-07** |
 | Phase 3: single-scan candidates + матеріалізувати 3 views | Optimization-Plan | середня |
 | Control Center auth (SEC-1) | Final-Review | середня |
 | Cert pin L.I.A. (SEC-3) | Final-Review | середня |
