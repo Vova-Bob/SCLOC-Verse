@@ -908,23 +908,26 @@ if (level == TelemetryLevel.Diagnostic && !settings.DeveloperDiagnostics) return
 | `detail.signal_name` | — | — | ✅ | cc.telemetry_events (jsonb) | LIA forensic (0 у даних) |
 | `detail` (jsonb container) | ❌ | ✅ (LIA forensic) | ✅ | cc.telemetry_events | Container для forensic keys |
 
-### 5.10.3. Підсумок (оновлено)
+### 5.10.3. Підсумок (оновлено після реалізації + Post-Impl Forensic)
 
-- **16 L1 Success полів** (мінімальний набір для Succeeded/Started/UpdateFound).
-- **21 L1 Failed полів** (L1 Success + 4 error-context: error_message, source, hresult, exception_type + detail container для LIA forensic).
-- **12 L2 Diagnostic полів** (duration_ms, detail.phase, retry_count, certificate_*, installer_type, package_version, activity_id, powershell_exit_code, appx_log, signal_name).
-- **2 DEPRECATED полів** (supabase_code, http_status — 100% NULL, CHECK вимагає).
-- **0 L3 полів** у .Track() (всі L3 — debug, hotkeys, perf — вже локальні).
+- **21 L1 Mandatory емітерів** (Failed термінальні + lifecycle Succeeded/Started) — default, без `level:` параметра.
+- **18 L2 Diagnostic емітерів** (проміжні Started/Succeeded/Skipped, Cascade trace, RunInstallerScript forensic) — `level: TelemetryLevel.Diagnostic`.
+- **0 L3 Local** — 0 використань (лише enum визначення).
+- **Усього: 39 .Track() емітерів** + 2 делегуючих (LiaEvents.cs:56, UpdateEvents.cs:43).
 
-**Реалізація:** `ErrorContextExtractor.Extract(exception)` вже викликається лише при `exception != null` (Failed). Для Success — `ctx = null` або мінімальний. Тобто **нова Outcome-dependent модель не вимагає переписування коду** — лише чітке документування, що L1 Failed ≠ L1 Success.
+> **Post-Impl Forensic (2026-07-07):** KB §5.10.1 казав 21 L2, фактично 18 після реалізації. Різниця: #26 LIA/Install/Started — 2 виклики (Updater.cs:202,260) рахувались як 2, але #27-28 теж по 2. Фактичний підрахунок: 11 (Updater.cs) + 2 (Downloader) + 3 (Verifier) + 2 (Installer) = 18.
 
-**Перевірка `TelemetryClient.Track()`:**
-```
-if (level == TelemetryLevel.Diagnostic && !settings.AdvancedDiagnostics) return;
-// L1 Succeeded/Started → мінімальний (без error-context)
-// L1 Failed → + error_message + source + hresult + exception_type (через ErrorContextExtractor.Extract)
-// L2 → + duration_ms + detail.* (через LiaEvents/UpdateEvents параметри)
-```
+### 5.10.4. Post-Implementation Forensic (2026-07-07)
+
+| # | Перевірка | Результат |
+|---|---|---|
+| 1 | L2 емітери з `TelemetryLevel.Diagnostic` | ✅ 18 (grep `level: TelemetryLevel.Diagnostic`) |
+| 2 | `AdvancedDiagnostics` поза `TelemetryClient` | ✅ 0 у діловому коді (лише UI + SettingsService + TelemetryClient) |
+| 3 | `Track()` без `level` → default Mandatory | ✅ 21 L1 виклик без level → Mandatory (ITelemetryService default) |
+| 4 | `TelemetryLevel.Local` випадково | ✅ 0 використань (лише gate перевірка TelemetryClient.cs:100) |
+| 5 | `AttachDiagnosticGate()` один раз | ✅ 1 виклик (AppCompositionRoot.cs:156) |
+| 6 | `Category` не змінена | ✅ `context?.Category ?? "Operational"` — без прив'язки до Level |
+| 7 | Incident Pipeline регресія | ✅ Failed = L1 Mandatory → trigger `trg_telemetry_failed_promote` не зачеплено. `RunInstallerScript/Failed` (L2 cascade) → фінальний `LIA/Install/Failed` (L1) створює інцидент завжди. |
 
 ## 5.11. Reader Validation — доказ споживача для L1 (Phase 3.5 forensic, 2026-07-07)
 
@@ -1577,6 +1580,11 @@ Blazor Components (.razor)
 121. **`TelemetryLevel` застосовується лише через `.Track()` параметр.** ЗАБОРОНЕНО: `if (settings.AdvancedDiagnostics) { _telemetry.Track(...) }` у 21 місці. Дозволено лише: `_telemetry.Track(..., level: TelemetryLevel.Diagnostic)`. Рішення відправляти чи ні приймає **виключно `TelemetryClient.Track()`**.
 122. **Заборонити пряме читання `AdvancedDiagnostics` поза `TelemetryClient`.** Жоден код, окрім `TelemetryClient` (через `AttachDiagnosticGate(Func<bool>)`), не має права читати `_preferencesService.GetAdvancedDiagnostics()` або `Settings.Default.AdvancedDiagnostics`. Єдиний споживач прапорця — `TelemetryClient`. Виняток: `MainWindow.xaml.cs:403,450-455` (UI читання/запис чекбокса → SettingsService).
 123. **Gate null не блокує Mandatory.** Якщо `AttachDiagnosticGate()` не викликано (`_diagnosticGate == null`): Mandatory події ✅ відправляються, Diagnostic події ❌ блокуються (`gate null → false`). Это забезпечує безпеку: gate not attached = conservative (не відправляємо L2), але L1 працює завжди.
+
+## 14.21. Phase 3.5 реалізація завершена + Post-Impl Forensic (2026-07-07)
+
+124. **Phase 3.5 Telemetry Policy реалізовано.** `TelemetryLevel` enum + `ITelemetryService.Track()` параметр + `TelemetryClient` gate + `AttachDiagnosticGate` + 18 L2 емітерів позначено. Build: 0 warnings, 0 errors. UTF-8 коректний.
+125. **Post-Implementation Forensic PASSED (7/7 перевірок):** 18 L2 емітерів (фактично, KB казав 21 — уточнено), 0 `AdvancedDiagnostics` у діловому коді, 21 L1 через default Mandatory, 0 Local використань, 1 AttachDiagnosticGate виклик, Category незмінний, Incident Pipeline без регресії. Деталі в §5.10.4.
 
 ## 14.20. Telemetry Policy Test Matrix (контракт поведінки)
 
