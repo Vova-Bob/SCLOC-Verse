@@ -1574,6 +1574,9 @@ Blazor Components (.razor)
 119. **`TelemetryLevel.Local` залишити в enum** — 0 використань зараз, але документує архітектуру (L3 — ніколи не відправляється). Місце для майбутніх локальних подій.
 
 120. **Реалізацій `ITelemetryService` — одна** (`TelemetryClient`). Жодних mock/fake/test. Новий параметр додається лише в 1 інтерфейс + 1 реалізацію. Backward compatible (default = Mandatory).
+121. **`TelemetryLevel` застосовується лише через `.Track()` параметр.** ЗАБОРОНЕНО: `if (settings.AdvancedDiagnostics) { _telemetry.Track(...) }` у 21 місці. Дозволено лише: `_telemetry.Track(..., level: TelemetryLevel.Diagnostic)`. Рішення відправляти чи ні приймає **виключно `TelemetryClient.Track()`**.
+122. **Заборонити пряме читання `AdvancedDiagnostics` поза `TelemetryClient`.** Жоден код, окрім `TelemetryClient` (через `AttachDiagnosticGate(Func<bool>)`), не має права читати `_preferencesService.GetAdvancedDiagnostics()` або `Settings.Default.AdvancedDiagnostics`. Єдиний споживач прапорця — `TelemetryClient`. Виняток: `MainWindow.xaml.cs:403,450-455` (UI читання/запис чекбокса → SettingsService).
+123. **Gate null не блокує Mandatory.** Якщо `AttachDiagnosticGate()` не викликано (`_diagnosticGate == null`): Mandatory події ✅ відправляються, Diagnostic події ❌ блокуються (`gate null → false`). Это забезпечує безпеку: gate not attached = conservative (не відправляємо L2), але L1 працює завжди.
 
 ## 14.20. Telemetry Policy Test Matrix (контракт поведінки)
 
@@ -1591,6 +1594,7 @@ Blazor Components (.razor)
 | Diagnostic ON | true | Diagnostic | ✅ L2 відправляється (duration_ms, detail.*) |
 | Telemetry Disabled | будь-який | будь-який | ❌ нічого (env SCLOCVERSE_TELEMETRY_DISABLED) |
 | Gate not attached | — | Diagnostic | ❌ подія НЕ відправляється (`_diagnosticGate == null → false`) |
+| **Gate null + Mandatory** | **null** | **Mandatory** | **✅ Відправляється** (gate null не блокує L1; Approved #123) |
 
 ### 14.20.2. Конкретні події — що піде
 
