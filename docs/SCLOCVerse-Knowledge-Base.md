@@ -685,7 +685,124 @@
 
 ---
 
-# 6. Observability
+## 5.8. Telemetry Policy (Phase 3.5, 2026-07-07)
+
+> **Single Source of Truth для збору даних.** Відповідає на 3 питання: що надсилається завжди? Що лише при Developer Diagnostics? Що ніколи не виходить із комп'ютера користувача?
+
+### 5.8.1. Три рівні
+
+| Рівень | Назва | Вимикається? | Опис |
+|---|---|---|---|
+| **L1** | **Mandatory** | ❌ Ні | Статистика життя продукту. Без неї неможливо оцінити release health, success rate, інциденти. Анонімізована (install_id, app_version) + технічні результати. |
+| **L2** | **Diagnostic** | ✅ Так (Developer Diagnostics) | Розширена діагностика для розробника: проміжні кроки, трейси, forensic payload (cert, hresult, stack), duration_ms, detail.phase. |
+| **L3** | **Local Only** | ❌ Ніколи не відправляється | Hotkeys, debug log, performance, FPS, input traces, verbose. Лише локальний журнал (якщо буде). |
+
+### 5.8.2. Архітектура Policy (не чекбокс перевіряє подію, а Policy)
+
+```
+TelemetryClient
+    ↓
+BuildEvent(component, operation, outcome, context)
+    ↓
+TelemetryPolicy.Classify(component, operation) → L1 | L2 | L3
+    ↓
+L1 → send always (якщо не SCLOCVERSE_TELEMETRY_DISABLED env)
+L2 → send only if Settings.DeveloperDiagnostics == true
+L3 → drop (log local only)
+```
+
+**Перевага:** будь-яка нова подія одразу отримує категорію через реєстр `TelemetryPolicy`. Чекбокс `DeveloperDiagnostics` не перевіряє кожну подію, а лише вмикає/вимикає Level 2.
+
+### 5.8.3. Чекбокс `DeveloperDiagnostics` (раніше `AdvancedDiagnostics`)
+
+| Аспект | Станом |
+|---|---|
+| UI | `SettingsCanvas.xaml:475` `AdvancedDiagnosticsCheckBox` — **перейменувати** на `DeveloperDiagnosticsCheckBox` + label «Надсилати розширені діагностичні дані для допомоги розробнику» |
+| Settings | `Settings.Default.AdvancedDiagnostics` → `DeveloperDiagnostics` |
+| Читання | `MainWindow.xaml.cs:403` |
+| Запис | `MainWindow.xaml.cs:450-456` |
+| Вплив на телеметрію | зараз ❌ відсутній; після Phase 3.5 — вмикає Level 2 |
+| Default | `false` (opt-in) |
+
+### 5.8.4. Поле Category в telemetry_events (FUTURE → ACTIVATE)
+
+Зараз `category` завжди `'Operational'` (DEFAULT). Після Phase 3.5 — `TelemetryPolicy` встановлює:
+- `category = 'Critical'` для L1 подій (Failed/Succeeded фінальні + Critical exceptions).
+- `category = 'Operational'` для L1 подій (Success/Sync).
+- `category = 'Diagnostic'` для L2 подій (Started, forensic).
+- `category = 'Analytics'` для майбутніх product analytics.
+
+**CHECK constraint** (міграція 00009) вже дозволяє всі 4 значення — additive activation.
+
+## 5.9. Аудит .Track() емітерів за рівнями Policy (39 викликів у коді)
+
+> Verified через grep `.Track(` у SCLOCVerse/**/*.cs (2026-07-07). Кожен емітер класифіковано.
+
+### 5.9.1. Level 1 — Mandatory (завжди відправляється)
+
+| Емітер | Файл:рядок | Component/Operation | Outcome | Category |
+|---|---|---|---|---|
+| App Start | `App.xaml.cs:81` | Application/Start | Started | Operational |
+| Auth Success/Failed | `AuthService.cs:297` | Auth/{operation} | Success/Failed | Critical (Failed) / Operational |
+| Installation Sync | `InstallationService.cs:152` | Installation/Sync | Success/Failed | Critical (Failed) / Operational |
+| Orchestrator Cycle Failed | `BackgroundUpdateMonitor.cs:131` | Orchestrator/Cycle | Failed | Critical |
+| App Update Found | `BackgroundUpdateMonitor.cs:148` | Orchestrator/AppCheck | UpdateFound | Operational |
+| App Check Failed | `BackgroundUpdateMonitor.cs:153` | Orchestrator/AppCheck | Failed | Critical |
+| Localization Check outcome | `BackgroundUpdateMonitor.cs:198` | Orchestrator/LocalizationCheck | Success/Failed/UpToDate | Operational/Critical |
+| Localization Check Failed | `BackgroundUpdateMonitor.cs:207` | Orchestrator/LocalizationCheck | Failed | Critical |
+| LIA Update Found | `BackgroundUpdateMonitor.cs:224` | Orchestrator/LiaCheck | UpdateFound | Operational |
+| LIA Check Failed | `BackgroundUpdateMonitor.cs:229` | Orchestrator/LiaCheck | Failed | Critical |
+| App Update Download **Failed** | `UpdateDownloader.cs:69` | Updater/Download | Failed | Critical |
+| App Update Verify **Failed** | `UpdateVerifier.cs:46,59,65` | Updater/Verify | Failed | Critical |
+| App Update Install **Failed** | `UpdateInstaller.cs:46,76,82` | Updater/Install | Failed | Critical |
+| LIA Install **Succeeded** | `Updater.cs:265` | LIA/Install | Succeeded | Operational |
+| LIA Install **Failed** | `Updater.cs:273` | LIA/Install | Failed | Critical |
+| LIA Download **Failed (terminal)** | `Updater.cs:226,246` | LIA/Download | Failed | Critical |
+
+**16 емітерів.** Усі Failed + Succeeded (фінальні) + lifecycle (Start, UpdateFound, Sync).
+
+### 5.9.2. Level 2 — Diagnostic (лише при Developer Diagnostics ON)
+
+| Емітер | Файл:рядок | Component/Operation | Outcome | Category |
+|---|---|---|---|---|
+| App Update Download **Started/Succeeded** | `UpdateDownloader.cs:46,64` | Updater/Download | Started/Succeeded | Diagnostic |
+| App Update Verify **Started/Skipped/Succeeded** | `UpdateVerifier.cs:34,40,59` | Updater/Verify | Started/Skipped/Succeeded | Diagnostic |
+| App Update Install **Started/Succeeded** | `UpdateInstaller.cs:40,76` | Updater/Install | Started/Succeeded | Diagnostic |
+| LIA Install **Started** | `Updater.cs:201,259` | LIA/Install | Started | Diagnostic |
+| LIA Download **Started/Succeeded (cascade)** | `Updater.cs:217,231,238,251` | LIA/Download | Started/Succeeded | Diagnostic |
+| LIA RunInstallerScript (Started/Succeeded/Failed ×3) | `Updater.cs:555,574,589,597,604` | LIA/RunInstallerScript | * | Diagnostic |
+| `detail.phase` (orchestrationPhase) | UpdateEvents/LiaEvents | — | — | Diagnostic |
+| `detail.retry_count` (FUTURE) | — | — | — | Diagnostic |
+| `duration_ms` (на всіх L2) | UpdateEvents/LiaEvents | — | — | Diagnostic |
+| `hresult`, `exception_type`, `error_message` (stack) | ErrorContextExtractor | — | — | Diagnostic |
+| LIA forensic payload (`certificate_*`, `installer_type`, `package_version`, `activity_id`, `powershell_exit_code`, `appx_log`) | LiaForensicParser → detail | — | — | Diagnostic |
+| `machine_id`, `os_version`, `os_build` (install context) | InstallationService | — | — | Diagnostic |
+
+**~23 емітера + fields.** Проміжні кроки, forensic payload, detailed diagnostics.
+
+### 5.9.3. Level 3 — Local Only (ніколи не відправляється)
+
+| Дані | Де | Зараз відправляється? | План |
+|---|---|---|---|
+| Hotkey events (key pressed, key-up) | `HotkeyService.cs`, `RawInputBackend` | ❌ ні (вже локально) | Local journal (future) |
+| Debug.WriteLine traces | `AuthService.cs:381`, `HotkeyService.cs:268`, `LiaEvents` debug | ❌ ні | Local journal |
+| InputDiagnostics (HWND, window title, key sequence) | `InputDiagnostics.cs:37` | ❌ ні (file log) | Stay local |
+| HangarTimer cycle ms, FPS | `HangarTimerService.cs`, `HomeCanvas.xaml.cs` | ❌ ні | Local journal |
+| Performance counters | (future) | ❌ ні | Local journal |
+
+**0 .Track() викликів.** Усі Level 3 дані вже локальні — це правильно. Архітектурне правило: нова перформанс/вхідна телеметрія — лише локально.
+
+### 5.9.4. Підсумок аудиту
+
+| Рівень | .Track() викликів | Очікуваний обсяг даних (за місяць на 1000 користувачів) |
+|---|---:|---|
+| **L1 Mandatory** | 16 | ~50 000 подій (5/користувач/місяць × 10 результатів) |
+| **L2 Diagnostic** | ~23 | ~500 000 подій при ON, 0 при OFF (opt-in) |
+| **L3 Local** | 0 .Track() | локально (file journal) |
+
+**Зараз у production:** усі 39 викликів L1+L2 відправляються завжди (чекбокс мертвий). Після Phase 3.5: L2 відправляється лише при ON → зменшення навантаження на БД у **~30 разів** для користувачів з OFF.
+
+
 
 > Observability = Telemetry (розділ 5) + Incident Pipeline + Notification System (розділ 12) + Knowledge Engine (розділ 13) + Control Center (розділ 11).
 
@@ -1192,6 +1309,36 @@ Blazor Components (.razor)
 ```
 107. **Forensic baseline поточного Blazor UI** — перший крок Phase 4: які сторінки існують, які колонки відображаються, в якому порядку, які формати. Без baseline — не формувати цільову модель.
 
+## 14.16. Phase 3.5 — Telemetry Policy & Diagnostic Levels (2026-07-07)
+
+> **Пріоритет над Phase 4.** Без політики чекбокс мертвий, FUTURE колонки не активуються, тестовий Supabase заллється "неправильними" даними. Phase 3.5 визначає правила збору для всього SCLOC-Verse.
+
+108. **Telemetry Policy 3 рівні** (застосовуємо замість 2 Category A/B):
+    - **L1 Mandatory** — не вимикається (статистика життя продукту).
+    - **L2 Diagnostic** — лише при `DeveloperDiagnostics` ON (розширена діагностика).
+    - **L3 Local Only** — ніколи не відправляється (hotkeys, debug, perf, input).
+109. **`TelemetryPolicy` архітектура** — НЕ чекбокс перевіряє кожну подію, а центральний реєстр. Кожен `.Track()` класифікується автоматично через `TelemetryPolicy.Classify(component, operation)`.
+110. **Чекбокс перейменовано:** `AdvancedDiagnostics` → `DeveloperDiagnostics` (label: «Надсилати розширені діагностичні дані для допомоги розробнику»). Opt-in (default false).
+111. **Audit 39 .Track() емітерів:** 16 L1 + ~23 L2 + 0 L3 (всі L3 вже локальні). Деталі в §5.9.
+112. **Активація `category` поля** — `TelemetryPolicy` встановлює Critical/Operational/Diagnostic/Analytics (CHECK вже дозволяє, міграція 00009). Additive.
+113. **Активація `app_installations` FUTURE колонок прив'язана до Policy:**
+    - `app_version`, `os_version`, `platform` → L1 Mandatory (базова статистика).
+    - `machine_id`, `country` → L1 Mandatory (географія + diagnostics).
+    - `localization_version`, `selected_environment`, `game_folder_path` → L1 Mandatory (контекст установки).
+    - `update_channel`, `install_source`, `os_build` → L2 Diagnostic (опціонально).
+
+## 14.17. Порядок фаз (оновлено)
+
+```
+Phase 1 (Telemetry Cleanup) — DEFERRED до Phase 3.5 (має стати основою)
+Phase 2 (Database Cleanup Review) — ✅ Closed
+Phase 3 (Database Model + Freeze) — ✅ Closed
+Phase 3.5 (Telemetry Policy) — 🔄 Active
+Phase 3A (3 міграції) — ⏸ Pending production deployment (після Phase 3.5 + Phase 4)
+Phase 4 (Data Presentation Layer) — ⏸ після Phase 3.5
+Phase 5 (Retention Pipeline) — Backlog (pg_cron)
+```
+
 ---
 
 # 15. Rejected Decisions (майстер-список)
@@ -1445,6 +1592,11 @@ auth.users (TABLE, 35 columns)  +  public.app_installations (TABLE)
 | ~~Phase 2: REMOVE 3 індекси-дублікати~~ (`idx_app_installations_install_id`, `idx_app_installations_machine_id`, `idx_user_discord_guilds_user_id`) | ~~Phase 2 Review — DROP INDEX additive~~ | низька — **2/3 виконано на replica Phase 3A (install_id + user_discord_guilds_user_id); machine_id → DEFER (Pre-Impl Forensic виявив ризик regression)** |
 | Phase 2: дослідити та погодити DROP SCHEMA `backup_pre_1_0_0_1` (12 дублів, 55 рядків, 0 залежностей) | Phase 2 Review | низька |
 | Phase 3A: описати незадокументовані об'єкти в міграції `20260708000000_describe_unschema_objects.sql` (release_health_detail, unfinished_started, ecosystem_stats) | Post-Impl Forensic Phase 3A — §16.6 TD-NEW | низька |
+| **Phase 3.5: реєстр `TelemetryPolicy`** — інтерфейс `ITelemetryPolicy` + реалізація з класифікацією всіх (component, operation) пар на L1/L2/L3. Реєстрація в `AppCompositionRoot`. | архітектурна основа Policy | середня |
+| **Phase 3.5: чекбокс `DeveloperDiagnostics`** — перейменувати з `AdvancedDiagnostics`, label «Надсилати розширені діагностичні дані для допомоги розробнику», wire до `ITelemetryPolicy.IsDiagnosticEnabled`. | увімкнути мертвий UI-контракт §16.4 | низька |
+| **Phase 3.5: `category` активація** — `TelemetryClient.BuildEvent()` встановлює `category` (Critical/Operational/Diagnostic/Analytics) через Policy. Additive. | диференціація подій у БД | низька |
+| **Phase 3.5: `IInstallationContextProvider`** — активувати 4 L1 FUTURE колонки (`localization_version`, `game_folder_path`, `selected_environment`, `update_channel`). | наповнити test Supabase "правильними" даними | середня |
+| **Phase 3.5: filter L2 при OFF** — TelemetryClient skip L2 events when `DeveloperDiagnostics=false`. Оптимізація навантаження ~30×. | скоротити telemetry_events volume | низька |
 | Phase 2: ~~generated column~~ **trigger-based `incident_code`** (`INC-YYYY-NNNNN`) замість формування в 4 views + Notifier | Phase 2 Review → Phase 3A Post-Impl: generated column неможливий для timestamptz (STABLE), замінено на trigger | низька |
 | Phase 3: single-scan candidates + матеріалізувати 3 views | Optimization-Plan | середня |
 | Control Center auth (SEC-1) | Final-Review | середня |
