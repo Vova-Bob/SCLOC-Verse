@@ -159,4 +159,55 @@
         </Setter>
     </Style>
 
+    <!-- ============== КАСТОМНИЙ ToolTip ============== -->
+    <!-- Єдина палітра для ToolTip — повторно використані кольори додатку. -->
+    <SolidColorBrush x:Key="ToolTipCardFill"   Color="#102A3A"/>
+    <SolidColorBrush x:Key="ToolTipCardStroke" Color="#2478A9"/>
+    <SolidColorBrush x:Key="ToolTipText"       Color="#E8F3FF"/>
+
+    <!-- Інфраструктура: будь-який елемент з ToolTip="..." автоматично отримує
+         єдиний темний напівпрозорий стиль (DRY/KISS). Повторно використано
+         кольори ComboBox/CheckBox (#102A3A, #2478A9, #E8F3FF), DropShadowEffect
+         як у кнопок, CornerRadius=8 як у карток, PopupAnimation=Fade як у Popup
+         ComboBox. Позиція праворуч, поява ~250 мс, MaxWidth=300, перенос тексту. -->
+    <Style TargetType="{x:Type ToolTip}">
+        <Setter Property="Foreground"       Value="{StaticResource ToolTipText}"/>
+        <Setter Property="FontFamily"      Value="Segoe UI"/>
+        <Setter Property="FontSize"         Value="14"/>
+        <Setter Property="MaxWidth"        Value="300"/>
+        <Setter Property="Background"       Value="{StaticResource ToolTipCardFill}"/>
+        <Setter Property="BorderBrush"      Value="{StaticResource ToolTipCardStroke}"/>
+        <Setter Property="BorderThickness"  Value="1"/>
+        <Setter Property="Padding"         Value="12,10"/>
+        <Setter Property="Placement"       Value="Right"/>
+        <Setter Property="HorizontalOffset" Value="8"/>
+        <Setter Property="VerticalOffset"  Value="0"/>
+        <Setter Property="HasDropShadow"   Value="False"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="{x:Type ToolTip}">
+                    <Border Background="{TemplateBinding Background}"
+                            BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}"
+                            CornerRadius="8"
+                            Padding="{TemplateBinding Padding}"
+                            SnapsToDevicePixels="True">
+                        <Border.Effect>
+                            <DropShadowEffect Color="Black"
+                                              BlurRadius="12"
+                                              ShadowDepth="6"
+                                              Opacity="0.45"/>
+                        </Border.Effect>
+                        <TextBlock Text="{TemplateBinding Content}"
+                                   Foreground="{TemplateBinding Foreground}"
+                                   FontFamily="{TemplateBinding FontFamily}"
+                                   FontSize="{TemplateBinding FontSize}"
+                                   TextWrapping="Wrap"
+                                   TextAlignment="Left"/>
+                    </Border>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
 </ResourceDictionary>

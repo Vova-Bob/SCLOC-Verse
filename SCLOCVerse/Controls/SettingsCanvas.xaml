@@ -328,6 +328,14 @@
             <Setter Property="Cursor" Value="Hand"/>
             <Setter Property="VerticalContentAlignment" Value="Center"/>
             <Setter Property="Margin" Value="0,8,0,0"/>
+            <!-- Інфраструктура кастомного ToolTip для всіх CheckBox налаштувань.
+                 Позиція праворуч, поява ~250 мс (InitialShowDelay), плавний fade
+                 забезпечується OS-рівневим ToolTipPopupAnimation (за замовчуванням Fade). -->
+            <Setter Property="ToolTipService.Placement" Value="Right"/>
+            <Setter Property="ToolTipService.InitialShowDelay" Value="250"/>
+            <Setter Property="ToolTipService.ShowDuration" Value="60000"/>
+            <Setter Property="ToolTipService.HorizontalOffset" Value="8"/>
+            <Setter Property="ToolTipService.VerticalOffset" Value="0"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="{x:Type CheckBox}">
@@ -456,12 +464,14 @@
     <CheckBox x:Name="RunAtStartupCheckBox"
               Style="{StaticResource SettingCheckBox}"
               Content="Запускати з Windows"
+              ToolTip="Автоматично запускати SCLOC-Verse після входу до Windows."
               Canvas.Left="302" Canvas.Top="140"/>
 
     <!-- Чекбокс: Згортати в трей -->
     <CheckBox x:Name="MinimizeToTrayCheckBox"
               Style="{StaticResource SettingCheckBox}"
               Content="Згортати в трей при закритті"
+              ToolTip="При закритті вікна програма залишиться працювати у системному треї."
               Canvas.Left="302" Canvas.Top="171"/>
 
     <!-- Колонка 2 -->
@@ -469,12 +479,14 @@
     <CheckBox x:Name="AutoUpdateLocalizationCheckBox"
               Style="{StaticResource SettingCheckBox}"
               Content="Автооновлення локалізації"
+              ToolTip="Автоматично перевіряти та встановлювати нові версії локалізації Star Citizen."
               Canvas.Left="606" Canvas.Top="140"/>
 
     <!-- Чекбокс: Розширена діагностика -->
     <CheckBox x:Name="AdvancedDiagnosticsCheckBox"
               Style="{StaticResource SettingCheckBox}"
               Content="Розширена діагностика"
+              ToolTip="Надсилати додаткову діагностичну інформацію лише під час виникнення проблем. Використовується для детального аналізу помилок. За замовчуванням вимкнено."
               Canvas.Left="606" Canvas.Top="171"/>
 
     <!-- README блок -->
