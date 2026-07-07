@@ -60,6 +60,51 @@ KB Synchronization: <назва фази або forensic>
 
 Мета: через пів року будь-який агент відкриває один файл і бачить **поточний** стан проєкту, а не стан на момент створення документа.
 
+## Стани forensic-знахідок (Hypothesis → Verified → Implemented)
+
+Кожна знахідка в Knowledge Base маркується станом підтвердженості:
+
+- 🔵 **HYP (Hypothesis)** — неперевірена гіпотеза, припущення, кандидата на перевірку.
+- 🟢 **VER (Verified)** — доведено фактом (жива БД, C# код, EXPLAIN ANALYZE, git blame).
+- ✅ **IMPL (Implemented)** — реалізовано в коді/схемі (Verified + внесено в систему).
+- ❌ **REJ (Rejected)** — спростовано доводом (Verified False → переноситься в §15).
+
+**Приклад:**
+- `retry_count` — HYP (було «дубль») → VER (заготовка під Retry Policy) → IMPL (коли Retry Policy з'явиться).
+- `error_message duplicate` — HYP → VER False → REJ.
+
+Це дозволяє агентам бачити **ступінь підтвердженості** знань, а не лише сам факт.
+
+## Post-Implementation Forensic (після кожної реалізованої фази)
+
+Після кожної реалізованої фази (або міграції в production) ОБОВ'ЯЗКОВО виконати **Post-Implementation Forensic** — коротку перевірку 5–10 хвилин:
+
+- чи **реально змінилося** те, що планувалось (snapshot до/після: schema, indexes, views, row counts);
+- чи **не зламалося** щось інше (EXPLAIN ANALYZE ключових запитів, контракти views, C# SQL);
+- які **припущення підтвердилися**, які **спростувалися**;
+- чи потребують оновлення розділи KB (Hypothesis → Verified/Implemented/Rejected).
+
+Не новий аудит на 100 сторінок. Лише перевірка факту.
+
+**Одразу після** — Knowledge Base Synchronization (див. правило вище).
+
+Цикл розробки:
+
+```
+Forensic → KB → Рішення → Реалізація → Verification → Post-Impl Forensic → KB
+```
+
+## Backup стратегія перед production-міграціями
+
+Жодна міграція не виконується напряму в production без:
+
+1. **Snapshot/Backup production** (Supabase Dashboard, `pg_dump`, або Point-in-Time Recovery).
+2. **Тестовий deployment**: окремий Supabase project (free tier — до 2 активних) або Supabase Branching (Pro+).
+3. **Post-Implementation Forensic на тестовому** середовищі.
+4. **Лише потім** — production deployment.
+
+Additive-only міграції з підготовленим rollback-скриптом — також обов'язкові.
+
 ## Пріоритет джерел при конфлікті
 
 1. `AGENTS.md` (цей файл)
