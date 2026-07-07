@@ -820,6 +820,17 @@ Materialized VIEW `control_center.knowledge_coverage` (per-release). REFRESH ч�
 86. **`archive_knowledge_entry(bigint, text, text)`** — створена 00021, DROP 00023 (замінено на `transition_knowledge(target=Archived)`). Коректний lifecycle, не борг.
 87. **`promote_incident_candidates()` (batch)** — zombie з міграції 00013 (REPLACE 00016, але не DROP). Підтверджено на рівні БД через `pg_depend=[]`. DEFER (DROP заборонено API Freeze §13.8).
 
+## 14.10. Phase 3A Production Replica + Post-Impl Forensic (2026-07-07)
+
+88. **Phase 3A успішно перевірено на Production Replica** (`zhdtcxvnzlvbgxariyww`, SCLOC-Verse-Test, free tier). Усі 3 міграції застосовано. Post-Implementation Forensic повністю пройшов.
+89. **Generated column → trigger заміна (Post-Impl виявив):** PostgreSQL generated column вимагає IMMUTABLE expression; `EXTRACT(YEAR FROM opened_at)` для `timestamptz` — STABLE, не проходить («generation expression is not immutable»). Жодна функція timestamptz→int не може бути IMMUTABLE (залежить від session TimeZone). Замінено на звичайну text-колонку + `BEFORE INSERT/UPDATE` тригер `set_incident_code()`. Семантика ідентична.
+90. **Schema Verification PASSED:** 9/9 показників production співпадають з replica (14 public tables, 1 cc table, 23 cc views, 1 matview, 1 public view, 29 public functions, 4 triggers, 47 indexes, 29 RLS policies).
+91. **3 об'єкти НЕ описані в міграціях** (створені вручну в production через Dashboard, виявлено через Schema Verification diff): `control_center.release_health_detail` (view), `control_center.unfinished_started` (view), `public.ecosystem_stats()` (function). Всі додані в replica окремо. **TD: створити окрему міграцію для опису цих об'єктів** (див. §16.6).
+
+## 14.11. Нове правило Migration Review (AGENTS.md)
+
+92. **Generated column IMMUTABLE вимога** — занотовано в Migration Review чеклист AGENTS.md: `to_char(ts,…)` → STABLE, не підходить; `EXTRACT` для timestamptz → також STABLE; єдине рішення для timestamptz-derived computed — звичайна колонка + тригер.
+
 ---
 
 # 15. Rejected Decisions (майстер-список)
@@ -996,6 +1007,18 @@ Materialized VIEW `control_center.knowledge_coverage` (per-release). REFRESH ч�
 
 Лише `ecosystem_stats` та `set_country_from_cf` мають `SET search_path=public`. **26 з 28 SECURITY DEFINER функцій вразливі до schema-poisoning.** Виправлення: `add SET search_path = public, pg_catalog` — additive-only, не змінює сигнатур (дозволено API Freeze §13.8).
 
+## 16.6. Незадокументовані об'єкти БД (Phase 3A Post-Impl, 2026-07-07)
+
+> Schema Verification на Production Replica виявила 3 об'єкти, які існують у production, але НЕ описані в жодній з 26 міграцій. Створені вручну через Supabase Dashboard поза міграційним конвеєром.
+
+| Об'єкт | Тип | Стан | Доведено | Trivia |
+|---|---|---|---|---|
+| `control_center.release_health_detail` | VIEW | 🟢 використовується (CCRepository.GetReleaseHealthAsync) | Schema Verification diff | Посилається на нього `verify_knowledge_auto()` (міграція 23) |
+| `control_center.unfinished_started` | VIEW | 🔴 не використовується C#/Blazor (Phase 2 finding) | Schema Verification diff | Started-події без термінальної |
+| `public.ecosystem_stats()` | FUNCTION | 🔴 не викликається з C# (лише docs-контракт) | Schema Verification diff | Повертає json totalInstallations/activeTotal/active30d |
+
+**TD-NEW:** Створити окрему міграцію `20260708000000_describe_unschema_objects.sql` що описує ці 3 об'єкти як частину міграційної історії (ідемпотентно — `CREATE OR REPLACE` / `CREATE OR REPLACE FUNCTION`). Відновлює audit trail схеми.
+
 ---
 
 # 17. Backlog
@@ -1021,9 +1044,10 @@ Materialized VIEW `control_center.knowledge_coverage` (per-release). REFRESH ч�
 | Phase 1: скоротити LIA chain 9→2, app-update 6→1 | Optimization-Matrix | середня |
 | Phase 2: видалити `detail.retry_count` з C# `UpdateEvents.Track`/`LiaEvents.Track` (завжди 0) | Optimization-Plan + Phase 2 Review | низька |
 | ~~Phase 2: MERGE `notification_queue.error_message` ↔ `last_error` → `last_error`~~ | ~~Phase 2 Review (2026-07-07)~~ | ~~низька~~ — **ВІДХИЛЕНО forensic (різна семантика, див. §12.6, Rejected #68)** |
-| Phase 2: REMOVE 3 індекси-дублікати (`idx_app_installations_install_id`, `idx_app_installations_machine_id`, `idx_user_discord_guilds_user_id`) | Phase 2 Review — DROP INDEX additive | низька |
+| ~~Phase 2: REMOVE 3 індекси-дублікати~~ (`idx_app_installations_install_id`, `idx_app_installations_machine_id`, `idx_user_discord_guilds_user_id`) | ~~Phase 2 Review — DROP INDEX additive~~ | низька — **2/3 виконано на replica Phase 3A (install_id + user_discord_guilds_user_id); machine_id → DEFER (Pre-Impl Forensic виявив ризик regression)** |
 | Phase 2: дослідити та погодити DROP SCHEMA `backup_pre_1_0_0_1` (12 дублів, 55 рядків, 0 залежностей) | Phase 2 Review | низька |
-| Phase 2: generated column `incident_code` (`INC-YYYY-NNNNN`) замість формування в 4 views + Notifier | Phase 2 Review — additive PostgreSQL 12 | низька |
+| Phase 3A: описати незадокументовані об'єкти в міграції `20260708000000_describe_unschema_objects.sql` (release_health_detail, unfinished_started, ecosystem_stats) | Post-Impl Forensic Phase 3A — §16.6 TD-NEW | низька |
+| Phase 2: ~~generated column~~ **trigger-based `incident_code`** (`INC-YYYY-NNNNN`) замість формування в 4 views + Notifier | Phase 2 Review → Phase 3A Post-Impl: generated column неможливий для timestamptz (STABLE), замінено на trigger | низька |
 | Phase 3: single-scan candidates + матеріалізувати 3 views | Optimization-Plan | середня |
 | Control Center auth (SEC-1) | Final-Review | середня |
 | Cert pin L.I.A. (SEC-3) | Final-Review | середня |
