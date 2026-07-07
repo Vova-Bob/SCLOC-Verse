@@ -2,12 +2,11 @@
 
 > **Single Source of Truth.** Цей документ — єдина точка входу для будь-якого AI-агента.
 > Якщо інформація тут є — не перечитуй десятки forensic-документів.
-> Якщо інформація тут суперечить сирому документу — сирий документ має пріоритет, але повідом про розбіжність (розділ 19).
+> Якщо інформація тут суперечить сирому документу — сирий документ має пріоритет, але повідом про розбіжність (розділ 18.3).
 >
-> **Дата збірки:** 2026-07-07
 > **Версія застосунку:** 1.0.0.1 (Observability Release, RC)
 > **Supabase project:** `nrytczdbhehiotflaagl` (eu-west-1)
-> **Режим підтримки:** Read-Only / Aggregation. Новий код і SQL НЕ створюються цим документом.
+> **Живий документ:** постійно оновлюється при розвитку системи. Дозволено додавати, оновлювати, видаляти та переносити дані між розділами. Заборонено лише дублювання інформації та створення нових документів для вже описаних підсистем (див. AGENTS.md, «Knowledge Base — живий документ»).
 
 ---
 
@@ -962,7 +961,6 @@ Materialized VIEW `control_center.knowledge_coverage` (per-release). REFRESH ч�
 | `docs/observability/app-installations-implementation-plan.md` | План `IInstallationContextProvider` (v2) |
 | `docs/observability/FORENSIC-DATA-PIPELINE-RAW.md` | Сирі SQL/C# факти (25 міграцій, всі views) |
 | `docs/observability/FORENSIC-DATA-PIPELINE-DETAIL.md` | Повні CREATE/ALTER + всі `.Track()` з рядками |
-| `docs/KB-INVENTORY-1.md` + `docs/KB-INVENTORY-2.md` | Проміжні інвентаризації (можна видалити після верифікації KB) |
 
 ## 18.2. Карта залежностей розділів
 
