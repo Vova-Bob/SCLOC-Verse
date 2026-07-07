@@ -479,31 +479,55 @@
 
 ## 4.10.13. error_reports (13 cols, 0 rows, RESERVED)
 
-> **Зарезервована таблиця.** Жодного продюсера, 0 рядків. KEEP через Rejected #39. Всі колонки — RESERVED lifetime, Class=FUTURE (до появи клієнтського "Report bug").
+> **Зарезервована таблиця (міграція 00003).** Жодного продюсера, 0 рядків. KEEP через Rejected #39. Усі колонки — RESERVED lifetime, Class=FUTURE (до появи клієнтського "Report bug" або Edge Function).
 
-| Колонка | Тип | NN | Source | Class |
-|---|---|---|---|---|
-| id, user_id, install_id, error_type, message, stack_trace, app_version, localization_version, game_folder_path, selected_environment, context, is_resolved, created_at | — | — | — | FUTURE (зарезервовано) |
+| Колонка | Тип | NN | Default | Source (Writer) — план | Reader (план) | Category | Class | Conf |
+|---|---|---|---|---|---|---|---|---|
+| id | uuid | ✓ | gen_random_uuid() | DB | FK; cc.errors | Identification | FUTURE | HYP |
+| user_id | uuid | ✗ | — | (PLAN) client Report bug | FK auth.users ON DELETE SET NULL; cc.errors | Identity | FUTURE | HYP |
+| install_id | text | ✗ | — | (PLAN) client Report bug | FK app_installations(install_id) ON DELETE SET NULL; cc.errors | Identity | FUTURE | HYP |
+| error_type | text | ✓ | — | (PLAN) client ( ApplicationException.GetType().Name) | cc.errors | Classification | FUTURE | HYP |
+| message | text | ✗ | — | (PLAN) client (Exception.Message) | cc.errors | Content | FUTURE | HYP |
+| stack_trace | text | ✗ | — | (PLAN) client (Exception.StackTrace) | cc.errors | Diagnostics | FUTURE | HYP |
+| app_version | text | ✗ | — | (PLAN) client | cc.errors | Version | FUTURE | HYP |
+| localization_version | text | ✗ | — | (PLAN) client (IInstallationContextProvider) | cc.errors | Version | FUTURE | HYP |
+| game_folder_path | text | ✗ | — | (PLAN) client (IInstallationContextProvider) | cc.errors | Diagnostics | FUTURE | HYP |
+| selected_environment | text | ✗ | — | (PLAN) client (IInstallationContextProvider) | cc.errors | Config | FUTURE | HYP |
+| context | jsonb | ✗ | — | (PLAN) client (additional context) | cc.errors | Diagnostics | FUTURE | HYP |
+| is_resolved | boolean | ✗ | false | (PLAN) admin via Dashboard/CC | cc.errors | Status | FUTURE | HYP |
+| created_at | timestamptz | ✓ | now() | DB | cc.errors | Audit | FUTURE | HYP |
+
+**Рішення:** RESERVED/KEEP (до фічі client-side error reporting).
 
 ## 4.10.14. admin_audit_log (7 cols, 0 rows, RESERVED)
 
-> **Зарезервована для майбутньої адмін-панелі.** 0 продюсерів, 0 рядків.
+> **Зарезервована для майбутньої адмін-панелі (міграція 00004).** 0 продюсерів, 0 рядків. KEEP через Rejected #39.
 
-| Колонка | Тип | NN | Source | Class |
-|---|---|---|---|---|
-| id, admin_discord_id, action, target_user_id, target_install_id, details, created_at | — | — | — | FUTURE |
+| Колонка | Тип | NN | Default | Source (Writer) — план | Reader (план) | Category | Class | Conf |
+|---|---|---|---|---|---|---|---|---|
+| id | uuid | ✓ | gen_random_uuid() | DB | (TBD admin panel) | Identification | FUTURE | HYP |
+| admin_discord_id | text | ✓ | — | (PLAN) admin action via SECURITY DEFINER function | (TBD admin panel) | Identity | FUTURE | HYP |
+| action | text | ✓ | — | (PLAN) admin action (e.g. 'close_incident', 'transition_knowledge') | (TBD admin panel) | Classification | FUTURE | HYP |
+| target_user_id | uuid | ✗ | — | (PLAN) admin function arg | FK auth.users ON DELETE SET NULL | Identity | FUTURE | HYP |
+| target_install_id | text | ✗ | — | (PLAN) admin function arg | FK app_installations(install_id) ON DELETE SET NULL | Identity | FUTURE | HYP |
+| details | jsonb | ✗ | '{}' | (PLAN) admin function arg | (TBD admin panel) | Diagnostics | FUTURE | HYP |
+| created_at | timestamptz | ✓ | now() | DB | (TBD admin panel) | Audit | FUTURE | HYP |
+
+**Рішення:** RESERVED/KEEP (до фічі admin panel + audit через SECURITY DEFINER).
 
 ## 4.10.15. user_discord_guilds (5 cols, 0 rows, RESERVED)
 
-> **Код DiscordGuildSyncService мертвий (identify scope only).** 0 рядків.
+> **Код `DiscordGuildSyncService` мертвий** (identify scope only — без guilds.members.read). 0 рядків.
 
-| Колонка | Тип | NN | Default | Source | Class |
-|---|---|---|---|---|---|
-| id | uuid | ✓ | gen_random_uuid() | DB | FUTURE |
-| user_id | uuid | ✓ | — | (DEAD) DiscordGuildSyncService | FUTURE |
-| discord_guild_id | text | ✓ | — | (DEAD) | FUTURE |
-| guild_name | text | ✗ | — | (DEAD) | FUTURE |
-| synced_at | timestamptz | ✓ | now() | DB | FUTURE |
+| Колонка | Тип | NN | Default | Source (Writer) | Reader | Category | Class | Conf |
+|---|---|---|---|---|---|---|---|---|
+| id | uuid | ✓ | gen_random_uuid() | DB | — (TBD) | Identification | FUTURE | HYP |
+| user_id | uuid | ✓ | — | (DEAD) DiscordGuildSyncService →复兴 when scope extended | FK auth.users ON DELETE CASCADE | Identity | FUTURE | HYP |
+| discord_guild_id | text | ✓ | — | (DEAD) | UNIQUE (user_id, discord_guild_id) | Identity | FUTURE | HYP |
+| guild_name | text | ✗ | — | (DEAD) | — | Content | FUTURE | HYP |
+| synced_at | timestamptz | ✓ | now() | DB | — | Audit | FUTURE | HYP |
+
+**Рішення:** RESERVED/KEEP (до розширення OAuth scope + Community Center фічі).
 
 ## 4.10.16. pipeline_health_meta (2 cols, 1 row singleton, FOREVER)
 
@@ -1146,6 +1170,28 @@ Materialized VIEW `control_center.knowledge_coverage` (per-release). REFRESH ч�
 99. **Classification 5 станів для кожної колонки:** `CORE` (обов'язкове для роботи), `OPTIONAL` (корисне), `DIAGNOSTIC` (діагностика), `FUTURE` (заготовка під майбутнє, напр. `retry_count`), `DEPRECATED` (застаріле, напр. `notification_queue.error_message` після 00017).
 100. **Confidence (HYP/VER/IMPL/REJ) поширюється на ВСІ рішення** в KB, не лише forensic-знахідки. Кожне Approved/Rejected Decision має маркер ступеня доведеності.
 
+## 14.14. Phase 3 Freeze Validation + Closure (2026-07-07)
+
+101. **Freeze Validation PASSED.** Усі 172 колонки 15 таблиць мають чіткі відповіді на 6 атрибутів: Writer, Reader, Classification (CORE/OPTIONAL/DIAGNOSTIC/FUTURE/DEPRECATED), Confidence (HYP/VER/IMPL/REJ), Lifetime (FOREVER/1y/90d/30d/RESERVED), Рішення (KEEP/ACTIVATE/DEPRECATED/RESERVED). Прогалини в error_reports/admin_audit_log/user_discord_guilds усунуто (розгорнуто per-column у §4.10.13-15).
+102. **Phase 3 OFFICIALLY CLOSED.** Data Model заморожено як Single Source of Truth. Подальші зміни БД — лише через зміну цієї моделі (спочатку модель → потім міграція). Phase 3A міграції (idx DROP/ADD, generated→trigger) залишаються в git, готові до production deployment **після** Phase 4.
+
+## 14.15. Phase 4 — Data Presentation Layer (2026-07-07)
+
+> **Перейменовано з "Control Center UX" на "Data Presentation Layer"** — точніше відображає scope (НЕ лише UX, а окремий Presentation Layer).
+
+103. **Phase 4 scope:** Time Zone, формат дат, порядок колонок, badges, icons, NULL presentation, UUID presentation, filters, sorting, grouping. БД НЕ змінюється (canonical UTC). Лише presentation layer.
+104. **`ITimeZoneService`** (abstract) — відповідає **який** часовий пояс використовувати (сьогодні `Europe/Kyiv`, завтра UTC або Local User Time). Реєстрація в `AppCompositionRoot`/Blazor DI.
+105. **`IUserDateTimeFormatter`** (abstract) — відповідає **як** показувати дату (формат `dd.MM.yyyy HH:mm:ss`, `yyyy-MM-dd`, відносний час "5 хв тому"). Залежить від `ITimeZoneService`.
+106. **Дворівнева архітектура presentation:**
+```
+ITimeZoneService (which TZ)
+        ↓
+IUserDateTimeFormatter (how to format)
+        ↓
+Blazor Components (.razor)
+```
+107. **Forensic baseline поточного Blazor UI** — перший крок Phase 4: які сторінки існують, які колонки відображаються, в якому порядку, які формати. Без baseline — не формувати цільову модель.
+
 ---
 
 # 15. Rejected Decisions (майстер-список)
@@ -1437,22 +1483,24 @@ auth.users (TABLE, 35 columns)  +  public.app_installations (TABLE)
 | **`error_message` semantic activation (варіант b з §12.6)** — додати в Notifier SQL запис `error_message` лише при фінальному `status='Failed'` після `max_retries` (фінал проміжного `last_error`). | розділити семантику фінальної помилки черги від проміжної retry | низька |
 | **Phase 2: позначити `error_message` deprecated у SQL-коментарі** (варіант c з §12.6) — фіксація статус-кво без зміни коду. | предупредити наступних агентів | низька |
 
-## 17.5. Phase 4 — Control Center UX & Data Presentation Optimization (перед production deployment)
+## 17.5. Phase 4 — Data Presentation Layer (після Phase 3 Freeze, перед production deployment)
 
-> Не змінює дані в БД (UTC `timestamptz` лишається canonical). Оптимізує лише presentation layer — Views (re-format) + C# Blazor (display).
+> **Перейменовано з "Control Center UX"** (Approved #103). Phase 3 CLOSED (Approved #102). БД НЕ змінюється — лише presentation.
 
-| Задача | Призначення | Складність |
-|---|---|---|
-| **Time Zone Audit** — перевірити всі часові поля (`created_at`/`updated_at`/`occurred_at`/`received_at`/`opened_at`/`closed_at`/`first_seen`/`last_seen`/`last_login`/`expires_at`/`processed_at`/`last_attempt_at`/`delivered_at`/`next_attempt_at`/`last_event_at`/`banned_until`/`email_confirmed_at`/`synced_at`): хто пише, у якому timezone, хто читає, який формат відображати. | виявити TZ inconsistency | низька |
-| **Presentation: дати → `Europe/Kyiv`** — у Views або Blazor формат `DD.MM.YYYY HH:MI:SS` без мікросекунд. БД лишається `timestamptz` (UTC canonical). | усунути шум `2026-07-03 10:11:08.489922+00` | низька |
-| **Display Order** — логічні блоки в сторінках CC: Installation → User → Activity → Diagnostics (не плоский список колонок). | читабельність | середня |
-| **Display Formatting** — boolean → `✔ Active`/`✖ Disabled`; status → color-coded; severity → badge. | читабельність | середня |
-| **NULL Audit** — замість `NULL` показувати `—`/`Not collected`/`Unknown` залежно від семантики. | читабельність | низька |
-| **Human-readable IDs** — UUIDs скорочені `b4a7d7f7…` у списках; повний лише в деталях. | читабельність | низька |
-| **Sorting & Filtering** — додати клікабельні headers + search для основних сторінок. | UX | середня |
-| **`control_center.users` доле** — використати view у Phase 4 UI або визнати застарілим (§16.8 + Approved #94). | усунути мертвий контракт | низька |
+| Задача | Призначення | Складність | Залежність |
+|---|---|---|---|
+| **Forensic baseline Blazor UI** — Inventory сторінок + колонок + форматів (що зараз є, в якому порядку). Без baseline — не формувати цільову модель. | розуміння стартової точки | низька | перший крок Phase 4 |
+| **`ITimeZoneService` інтерфейс + реалізація** — який TZ (Kyiv/UTC/Local). Реєстрація в DI. | абстракція TZ | низька | Approved #104 |
+| **`IUserDateTimeFormatter` інтерфейс + реалізація** — формат (`dd.MM.yyyy HH:mm:ss`, relative time). Залежить від `ITimeZoneService`. | абстракція формату | низька | Approved #105 |
+| **Blazor component `<DateTimeDisplay>`** — використовує `IUserDateTimeFormatter`. Універсальний. | DRY presentation | низька | після форматера |
+| **Display Order** — логічні блоки в сторінках CC: Installation → User → Activity → Diagnostics. | читабельність | середня | після baseline |
+| **Display Formatting** — boolean → `✔ Active`/`✖ Disabled`; status → color-coded; severity → badge. | читабельність | середня | після baseline |
+| **NULL Audit** — замість `NULL` показувати `—`/`Not collected`/`Unknown` залежно від семантики. | читабельність | низька | після baseline |
+| **Human-readable IDs** — UUIDs скорочені `b4a7d7f7…` у списках; повний лише в деталях. | читабельність | низька | після baseline |
+| **Sorting & Filtering** — клікабельні headers + search для основних сторінок. | UX | середня | після Display Order |
+| **`control_center.users` доле** — використати view у Phase 4 Users page, АБО визнати застарілим (§16.8 + Approved #94). | усунути мертвий контракт | низька | після baseline |
 
-**Принцип:** спочатку сформувати ідеальну модель presentation, потім production deployment Phase 3A + Phase 4 разом. Уникнути серії дрібних змін після релізу.
+**Принцип:** спочатку baseline + абстракції (`ITimeZoneService`/`IUserDateTimeFormatter`), потім конкретні сторінки. Уникнути хардкоду TZ у розетках.
 
 ---
 
