@@ -423,7 +423,7 @@ public sealed class ControlCenterRepository : IControlCenterRepository
     public async Task TransitionIncidentAsync(long incidentId, string toStatus, string changedBy, string? note, CancellationToken ct = default)
     {
         await using var conn = await _dataSource.OpenConnectionAsync(ct).ConfigureAwait(false);
-        await using var cmd = new NpgsqlCommand("SELECT transition_incident($1,$2,$3,$4)", conn);
+        await using var cmd = new NpgsqlCommand("SELECT public.transition_incident($1,$2,$3,$4)", conn);
         cmd.Parameters.Add(new NpgsqlParameter<long> { Value = incidentId });
         cmd.Parameters.Add(new NpgsqlParameter<string> { Value = toStatus });
         cmd.Parameters.Add(new NpgsqlParameter<string> { Value = changedBy });
@@ -434,7 +434,7 @@ public sealed class ControlCenterRepository : IControlCenterRepository
     public async Task AddIncidentNoteAsync(long incidentId, string content, string createdBy, CancellationToken ct = default)
     {
         await using var conn = await _dataSource.OpenConnectionAsync(ct).ConfigureAwait(false);
-        await using var cmd = new NpgsqlCommand("SELECT add_incident_note($1,$2,$3)", conn);
+        await using var cmd = new NpgsqlCommand("SELECT public.add_incident_note($1,$2,$3)", conn);
         cmd.Parameters.Add(new NpgsqlParameter<long> { Value = incidentId });
         cmd.Parameters.Add(new NpgsqlParameter<string> { Value = content });
         cmd.Parameters.Add(new NpgsqlParameter<string> { Value = createdBy });
@@ -444,7 +444,7 @@ public sealed class ControlCenterRepository : IControlCenterRepository
     public async Task AssignOwnerAsync(long incidentId, string owner, CancellationToken ct = default)
     {
         await using var conn = await _dataSource.OpenConnectionAsync(ct).ConfigureAwait(false);
-        await using var cmd = new NpgsqlCommand("SELECT assign_incident_owner($1,$2)", conn);
+        await using var cmd = new NpgsqlCommand("SELECT public.assign_incident_owner($1,$2)", conn);
         cmd.Parameters.Add(new NpgsqlParameter<long> { Value = incidentId });
         cmd.Parameters.Add(new NpgsqlParameter<string> { Value = owner });
         await cmd.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
