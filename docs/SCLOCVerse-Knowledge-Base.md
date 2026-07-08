@@ -1218,7 +1218,7 @@ PKCE, HTML-encoding на callback, SignOut = global revoke, **без `service_ro
 | SEC-8 | OAuth `state` не валідується (PKCE-only) | 🟠 |
 | SEC-9 | TOCTOU verify→install | 🟠 |
 | SEC-10 | SHA256 = byte-equality, не Authenticode publisher identity | 🟠 |
-| SEC-11 | `SECURITY DEFINER` без `SET search_path` (~20 функцій) | 🟠 |
+| SEC-11 | `SECURITY DEFINER` без `SET search_path` (~20 функцій) | ✅ COMPLETED (2026-07-08, Phase 2.2 C2) |
 | SEC-12 | `cc_readonly` фактично write-capable через definer-функції | 🟠 |
 
 ## 10.6. Права користувача
@@ -1867,7 +1867,7 @@ Phase 3.7 (Security Hardening) — Backlog (DEFAULT PRIVILEGES + SEC-11)
 
 ### 16.5.3. SEC-11 — підтверджено на рівні БД
 
-Лише `ecosystem_stats` та `set_country_from_cf` мають `SET search_path=public`. **26 з 28 SECURITY DEFINER функцій вразливі до schema-poisoning.** Виправлення: `add SET search_path = public, pg_catalog` — additive-only, не змінює сигнатур (дозволено API Freeze §13.8).
+✅ COMPLETED (2026-07-08, Phase 2.2 C2). Усі 28 public SECURITY DEFINER функцій тепер мають `SET search_path = public, pg_catalog`. Міграція: `supabase/migrations/20260708235000_security_definer_search_path.sql`. Verification: `supabase/verification/verify_security_definer_search_path.sql`.
 
 ## 16.6. Незадокументовані об'єкти БД (Phase 3A Post-Impl, 2026-07-07)
 
