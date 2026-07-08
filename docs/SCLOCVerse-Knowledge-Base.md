@@ -1674,7 +1674,7 @@ Phase 3A (3 міграції) — ✅ **DEPLOYED to production** (2026-07-07, Po
 Phase 3.5.1 (Mandatory Event Optimization) — ✅ **Implemented as Zero Noise Policy** (2026-07-07)
 Phase 4 (Data Presentation Layer) — ⏸
 Phase 5 (Retention Pipeline) — Backlog (pg_cron)
-Phase 3.7 (Security Hardening) — Backlog (DEFAULT PRIVILEGES + SEC-11)
+Phase 3.7 (Security Hardening) — Backlog (DEFAULT PRIVILEGES); SEC-11 — ✅ COMPLETED
 ```
 
 ## 14.18. UI: Кастомний ToolTip для CheckBox (2026-07-07) — ✅ IMPL
