@@ -27,8 +27,9 @@
 --   стану production: чи один chk_notif_type, чи обидва), потім ADD єдиного
 --   chk_notification_type з канонічним набором 7 значень (з задуму 00023).
 --
--- Additive-only: результуючий дозволений набір = 7 значень (суперсет попередніх
---   3). Жоден існуючий рядок не порушує новий CHECK. Відповідає API Freeze v1.0.
+-- Additive-only: результуючий дозволений набір = 8 значень (об'єднання: 3 зі 00016 + 5 зі
+--   00023). Суперсет попереднього ефективного набору (2 знач. — перетин старих 3×7).
+--   Жоден існуючий рядок не порушує новий CHECK. Відповідає API Freeze v1.0.
 --
 -- Migration Review:
 --   • ідемпотентність: DROP IF EXISTS (обидва імені) + ADD;
@@ -41,9 +42,14 @@
 ALTER TABLE public.notification_queue DROP CONSTRAINT IF EXISTS chk_notif_type;
 ALTER TABLE public.notification_queue DROP CONSTRAINT IF EXISTS chk_notification_type;
 
--- 2. Єдиний canonical constraint (ім'я + набір із задуму міграції 00023)
+-- 2. Єдиний canonical constraint.
+--    Набір = ОБ'ЄДНАННЯ старих 3 (00016: +IncidentClosed) + нових 5 (00023) = 8 значень.
+--    Тестове виявлення (Phase 1 testing 2026-07-08): міграція 00023 при «розширенні»
+--    ВПУСТИЛА 'IncidentClosed' (був у chk_notif_type 00016, але відсутній у списку 00023).
+--    7-значний варіант відтворив би цю прогалину → reject валідного типу IncidentClosed.
+--    Тому тут 8 значень (істинний superset обох попередніх constraints).
 ALTER TABLE public.notification_queue
     ADD CONSTRAINT chk_notification_type CHECK (notification_type IN (
-        'IncidentCreated','IncidentEscalated','IncidentMitigated',
-        'IncidentResolved','WeeklyDigest','TestAlert','KnowledgeVerified'
+        'IncidentCreated','IncidentEscalated','IncidentClosed',
+        'IncidentMitigated','IncidentResolved','WeeklyDigest','TestAlert','KnowledgeVerified'
     ));
