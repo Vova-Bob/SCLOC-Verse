@@ -9,7 +9,8 @@
         AllowsTransparency="True"
         Background="Transparent"
         TextOptions.TextFormattingMode="Display"
-        SnapsToDevicePixels="True">
+        SnapsToDevicePixels="True"
+        PreviewKeyDown="MainWindow_PreviewKeyDown">
 
     <Window.Resources>
         <SolidColorBrush x:Key="MenuBg"       Color="#1F3C4C"/>

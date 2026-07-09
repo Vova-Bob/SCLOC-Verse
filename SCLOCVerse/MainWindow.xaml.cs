@@ -183,6 +183,9 @@ namespace SCLOCVerse
             CanvasSettings.UpdateChannelSelector.SelectionChanged += UpdateChannelSelector_SelectionChanged;
             CanvasSettings.UpdateHistoryButtonControl.Click += UpdateHistoryButton_Click;
 
+            // Settings Hub: ініціалізація внутрішньої навігації категорій.
+            CanvasSettings.InitializeHubNavigation();
+
             // Підписка на чекбокси налаштувань (Етап D).
             // RunAtStartup синхронізується з реєстром (джерело істини), а не з Settings.
             CanvasSettings.RunAtStartupCheckBoxControl.Checked += RunAtStartupCheckBox_Changed;
@@ -1102,6 +1105,22 @@ namespace SCLOCVerse
         {
             _canvasManager.SwitchCanvas(CanvasSettings);
             isSettingButtonClicked = true;
+        }
+
+        /// <summary>
+        /// F1 відкриває Settings Hub — лише коли головне вікно SCLOC-Verse активне
+        /// (PreviewKeyDown спрацьовує тільки при фокусі клавіатури на вікні).
+        /// Глобальна реєстрація F1 навмисно відсутня, щоб не конфліктувати з
+        /// ігровою/системною довідкою.
+        /// </summary>
+        private void MainWindow_PreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.F1)
+            {
+                _canvasManager.SwitchCanvas(CanvasSettings);
+                isSettingButtonClicked = true;
+                e.Handled = true;
+            }
         }
 
         private void ScTools_Click(object sender, RoutedEventArgs e)

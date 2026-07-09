@@ -1,36 +1,95 @@
-﻿using System.Windows.Controls;
+﻿using System.Windows;
+using System.Windows.Controls;
+using SCLOCVerse.Controls.SettingsHub;
 
 namespace SCLOCVerse.Controls
 {
+    /// <summary>
+    /// Settings Hub — Центральна оболонка налаштувань.
+    /// Ліва панель навігації категорій + права панель вмісту.
+    /// Зберігає фасадну property-поверхню (мігровані контролі «Загальне»),
+    /// щоб MainWindow.xaml.cs продовжував звертатись до CanvasSettings.* без змін.
+    /// </summary>
     public partial class SettingsCanvas : Canvas
     {
+        private Button? _activeNavButton;
+        private FrameworkElement[] _panes = null!;
+        private Button[] _navButtons = null!;
+
         public SettingsCanvas()
         {
             InitializeComponent();
         }
 
+        /// <summary>
+        /// Ініціалізує внутрішні масиви навігації. Викликається з MainWindow
+        /// після завантаження (коли всі елементи вже створені).
+        /// </summary>
+        public void InitializeHubNavigation()
+        {
+            _panes = new FrameworkElement[]
+            {
+                PaneHome, PaneGeneral, PaneLocalization, PaneInterface,
+                PaneHotkeys, PaneOverlay, PaneProfile, PaneAbout
+            };
+
+            _navButtons = new Button[]
+            {
+                NavHome, NavGeneral, NavLocalization, NavInterface,
+                NavHotkeys, NavOverlay, NavProfile, NavAbout
+            };
+
+            // Типовий активний пункт — «Загальне».
+            ActivateCategory(PaneGeneral, NavGeneral);
+        }
+
+        private void NavButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is not Button btn || btn.Tag is not FrameworkElement target)
+                return;
+
+            ActivateCategory(target, btn);
+        }
+
+        private void ActivateCategory(FrameworkElement targetPane, Button navButton)
+        {
+            foreach (var pane in _panes)
+                pane.Visibility = pane == targetPane ? Visibility.Visible : Visibility.Collapsed;
+
+            foreach (var b in _navButtons)
+                b.Style = (Style)Resources[b == navButton ? "HubNavItemActive" : "HubNavItem"];
+
+            _activeNavButton = navButton;
+        }
+
+        // ============ ФАСАД для MainWindow.xaml.cs (Zero Regression) ============
+        // Реальні контролі мігрували у GeneralSettingsPane; тут лише делегування.
+
         public Button ReturnHomeButton => BtnReturnHome;
 
-        public Button SelectFolderButton => BtnSelectFolder;
+        public Button SelectFolderButton => PaneGeneral.SelectFolderButton;
 
-        public Button AutoSearchButton => BtnAutoSearch;
+        public Button AutoSearchButton => PaneGeneral.AutoSearchButton;
 
-        public Button ResetCacheButton => BtnResetCash;
+        public Button ResetCacheButton => PaneGeneral.ResetCacheButton;
 
-        public TextBox SelectedPathTextBox => TxtSelectedPath;
+        public TextBox SelectedPathTextBox => PaneGeneral.SelectedPathTextBox;
 
-        public TextBox ReadmeTextBox => TxtReadme;
+        public TextBox ReadmeTextBox => PaneGeneral.ReadmeTextBox;
 
-        public ComboBox UpdateChannelSelector => UpdateChannelComboBox;
+        public ComboBox UpdateChannelSelector => PaneGeneral.UpdateChannelSelector;
 
-        public Button UpdateHistoryButtonControl => UpdateHistoryButton;
+        public Button UpdateHistoryButtonControl => PaneGeneral.UpdateHistoryButtonControl;
 
-        public CheckBox RunAtStartupCheckBoxControl => RunAtStartupCheckBox;
+        public CheckBox RunAtStartupCheckBoxControl => PaneGeneral.RunAtStartupCheckBoxControl;
 
-        public CheckBox MinimizeToTrayCheckBoxControl => MinimizeToTrayCheckBox;
+        public CheckBox MinimizeToTrayCheckBoxControl => PaneGeneral.MinimizeToTrayCheckBoxControl;
 
-        public CheckBox AutoUpdateLocalizationCheckBoxControl => AutoUpdateLocalizationCheckBox;
+        public CheckBox AutoUpdateLocalizationCheckBoxControl => PaneGeneral.AutoUpdateLocalizationCheckBoxControl;
 
-        public CheckBox AdvancedDiagnosticsCheckBoxControl => AdvancedDiagnosticsCheckBox;
+        public CheckBox AdvancedDiagnosticsCheckBoxControl => PaneGeneral.AdvancedDiagnosticsCheckBoxControl;
+
+        /// <summary>Доступ до панелі «Загальне» (для майбутніх розширень Hub).</summary>
+        public GeneralSettingsPane GeneralPane => PaneGeneral;
     }
 }
