@@ -18,6 +18,8 @@ namespace SCLOCVerse.Services.InputSystem
         private readonly Lock _lock = new();
         private readonly Dictionary<HotkeyId, HotkeyDefinition> _definitionsById = [];
         private readonly Dictionary<HotkeyGesture, List<HotkeyDefinition>> _definitionsByGesture = [];
+        // Регістр у порядку реєстрації — для детермінованого відображення в Settings Hub.
+        private readonly List<HotkeyDefinition> _orderedDefinitions = [];
         private readonly HashSet<HotkeyId> _lastPressedIds = [];
         private bool _disposed;
 
@@ -100,6 +102,7 @@ namespace SCLOCVerse.Services.InputSystem
                 }
 
                 list.Add(definition);
+                _orderedDefinitions.Add(definition);
 
                 LogEvent($"Зареєстровано гарячу клавішу {definition.Id} -> {gesture}");
             }
@@ -133,6 +136,7 @@ namespace SCLOCVerse.Services.InputSystem
                 }
 
                 _definitionsById.Remove(id);
+                _orderedDefinitions.Remove(definition);
                 LogEvent($"Скасовано реєстрацію гарячої клавішу {id}");
             }
         }
@@ -149,6 +153,17 @@ namespace SCLOCVerse.Services.InputSystem
 
                 definition.Enabled = enabled;
                 LogEvent($"Змінено стан гарячої клавіші {id}: Enabled={enabled}");
+            }
+        }
+
+        /// <inheritdoc/>
+        public IReadOnlyList<HotkeyDefinition> GetDefinitions()
+        {
+            lock (_lock)
+            {
+                return _orderedDefinitions
+                    .Where(d => d.VisibleInUi)
+                    .ToList();
             }
         }
 

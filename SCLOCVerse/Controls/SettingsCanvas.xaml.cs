@@ -91,5 +91,11 @@ namespace SCLOCVerse.Controls
 
         /// <summary>Доступ до панелі «Загальне» (для майбутніх розширень Hub).</summary>
         public GeneralSettingsPane GeneralPane => PaneGeneral;
+
+        /// <summary>Доступ до панелі «Гарячі клавіші».</summary>
+        public HotkeysSettingsPane? HotkeysPane => PaneHotkeys;
+
+        /// <summary>Доступ до панелі «Overlay».</summary>
+        public OverlaySettingsPane? OverlayPane => PaneOverlay;
     }
 }

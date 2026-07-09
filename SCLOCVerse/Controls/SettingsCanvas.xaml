@@ -116,10 +116,8 @@
                     Icon="🌐" Message="Керування перекладами Star Citizen. Зараз доступне на екрані «Локалізація»."/>
                 <hub:SettingsPlaceholderPane x:Name="PaneInterface" Visibility="Collapsed" Title="Інтерфейс"
                     Icon="🖼" Message="Тема, мова застосунку та масштаб інтерфейсу з'являться тут пізніше."/>
-                <hub:SettingsPlaceholderPane x:Name="PaneHotkeys" Visibility="Collapsed" Title="Гарячі клавіші"
-                    Icon="⌨" Message="Редагування комбінацій гарячих клавіш з'явиться тут найближчим часом."/>
-                <hub:SettingsPlaceholderPane x:Name="PaneOverlay" Visibility="Collapsed" Title="Overlay"
-                    Icon="🛰" Message="Масштаб, прозорість та позиція оверлеїв з'являться тут найближчим часом."/>
+                <hub:HotkeysSettingsPane x:Name="PaneHotkeys" Visibility="Collapsed"/>
+                <hub:OverlaySettingsPane x:Name="PaneOverlay" Visibility="Collapsed"/>
                 <hub:SettingsPlaceholderPane x:Name="PaneProfile" Visibility="Collapsed" Title="Профіль"
                     Icon="☁" Message="Синхронізація налаштувань, резервне копіювання та експорт/імпорт з'являться тут пізніше."/>
                 <hub:SettingsPlaceholderPane x:Name="PaneAbout" Visibility="Collapsed" Title="Про програму"

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -35,5 +36,11 @@ namespace SCLOCVerse.Services.InputSystem
         /// Ініціалізує бекенд із заданим джерелом віконних повідомлень.
         /// </summary>
         void InitializeBackend(IHotkeyMessageSource messageSource);
+
+        /// <summary>
+        /// Повертає всі зареєстровані гарячі клавіші в порядку реєстрації.
+        /// Additive API для відображення в Settings Hub (read-only).
+        /// </summary>
+        IReadOnlyList<HotkeyDefinition> GetDefinitions();
     }
 }

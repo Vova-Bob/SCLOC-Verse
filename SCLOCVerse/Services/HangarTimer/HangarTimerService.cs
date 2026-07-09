@@ -38,6 +38,9 @@ namespace SCLOCVerse.Services.HangarTimer
             return HangarCycleCalculator.Compute(start.Value);
         }
 
+        /// <inheritdoc/>
+        public IHangarSettingsService Settings => _settingsService;
+
         private bool _disposed;
 
         public HangarTimerService(

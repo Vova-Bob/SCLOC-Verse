@@ -51,5 +51,11 @@ namespace SCLOCVerse.Interfaces
         /// Відкрити діалог ручного вводу часу старту.
         /// </summary>
         void PromptManualStart();
+
+        /// <summary>
+        /// Сервіс налаштувань overlay (масштаб/прозорість/позиція).
+        /// Additive: надає Settings Hub доступ до персистентних overlay-налаштувань.
+        /// </summary>
+        IHangarSettingsService Settings { get; }
     }
 }

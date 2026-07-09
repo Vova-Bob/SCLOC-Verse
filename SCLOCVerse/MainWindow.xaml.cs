@@ -186,6 +186,12 @@ namespace SCLOCVerse
             // Settings Hub: ініціалізація внутрішньої навігації категорій.
             CanvasSettings.InitializeHubNavigation();
 
+            // «Гарячі клавіші»: read-only список реальних комбінацій HotkeyService.
+            CanvasSettings.HotkeysPane?.Populate(_hotkeyService.GetDefinitions());
+
+            // «Overlay»: реальні налаштування оверлея Hangar Timer (масштаб/прозорість/позиція).
+            CanvasSettings.OverlayPane?.Bind(_hangarTimerService.Settings);
+
             // Підписка на чекбокси налаштувань (Етап D).
             // RunAtStartup синхронізується з реєстром (джерело істини), а не з Settings.
             CanvasSettings.RunAtStartupCheckBoxControl.Checked += RunAtStartupCheckBox_Changed;
