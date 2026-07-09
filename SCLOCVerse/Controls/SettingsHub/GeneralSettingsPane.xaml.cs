@@ -2,6 +2,7 @@ using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Shapes;
 using SCLOCVerse.Helpers;
 
 namespace SCLOCVerse.Controls.SettingsHub
@@ -50,19 +51,35 @@ namespace SCLOCVerse.Controls.SettingsHub
             if (existing.Length == 0)
                 return;
 
-            // Бейджі: знайдені середовища (зеленим). Незнайдені не показуємо — лише реальний стан (P5).
+            // Бейджі: знайдені середовища (зелена крапка + назва). Незнайдені не показуємо — лише реальний стан (P5).
             foreach (var env in StarCitizenEnvironments.Known.Where(e => existing.Contains(e)))
             {
+                var dot = new Ellipse
+                {
+                    Width = 7,
+                    Height = 7,
+                    Fill = new SolidColorBrush(Color.FromRgb(0x5B, 0xC9, 0x8A)),
+                    VerticalAlignment = VerticalAlignment.Center
+                };
+
+                var label = new TextBlock
+                {
+                    Text = env,
+                    FontFamily = new FontFamily("Segoe UI Semibold"),
+                    FontSize = 10.5,
+                    Foreground = new SolidColorBrush(Color.FromRgb(0x9E, 0xD8, 0xB0)),
+                    VerticalAlignment = VerticalAlignment.Center,
+                    Margin = new Thickness(6, 0, 0, 0)
+                };
+
+                var chip = new StackPanel { Orientation = Orientation.Horizontal };
+                chip.Children.Add(dot);
+                chip.Children.Add(label);
+
                 var badge = new Border
                 {
                     Style = (Style)FindResource("HubEnvBadgeFound"),
-                    Child = new TextBlock
-                    {
-                        Text = "✓ " + env,
-                        FontFamily = new FontFamily("Segoe UI Semibold"),
-                        FontSize = 10.5,
-                        Foreground = new SolidColorBrush(Color.FromRgb(0x9E, 0xD8, 0xB0))
-                    },
+                    Child = chip,
                     Margin = new Thickness(0, 0, 8, 0)
                 };
                 EnvBadgesPanel.Children.Add(badge);

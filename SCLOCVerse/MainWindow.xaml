@@ -480,6 +480,6 @@
         <controls:ToastControl x:Name="AppToast"
                                HorizontalAlignment="Left"
                                VerticalAlignment="Bottom"
-                               Margin="40,0,0,20"/>
+                               Margin="40,0,0,38"/>
     </Grid>
 </Window>

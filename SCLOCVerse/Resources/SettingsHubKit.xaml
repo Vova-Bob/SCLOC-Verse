@@ -163,6 +163,52 @@
         <Setter Property="Padding" Value="6,2"/>
     </Style>
 
+    <!-- ============ SCROLLBAR (P0 — єдина мова, не стандартна) ============ -->
+
+    <Style x:Key="HubScrollBarThumb" TargetType="Thumb">
+        <Setter Property="Background" Value="#2A5A78"/>
+        <Setter Property="Cursor" Value="Hand"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Thumb">
+                    <Border x:Name="ThumbBd" Background="{TemplateBinding Background}" CornerRadius="3" Margin="1"/>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="ThumbBd" Property="Background" Value="#4AA3D8"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style TargetType="ScrollBar">
+        <Setter Property="Background" Value="Transparent"/>
+        <Setter Property="Width" Value="10"/>
+        <Setter Property="MinWidth" Value="10"/>
+        <Setter Property="Margin" Value="2,0,0,0"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ScrollBar">
+                    <Grid>
+                        <Border Background="#0A1828" CornerRadius="4" Opacity="0.6"/>
+                        <Track Name="PART_Track" IsDirectionReversed="True">
+                            <Track.DecreaseRepeatButton>
+                                <RepeatButton Command="ScrollBar.PageUpCommand" Background="Transparent" Template="{x:Null}"/>
+                            </Track.DecreaseRepeatButton>
+                            <Track.Thumb>
+                                <Thumb Style="{StaticResource HubScrollBarThumb}"/>
+                            </Track.Thumb>
+                            <Track.IncreaseRepeatButton>
+                                <RepeatButton Command="ScrollBar.PageDownCommand" Background="Transparent" Template="{x:Null}"/>
+                            </Track.IncreaseRepeatButton>
+                        </Track>
+                    </Grid>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <!-- ============ СТАТУСНІ БЕЙДЖІ (P0 — стан продукту видимий) ============ -->
 
     <Style x:Key="HubEnvBadgeFound" TargetType="Border">

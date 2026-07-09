@@ -52,10 +52,13 @@
             <Style x:Key="AutoSearchButton" TargetType="{x:Type Button}" BasedOn="{StaticResource ActionButton}">
                 <Style.Triggers>
                     <Trigger Property="Content" Value="Автопошук">
-                        <Setter Property="Background" Value="{StaticResource AutoFill}"/>
+                        <Setter Property="Background" Value="#1A5474"/>
+                        <Setter Property="BorderBrush" Value="#4AA3D8"/>
                     </Trigger>
                     <Trigger Property="Content" Value="Скинути">
-                        <Setter Property="Background" Value="{StaticResource ResetFill}"/>
+                        <!-- P1: скидання шляху — нейтральне, не небезпечне (не червоне) -->
+                        <Setter Property="Background" Value="#3A4A56"/>
+                        <Setter Property="BorderBrush" Value="#5A7080"/>
                     </Trigger>
                 </Style.Triggers>
             </Style>
@@ -79,7 +82,10 @@
                                 <Border Grid.ColumnSpan="2" Background="{TemplateBinding Background}"
                                         BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="6"/>
                                 <ContentPresenter Grid.Column="0" Margin="10,0,4,0" VerticalAlignment="Center"
-                                                  Content="{TemplateBinding SelectionBoxItem}" IsHitTestVisible="False"/>
+                                                  Content="{TemplateBinding SelectionBoxItem}"
+                                                  ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
+                                                  ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}"
+                                                  IsHitTestVisible="False"/>
                                 <ToggleButton Grid.Column="1" Width="22" Height="22" Margin="0,0,3,0"
                                               Background="Transparent" BorderBrush="{x:Null}" Focusable="False"
                                               IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}">
@@ -155,7 +161,7 @@
                                      Background="Transparent" BorderThickness="0" Padding="12,0" IsReadOnly="True"
                                      HorizontalContentAlignment="Left" VerticalContentAlignment="Center"/>
                         </Border>
-                        <Button x:Name="BtnSelectFolder" Grid.Column="1" Style="{StaticResource ActionButton}" Content="Огляд…" Width="100" Margin="0,0,8,0"/>
+                        <Button x:Name="BtnSelectFolder" Grid.Column="1" Style="{StaticResource HubSecondaryButton}" Content="Огляд…" Width="100" Margin="0,0,8,0"/>
                         <Button x:Name="BtnAutoSearch" Grid.Column="2" Style="{StaticResource AutoSearchButton}" Content="Автопошук" Width="118"/>
                     </Grid>
                     <!-- Бейджі середовищ (P0 — стан видимий; заповнюються з StarCitizenEnvironments.DetectExisting) -->

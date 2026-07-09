@@ -134,7 +134,7 @@ namespace SCLOCVerse.Controls.SettingsHub
                     Foreground = new SolidColorBrush(Color.FromRgb(0xE8, 0xF3, 0xFF)),
                     HorizontalAlignment = HorizontalAlignment.Center
                 },
-                Margin = new Thickness(16, 4, 0, 4),
+                Margin = new Thickness(10, 4, 0, 4),
                 VerticalAlignment = VerticalAlignment.Center
             };
             Grid.SetColumn(badge, 1);
@@ -149,8 +149,8 @@ namespace SCLOCVerse.Controls.SettingsHub
             style.Setters.Add(new Setter(Border.BackgroundProperty, new SolidColorBrush(Color.FromRgb(0x0A, 0x1D, 0x29))));
             style.Setters.Add(new Setter(Border.BorderBrushProperty, new SolidColorBrush(Color.FromRgb(0x2A, 0x5A, 0x78))));
             style.Setters.Add(new Setter(Border.BorderThicknessProperty, new Thickness(1)));
-            style.Setters.Add(new Setter(Border.CornerRadiusProperty, new CornerRadius(6)));
-            style.Setters.Add(new Setter(Border.PaddingProperty, new Thickness(12, 5, 12, 5)));
+            style.Setters.Add(new Setter(Border.CornerRadiusProperty, new CornerRadius(5)));
+            style.Setters.Add(new Setter(Border.PaddingProperty, new Thickness(10, 4, 10, 4)));
             return style;
         }
 
