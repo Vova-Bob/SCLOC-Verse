@@ -1,5 +1,6 @@
 ﻿using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
 using SCLOCVerse.Controls.SettingsHub;
 
 namespace SCLOCVerse.Controls
@@ -12,7 +13,13 @@ namespace SCLOCVerse.Controls
     /// </summary>
     public partial class SettingsCanvas : Canvas
     {
-        private Button? _activeNavButton;
+        private static readonly Brush ActiveNavBackground = new SolidColorBrush(Color.FromRgb(0x1A, 0x3D, 0x58));
+        private static readonly Brush ActiveNavAccent = new SolidColorBrush(Color.FromRgb(0xE3, 0x6D, 0x3A)); // помаранчевий P0
+        private static readonly Brush InactiveNavBackground = Brushes.Transparent;
+        private static readonly Brush InactiveNavBorder = Brushes.Transparent;
+        private static readonly Brush ActiveNavForeground = new SolidColorBrush(Color.FromRgb(0xEA, 0xF4, 0xFF));
+        private static readonly Brush InactiveNavForeground = new SolidColorBrush(Color.FromRgb(0x9D, 0xBB, 0xD4));
+
         private FrameworkElement[] _panes = null!;
         private Button[] _navButtons = null!;
 
@@ -29,13 +36,13 @@ namespace SCLOCVerse.Controls
         {
             _panes = new FrameworkElement[]
             {
-                PaneHome, PaneGeneral, PaneLocalization, PaneInterface,
+                PaneGeneral, PaneLocalization, PaneInterface,
                 PaneHotkeys, PaneOverlay, PaneProfile, PaneAbout
             };
 
             _navButtons = new Button[]
             {
-                NavHome, NavGeneral, NavLocalization, NavInterface,
+                NavGeneral, NavLocalization, NavInterface,
                 NavHotkeys, NavOverlay, NavProfile, NavAbout
             };
 
@@ -57,9 +64,14 @@ namespace SCLOCVerse.Controls
                 pane.Visibility = pane == targetPane ? Visibility.Visible : Visibility.Collapsed;
 
             foreach (var b in _navButtons)
-                b.Style = (Style)Resources[b == navButton ? "HubNavItemActive" : "HubNavItem"];
-
-            _activeNavButton = navButton;
+            {
+                bool active = b == navButton;
+                b.Background = active ? ActiveNavBackground : InactiveNavBackground;
+                b.BorderBrush = active ? ActiveNavAccent : InactiveNavBorder;
+                b.BorderThickness = active ? new Thickness(3, 0, 0, 0) : new Thickness(0);
+                b.FontWeight = active ? FontWeights.SemiBold : FontWeights.Normal;
+                b.Foreground = active ? ActiveNavForeground : InactiveNavForeground;
+            }
         }
 
         // ============ ФАСАД для MainWindow.xaml.cs (Zero Regression) ============

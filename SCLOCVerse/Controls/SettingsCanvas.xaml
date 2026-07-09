@@ -8,39 +8,35 @@
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
                 <ResourceDictionary Source="pack://application:,,,/SCLOCVerse;component/Resources/Styles.xaml"/>
+                <ResourceDictionary Source="pack://application:,,,/SCLOCVerse;component/Resources/SettingsHubKit.xaml"/>
             </ResourceDictionary.MergedDictionaries>
 
-            <!-- Пункт навігації Settings Hub -->
+            <!-- Пункт навігації категорії (єдиний стиль; активний стан — з code-behind) -->
             <Style x:Key="HubNavItem" TargetType="{x:Type Button}">
-                <Setter Property="Height" Value="38"/>
+                <Setter Property="Height" Value="36"/>
                 <Setter Property="Margin" Value="0,2,0,0"/>
-                <Setter Property="Padding" Value="16,0"/>
+                <Setter Property="Padding" Value="16,0,13,0"/>
                 <Setter Property="HorizontalContentAlignment" Value="Left"/>
                 <Setter Property="Foreground" Value="#9DBBD4"/>
                 <Setter Property="FontFamily" Value="Segoe UI"/>
-                <Setter Property="FontSize" Value="14"/>
+                <Setter Property="FontSize" Value="13.5"/>
                 <Setter Property="Cursor" Value="Hand"/>
                 <Setter Property="Background" Value="Transparent"/>
+                <Setter Property="BorderBrush" Value="Transparent"/>
                 <Setter Property="BorderThickness" Value="0"/>
                 <Setter Property="Template">
                     <Setter.Value>
                         <ControlTemplate TargetType="{x:Type Button}">
-                            <Border x:Name="Bd" Background="{TemplateBinding Background}" CornerRadius="6" Padding="{TemplateBinding Padding}">
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="3"/>
-                                        <ColumnDefinition Width="*"/>
-                                    </Grid.ColumnDefinitions>
-                                    <Border x:Name="Indicator" Grid.Column="0" Background="Transparent" CornerRadius="2" Margin="0,4"/>
-                                    <ContentPresenter Grid.Column="1" VerticalAlignment="Center" HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"/>
-                                </Grid>
+                            <Border x:Name="Bd" Background="{TemplateBinding Background}"
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                    CornerRadius="7">
+                                <ContentPresenter Margin="{TemplateBinding Padding}" VerticalAlignment="Center"
+                                                  HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"/>
                             </Border>
                             <ControlTemplate.Triggers>
                                 <Trigger Property="IsMouseOver" Value="True">
                                     <Setter TargetName="Bd" Property="Background" Value="#162E42"/>
-                                </Trigger>
-                                <Trigger Property="IsEnabled" Value="False">
-                                    <Setter Property="Opacity" Value="0.55"/>
                                 </Trigger>
                             </ControlTemplate.Triggers>
                         </ControlTemplate>
@@ -48,11 +44,10 @@
                 </Setter>
             </Style>
 
-            <!-- Активний стан пункту навігації (встановлюється з code-behind) -->
-            <Style x:Key="HubNavItemActive" TargetType="{x:Type Button}" BasedOn="{StaticResource HubNavItem}">
-                <Setter Property="Background" Value="#1B3D58"/>
-                <Setter Property="Foreground" Value="#E8F3FF"/>
-                <Setter Property="FontWeight" Value="SemiBold"/>
+            <!-- Посилання «Головна» (навігація повернення, не категорія) -->
+            <Style x:Key="HubHomeLink" TargetType="{x:Type Button}" BasedOn="{StaticResource HubNavItem}">
+                <Setter Property="Foreground" Value="#6F8CA8"/>
+                <Setter Property="Margin" Value="0"/>
             </Style>
         </ResourceDictionary>
     </Canvas.Resources>
@@ -68,50 +63,43 @@
         </Grid.RowDefinitions>
 
         <!-- ============ ЗАГОЛОВОК ============ -->
-        <Grid Grid.Row="0" Margin="16,14,16,8">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="Auto"/>
-                <ColumnDefinition Width="*"/>
-            </Grid.ColumnDefinitions>
-            <TextBlock Grid.Column="0" Text="НАЛАШТУВАННЯ" FontFamily="Arial" Foreground="White" FontSize="18" FontWeight="Bold" VerticalAlignment="Center"/>
-            <TextBlock Grid.Column="1" Text="· Центр керування" FontFamily="Segoe UI" Foreground="#5E84A0" FontSize="14" VerticalAlignment="Center" Margin="8,2,0,0"/>
-
-            <!-- Кнопка повернення на головний екран -->
-            <Button x:Name="BtnReturnHome" Grid.Column="0" Style="{StaticResource ReturnHomeButton}"
-                    Canvas.Left="0" Canvas.Top="0" Width="50" Height="100" HorizontalAlignment="Left" VerticalAlignment="Center"
-                    Margin="-66,0,0,0"/>
+        <Grid Grid.Row="0" Margin="20,16,20,8">
+            <TextBlock Text="НАЛАШТУВАННЯ" FontFamily="Arial" Foreground="#EAF4FF" FontSize="18" FontWeight="Bold" VerticalAlignment="Center"/>
+            <TextBlock Text="· Центр керування" FontFamily="Segoe UI" Foreground="#5E84A0" FontSize="13" VerticalAlignment="Center" Margin="148,2,0,0"/>
         </Grid>
 
         <!-- ============ ТІЛО: навігація + вміст ============ -->
-        <Grid Grid.Row="1" Margin="16,0">
+        <Grid Grid.Row="1" Margin="20,0,20,0">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="190"/>
-                <ColumnDefinition Width="16"/>
+                <ColumnDefinition Width="200"/>
+                <ColumnDefinition Width="20"/>
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
 
             <!-- Ліва панель навігації -->
-            <Border Grid.Column="0" Background="#13091A26" BorderBrush="#1E476B" BorderThickness="1" CornerRadius="8">
-                <StackPanel x:Name="NavRail" Orientation="Vertical" Margin="6,8">
-                    <Button x:Name="NavHome"       Style="{StaticResource HubNavItem}" Content="Головна"          Tag="{x:Reference PaneHome}"       Click="NavButton_Click"/>
-                    <Button x:Name="NavGeneral"    Style="{StaticResource HubNavItem}" Content="Загальне"         Tag="{x:Reference PaneGeneral}"    Click="NavButton_Click"/>
-                    <Button x:Name="NavLocalization" Style="{StaticResource HubNavItem}" Content="Локалізація"    Tag="{x:Reference PaneLocalization}" Click="NavButton_Click"/>
-                    <Button x:Name="NavInterface"  Style="{StaticResource HubNavItem}" Content="Інтерфейс"        Tag="{x:Reference PaneInterface}"  Click="NavButton_Click"/>
-                    <Button x:Name="NavHotkeys"    Style="{StaticResource HubNavItem}" Content="Гарячі клавіші"   Tag="{x:Reference PaneHotkeys}"    Click="NavButton_Click"/>
-                    <Button x:Name="NavOverlay"    Style="{StaticResource HubNavItem}" Content="Overlay"          Tag="{x:Reference PaneOverlay}"    Click="NavButton_Click"/>
-                    <Button x:Name="NavProfile"    Style="{StaticResource HubNavItem}" Content="Профіль"          Tag="{x:Reference PaneProfile}"    Click="NavButton_Click"/>
-                    <Button x:Name="NavAbout"      Style="{StaticResource HubNavItem}" Content="Про програму"     Tag="{x:Reference PaneAbout}"      Click="NavButton_Click"/>
+            <Border Grid.Column="0" Background="#0A1828" BorderBrush="#1E4357" BorderThickness="1,0,1,0" CornerRadius="0">
+                <StackPanel x:Name="NavRail" Orientation="Vertical" Margin="6,10">
+
+                    <!-- Головна — навігація повернення (не категорія). Збережено x:Name BtnReturnHome → wire MainWindow лишається. -->
+                    <Button x:Name="BtnReturnHome" Style="{StaticResource HubHomeLink}" Content="←  Головна"/>
+
+                    <!-- Роздільник між поверненням і категоріями -->
+                    <Border Height="1" Background="#1E4357" Margin="4,8,4,8"/>
+
+                    <Button x:Name="NavGeneral"      Style="{StaticResource HubNavItem}" Content="Загальне"         Tag="{x:Reference PaneGeneral}"    Click="NavButton_Click"/>
+                    <Button x:Name="NavLocalization" Style="{StaticResource HubNavItem}" Content="Локалізація"      Tag="{x:Reference PaneLocalization}" Click="NavButton_Click"/>
+                    <Button x:Name="NavInterface"   Style="{StaticResource HubNavItem}" Content="Інтерфейс"        Tag="{x:Reference PaneInterface}"  Click="NavButton_Click"/>
+                    <Button x:Name="NavHotkeys"     Style="{StaticResource HubNavItem}" Content="Гарячі клавіші"   Tag="{x:Reference PaneHotkeys}"    Click="NavButton_Click"/>
+                    <Button x:Name="NavOverlay"     Style="{StaticResource HubNavItem}" Content="Overlay"          Tag="{x:Reference PaneOverlay}"    Click="NavButton_Click"/>
+                    <Button x:Name="NavProfile"     Style="{StaticResource HubNavItem}" Content="Профіль"          Tag="{x:Reference PaneProfile}"    Click="NavButton_Click"/>
+                    <Button x:Name="NavAbout"       Style="{StaticResource HubNavItem}" Content="Про програму"     Tag="{x:Reference PaneAbout}"      Click="NavButton_Click"/>
                 </StackPanel>
             </Border>
 
             <!-- Хост панелей категорій -->
             <Grid Grid.Column="2">
-                <!-- Загальне (реалізовано — Phase 0) -->
                 <hub:GeneralSettingsPane x:Name="PaneGeneral" Visibility="Visible"/>
 
-                <!-- Зарезервовані категорії (плейсхолдери) -->
-                <hub:SettingsPlaceholderPane x:Name="PaneHome" Visibility="Collapsed" Title="Головна"
-                    Icon="🏠" Message="Швидкий доступ та статус підключення з'являться тут пізніше."/>
                 <hub:SettingsPlaceholderPane x:Name="PaneLocalization" Visibility="Collapsed" Title="Локалізація"
                     Icon="🌐" Message="Керування перекладами Star Citizen. Зараз доступне на екрані «Локалізація»."/>
                 <hub:SettingsPlaceholderPane x:Name="PaneInterface" Visibility="Collapsed" Title="Інтерфейс"
@@ -126,9 +114,9 @@
         </Grid>
 
         <!-- ============ FOOTER ============ -->
-        <TextBlock Grid.Row="2" Margin="16,4,16,12" FontFamily="Segoe UI" FontSize="11" Foreground="#4A6A85">
+        <TextBlock Grid.Row="2" Margin="20,4,20,12" FontFamily="Segoe UI" FontSize="11" Foreground="#4A6A85">
             <Run FontFamily="Segoe UI Semibold" Foreground="#6F8CA8">F1</Run>
-            <Run Text=" — відкрити Hub, лише якщо активне вікно SCLOC-Verse"/>
+            <Run Text=" — відкрити Центр керування, лише якщо активне вікно SCLOC-Verse"/>
         </TextBlock>
     </Grid>
 </Canvas>

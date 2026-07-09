@@ -7,108 +7,48 @@
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
                 <ResourceDictionary Source="pack://application:,,,/SCLOCVerse;component/Resources/Styles.xaml"/>
+                <ResourceDictionary Source="pack://application:,,,/SCLOCVerse;component/Resources/SettingsHubKit.xaml"/>
             </ResourceDictionary.MergedDictionaries>
 
-            <!-- Базові кольори (перенесено з SettingsCanvas.xaml) -->
+            <!-- Локальні стилі path-кнопок (поведінка Автопошук/Скинути керується MainWindow) -->
             <SolidColorBrush x:Key="BtnFill"        Color="#30546E"/>
             <SolidColorBrush x:Key="BtnFillHover"   Color="#3A6682"/>
             <SolidColorBrush x:Key="BtnStroke"      Color="#8DD0FF"/>
-            <SolidColorBrush x:Key="BtnShadow"      Color="#000000"/>
-            <SolidColorBrush x:Key="AutoFill"       Color="#30546E"/>
-            <SolidColorBrush x:Key="AutoFillHover"  Color="#3A6682"/>
+            <SolidColorBrush x:Key="AutoFill"       Color="#1A5474"/>
+            <SolidColorBrush x:Key="AutoFillHover"  Color="#2478A9"/>
             <SolidColorBrush x:Key="ResetFill"      Color="#7E2D2D"/>
             <SolidColorBrush x:Key="ResetFillHover" Color="#933838"/>
 
-            <!-- Картка секції (визуальна мова застосунку) -->
-            <Style x:Key="SectionCard" TargetType="Border">
-                <Setter Property="Background" Value="#190E1D29"/>
-                <Setter Property="BorderBrush" Value="#2478A9"/>
-                <Setter Property="BorderThickness" Value="1"/>
-                <Setter Property="CornerRadius" Value="8"/>
-                <Setter Property="Padding" Value="16,12"/>
-                <Setter Property="Margin" Value="0,0,0,12"/>
-            </Style>
-
-            <Style x:Key="SectionTitle" TargetType="TextBlock">
-                <Setter Property="Foreground" Value="#8DD0FF"/>
-                <Setter Property="FontFamily" Value="Segoe UI"/>
-                <Setter Property="FontSize" Value="13"/>
-                <Setter Property="FontWeight" Value="SemiBold"/>
-                <Setter Property="Margin" Value="0,0,0,10"/>
-                <Setter Property="Opacity" Value="0.9"/>
-            </Style>
-
-            <Style x:Key="FieldLabel" TargetType="TextBlock">
-                <Setter Property="Foreground" Value="#A7C6E7"/>
-                <Setter Property="FontFamily" Value="Segoe UI Semibold"/>
-                <Setter Property="FontSize" Value="13"/>
-                <Setter Property="VerticalAlignment" Value="Center"/>
-            </Style>
-
-            <Style x:Key="FieldHint" TargetType="TextBlock">
-                <Setter Property="Foreground" Value="#6F8CA8"/>
-                <Setter Property="FontFamily" Value="Segoe UI"/>
-                <Setter Property="FontSize" Value="11"/>
-                <Setter Property="Margin" Value="0,4,0,0"/>
-            </Style>
-
-            <!-- ActionButton (перенесено з SettingsCanvas.xaml) -->
             <Style x:Key="ActionButton" TargetType="{x:Type Button}">
-                <Setter Property="Width" Value="150"/>
-                <Setter Property="Height" Value="40"/>
+                <Setter Property="Height" Value="34"/>
                 <Setter Property="FontFamily" Value="Segoe UI"/>
-                <Setter Property="Foreground" Value="White"/>
-                <Setter Property="FontWeight" Value="Bold"/>
-                <Setter Property="FontSize" Value="16"/>
+                <Setter Property="Foreground" Value="#EAF4FF"/>
+                <Setter Property="FontWeight" Value="SemiBold"/>
+                <Setter Property="FontSize" Value="13"/>
                 <Setter Property="Background" Value="{StaticResource BtnFill}"/>
                 <Setter Property="Cursor" Value="Hand"/>
                 <Setter Property="Template">
                     <Setter.Value>
                         <ControlTemplate TargetType="{x:Type Button}">
-                            <Grid x:Name="Root" RenderTransformOrigin="0.5,0.5">
-                                <Grid.RenderTransform>
-                                    <ScaleTransform x:Name="PressScale" ScaleX="1" ScaleY="1"/>
-                                </Grid.RenderTransform>
-                                <Grid.Effect>
-                                    <DropShadowEffect Color="Black" BlurRadius="12" ShadowDepth="6" Opacity="0.45"/>
-                                </Grid.Effect>
-                                <Path x:Name="BtnBg" Fill="{TemplateBinding Background}" Stretch="Fill" SnapsToDevicePixels="True"
-                                      Data="M 5,0 L 95,0 A 6,6 0 0 1 100,6 L 100,30 L 95,40 L 5,40 A 6,6 0 0 1 0,34 L 0,10 Z"/>
-                                <Path Stroke="{StaticResource BtnStroke}" StrokeThickness="1" StrokeLineJoin="Round"
-                                      StrokeStartLineCap="Round" StrokeEndLineCap="Round" Fill="Transparent" Stretch="Fill" SnapsToDevicePixels="True"
-                                      Data="M 5,0 L 95,0 A 5.5,5.5 0 0 1 100,5.5 L 100,30 L 95,40 L 5,40 A 5.5,5.5 0 0 1 0,34.5 L 0,10 Z"/>
+                            <Border x:Name="Bd" Background="{TemplateBinding Background}" CornerRadius="7" Padding="14,0">
                                 <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                            </Grid>
+                            </Border>
                             <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="Bd" Property="Background" Value="{StaticResource BtnFillHover}"/>
+                                </Trigger>
                                 <Trigger Property="IsPressed" Value="True">
-                                    <Trigger.EnterActions>
-                                        <BeginStoryboard><Storyboard>
-                                            <DoubleAnimation Storyboard.TargetName="PressScale" Storyboard.TargetProperty="ScaleX" To="0.97" Duration="0:0:0.06"/>
-                                            <DoubleAnimation Storyboard.TargetName="PressScale" Storyboard.TargetProperty="ScaleY" To="0.97" Duration="0:0:0.06"/>
-                                        </Storyboard></BeginStoryboard>
-                                    </Trigger.EnterActions>
-                                    <Trigger.ExitActions>
-                                        <BeginStoryboard><Storyboard>
-                                            <DoubleAnimation Storyboard.TargetName="PressScale" Storyboard.TargetProperty="ScaleX" To="1" Duration="0:0:0.08"/>
-                                            <DoubleAnimation Storyboard.TargetName="PressScale" Storyboard.TargetProperty="ScaleY" To="1" Duration="0:0:0.08"/>
-                                        </Storyboard></BeginStoryboard>
-                                    </Trigger.ExitActions>
+                                    <Setter TargetName="Bd" Property="Background" Value="#2A4658"/>
                                 </Trigger>
                                 <Trigger Property="IsEnabled" Value="False">
-                                    <Setter Property="Opacity" Value="0.55"/>
+                                    <Setter Property="Opacity" Value="0.5"/>
                                 </Trigger>
                             </ControlTemplate.Triggers>
                         </ControlTemplate>
                     </Setter.Value>
                 </Setter>
-                <Style.Triggers>
-                    <Trigger Property="IsMouseOver" Value="True">
-                        <Setter Property="Background" Value="{StaticResource BtnFillHover}"/>
-                    </Trigger>
-                </Style.Triggers>
             </Style>
 
-            <!-- AutoSearchButton (перенесено з SettingsCanvas.xaml) -->
             <Style x:Key="AutoSearchButton" TargetType="{x:Type Button}" BasedOn="{StaticResource ActionButton}">
                 <Style.Triggers>
                     <Trigger Property="Content" Value="Автопошук">
@@ -118,62 +58,15 @@
                         <Setter Property="Background" Value="{StaticResource ResetFill}"/>
                     </Trigger>
                 </Style.Triggers>
-                <Setter Property="Template">
-                    <Setter.Value>
-                        <ControlTemplate TargetType="Button">
-                            <Grid x:Name="Root" RenderTransformOrigin="0.5,0.5">
-                                <Grid.RenderTransform><ScaleTransform x:Name="PressScale" ScaleX="1" ScaleY="1"/></Grid.RenderTransform>
-                                <Grid.Effect><DropShadowEffect Color="Black" BlurRadius="12" ShadowDepth="6" Opacity="0.45"/></Grid.Effect>
-                                <Path x:Name="BtnBg" Fill="{TemplateBinding Background}" Stretch="Fill"
-                                      Data="M 5,0 L 95,0 A 6,6 0 0 1 100,6 L 100,30 L 95,40 L 5,40 A 6,6 0 0 1 0,34 L 0,10 Z"/>
-                                <Path Stroke="{StaticResource BtnStroke}" StrokeThickness="1" StrokeLineJoin="Round" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
-                                      Fill="Transparent" Stretch="Fill"
-                                      Data="M 5,0 L 95,0 A 5.5,5.5 0 0 1 100,5.5 L 100,30 L 95,40 L 5,40 A 5.5,5.5 0 0 1 0,34.5 L 0,10 Z"/>
-                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                            </Grid>
-                            <ControlTemplate.Triggers>
-                                <MultiTrigger>
-                                    <MultiTrigger.Conditions>
-                                        <Condition Property="IsMouseOver" Value="True"/>
-                                        <Condition Property="Content" Value="Автопошук"/>
-                                    </MultiTrigger.Conditions>
-                                    <Setter TargetName="BtnBg" Property="Fill" Value="{StaticResource AutoFillHover}"/>
-                                </MultiTrigger>
-                                <MultiTrigger>
-                                    <MultiTrigger.Conditions>
-                                        <Condition Property="IsMouseOver" Value="True"/>
-                                        <Condition Property="Content" Value="Скинути"/>
-                                    </MultiTrigger.Conditions>
-                                    <Setter TargetName="BtnBg" Property="Fill" Value="{StaticResource ResetFillHover}"/>
-                                </MultiTrigger>
-                                <Trigger Property="IsPressed" Value="True">
-                                    <Trigger.EnterActions>
-                                        <BeginStoryboard><Storyboard>
-                                            <DoubleAnimation Storyboard.TargetName="PressScale" Storyboard.TargetProperty="ScaleX" To="0.97" Duration="0:0:0.06"/>
-                                            <DoubleAnimation Storyboard.TargetName="PressScale" Storyboard.TargetProperty="ScaleY" To="0.97" Duration="0:0:0.06"/>
-                                        </Storyboard></BeginStoryboard>
-                                    </Trigger.EnterActions>
-                                    <Trigger.ExitActions>
-                                        <BeginStoryboard><Storyboard>
-                                            <DoubleAnimation Storyboard.TargetName="PressScale" Storyboard.TargetProperty="ScaleX" To="1" Duration="0:0:0.08"/>
-                                            <DoubleAnimation Storyboard.TargetName="PressScale" Storyboard.TargetProperty="ScaleY" To="1" Duration="0:0:0.08"/>
-                                        </Storyboard></BeginStoryboard>
-                                    </Trigger.ExitActions>
-                                </Trigger>
-                            </ControlTemplate.Triggers>
-                        </ControlTemplate>
-                    </Setter.Value>
-                </Setter>
             </Style>
 
-            <!-- UpdateChannelComboBoxStyle (перенесено з SettingsCanvas.xaml) -->
             <Style x:Key="UpdateChannelComboBoxStyle" TargetType="{x:Type ComboBox}">
                 <Setter Property="Foreground" Value="White"/>
-                <Setter Property="Background" Value="#102A3A"/>
-                <Setter Property="BorderBrush" Value="#2478A9"/>
-                <Setter Property="BorderThickness" Value="2"/>
+                <Setter Property="Background" Value="#0A1D29"/>
+                <Setter Property="BorderBrush" Value="#2A5A78"/>
+                <Setter Property="BorderThickness" Value="1"/>
                 <Setter Property="Padding" Value="0"/>
-                <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                <Setter Property="Height" Value="32"/>
                 <Setter Property="VerticalContentAlignment" Value="Center"/>
                 <Setter Property="Template">
                     <Setter.Value>
@@ -183,33 +76,24 @@
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
-                                <Border x:Name="Border" Grid.ColumnSpan="2" Background="{TemplateBinding Background}"
+                                <Border Grid.ColumnSpan="2" Background="{TemplateBinding Background}"
                                         BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="6"/>
-                                <ContentPresenter x:Name="ContentSite" Grid.Column="0" Margin="10,0,4,0" VerticalAlignment="Center"
-                                                  Content="{TemplateBinding SelectionBoxItem}" ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
-                                                  ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}" IsHitTestVisible="False"/>
-                                <ToggleButton x:Name="ToggleButton" Grid.Column="1" Width="24" Height="24" Margin="0,0,4,0"
+                                <ContentPresenter Grid.Column="0" Margin="10,0,4,0" VerticalAlignment="Center"
+                                                  Content="{TemplateBinding SelectionBoxItem}" IsHitTestVisible="False"/>
+                                <ToggleButton Grid.Column="1" Width="22" Height="22" Margin="0,0,3,0"
                                               Background="Transparent" BorderBrush="{x:Null}" Focusable="False"
                                               IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}">
-                                    <Path x:Name="Arrow" Data="M0,5 L6,11 L12,5" Stroke="#4AA3D8" StrokeThickness="1.5" HorizontalAlignment="Center" VerticalAlignment="Center">
-                                        <Path.RenderTransform><RotateTransform CenterX="6" CenterY="6"/></Path.RenderTransform>
-                                    </Path>
+                                    <Path Data="M0,5 L6,11 L12,5" Stroke="#4AA3D8" StrokeThickness="1.5" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                 </ToggleButton>
-                                <Popup x:Name="PART_Popup" Placement="Bottom" IsOpen="{TemplateBinding IsDropDownOpen}" PopupAnimation="Fade"
-                                       AllowsTransparency="True" StaysOpen="False" MinWidth="{TemplateBinding ActualWidth}">
-                                    <Border Background="#102A3A" BorderBrush="#2478A9" BorderThickness="2" CornerRadius="6">
+                                <Popup x:Name="PART_Popup" Placement="Bottom" IsOpen="{TemplateBinding IsDropDownOpen}"
+                                       PopupAnimation="Fade" AllowsTransparency="True" StaysOpen="False" MinWidth="{TemplateBinding ActualWidth}">
+                                    <Border Background="#0A1D29" BorderBrush="#2A5A78" BorderThickness="1" CornerRadius="6">
                                         <ScrollViewer MaxHeight="200" CanContentScroll="True" HorizontalScrollBarVisibility="Disabled">
                                             <StackPanel IsItemsHost="True" KeyboardNavigation.DirectionalNavigation="Contained"/>
                                         </ScrollViewer>
                                     </Border>
                                 </Popup>
                             </Grid>
-                            <ControlTemplate.Triggers>
-                                <Trigger SourceName="ToggleButton" Property="IsChecked" Value="True">
-                                    <Setter TargetName="Arrow" Property="RenderTransform"><Setter.Value><RotateTransform Angle="180" CenterX="6" CenterY="6"/></Setter.Value></Setter>
-                                </Trigger>
-                                <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.55"/></Trigger>
-                            </ControlTemplate.Triggers>
                         </ControlTemplate>
                     </Setter.Value>
                 </Setter>
@@ -217,24 +101,16 @@
                     <Setter.Value>
                         <Style TargetType="{x:Type ComboBoxItem}">
                             <Setter Property="Foreground" Value="#E8F3FF"/>
-                            <Setter Property="Background" Value="Transparent"/>
                             <Setter Property="Padding" Value="10,6"/>
-                            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
-                            <Setter Property="VerticalContentAlignment" Value="Center"/>
                             <Setter Property="Template">
                                 <Setter.Value>
                                     <ControlTemplate TargetType="{x:Type ComboBoxItem}">
-                                        <Border Name="Bd" Background="{TemplateBinding Background}" SnapsToDevicePixels="True">
-                                            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
-                                                              VerticalAlignment="{TemplateBinding VerticalContentAlignment}"
-                                                              SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}"/>
+                                        <Border Name="Bd" Background="{TemplateBinding Background}">
+                                            <ContentPresenter Margin="{TemplateBinding Padding}" VerticalAlignment="Center"/>
                                         </Border>
                                         <ControlTemplate.Triggers>
-                                            <Trigger Property="IsHighlighted" Value="True"><Setter TargetName="Bd" Property="Background" Value="#1F3C4C"/></Trigger>
-                                            <Trigger Property="IsSelected" Value="True">
-                                                <Setter TargetName="Bd" Property="Background" Value="#2478A9"/>
-                                                <Setter Property="Foreground" Value="White"/>
-                                            </Trigger>
+                                            <Trigger Property="IsHighlighted" Value="True"><Setter TargetName="Bd" Property="Background" Value="#162E42"/></Trigger>
+                                            <Trigger Property="IsSelected" Value="True"><Setter TargetName="Bd" Property="Background" Value="#2478A9"/></Trigger>
                                         </ControlTemplate.Triggers>
                                     </ControlTemplate>
                                 </Setter.Value>
@@ -244,128 +120,130 @@
                 </Setter>
             </Style>
 
-            <!-- SettingCheckBox (перенесено з SettingsCanvas.xaml) -->
-            <Style x:Key="SettingCheckBox" TargetType="{x:Type CheckBox}">
-                <Setter Property="Foreground" Value="White"/>
-                <Setter Property="FontFamily" Value="Segoe UI"/>
-                <Setter Property="FontSize" Value="14"/>
-                <Setter Property="Cursor" Value="Hand"/>
-                <Setter Property="VerticalContentAlignment" Value="Center"/>
-                <Setter Property="Margin" Value="0,8,0,0"/>
-                <Setter Property="ToolTipService.Placement" Value="Right"/>
-                <Setter Property="ToolTipService.InitialShowDelay" Value="250"/>
-                <Setter Property="ToolTipService.ShowDuration" Value="60000"/>
-                <Setter Property="ToolTipService.HorizontalOffset" Value="8"/>
-                <Setter Property="ToolTipService.VerticalOffset" Value="0"/>
-                <Setter Property="Template">
-                    <Setter.Value>
-                        <ControlTemplate TargetType="{x:Type CheckBox}">
-                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                <Border x:Name="Box" Width="20" Height="20" CornerRadius="4" BorderThickness="2" BorderBrush="#4AA3D8" Background="#0C1A2A" VerticalAlignment="Center"/>
-                                <TextBlock x:Name="Check" Text="✓" FontSize="16" FontWeight="Bold" Foreground="White"
-                                           HorizontalAlignment="Center" VerticalAlignment="Center" Margin="-20,0,0,0" Width="20" Height="20" TextAlignment="Center" Opacity="0"/>
-                                <ContentPresenter VerticalAlignment="Center" Margin="10,0,0,0"/>
-                            </StackPanel>
-                            <ControlTemplate.Triggers>
-                                <Trigger Property="IsChecked" Value="True">
-                                    <Setter TargetName="Box" Property="Background" Value="#2478A9"/>
-                                    <Setter TargetName="Check" Property="Opacity" Value="1"/>
-                                </Trigger>
-                                <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Box" Property="BorderBrush" Value="#8DD0FF"/></Trigger>
-                                <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.55"/></Trigger>
-                            </ControlTemplate.Triggers>
-                        </ControlTemplate>
-                    </Setter.Value>
-                </Setter>
+            <!-- Рядок налаштування: назва+опис ліворуч, контрол у правій колонці (P4) -->
+            <Style x:Key="HubSettingRow" TargetType="Grid">
+                <Setter Property="MinHeight" Value="48"/>
+                <Setter Property="Margin" Value="0,2"/>
             </Style>
         </ResourceDictionary>
     </UserControl.Resources>
 
-    <!-- Прокручуваний вміст категорії «Загальне» -->
     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="0,0,8,0">
         <StackPanel Orientation="Vertical" Margin="0,0,0,16">
 
-            <!-- ============ STAR CITIZEN ============ -->
-            <Border Style="{StaticResource SectionCard}">
-                <StackPanel Orientation="Vertical">
-                    <TextBlock Style="{StaticResource SectionTitle}" Text="STAR CITIZEN"/>
-                    <TextBlock Style="{StaticResource FieldLabel}" Text="Шлях до папки гри"/>
-                    <TextBlock Style="{StaticResource FieldHint}" Text="Використовується для встановлення локалізації та конфігурації."/>
+            <!-- Cat-head -->
+            <StackPanel Orientation="Horizontal" Margin="2,0,0,4">
+                <TextBlock Text="ЗАГАЛЬНЕ" FontFamily="Segoe UI" FontSize="15" FontWeight="Bold" Foreground="#EAF4FF"/>
+                <TextBlock Text="основні параметри застосунку" Margin="12,0,0,0" FontFamily="Segoe UI" FontSize="11.5" Foreground="#5A7A8A" VerticalAlignment="Center"/>
+            </StackPanel>
+            <TextBlock Style="{StaticResource HubHelpText}" Text="Стан гри, запуск, оновлення та обслуговування."/>
 
-                    <Grid Margin="0,10,0,0">
+            <!-- ============ STAR CITIZEN ============ -->
+            <Border Style="{StaticResource HubGroupCard}">
+                <StackPanel Orientation="Vertical">
+                    <TextBlock Style="{StaticResource HubGroupLabel}" Text="STAR CITIZEN"/>
+                    <TextBlock Style="{StaticResource HubFieldLabel}" Text="Шлях до папки гри"/>
+                    <TextBlock Style="{StaticResource HubFieldDesc}" Text="Використовується для встановлення локалізації та конфігурації."/>
+                    <Grid Margin="0,12,0,0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="Auto"/>
                         </Grid.ColumnDefinitions>
-                        <Border Grid.Column="0" Height="40" CornerRadius="6" BorderBrush="{StaticResource BtnStroke}" BorderThickness="1" Background="#0C1A2A" Margin="0,0,8,0">
-                            <TextBox x:Name="TxtSelectedPath" FontFamily="Segoe UI Semibold" FontSize="14" Foreground="#A7C6E7"
+                        <Border Grid.Column="0" Height="34" CornerRadius="6" BorderBrush="#2A5A78" BorderThickness="1" Background="#0A1D29" Margin="0,0,8,0">
+                            <TextBox x:Name="TxtSelectedPath" FontFamily="Segoe UI Semibold" FontSize="13" Foreground="#A7C6E7"
                                      Background="Transparent" BorderThickness="0" Padding="12,0" IsReadOnly="True"
                                      HorizontalContentAlignment="Left" VerticalContentAlignment="Center"/>
                         </Border>
-                        <Button x:Name="BtnSelectFolder" Grid.Column="1" Style="{StaticResource ActionButton}" Content="Огляд…" Width="110" Height="40" Margin="0,0,8,0"/>
-                        <Button x:Name="BtnAutoSearch" Grid.Column="2" Style="{StaticResource AutoSearchButton}" Content="Автопошук" Width="120" Height="40"/>
+                        <Button x:Name="BtnSelectFolder" Grid.Column="1" Style="{StaticResource ActionButton}" Content="Огляд…" Width="100" Margin="0,0,8,0"/>
+                        <Button x:Name="BtnAutoSearch" Grid.Column="2" Style="{StaticResource AutoSearchButton}" Content="Автопошук" Width="118"/>
                     </Grid>
                 </StackPanel>
             </Border>
 
             <!-- ============ ЗАПУСК ============ -->
-            <Border Style="{StaticResource SectionCard}">
+            <Border Style="{StaticResource HubGroupCard}">
                 <StackPanel Orientation="Vertical">
-                    <TextBlock Style="{StaticResource SectionTitle}" Text="ЗАПУСК"/>
-                    <CheckBox x:Name="RunAtStartupCheckBox" Style="{StaticResource SettingCheckBox}" Content="Запускати з Windows"
-                              ToolTip="Автоматично запускати SCLOC-Verse після входу до Windows."/>
-                    <CheckBox x:Name="MinimizeToTrayCheckBox" Style="{StaticResource SettingCheckBox}" Content="Згортати в трей при закритті"
-                              ToolTip="При закритті вікна програма залишиться працювати у системному треї."/>
+                    <TextBlock Style="{StaticResource HubGroupLabel}" Text="ЗАПУСК"/>
+                    <Grid Style="{StaticResource HubSettingRow}">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                            <TextBlock Style="{StaticResource HubFieldLabel}" Text="Автозапуск із Windows"/>
+                            <TextBlock Style="{StaticResource HubFieldDesc}" Text="Запускати SCLOC-Verse після входу до системи."/>
+                        </StackPanel>
+                        <CheckBox x:Name="RunAtStartupCheckBox" Grid.Column="1" Style="{StaticResource HubToggle}" ToolTip="Автозапуск синхронізується з реєстром Windows."/>
+                    </Grid>
+                    <Border Height="1" Background="#1E4357" Margin="0,2"/>
+                    <Grid Style="{StaticResource HubSettingRow}">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                            <TextBlock Style="{StaticResource HubFieldLabel}" Text="Згортати в трей при закритті"/>
+                            <TextBlock Style="{StaticResource HubFieldDesc}" Text="Замість виходу — іконка в системному лотку."/>
+                        </StackPanel>
+                        <CheckBox x:Name="MinimizeToTrayCheckBox" Grid.Column="1" Style="{StaticResource HubToggle}" ToolTip="При закритті вікна програма залишиться у системному треї."/>
+                    </Grid>
                 </StackPanel>
             </Border>
 
             <!-- ============ ОНОВЛЕННЯ ============ -->
-            <Border Style="{StaticResource SectionCard}">
+            <Border Style="{StaticResource HubGroupCard}">
                 <StackPanel Orientation="Vertical">
-                    <TextBlock Style="{StaticResource SectionTitle}" Text="ОНОВЛЕННЯ"/>
-                    <CheckBox x:Name="AutoUpdateLocalizationCheckBox" Style="{StaticResource SettingCheckBox}" Content="Автооновлення локалізації"
-                              ToolTip="Автоматично перевіряти та встановлювати нові версії локалізації Star Citizen."/>
-
-                    <Grid Margin="0,14,0,0">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="180"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Style="{StaticResource FieldLabel}" Text="Канал оновлень:" VerticalAlignment="Center" Margin="0,0,12,0"/>
-                        <ComboBox x:Name="UpdateChannelComboBox" Grid.Column="1" Height="32" DisplayMemberPath="DisplayName" SelectedValuePath="Value"
-                                  Style="{StaticResource UpdateChannelComboBoxStyle}" VerticalAlignment="Center"/>
-                        <Button x:Name="UpdateHistoryButton" Grid.Column="2" Style="{StaticResource ActionButton}" Content="Менеджер версій" Width="160" Height="32" Margin="12,0,0,0" VerticalAlignment="Center"/>
+                    <TextBlock Style="{StaticResource HubGroupLabel}" Text="ОНОВЛЕННЯ"/>
+                    <Grid Style="{StaticResource HubSettingRow}">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                            <TextBlock Style="{StaticResource HubFieldLabel}" Text="Автооновлення локалізації"/>
+                            <TextBlock Style="{StaticResource HubFieldDesc}" Text="Перевіряти та встановлювати оновлення перекладу перед запуском гри."/>
+                        </StackPanel>
+                        <CheckBox x:Name="AutoUpdateLocalizationCheckBox" Grid.Column="1" Style="{StaticResource HubToggle}" ToolTip="Автоматично перевіряти та встановлювати нові версії локалізації."/>
+                    </Grid>
+                    <Border Height="1" Background="#1E4357" Margin="0,2"/>
+                    <Grid Style="{StaticResource HubSettingRow}">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                            <TextBlock Style="{StaticResource HubFieldLabel}" Text="Канал оновлень"/>
+                            <TextBlock Style="{StaticResource HubFieldDesc}" Text="Які збірки застосунку пропонувати при перевірці нової версії."/>
+                        </StackPanel>
+                        <ComboBox x:Name="UpdateChannelComboBox" Grid.Column="1" Width="150" DisplayMemberPath="DisplayName" SelectedValuePath="Value" Style="{StaticResource UpdateChannelComboBoxStyle}"/>
+                    </Grid>
+                    <Border Height="1" Background="#1E4357" Margin="0,2"/>
+                    <Grid Style="{StaticResource HubSettingRow}">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                            <TextBlock Style="{StaticResource HubFieldLabel}" Text="Менеджер версій локалізації"/>
+                            <TextBlock Style="{StaticResource HubFieldDesc}" Text="Вибір конкретної версії перекладу."/>
+                        </StackPanel>
+                        <Button x:Name="UpdateHistoryButton" Grid.Column="1" Style="{StaticResource HubSecondaryButton}" Content="Відкрити…" Height="32"/>
                     </Grid>
                 </StackPanel>
             </Border>
 
             <!-- ============ ОБСЛУГОВУВАННЯ ============ -->
-            <Border Style="{StaticResource SectionCard}">
+            <Border Style="{StaticResource HubGroupCard}">
                 <StackPanel Orientation="Vertical">
-                    <TextBlock Style="{StaticResource SectionTitle}" Text="ОБСЛУГОВУВАННЯ"/>
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <Button x:Name="BtnResetCash" Grid.Column="0" Style="{StaticResource ActionButton}" Content="Очистити кеш" Width="180" Height="40"/>
-                        <CheckBox x:Name="AdvancedDiagnosticsCheckBox" Grid.Column="1" Style="{StaticResource SettingCheckBox}" Content="Розширена діагностика"
-                                  ToolTip="Надсилати додаткову діагностичну інформацію лише під час виникнення проблем. За замовчуванням вимкнено."
-                                  Margin="24,0,0,0" VerticalAlignment="Center"/>
+                    <TextBlock Style="{StaticResource HubGroupLabel}" Text="ОБСЛУГОВУВАННЯ"/>
+                    <Grid Style="{StaticResource HubSettingRow}">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                            <TextBlock Style="{StaticResource HubFieldLabel}" Text="Очистити кеш гри"/>
+                            <TextBlock Style="{StaticResource HubFieldDesc}" Text="Видаляє тимчасові файли Star Citizen. Налаштування SCLOC-Verse не зітруться."/>
+                        </StackPanel>
+                        <Button x:Name="BtnResetCash" Grid.Column="1" Style="{StaticResource HubSecondaryButton}" Content="Очистити…" Height="32"/>
+                    </Grid>
+                    <Border Height="1" Background="#1E4357" Margin="0,2"/>
+                    <Grid Style="{StaticResource HubSettingRow}">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                            <TextBlock Style="{StaticResource HubFieldLabel}" Text="Розширена діагностика"/>
+                            <TextBlock Style="{StaticResource HubFieldDesc}" Text="Детальні логи лише під час проблем. За замовчуванням вимкнено."/>
+                        </StackPanel>
+                        <CheckBox x:Name="AdvancedDiagnosticsCheckBox" Grid.Column="1" Style="{StaticResource HubToggle}" ToolTip="Надсилати додаткову діагностичну інформацію лише під час виникнення проблем."/>
                     </Grid>
                 </StackPanel>
             </Border>
 
-            <!-- ============ README ============ -->
-            <Border Style="{StaticResource SectionCard}">
-                <Border Height="180" CornerRadius="6" BorderBrush="{StaticResource BtnStroke}" BorderThickness="1" Background="#CC0A1D29">
-                    <TextBox x:Name="TxtReadme" FontFamily="Segoe UI Semibold" FontSize="14" Foreground="#A9C6E2"
-                             Background="Transparent" BorderThickness="0" Padding="10,6" IsReadOnly="True"
-                             AcceptsReturn="True" TextWrapping="Wrap" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Top" TextAlignment="Justify"/>
-                </Border>
-            </Border>
+            <!-- README прихований (не входить у концепцію центру керування; фасад збережено для Zero Regression) -->
+            <TextBox x:Name="TxtReadme" Visibility="Collapsed" Width="0" Height="0"/>
 
         </StackPanel>
     </ScrollViewer>

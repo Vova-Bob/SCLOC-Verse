@@ -5,31 +5,27 @@
 
     <UserControl.Resources>
         <ResourceDictionary>
-            <!-- Бейдж жесту: статичний, не інтерактивний (read-only). -->
-            <Style x:Key="GestureBadge" TargetType="Border">
-                <Setter Property="Background" Value="#102A3A"/>
-                <Setter Property="BorderBrush" Value="#2478A9"/>
-                <Setter Property="BorderThickness" Value="1"/>
-                <Setter Property="CornerRadius" Value="5"/>
-                <Setter Property="Padding" Value="12,5"/>
-            </Style>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/SCLOCVerse;component/Resources/SettingsHubKit.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>
     </UserControl.Resources>
 
     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="0,0,8,0">
         <StackPanel Orientation="Vertical" Margin="0,0,0,16">
 
-            <!-- Заголовок категорії + лічильник -->
-            <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                <TextBlock Text="ГАРЯЧІ КЛАВІШІ" FontFamily="Segoe UI" FontSize="15" FontWeight="SemiBold" Foreground="#8DD0FF"/>
-                <TextBlock x:Name="CountText" Margin="12,0,0,0" FontFamily="Segoe UI" FontSize="13" Foreground="#6F8CA8" VerticalAlignment="Center"/>
+            <!-- Cat-head -->
+            <StackPanel Orientation="Horizontal" Margin="2,0,0,4">
+                <TextBlock Text="ГАРЯЧІ КЛАВІШІ" FontFamily="Segoe UI" FontSize="15" FontWeight="Bold" Foreground="#EAF4FF"/>
+                <TextBlock x:Name="CountText" Margin="12,0,0,0" FontFamily="Segoe UI" FontSize="11.5" Foreground="#5A7A8A" VerticalAlignment="Center"/>
             </StackPanel>
+            <TextBlock Style="{StaticResource HubHelpText}" Text="Перелік активних комбінацій. Працюють глобально, навіть коли гра на весь екран."/>
 
-            <!-- Опис стану (read-only, без редагування) -->
-            <Border Background="#16122914" BorderBrush="#3A5A1E" BorderThickness="1" CornerRadius="8" Padding="14,10" Margin="0,0,0,14">
+            <!-- Опис стану (read-only, без редагування — P5) -->
+            <Border Background="#0E2A1C" BorderBrush="#2E6B45" BorderThickness="1" CornerRadius="8" Padding="14,10" Margin="0,0,0,14">
                 <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="ℹ" FontSize="18" Foreground="#7FA84A" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                    <TextBlock FontFamily="Segoe UI" FontSize="13" Foreground="#A7C6E7" TextWrapping="Wrap" MaxWidth="640">
+                    <TextBlock Text="ℹ" FontSize="16" Foreground="#7FA84A" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                    <TextBlock FontFamily="Segoe UI" FontSize="12.5" Foreground="#A7C6E7" TextWrapping="Wrap" MaxWidth="640">
                         <Run Text="Це перелік активних комбінацій. "/>
                         <Run Text="Редагування з'явиться в наступній версії." FontWeight="SemiBold" Foreground="#C9E0A0"/>
                     </TextBlock>

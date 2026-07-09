@@ -4,166 +4,152 @@
              Background="Transparent">
 
     <UserControl.Resources>
-        <Style x:Key="SectionCard" TargetType="Border">
-            <Setter Property="Background" Value="#190E1D29"/>
-            <Setter Property="BorderBrush" Value="#2478A9"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="CornerRadius" Value="8"/>
-            <Setter Property="Padding" Value="16,12"/>
-            <Setter Property="Margin" Value="0,0,0,12"/>
-        </Style>
-        <Style x:Key="SectionTitle" TargetType="TextBlock">
-            <Setter Property="Foreground" Value="#8DD0FF"/>
-            <Setter Property="FontFamily" Value="Segoe UI"/>
-            <Setter Property="FontSize" Value="13"/>
-            <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="Margin" Value="0,0,0,10"/>
-            <Setter Property="Opacity" Value="0.9"/>
-        </Style>
-        <Style x:Key="FieldLabel" TargetType="TextBlock">
-            <Setter Property="Foreground" Value="#A7C6E7"/>
-            <Setter Property="FontFamily" Value="Segoe UI Semibold"/>
-            <Setter Property="FontSize" Value="13"/>
-            <Setter Property="VerticalAlignment" Value="Center"/>
-        </Style>
-        <Style x:Key="FieldHint" TargetType="TextBlock">
-            <Setter Property="Foreground" Value="#6F8CA8"/>
-            <Setter Property="FontFamily" Value="Segoe UI"/>
-            <Setter Property="FontSize" Value="11"/>
-            <Setter Property="Margin" Value="0,4,0,0"/>
-        </Style>
-        <Style x:Key="HubSlider" TargetType="Slider">
-            <Setter Property="Foreground" Value="#8DD0FF"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Slider">
-                        <Border Background="#0C1A2A" BorderBrush="#2478A9" BorderThickness="1" CornerRadius="4" Padding="2">
-                            <Track Name="PART_Track">
-                                <Track.DecreaseRepeatButton>
-                                    <RepeatButton Background="#2478A9" Command="Slider.DecreaseLarge"/>
-                                </Track.DecreaseRepeatButton>
-                                <Track.IncreaseRepeatButton>
-                                    <RepeatButton Background="#162E42" Command="Slider.IncreaseLarge"/>
-                                </Track.IncreaseRepeatButton>
-                                <Track.Thumb>
-                                    <Thumb>
-                                        <Thumb.Template>
-                                            <ControlTemplate TargetType="Thumb">
-                                                <Border Background="#8DD0FF" BorderBrush="#E8F3FF" BorderThickness="1" CornerRadius="3" Width="10" Height="18"/>
-                                            </ControlTemplate>
-                                        </Thumb.Template>
-                                    </Thumb>
-                                </Track.Thumb>
-                            </Track>
-                        </Border>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-        <Style x:Key="ActionButton" TargetType="{x:Type Button}">
-            <Setter Property="Height" Value="32"/>
-            <Setter Property="FontFamily" Value="Segoe UI"/>
-            <Setter Property="Foreground" Value="White"/>
-            <Setter Property="FontWeight" Value="Bold"/>
-            <Setter Property="FontSize" Value="13"/>
-            <Setter Property="Background" Value="#30546E"/>
-            <Setter Property="Cursor" Value="Hand"/>
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="{x:Type Button}">
-                        <Border x:Name="Bd" Background="{TemplateBinding Background}" CornerRadius="5" Padding="14,0">
-                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="#3A6682"/>
-                            </Trigger>
-                            <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="Bd" Property="Background" Value="#2A4658"/>
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-        <Style x:Key="PosBox" TargetType="TextBox">
-            <Setter Property="FontFamily" Value="Segoe UI Semibold"/>
-            <Setter Property="FontSize" Value="13"/>
-            <Setter Property="Foreground" Value="#A7C6E7"/>
-            <Setter Property="Background" Value="#0C1A2A"/>
-            <Setter Property="BorderBrush" Value="#2478A9"/>
-            <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="IsReadOnly" Value="True"/>
-            <Setter Property="VerticalContentAlignment" Value="Center"/>
-            <Setter Property="Padding" Value="8,0"/>
-        </Style>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/SCLOCVerse;component/Resources/SettingsHubKit.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+
+            <!-- Слайдер (P0 — єдина мова) -->
+            <Style x:Key="HubSlider" TargetType="Slider">
+                <Setter Property="Foreground" Value="#4AA3D8"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Slider">
+                            <Border Background="#0A1D29" BorderBrush="#1E4357" BorderThickness="1" CornerRadius="4" Padding="2">
+                                <Track Name="PART_Track">
+                                    <Track.DecreaseRepeatButton>
+                                        <RepeatButton Background="#2478A9" Command="Slider.DecreaseLarge"/>
+                                    </Track.DecreaseRepeatButton>
+                                    <Track.IncreaseRepeatButton>
+                                        <RepeatButton Background="#0A1D29" Command="Slider.IncreaseLarge"/>
+                                    </Track.IncreaseRepeatButton>
+                                    <Track.Thumb>
+                                        <Thumb>
+                                            <Thumb.Template>
+                                                <ControlTemplate TargetType="Thumb">
+                                                    <Border Background="#8DD0FF" BorderBrush="#EAF4FF" BorderThickness="1" CornerRadius="3" Width="11" Height="18"/>
+                                                </ControlTemplate>
+                                            </Thumb.Template>
+                                        </Thumb>
+                                    </Track.Thumb>
+                                </Track>
+                            </Border>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <Style x:Key="PosBox" TargetType="TextBox">
+                <Setter Property="FontFamily" Value="Segoe UI Semibold"/>
+                <Setter Property="FontSize" Value="13"/>
+                <Setter Property="Foreground" Value="#A7C6E7"/>
+                <Setter Property="Background" Value="#0A1D29"/>
+                <Setter Property="BorderBrush" Value="#2A5A78"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="IsReadOnly" Value="True"/>
+                <Setter Property="VerticalContentAlignment" Value="Center"/>
+                <Setter Property="Padding" Value="8,0"/>
+            </Style>
+        </ResourceDictionary>
     </UserControl.Resources>
 
     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="0,0,8,0">
         <StackPanel Orientation="Vertical" Margin="0,0,0,16">
 
-            <!-- Примітка про застосування -->
-            <TextBlock Style="{StaticResource FieldHint}" Text="Зміни масштабу та прозорості застосовуються при наступному показі оверлея." Margin="0,0,0,12"/>
+            <!-- Cat-head -->
+            <StackPanel Orientation="Horizontal" Margin="2,0,0,4">
+                <TextBlock Text="OVERLAY" FontFamily="Segoe UI" FontSize="15" FontWeight="Bold" Foreground="#EAF4FF"/>
+                <TextBlock Text="тип інтерфейсу · 1 активний" Margin="12,0,0,0" FontFamily="Segoe UI" FontSize="11.5" Foreground="#5A7A8A" VerticalAlignment="Center"/>
+            </StackPanel>
+            <TextBlock Style="{StaticResource HubHelpText}" Text="Спільні налаштування оверлеїв. Швидкі зміни — гарячими клавішами на оверлеї; точні — тут."/>
 
             <!-- ============ HANGAR TIMER (активний) ============ -->
-            <Border Style="{StaticResource SectionCard}">
+            <Border Style="{StaticResource HubGroupCard}">
                 <StackPanel Orientation="Vertical">
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Style="{StaticResource SectionTitle}" Text="HANGAR TIMER" Margin="0"/>
-                        <TextBlock Text="· активний" FontFamily="Segoe UI" FontSize="12" Foreground="#7FA84A" VerticalAlignment="Center" Margin="8,0,0,0"/>
+                    <!-- Заголовок-смужка зі статус-крапкою (P0 — стан видимий) -->
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                        <Ellipse Width="9" Height="9" Fill="#5BC98A" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                        <TextBlock Text="Hangar Timer" FontFamily="Segoe UI Semibold" FontSize="13.5" Foreground="#EAF4FF" VerticalAlignment="Center"/>
+                        <TextBlock Text="· активний" FontFamily="Segoe UI" FontSize="11" Foreground="#5A7A8A" VerticalAlignment="Center" Margin="8,0,0,0"/>
                     </StackPanel>
 
                     <!-- Масштаб -->
-                    <Grid Margin="0,6,0,0">
+                    <Grid Margin="0,2">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="120"/>
                             <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="60"/>
+                            <ColumnDefinition Width="50"/>
                         </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Style="{StaticResource FieldLabel}" Text="Масштаб"/>
-                        <Slider Grid.Column="1" x:Name="ScaleSlider" Style="{StaticResource HubSlider}" Minimum="0.2" Maximum="2.0" TickFrequency="0.05" IsSnapToTickEnabled="True" VerticalAlignment="Center" Margin="8,0"/>
-                        <TextBlock Grid.Column="2" x:Name="ScaleValue" Style="{StaticResource FieldLabel}" HorizontalAlignment="Right" Margin="0,0,0,0"/>
+                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                            <TextBlock Style="{StaticResource HubFieldLabel}" Text="Масштаб"/>
+                            <TextBlock Style="{StaticResource HubFieldDesc}" Text="за замовч. 0.60"/>
+                        </StackPanel>
+                        <Slider Grid.Column="1" x:Name="ScaleSlider" Style="{StaticResource HubSlider}" Minimum="0.2" Maximum="2.0" TickFrequency="0.05" IsSnapToTickEnabled="True" VerticalAlignment="Center" Margin="10,0"/>
+                        <TextBlock Grid.Column="2" x:Name="ScaleValue" Style="{StaticResource HubFieldLabel}" HorizontalAlignment="Right"/>
                     </Grid>
 
                     <!-- Прозорість -->
+                    <Grid Margin="0,10,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="120"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="50"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                            <TextBlock Style="{StaticResource HubFieldLabel}" Text="Прозорість"/>
+                            <TextBlock Style="{StaticResource HubFieldDesc}" Text="за замовч. 0.92"/>
+                        </StackPanel>
+                        <Slider Grid.Column="1" x:Name="OpacitySlider" Style="{StaticResource HubSlider}" Minimum="0.2" Maximum="1.0" TickFrequency="0.02" IsSnapToTickEnabled="True" VerticalAlignment="Center" Margin="10,0"/>
+                        <TextBlock Grid.Column="2" x:Name="OpacityValue" Style="{StaticResource HubFieldLabel}" HorizontalAlignment="Right"/>
+                    </Grid>
+
+                    <!-- Позиція (службова) -->
                     <Grid Margin="0,14,0,0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="120"/>
                             <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="60"/>
                         </Grid.ColumnDefinitions>
-                        <TextBlock Grid.Column="0" Style="{StaticResource FieldLabel}" Text="Прозорість"/>
-                        <Slider Grid.Column="1" x:Name="OpacitySlider" Style="{StaticResource HubSlider}" Minimum="0.2" Maximum="1.0" TickFrequency="0.02" IsSnapToTickEnabled="True" VerticalAlignment="Center" Margin="8,0"/>
-                        <TextBlock Grid.Column="2" x:Name="OpacityValue" Style="{StaticResource FieldLabel}" HorizontalAlignment="Right"/>
+                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                            <TextBlock Style="{StaticResource HubFieldLabel}" Text="Позиція"/>
+                            <TextBlock Style="{StaticResource HubFieldDesc}" Text="службова · у пікселях"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock Text="X" Style="{StaticResource HubFieldLabel}" Margin="0,0,6,0" Foreground="#6F8CA8"/>
+                            <TextBox x:Name="PosXBox" Style="{StaticResource PosBox}" Width="80" Height="28"/>
+                            <TextBlock Text="Y" Style="{StaticResource HubFieldLabel}" Margin="16,0,6,0" Foreground="#6F8CA8"/>
+                            <TextBox x:Name="PosYBox" Style="{StaticResource PosBox}" Width="80" Height="28"/>
+                        </StackPanel>
                     </Grid>
-
-                    <!-- Позиція (службова) -->
-                    <TextBlock Style="{StaticResource FieldLabel}" Text="Позиція" Margin="0,18,0,4"/>
-                    <TextBlock Style="{StaticResource FieldHint}" Text="Службова — змінюється перетягуванням оверлея. Значення в пікселях."/>
-                    <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
-                        <TextBlock Text="X" Style="{StaticResource FieldLabel}" Margin="0,0,8,0"/>
-                        <TextBox x:Name="PosXBox" Style="{StaticResource PosBox}" Width="90" Height="30"/>
-                        <TextBlock Text="Y" Style="{StaticResource FieldLabel}" Margin="20,0,8,0"/>
-                        <TextBox x:Name="PosYBox" Style="{StaticResource PosBox}" Width="90" Height="30"/>
-                    </StackPanel>
-
-                    <!-- Reset -->
-                    <Button x:Name="ResetButton" Style="{StaticResource ActionButton}" Content="↺ Типові для Hangar Timer" HorizontalAlignment="Left" Margin="0,16,0,0"/>
                 </StackPanel>
             </Border>
 
-            <!-- ============ ANTI-AFK (не активний) ============ -->
-            <Border Style="{StaticResource SectionCard}">
+            <!-- ============ ANTI-AFK (не активний, притлумлений) ============ -->
+            <Border Style="{StaticResource HubGroupCard}" Opacity="0.55">
                 <StackPanel Orientation="Vertical">
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Style="{StaticResource SectionTitle}" Text="ANTI-AFK" Margin="0"/>
-                        <TextBlock Text="· інструмент не активний" FontFamily="Segoe UI" FontSize="12" Foreground="#6F8CA8" VerticalAlignment="Center" Margin="8,0,0,0"/>
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                        <Ellipse Width="9" Height="9" Fill="#44505A" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                        <TextBlock Text="Anti-AFK" FontFamily="Segoe UI Semibold" FontSize="13.5" Foreground="#A7C6E7" VerticalAlignment="Center"/>
+                        <TextBlock Text="· інструмент не активний" FontFamily="Segoe UI" FontSize="11" Foreground="#5A7A8A" VerticalAlignment="Center" Margin="8,0,0,0"/>
                     </StackPanel>
-                    <TextBlock Style="{StaticResource FieldLabel}" Text="Налаштування оверлея недоступні"/>
-                    <TextBlock Style="{StaticResource FieldHint}" TextWrapping="Wrap" Margin="0,4,0,0"
-                               Text="Anti-AFK зараз не виводить оверлей. Коли інструмент стане активним, тут з'являться масштаб, прозорість і позиція."/>
+                    <TextBlock Style="{StaticResource HubFieldLabel}" Text="Налаштування оверлея недоступні"/>
+                    <TextBlock Style="{StaticResource HubFieldDesc}" TextWrapping="Wrap" Text="Anti-AFK зараз не виводить оверлей. Коли інструмент стане активним, тут з'являться масштаб, прозорість і позиція."/>
                 </StackPanel>
             </Border>
+
+            <!-- Підказка про гарячі клавіші -->
+            <TextBlock Style="{StaticResource HubFieldDesc}" Margin="4,2,0,0">
+                <Run Foreground="#6F8CA8">Швидкі зміни:</Run>
+                <Run Foreground="#4AA3D8">Ctrl ±</Run>
+                <Run Foreground="#6F8CA8"> масштаб  ·  </Run>
+                <Run Foreground="#4AA3D8">Ctrl+Alt ±</Run>
+                <Run Foreground="#6F8CA8"> прозорість — на активному оверлеї</Run>
+            </TextBlock>
+
+            <!-- Зміни застосовуються при наступному показі -->
+            <TextBlock Style="{StaticResource HubFieldDesc}" Margin="4,10,0,0" Text="Зміни масштабу й прозорості застосовуються при наступному показі оверлея."/>
+
+            <!-- Reset категорії (P1 — нейтральний) -->
+            <Button x:Name="ResetButton" Style="{StaticResource HubCategoryReset}" Content="↺  Скинути налаштування оверлея" HorizontalAlignment="Left" Margin="0,14,0,0"/>
 
         </StackPanel>
     </ScrollViewer>

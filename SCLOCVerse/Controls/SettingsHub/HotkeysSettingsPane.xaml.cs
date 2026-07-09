@@ -96,26 +96,26 @@ namespace SCLOCVerse.Controls.SettingsHub
             {
                 Text = title.ToUpperInvariant(),
                 FontFamily = new FontFamily("Segoe UI"),
-                FontSize = 12,
+                FontSize = 10.5,
                 FontWeight = FontWeights.SemiBold,
-                Foreground = new SolidColorBrush(Color.FromRgb(0x6F, 0x8C, 0xA8)),
-                Margin = new Thickness(0, 14, 0, 6),
-                Opacity = 0.9
+                Foreground = new SolidColorBrush(Color.FromRgb(0x4A, 0xA3, 0xD8)),
+                Margin = new Thickness(2, 0, 0, 8),
+                Opacity = 0.95
             };
         }
 
         private static UIElement MakeRow(string description, string gesture)
         {
-            var grid = new Grid { Margin = new Thickness(0, 2, 0, 2) };
+            var grid = new Grid { Margin = new Thickness(0, 2, 0, 2), MinHeight = 40 };
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
             var desc = new TextBlock
             {
                 Text = description,
-                FontFamily = new FontFamily("Segoe UI"),
-                FontSize = 14,
-                Foreground = new SolidColorBrush(Color.FromRgb(0xD7, 0xE6, 0xF5)),
+                FontFamily = new FontFamily("Segoe UI Semibold"),
+                FontSize = 13,
+                Foreground = new SolidColorBrush(Color.FromRgb(0xEA, 0xF4, 0xFF)),
                 VerticalAlignment = VerticalAlignment.Center,
                 TextWrapping = TextWrapping.NoWrap,
                 TextTrimming = TextTrimming.CharacterEllipsis
@@ -130,7 +130,7 @@ namespace SCLOCVerse.Controls.SettingsHub
                 {
                     Text = gesture,
                     FontFamily = new FontFamily("Segoe UI Semibold"),
-                    FontSize = 13,
+                    FontSize = 12.5,
                     Foreground = new SolidColorBrush(Color.FromRgb(0xE8, 0xF3, 0xFF)),
                     HorizontalAlignment = HorizontalAlignment.Center
                 },
@@ -146,10 +146,10 @@ namespace SCLOCVerse.Controls.SettingsHub
         private static Style MakeDefaultBadgeStyle()
         {
             var style = new Style(typeof(Border));
-            style.Setters.Add(new Setter(Border.BackgroundProperty, new SolidColorBrush(Color.FromRgb(0x10, 0x2A, 0x3A))));
-            style.Setters.Add(new Setter(Border.BorderBrushProperty, new SolidColorBrush(Color.FromRgb(0x24, 0x78, 0xA9))));
+            style.Setters.Add(new Setter(Border.BackgroundProperty, new SolidColorBrush(Color.FromRgb(0x0A, 0x1D, 0x29))));
+            style.Setters.Add(new Setter(Border.BorderBrushProperty, new SolidColorBrush(Color.FromRgb(0x2A, 0x5A, 0x78))));
             style.Setters.Add(new Setter(Border.BorderThicknessProperty, new Thickness(1)));
-            style.Setters.Add(new Setter(Border.CornerRadiusProperty, new CornerRadius(5)));
+            style.Setters.Add(new Setter(Border.CornerRadiusProperty, new CornerRadius(6)));
             style.Setters.Add(new Setter(Border.PaddingProperty, new Thickness(12, 5, 12, 5)));
             return style;
         }
