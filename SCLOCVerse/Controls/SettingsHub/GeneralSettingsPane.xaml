@@ -148,9 +148,21 @@
             <Border Style="{StaticResource HubGroupCard}">
                 <StackPanel Orientation="Vertical">
                     <TextBlock Style="{StaticResource HubGroupLabel}" Text="STAR CITIZEN"/>
-                    <TextBlock Style="{StaticResource HubFieldLabel}" Text="Шлях до папки гри"/>
-                    <TextBlock Style="{StaticResource HubFieldDesc}" Text="Використовується для встановлення локалізації та конфігурації."/>
-                    <Grid Margin="0,12,0,0">
+
+                    <!-- Заголовок поля + бейджі середовищ в одному рядку (висота картки стала) -->
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Style="{StaticResource HubFieldLabel}" Text="Шлях до папки гри"/>
+                            <TextBlock Style="{StaticResource HubFieldDesc}" Text="Використовується для встановлення локалізації та конфігурації."/>
+                        </StackPanel>
+                        <StackPanel x:Name="EnvBadgesPanel" Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Top" Margin="8,3,0,0"/>
+                    </Grid>
+
+                    <Grid Margin="0,10,0,0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
                             <ColumnDefinition Width="Auto"/>
@@ -164,8 +176,6 @@
                         <Button x:Name="BtnSelectFolder" Grid.Column="1" Style="{StaticResource HubSecondaryButton}" Content="Огляд…" Width="100" Margin="0,0,8,0"/>
                         <Button x:Name="BtnAutoSearch" Grid.Column="2" Style="{StaticResource AutoSearchButton}" Content="Автопошук" Width="118"/>
                     </Grid>
-                    <!-- Бейджі середовищ (P0 — стан видимий; заповнюються з StarCitizenEnvironments.DetectExisting) -->
-                    <StackPanel x:Name="EnvBadgesPanel" Orientation="Horizontal" Margin="0,12,0,0"/>
                 </StackPanel>
             </Border>
 
