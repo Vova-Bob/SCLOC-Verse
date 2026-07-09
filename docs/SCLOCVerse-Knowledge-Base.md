@@ -2251,7 +2251,7 @@ auth.users (TABLE, 35 columns)  +  public.app_installations (TABLE)
 | 0 | **Гарячі клавіші** — **read-only** список реальних комбінацій (Варіант A+; інтерактивний редактор → Phase 0.5) | низька | ✅ DONE 2026-07-09 |
 | 0 | **Overlay** — Hangar Timer (масштаб/прозорість слайдерами); Anti-AFK — плейсхолдер | низька | ✅ DONE 2026-07-09 |
 | 0 | Зарезервовані категорії-плейсхолдери (Головна/Локалізація/Інтерфейс/Профіль/Про програму) | низька | ✅ DONE 2026-07-09 |
-| UX | **UX Polishing** — візуальна ідентичність «центр керування» за дизайн-системою (§14.26); виправлення design-drift | середня | 🟡 IN PROGRESS (Design Kit + shell + panes done 2026-07-10; бейджі середовищ відкладено) |
+| UX | **UX Polishing** — візуальна ідентичність «центр керування» за дизайн-системою (§14.26); виправлення design-drift | середня | 🟡 IN PROGRESS (Design Kit + shell + panes + стани cat-head + бейджі середовищ done 2026-07-10; фінальний сліпий перегляд P0 — очікується) |
 | 0.5 | **Повна система користувацьких гарячих клавіш** — persistence (`CurrentGesture` per id), runtime rebind, capture, conflict resolution, reset, cloud sync через Профіль | висока | 🔵 PLANNED (окремий forensic + design) |
 | 1 | **Профіль — `profile.json`** (локальний контракт/схема-версія, експорт/імпорт) | середня | 🔵 PLANNED |
 | 2 | **Профіль — синхронізація Supabase** (hotkey-bindings, overlay; НЕ hotkey-події — L3 Local Only) | висока | 🔵 PLANNED |
