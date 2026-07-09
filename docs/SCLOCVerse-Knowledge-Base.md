@@ -1693,6 +1693,32 @@ Phase 3.7 (Security Hardening) — Backlog (DEFAULT PRIVILEGES); SEC-11 — ✅ 
 154. **Release v1.0.1.0 PUBLISHED.** Git tag `v1.0.1.0` → коміт `8a6a989`. GitHub Release створено: https://github.com/Vova-Bob/SCLOC-Verse/releases/tag/v1.0.1.0. Інсталятор `SCLOC-Verse_Setup.exe` (68.3 МБ, ProductVersion=1.0.1.0) + SHA256 прикріплені. Release notes українською без mojibake (перевірено браузером).
 155. **Блокер релізу виявлено та усунуто під час публікації.** `.iss` та `build-installer.ps1` посилались на застарілий TFM-шлях `net9.0-windows\win-x64\publish` (з v1.0.0.0), тоді як csproj змінив TFM на `net9.0-windows10.0.18362.0` ще в коміті `aa6c5d8` (Етап C — Toast). Стара publish-директорія містила SCLOCVerse.exe версії 1.0.0.1 (від 5 липня) — ISCC взяв би застарілу версію. Фікс: `.iss` рядки 2+6 та `build-installer.ps1` рядок 13 оновлено на `net9.0-windows10.0.18362.0`. Стара директорія видалена. Після фіксу publish+ISCC зібрав інсталятор ProductVersion=1.0.1.0 коректно.
 
+## 14.20. SEW — SCLOC-Verse Engineering Workflow (2026-07-09) — ✅ IMPL
+
+> **Власна методологія процесу розробки.** Базується на практиках OpenSpec, Spec Kit, BMAD, але **не є їх копією** — адаптована під одноосібну розробку, WPF/.NET, ручну композицію та Knowledge Base. Заборонено зовнішні CLI (OpenSpec/Specify/BMAD CLI).
+
+156. **SEW інтегровано в AGENTS.md як розширення** 8-крокового циклу (Форензик → План → Погодження → Резервний commit → Реалізація → Звіт → Фінальний commit), а НЕ як окремий документ-методологія. Це узгоджується з правилом KB «не створювати нових документів для вже описаних підсистем». Повний цикл: Forensic → Evidence → Proposal → Design → AEC Review → Approval → Backup Commit → Implementation → Verification → Quality Gates → Security Review → Acceptance → KB Synchronization → ADR → Commit → Retro.
+157. **Ієрархія пріоритетів згорнута у 3 рівні** (замість плоского списку 1–11): Рівень 1 (Безпека: Безпека→Докази→Root Cause) > Рівень 2 (Стабільність: Zero Regression→Reuse First→Minimal Change) > Рівень 3 (Зручність: KISS→DRY→Автономність→Продуктивність→Естетика). Жоден нижчий рівень не порушує вищий.
+158. **Quality Gates — дворівнева модель** (`docs/checklists/Quality-Gates.md`):
+    - **Core Gates** (обов'язкові для всіх змін): Root Cause, Zero Regression, Evidence, UTF-8.
+    - **Extended Gates** (лише для критичних доменів БД/Auth/Installer/Network/Supabase/API): Simplicity/Anti-Abstraction, Integration First, Security Review.
+    - Прецедент: `docs/checklists/Database-Verification.md` вже реалізує Extended для БД-домену.
+159. **Forensability замість «Observability First»** — принцип перейменовано для узгодження з Конституцією Observability Стаття 1 (Absolute Isolation) та Стаття 10 (Kill-Switch). SEW вимагає НЕ observability у кожній фічі, а **можливості форензику інциденту з платформи** (Стаття 9).
+160. **Security Review — за тригером домену** (`docs/checklists/Security-Review.md`): виконується лише якщо зміна зачіпає OAuth/Auth/Installer/Auto Update/Network/Registry/FS/SQL/Supabase/API/RLS/Crypto. Для звичайних UI/локалізації — НЕ потрібне.
+161. **Acceptance Criteria (AC)** — кожна нетривіальна задача містить явні AC1/AC2/..., що формуються на етапі Proposal/Design ДО реалізації. Тривіальні правки (опечатка, UI-твік) — одне AC.
+162. **ADR — канонічний файл `ARCHITECTURE_DECISIONS.md`** (формат «Контекст→Рішення→Наслідки»). SEW розширює до «Проблема→Контекст→Варіанти→Рішення→Наслідки» для складних рішень. Створюється лише для важливих архітектурних рішень.
+163. **Exit Criteria** — задача не завершена, доки не виконано: реалізація, перевірка, всі AC, Core Quality Gates (Extended за доменом), Security Review (за тригером), KB Synchronization, Self-Critique, ADR (за потреби), фінальний commit.
+164. **Retro** — раз на місяць або після значущої функції. НЕ створює окремий артефакт — фіксується через оновлення KB §16 (Technical Debt) та §17 (Backlog).
+165. **`docs/backlog/` — деталізація великих задач** (конвенція `docs/backlog/README.md`). KB §17 лишається індексом (короткі картки з посиланнями), деталі живуть у `docs/backlog/<task-slug>.md`. Аналогія: forensic-документи в `docs/observability/` + KB як індекс.
+166. **Автономність агента — з чіткими межами.** Дозволено самостійно: досліджувати кодову базу, знаходити точки інтеграції, аналізувати залежності, шукати першопричину, перевіряти KB/AGENTS.md/Constitution, проводити форензик, формувати варіанти рішень. НЕ дозволено без погодження: змінювати архітектуру, глобальні рефакторинги, публічний API, схему БД, правила безпеки, незворотні дії. У таких випадках — зупинка після форензик-аналізу та очікування погодження.
+167. **Правило невизначеності** — агент чітко розрізняє Підтверджений факт (VER/IMPL), Висновок (з маркером доведеності), Припущення (HYP), Особисту рекомендацію. Заборонено подавати припущення як підтверджений факт.
+168. **Self-Critique** — перед завершенням роботи агент критично оцінює власне рішення (простіше/безпечніше рішення? більше reuse? зайва складність? неперевірені припущення?). Негативна відповідь хоча б на один пункт — задача не завершена.
+
+### 14.20.1. SEW vs зовнішні методології (forensic-дослідження 2026-07-09)
+
+169. **Досліджено 4 методології** (Spec Kit, BMAD, OpenSpec, SDD). Висновок: впроваджувати жодну цілком заборонено — конфлікт з архітектурними заборонами AGENTS.md (WPF-клієнт vs CLI-Mandate Spec Kit; Claude Code plugins BMAD; Node CLI OpenSpec). SEW запозичує лише концепції: Quality Gates (Spec Kit), AC-driven flow + Security-домени (BMAD), delta/brownfield-first (OpenSpec).
+170. **Заборонено паралельні структури** `openspec/`, `.specify/`, `.bmad/`, окремі `docs/specs/` — вони дублюють Knowledge Base. SEW-артефакти інтегровані в існуючу структуру: `docs/checklists/` (Gates, Security), `docs/backlog/` (деталі задач), `ARCHITECTURE_DECISIONS.md` (ADR), KB §14/§15/§16/§17 (рішення/борг/беклог).
+
 ---
 
 # 15. Rejected Decisions (майстер-список)
@@ -1774,6 +1800,14 @@ Phase 3.7 (Security Hardening) — Backlog (DEFAULT PRIVILEGES); SEC-11 — ✅ 
 68. **Phase 2 forensic: MERGE `notification_queue.error_message` ↔ `last_error` відхилено** — різна семантика (фінал черги vs остання спроба retry). Деталі в §12.6.
 69. **Phase 2 forensic: REMOVE `detail.retry_count` з C# відхилено** — заготовка під плановану Retry Policy (коментарі в коді: `// схема готова для майбутньої Retry Policy`). Рішення відкладено до Retry Policy architectural decision (§17.4).
 70. **Phase 2: Migration squash відхилено** — об'єднання 26 міграцій втратить аудит причин. Стандартна migration practice (див. §3.2.2).
+
+## 15.3. SEW / Методології (2026-07-09)
+
+71. **SEW як окремий документ-методологія відхилено** — SEW впроваджено як розширення `AGENTS.md`, а не окремий `docs/SEW.md`. Порушення правила KB «не створювати нових документів для вже описаних підсистем» (Approved #156).
+72. **Впровадження Spec Kit / BMAD / OpenSpec цілком відхилено** — конфлікт з архітектурними заборонами AGENTS.md (WPF-клієнт vs CLI-Mandate; Claude Code plugins; Node CLI залежності). SEW запозичує лише концепції (Approved #169).
+73. **Паралельні структури `openspec/`, `.specify/`, `.bmad/`, окремі `docs/specs/` відхилено** — дублюють Knowledge Base. SEW-артефакти інтегровані в існуючу структуру (Approved #170).
+74. **Принцип «Observability First» (SEW) відхилено у первісній формі** — конфлікт з Конституцією Observability Стаття 1 (Absolute Isolation) та Стаття 10 (Kill-Switch). Замінено на «Forensability» (Approved #159).
+75. **Зовнішні CLI (OpenSpec CLI, Specify CLI, BMAD CLI) відхилено** — лише Markdown та існуюча інфраструктура SCLOC-Verse.
 
 ---
 
@@ -2133,14 +2167,15 @@ auth.users (TABLE, 35 columns)  +  public.app_installations (TABLE)
 
 | Документ | Що підтверджує |
 |---|---|
-| `AGENTS.md` | Конституція проєкту (Zero Regression, UTF-8 P0, українські commits, additive-only, структура) |
-| `ARCHITECTURE_DECISIONS.md` | ADR-001…008 (DI, hotkeys, MainWindow, overlay, canvas, lifetime, ISP) |
-| `.kilo/adr/ADR-001-oauth-redirect-loopback.md` | Loopback Redirect для OAuth |
-| `.kilo/adr/ADR-002-oauth-ux-integration.md` | Кнопка акаунта у тайтлбарі |
+| `AGENTS.md` | Конституція проєкту (Zero Regression, UTF-8 P0, українські commits, additive-only, структура, SEW Workflow) |
+| `ARCHITECTURE_DECISIONS.md` | ADR-001…008 (DI, hotkeys, MainWindow, overlay, canvas, lifetime, ISP) — **канонічний файл ADR** |
 | `docs/architecture/Final-Architecture-Review.md` | Повна архітектура, TD-1…60, ZR-1…24, SEC-1…12 |
 | `docs/contracts/control_center.md` | Контракт Control Center, role `cc_readonly` |
 | `docs/LIA_INSTALLATION.md` | L.I.A. installer/cert/elevation/forensic |
-| `docs/checklists/Database-Verification.md` | Чеклист RLS/таблиць (Стаття 17) |
+| `docs/checklists/Quality-Gates.md` | SEW Core + Extended Quality Gates (обов'язкові для всіх змін) |
+| `docs/checklists/Security-Review.md` | SEW Security Review за доменами (OAuth/Auth/Installer/Network/SQL/RLS/Crypto) |
+| `docs/checklists/Database-Verification.md` | Чеклист RLS/таблиць (Стаття 17) — реалізує Extended Gates для БД-домену |
+| `docs/backlog/README.md` | SEW конвенція деталізації великих задач (картка в KB §17 + файл у `docs/backlog/`) |
 | `docs/release/release-runbook-1.0.0.1.md` | Ранбук, cleanup-класифікація |
 | `docs/release/db-cleanup-forensic-analysis.md` | Початкова cleanup-політика (частково застаріла) |
 | `docs/release/post-cleanup-forensic-app-installations.md` | Актуальна cleanup-політика (B+C) |
@@ -2170,7 +2205,8 @@ auth.users (TABLE, 35 columns)  +  public.app_installations (TABLE)
    │                                      └─ 13 Knowledge Engine
    ├─ 10 Security (cross-cutting)
    ├─ 14 Approved ←── 15 Rejected (перевіряти перед пропозиціями)
-   ├─ 16 Technical Debt ── 17 Backlog
+   │      └─ 14.20 SEW (AGENTS.md + docs/checklists/ + docs/backlog/)
+   ├─ 16 Technical Debt ── 17 Backlog (картки → docs/backlog/<task>.md)
    └─ 18 Cross References
 ```
 
@@ -2179,7 +2215,7 @@ auth.users (TABLE, 35 columns)  +  public.app_installations (TABLE)
 1. **Roadmap** згадує «Constitution (21 стаття)» — фактично **29** (Конституція розширена).
 2. **`db-cleanup-forensic-analysis`** — політика повного очищення `app_installations` частково застаріла; актуальна в `post-cleanup-forensic-app-installations.md` (B+C).
 3. **Optimization-Matrix vs Database-Optimization-Plan** — цифри економії дещо різняться (Matrix ~−68%; Plan ~−70%). **Plan авторитетніший** (детальніший).
-4. **Колізія нумерації ADR** — `ARCHITECTURE_DECISIONS.md` (ADR-001…008) і `.kilo/adr/` (ADR-001, ADR-002) описують різні рішення під однаковими номерами. Джерело вказувати явно.
+4. **Колізія нумерації ADR** — ~~`ARCHITECTURE_DECISIONS.md` (ADR-001…008) і `.kilo/adr/` (ADR-001, ADR-002) описують різні рішення під однаковими номерами~~. **RESOLVED (2026-07-09):** `.kilo/adr/`-файли відсутні в репозиторії (виключено `.gitignore`-правилом для `.kilo/` — локальні артефакти). Канонічний файл ADR — `ARCHITECTURE_DECISIONS.md`. Рішення про OAuth (Loopback Redirect, кнопка акаунта у тайтлбарі) живуть у §14.2 (#13, #14) та `docs/architecture/Final-Architecture-Review.md`.
 5. **Версія** — `control_center.md` декларує `product_version=1.8.0`; застосунок `1.0.0.1`.
 
 ---
