@@ -1719,6 +1719,25 @@ Phase 3.7 (Security Hardening) — Backlog (DEFAULT PRIVILEGES); SEC-11 — ✅ 
 169. **Досліджено 4 методології** (Spec Kit, BMAD, OpenSpec, SDD). Висновок: впроваджувати жодну цілком заборонено — конфлікт з архітектурними заборонами AGENTS.md (WPF-клієнт vs CLI-Mandate Spec Kit; Claude Code plugins BMAD; Node CLI OpenSpec). SEW запозичує лише концепції: Quality Gates (Spec Kit), AC-driven flow + Security-домени (BMAD), delta/brownfield-first (OpenSpec).
 170. **Заборонено паралельні структури** `openspec/`, `.specify/`, `.bmad/`, окремі `docs/specs/` — вони дублюють Knowledge Base. SEW-артефакти інтегровані в існуючу структуру: `docs/checklists/` (Gates, Security), `docs/backlog/` (деталі задач), `ARCHITECTURE_DECISIONS.md` (ADR), KB §14/§15/§16/§17 (рішення/борг/беклог).
 
+### 14.20.2. SEW Core — формалізація PRACTICED-механізмів (аудит 2026-07-09, раунд 2)
+
+> Аудит поточної поведінки SEW (а не лише тексту AGENTS.md) виявив 10 механізмів, які вже багаторазово практикуються, але не були формалізовані в Core. За принципом «Methodology Gate НЕ застосовується до документування PRACTICED поведінки» вони перенесені до Core без окремого пілоту. Доказ: рефлексія власної поведінки агентом у сесії аудиту + Git-історія (40+ forensic-комітів) + 9 зовнішніх платформ (Anthropic, Claude Code, Cursor, OpenHands, Devin, AutoGen, CrewAI, OpenSpec, Spec Kit, BMAD).
+
+171. **Adaptive Resource Optimization** (принцип) — «Maximum Result → Minimum Resources»: мінімально необхідна кількість агентів/субагентів/MCP/Skills/Workflow/інструментів. Природно доповнює Reuse First + Minimal Change. Зовнішній доказ: Anthropic multi-agent 15× токенів; CrewAI Cost-Efficient principle. PRACTICED: у сесії аудиту агент не викликав task/explore/agent_manager без потреби.
+172. **Capability Detection** (чехліст перед нетривіальною задачею) — визначення можливостей середовища (git/terminal/build/internet/MCP/subagents/skills/recall/parallel). PRACTICED: у сесії аудиту агент неявно виконав (4 паралельні webfetch, kilo_local_recall, glob+read+bash паралельно). Описує **ролі**, не продукти — переживає зміну IDE.
+173. **Evidence Discovery** (пріоритет джерел: KB → AGENTS → код → forensic → зовнішні) — IMPLEMENTED через AGENTS.md §«Єдина база знань» (спочатку KB, потім першоджерела). PRACTICED: у сесії аудиту пройдено всі 5 рівнів.
+174. **Resource Discovery adaptive** (5 рівнів: Project → Global → Marketplace → Dynamic → Manual) — замість 13-крокової моделі. PRACTICED: kilo_local_recall → AGENTS → KB → checklists → forensic → webfetch, без створення нових ресурсів.
+175. **Adaptive Workflow** (матриця тип→цикл: Trivial/Bug/Feature/Refactoring/Architecture/Migration/Security/Incident) — PRACTICED: `docs/checklists/Database-Verification.md` § «Коли чеклист НЕ потрібне» + «trivial AC».
+176. **Decision Engine** (≥2 варіантів для significant, ≥3 для architectural) — IMPLEMENTED через ADR-формат AGENTS.md «Проблема → Контекст → Варіанти → Рішення → Наслідки». PRACTICED: Phase 3A «generated → trigger» серед альтернатив; Phase 3.5 Outcome-dependent Field Policy; у сесії аудиту — Кластер A/B/C/D.
+177. **Continuous Learning Loop** (Knowledge → Resource → Process → Project) — PRACTICED у фрагментах: KB Sync (15+ комітів) + Retro + SEW виник через вивчення зовнішніх методологій. Повний конвеєр `Knowledge → Rule → Checklist → Prompt → Pattern → Template → Automation` — HYPOTHESIS (див. §17).
+178. **Multi-Agent principle** (інтелектуальне використання екосистеми лише коли покращує результат) — PRACTICED: kilo_local_recall у сесії аудиту; обґрунтована відмова від 30+ Skills/Agent Manager/MCP без потреби. Multi-Agent як обовʼязковий крок для всіх задач — HYPOTHESIS (див. §17).
+179. **Methodology Gate** (формальний розділ з 6 питаннями) — IMPLEMENTED неявно через AGENTS.md «не створювати нових документів». Ключове розширення: **НЕ застосовується до документування PRACTICED поведінки** — інакше парадокс «робить 100 разів, але не може описати». Pilot потрібен лише для EXPERIMENTAL/HYPOTHESIS.
+180. **Methodology Evolution Workflow** (Meta-Evolution режим) — коли предмет аналізу — сама SEW. Будь-яке правило може бути підтверджене/змінене/обʼєднане/спрощене/вилучене за Evidence. Запобігає самозахисту SEW від власної критики. Повний Constitutional Review як окремий формальний процес — HYPOTHESIS (див. §17).
+
+### 14.20.3. SEW — Engineering Orchestrator (визначення)
+
+181. **SEW = AI Engineering Operating System** (Engineering Orchestrator), не окремий виконавець. SEW визначає правила/межі/якість/ресурси/цикли. Рівень автономії визначає виконавець (модель + середовище + Agent Framework). Метафора «головний інженер» відхилена (див. Rejected #76) як персоніфікація системи.
+
 ---
 
 # 15. Rejected Decisions (майстер-список)
@@ -1808,6 +1827,10 @@ Phase 3.7 (Security Hardening) — Backlog (DEFAULT PRIVILEGES); SEC-11 — ✅ 
 73. **Паралельні структури `openspec/`, `.specify/`, `.bmad/`, окремі `docs/specs/` відхилено** — дублюють Knowledge Base. SEW-артефакти інтегровані в існуючу структуру (Approved #170).
 74. **Принцип «Observability First» (SEW) відхилено у первісній формі** — конфлікт з Конституцією Observability Стаття 1 (Absolute Isolation) та Стаття 10 (Kill-Switch). Замінено на «Forensability» (Approved #159).
 75. **Зовнішні CLI (OpenSpec CLI, Specify CLI, BMAD CLI) відхилено** — лише Markdown та існуюча інфраструктура SCLOC-Verse.
+76. **Метафора «SEW як головний інженер» відхилена у формі персоніфікації** — SEW — система (Engineering Orchestrator / AI Engineering Operating System), не особа. Прийнято нейтральне формулювання (Approved #181). Персоніфікація створює хибне враження агентності у SEW як властивості (тоді як агентність — у виконавця).
+77. **Resource Discovery як 13-крокова жорстка ієрархія відхилена** — порушує KISS та Minimal Change для trivial задач. Замінено на адаптивний 5-рівневий механізм (Approved #174).
+78. **Task Classification як обовʼязковий жорсткий крок (Крок 1) відхилена** — багато задач SCLOC-Verse міждоменні (Phase 3.5 = БД+Telemetry+Arch+Security). Замінено на Adaptive Workflow матрицю як heuristic (Approved #175). Зовнішній доказ: Anthropic «heuristics rather than rigid rules».
+79. **«Expert AI» як окремий рівень Capability Escalation відхилена** — у платформах немає «Expert AI» як класу; є лише різні моделі (Haiku/Sonnet/Opus). Capability Escalation переформульована як «Specialized Agent → Human» (Approved #178).
 
 ---
 
@@ -2158,6 +2181,26 @@ auth.users (TABLE, 35 columns)  +  public.app_installations (TABLE)
 | **`control_center.users` доле** — використати view у Phase 4 Users page, АБО визнати застарілим (§16.8 + Approved #94). | усунути мертвий контракт | низька | після baseline |
 
 **Принцип:** спочатку baseline + абстракції (`ITimeZoneService`/`IUserDateTimeFormatter`), потім конкретні сторінки. Уникнути хардкоду TZ у розетках.
+
+## 17.6. SEW Advanced (HYPOTHESIS — потрібен пілот)
+
+> За принципом Methodology Gate (Approved #179), EXPERIMENTAL/HYPOTHESIS-механізми не йдуть у Core без пілоту. Кожен пункт нижче — кандидат на пілотну перевірку на реальній задачі SCLOC-Verse. Після перевірки → або IMPL в Core (§14.20.2), або REJ (§15.3).
+
+| Механізм | Гіпотеза | Умова переходу в Core |
+|---|---|---|
+| **Pattern Library** (`docs/patterns/`) — каталог перевірених рішень (Canvas Pattern, OAuth Pattern, Retry Pattern, Migration Pattern тощо) | Reuse First з зубами: перед новим рішенням шукати в Pattern Library | Пілот: 1 цикл Phase 3.6/3.7, де Pattern реально зекономить час. Без наповнення = порожній розділ. |
+| **Experience Database** — пошуковий шар над forensic-документами (пошук минулих forensic/incidents/rollback) | Повторне використання досвіду | Пілот: 1 complex incident, де search по ~10 forensic-документам зекономив би час. |
+| **AI Performance Metrics** — самооцінка агента (Forensic Accuracy, False Proposal Rate, Rollback Count, KB Growth, Reuse %) | Вимірювання ефективності методології | Пілот: 5 завершених задач, де метрики реально зібрані та змінили процес. |
+| **Capability Escalation 4-рівнева** (AI → Sub AI → Expert AI → Human) | Делегування як принцип | Ні: «Expert AI» як клас не існує (Rejected #79). Альтернатива: формальний pipeline «Specialized Agent → Human». |
+| **Engineering Confidence** (ступінь впевненості 97% з підставами, не лише HYP/VER/IMPL/REJ) | Кальбрація рекомендацій | Пілот: 5 рекомендацій, де кількісна довіра реально змінила рішення користувача. Ризик: «97%» суб'єктивне → шум. |
+| **Continuous Learning Loop повний pipeline** (`Knowledge → Rule → Checklist → Prompt → Pattern → Template → Automation`) | Автоматизоване покращення екосистеми | Пілот: 1 задача, де агент самостійно пройшов повний конвеєр від Knowledge до Automation. |
+| **Multi-Agent як обовʼязковий крок** для parallelizable задач | Координація кількох субагентів одночасно | Пілот: 1 parallelizable задача (великий forensic з паралельним аудитом схеми+коду+логів через agent_manager). Більшість фаз SCLOC-Verse послідовні — не виправдано. |
+| **SEW Meta-Evolution / Constitutional Review** як окремий формальний процес | Регулярний ревʼю власної методології (за аналогією з Code Review) | Пілот: 1 цикл (3 місяці), де Meta-Evolution реально змінив ≥1 правило SEW через Evidence. Зараз коротка форма Meta-Evolution в AGENTS.md — достатня. |
+
+**Критерії пілоту (загальні):**
+- S1: механізм реально змінив вибір інструменту/рішення/процесу? (ні → не йде в Core)
+- S2: механізм не додав бюрократії? (так → REJ)
+- S3: метрика успіху — реальне повторне використання, не «галочка пройдена».
 
 ---
 

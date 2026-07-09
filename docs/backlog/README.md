@@ -53,6 +53,8 @@ docs/backlog/<task-slug>.md
 
 ## Варіанти рішення
 
+> **Обовʼязкові** для significant/architectural задач (Decision Engine, AGENTS.md «Decision Engine»): мінімум **2 варіанти** для significant, мінімум **3** для architectural. Trivial задачі (опечатка, UI-твік) можуть мати 0 (одне очевидне рішення).
+
 ### Варіант A: <назва>
 * Опис.
 * Плюси.
