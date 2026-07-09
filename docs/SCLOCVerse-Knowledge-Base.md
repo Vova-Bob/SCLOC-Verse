@@ -1738,9 +1738,9 @@ Phase 3.7 (Security Hardening) — Backlog (DEFAULT PRIVILEGES); SEC-11 — ✅ 
 
 181. **SEW = AI Engineering Operating System** (Engineering Orchestrator), не окремий виконавець. SEW визначає правила/межі/якість/ресурси/цикли. Рівень автономії визначає виконавець (модель + середовище + Agent Framework). Метафора «головний інженер» відхилена (див. Rejected #76) як персоніфікація системи.
 
-## 14.25. Settings Hub — Центр керування налаштуваннями (2026-07-09) — 🔵 PLANNED
+## 14.25. Settings Hub — Центр керування налаштуваннями (2026-07-09) — ✅ IMPL (Phase 0)
 
-> **Архітектурне рішення ADR-009.** Детальна специфікація: [`docs/backlog/settings-hub.md`](backlog/settings-hub.md). Макети затверджені: `.kilo/settings-mockups/` (01–05, PNG).
+> **Архітектурне рішення ADR-009.** Детальна специфікація: [`docs/backlog/settings-hub.md`](backlog/settings-hub.md). Phase 0 реалізовано: Hub-оболонка + Загальне + Гарячі клавіші (read-only) + Overlay. Build 0 warnings.
 
 182. **Settings Hub замінює `SettingsCanvas`.** Замість єдиного плоского `SettingsCanvas.xaml` (514 рядків) — нова оболонка: ліва панель-навігатор категорій + права панель вмісту. Варіант B серед 3 (див. ADR-009). Причина: плоский список не масштабується під overlay- та hotkey-налаштування; UX First — пошук параметра <30с.
 183. **Категорії за функцією, не за інструментом.** `Загальне`, `Гарячі клавіші`, `Overlay` (Phase 0) + зарезервовані `Головна`, `Локалізація`, `Інтерфейс`, `Профіль`, `Про програму`. Не «налаштування Hangar Timer» / «Anti-AFK».
@@ -1752,6 +1752,9 @@ Phase 3.7 (Security Hardening) — Backlog (DEFAULT PRIVILEGES); SEC-11 — ✅ 
 189. **Reuse First — без нових сервісів у Phase 0.** Hub лише споживає існуючі контракти: `ISettingsService`/`IUpdateChannelService`/`IPreferencesService` (Загальне), `HotkeyService` + `HotkeyConflictPolicy` (Гарячі клавіші), `HangarSettingsService` (Overlay). Категорії реалізуються як Canvas (ADR-006).
 190. **Профіль зарезервований** для майбутнього `profile.json` (локальний контракт/схема-версія, Phase 1) та опціональної синхронізації Supabase (Phase 2). Hotkey-**bindings** — user preferences (можуть синхронізуватись); hotkey-**події** — L3 Local Only (ніколи).
 191. **Схема БД не зачіпається** (Phase 0 — суто UI-шар). Security Review не потрібне (UI/локалізація, не Auth/Installer/Network/SQL).
+192. **Phase 0 реалізовано через SettingsCanvas-фаçade (Zero Regression).** SettingsCanvas залишається Canvas (сумісність із CanvasManager); мігровані контролі «Загальне» живуть у `GeneralSettingsPane`, а SettingsCanvas зберігає фасадну property-поверхню → MainWindow.xaml.cs працює без змін.
+193. **Гарячі клавіші — Варіант A+ (read-only), ✅ VER+IMPL.** Forensic: `HotkeyService` не мав API переліку, а `CurrentGesture` ніколи не персистувався → повний редактор порушив би «контент лише для реалізованого». Phase 0 показує 13 реальних комбінацій read-only. Additive API: `IHotkeyService.GetDefinitions()`. Повний редактор (persistence/rebind/capture/conflict/reset/sync) → Phase 0.5.
+194. **Overlay — реальний редактор, ✅ VER+IMPL.** `IHangarSettingsService` персистує scale/opacity/X-Y. Оверлей читає налаштування лише при відкритті → зміни застосовуються при наступному показі (зазначено в UI). Additive: `IHangarTimerService.Settings`.
 
 ---
 
@@ -2232,11 +2235,12 @@ auth.users (TABLE, 35 columns)  +  public.app_installations (TABLE)
 
 | Phase | Задача | Складність | Статус |
 |---|---|---|---|
-| 0 | **Hub-оболонка** (ліва панель + CanvasManager-інтеграція, ⚙/F1-вхід) | середня | 🔵 PLANNED |
-| 0 | **Загальне** — міграція контенту SettingsCanvas (шлях/автозапуск/трей/локалізація/канал/менеджер/кеш/діагностика) | низька–середня | 🔵 PLANNED |
-| 0 | **Гарячі клавіші** — список `HotkeyService` + конфлікт-UX (Esc/Backspace/Перевизначити) + per-category reset | середня | 🔵 PLANNED |
-| 0 | **Overlay** — Hangar Timer (масштаб/прозорість/X-Y); Anti-AFK — плейсхолдер | низька | 🔵 PLANNED |
-| 0 | Зарезервовані категорії-плейсхолдери (Головна/Локалізація/Інтерфейс/Профіль/Про програму) | низька | 🔵 PLANNED |
+| 0 | **Hub-оболонка** (ліва панель + CanvasManager-інтеграція, ⚙/F1-вхід) | середня | ✅ DONE 2026-07-09 |
+| 0 | **Загальне** — міграція контенту SettingsCanvas (шлях/автозапуск/трей/локалізація/канал/менеджер/кеш/діагностика) | низька–середня | ✅ DONE 2026-07-09 |
+| 0 | **Гарячі клавіші** — **read-only** список реальних комбінацій (Варіант A+; інтерактивний редактор → Phase 0.5) | низька | ✅ DONE 2026-07-09 |
+| 0 | **Overlay** — Hangar Timer (масштаб/прозорість слайдерами); Anti-AFK — плейсхолдер | низька | ✅ DONE 2026-07-09 |
+| 0 | Зарезервовані категорії-плейсхолдери (Головна/Локалізація/Інтерфейс/Профіль/Про програму) | низька | ✅ DONE 2026-07-09 |
+| 0.5 | **Повна система користувацьких гарячих клавіш** — persistence (`CurrentGesture` per id), runtime rebind, capture, conflict resolution, reset, cloud sync через Профіль | висока | 🔵 PLANNED (окремий forensic + design) |
 | 1 | **Профіль — `profile.json`** (локальний контракт/схема-версія, експорт/імпорт) | середня | 🔵 PLANNED |
 | 2 | **Профіль — синхронізація Supabase** (hotkey-bindings, overlay; НЕ hotkey-події — L3 Local Only) | висока | 🔵 PLANNED |
 

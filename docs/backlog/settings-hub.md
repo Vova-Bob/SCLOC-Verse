@@ -117,11 +117,20 @@
 
 ## План реалізації (Phases)
 
-* **Phase 0:** Hub-оболонка + Загальне + Гарячі клавіші + Overlay. Миграція контенту з `SettingsCanvas`. Зарезервовані категорії — плейсхолдери.
+* **Phase 0:** Hub-оболонка + Загальне + Гарячі клавіші (**read-only**) + Overlay. Миграція контенту з `SettingsCanvas`. Зарезервовані категорії — плейсхолдери.
+* **Phase 0.5 (нове):** Повна система користувацьких гарячих клавіш — persistence (`CurrentGesture` per id), runtime rebind, capture, conflict resolution, reset, cloud sync через Профіль. Окремий forensic + design.
 * **Phase 1:** Профіль — `profile.json` (локальний контракт/схема-версія), експорт/імпорт.
 * **Phase 2:** Профіль — опціональна синхронізація Supabase (hotkey-bindings, overlay-налаштування; **не** hotkey-події — L3 Local Only).
 
 ## Статус
 
-* 🔵 **PLANNED** — макети затверджені (2026-07-09). ADR-009 погоджено. Очікує старт Phase 0 реалізації.
+* ✅ **Phase 0 РЕАЛІЗОВАНО (2026-07-09):** Hub-оболонка + Загальне (міграція) + Гарячі клавіші (read-only) + Overlay (редактор) + F1 (active-window-gated). Build 0 warnings.
+* 🔵 **Phase 1:** Профіль — `profile.json` (локальний контракт/схема-версія), експорт/імпорт.
+* 🔵 **Phase 2:** Профіль — опціональна синхронізація Supabase (hotkey-bindings, overlay-налаштування; **не** hotkey-події — L3 Local Only).
+
+## Рішення під час реалізації (Post-Implementation Forensic)
+
+* **Гарячі клавіші — Варіант A+ (read-only).** Forensic виявив, що `HotkeyService` не мав API переліку визначень, а кастомні жести (`CurrentGesture`) **ніколи не персистувались**. Тому повний інтерактивний редактор суперечив би правилу «контент лише для реалізованого функціоналу». Phase 0: read-only список реальних 13 комбінацій (з informational-нотаткою). Additive API: `IHotkeyService.GetDefinitions()` (з регістром у порядку реєстрації).
+* **Overlay — реальний редактор.** `IHangarSettingsService` персистує scale/opacity/X-Y → слайдери масштабу/прозорості + read-only позиція працюють. Forensic: оверлей читає налаштування лише при відкритті (`LoadPersistedState`), тому зміни застосовуються при наступному показі (зазначено в UI). Additive: `IHangarTimerService.Settings` (expose `IHangarSettingsService`).
+* **Zero Regression:** SettingsCanvas збережено як Canvas (сумісність із CanvasManager); фасадна property-поверхня (`SelectFolderButton`, `RunAtStartupCheckBoxControl` …) делегує до `GeneralSettingsPane` → MainWindow.xaml.cs працює без змін.
 * Останнє оновлення: 2026-07-09.
