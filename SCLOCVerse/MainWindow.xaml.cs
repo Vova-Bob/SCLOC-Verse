@@ -192,6 +192,12 @@ namespace SCLOCVerse
             // «Overlay»: реальні налаштування оверлея Hangar Timer (масштаб/прозорість/позиція).
             CanvasSettings.OverlayPane?.Bind(_hangarTimerService.Settings);
 
+            // Стан зарезервованих категорій у cat-head (P0 — центр керування показує стан).
+            CanvasSettings.ProfilePane.Subtitle = "не налаштовано";
+            CanvasSettings.InterfacePane.Subtitle = "не налаштовано";
+            CanvasSettings.AboutPane.Subtitle = "v" + _applicationVersionProvider.GetCurrentVersion();
+            CanvasSettings.LocalizationPane.Subtitle = "—";
+
             // Підписка на чекбокси налаштувань (Етап D).
             // RunAtStartup синхронізується з реєстром (джерело істини), а не з Settings.
             CanvasSettings.RunAtStartupCheckBoxControl.Checked += RunAtStartupCheckBox_Changed;
@@ -1408,6 +1414,11 @@ namespace SCLOCVerse
                 if (EnvSelector != null)
                     await EnvSelector.UpdateFromGameFolderAsync(null).ConfigureAwait(true);
             }
+
+            // Settings Hub: бейджі середовищ + стан «Загальне»/«Локалізація» (P0 — стан видимий).
+            CanvasSettings.GeneralPane.RefreshEnvironmentBadges(folder);
+            var envCount = SCLOCVerse.Helpers.StarCitizenEnvironments.DetectExisting(folder).Length;
+            CanvasSettings.LocalizationPane.Subtitle = envCount > 0 ? $"{envCount} середовищ" : "середовища не знайдено";
         }
 
         private async Task ShowStartupToastsAsync()

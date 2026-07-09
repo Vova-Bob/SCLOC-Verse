@@ -1,3 +1,7 @@
+using System;
+using System.IO;
+using System.Linq;
+
 namespace SCLOCVerse.Helpers
 {
     /// <summary>
@@ -23,5 +27,19 @@ namespace SCLOCVerse.Helpers
         public static bool IsPrereleaseChannel(string environmentName)
             => environmentName.Equals("PTU", StringComparison.OrdinalIgnoreCase)
                || environmentName.Equals("EPTU", StringComparison.OrdinalIgnoreCase);
+
+        /// <summary>
+        /// Виявляє, які з відомих середовищ існують у корені гри (LIVE/PTU/EPTU/HOTFIX).
+        /// Additive: надає Settings Hub реальний стан (бейджі середовищ, лічильник «Локалізація»).
+        /// </summary>
+        public static string[] DetectExisting(string? gameRoot)
+        {
+            if (string.IsNullOrWhiteSpace(gameRoot))
+                return Array.Empty<string>();
+
+            return Known
+                .Where(env => Directory.Exists(Path.Combine(gameRoot, env)))
+                .ToArray();
+        }
     }
 }

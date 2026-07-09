@@ -18,6 +18,9 @@ namespace SCLOCVerse.Controls.SettingsHub
         /// <summary>Заголовок категорії.</summary>
         public string Title { get => TitleText.Text; set => TitleText.Text = value; }
 
+        /// <summary>Стан категорії у cat-head (P0 — центр керування показує стан).</summary>
+        public string Subtitle { get => SubtitleText.Text; set => SubtitleText.Text = value; }
+
         /// <summary>Пояснювальний текст плейсхолдера.</summary>
         public string Message { get => MessageText.Text; set => MessageText.Text = value; }
 

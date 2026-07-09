@@ -2,17 +2,31 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              Background="Transparent">
-    <Grid VerticalAlignment="Center" HorizontalAlignment="Center">
+
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/SCLOCVerse;component/Resources/SettingsHubKit.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </UserControl.Resources>
+
+    <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <TextBlock x:Name="IconGlyph" Grid.Row="0" Text="⚙" FontSize="56" Foreground="#2E5773" HorizontalAlignment="Center" Margin="0,0,0,16"/>
+        <!-- Cat-head: заголовок + стан (P0 — центр керування показує стан) -->
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="2,0,0,4">
+            <TextBlock x:Name="TitleText" FontFamily="Segoe UI" FontSize="15" FontWeight="Bold" Foreground="#EAF4FF"/>
+            <TextBlock x:Name="SubtitleText" Margin="12,0,0,0" FontFamily="Segoe UI" FontSize="11.5" Foreground="#5A7A8A" VerticalAlignment="Center"/>
+        </StackPanel>
 
-        <TextBlock x:Name="TitleText" Grid.Row="1" FontFamily="Segoe UI" FontSize="22" FontWeight="SemiBold" Foreground="#A7C6E7" HorizontalAlignment="Center"/>
-
-        <TextBlock x:Name="MessageText" Grid.Row="2" FontFamily="Segoe UI" FontSize="14" Foreground="#6F8CA8" TextAlignment="Center" Margin="40,12,40,0" TextWrapping="Wrap" MaxWidth="520"/>
+        <!-- Центрований плейсхолдер -->
+        <StackPanel Grid.Row="1" VerticalAlignment="Center" HorizontalAlignment="Center">
+            <TextBlock x:Name="IconGlyph" FontSize="48" Foreground="#2E5773" HorizontalAlignment="Center" Margin="0,0,0,14"/>
+            <TextBlock x:Name="MessageText" FontFamily="Segoe UI" FontSize="14" Foreground="#6F8CA8" TextAlignment="Center" Margin="40,0,40,0" TextWrapping="Wrap" MaxWidth="520"/>
+        </StackPanel>
     </Grid>
 </UserControl>

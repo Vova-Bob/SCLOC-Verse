@@ -136,20 +136,20 @@
                 </StackPanel>
             </Border>
 
-            <!-- Підказка про гарячі клавіші -->
-            <TextBlock Style="{StaticResource HubFieldDesc}" Margin="4,2,0,0">
-                <Run Foreground="#6F8CA8">Швидкі зміни:</Run>
-                <Run Foreground="#4AA3D8">Ctrl ±</Run>
-                <Run Foreground="#6F8CA8"> масштаб  ·  </Run>
-                <Run Foreground="#4AA3D8">Ctrl+Alt ±</Run>
-                <Run Foreground="#6F8CA8"> прозорість — на активному оверлеї</Run>
-            </TextBlock>
+            <!-- Підказка про гарячі клавіші (kbd-бейджі) -->
+            <StackPanel Orientation="Horizontal" Margin="4,2,0,0">
+                <TextBlock Text="Швидкі зміни:" FontFamily="Segoe UI" FontSize="11" Foreground="#6F8CA8" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                <Border Style="{StaticResource HubKbdBadge}"><TextBlock Text="Ctrl ±" FontFamily="Segoe UI Semibold" FontSize="11" Foreground="#8DD0FF"/></Border>
+                <TextBlock Text="масштаб" FontFamily="Segoe UI" FontSize="11" Foreground="#6F8CA8" VerticalAlignment="Center" Margin="6,0,12,0"/>
+                <Border Style="{StaticResource HubKbdBadge}"><TextBlock Text="Ctrl+Alt ±" FontFamily="Segoe UI Semibold" FontSize="11" Foreground="#8DD0FF"/></Border>
+                <TextBlock Text="прозорість — на активному оверлеї" FontFamily="Segoe UI" FontSize="11" Foreground="#6F8CA8" VerticalAlignment="Center" Margin="6,0,0,0"/>
+            </StackPanel>
 
             <!-- Зміни застосовуються при наступному показі -->
             <TextBlock Style="{StaticResource HubFieldDesc}" Margin="4,10,0,0" Text="Зміни масштабу й прозорості застосовуються при наступному показі оверлея."/>
 
-            <!-- Reset категорії (P1 — нейтральний) -->
-            <Button x:Name="ResetButton" Style="{StaticResource HubCategoryReset}" Content="↺  Скинути налаштування оверлея" HorizontalAlignment="Left" Margin="0,14,0,0"/>
+            <!-- Reset категорії (P1 — світло-сіра, не конкурує) -->
+            <Button x:Name="ResetButton" Style="{StaticResource HubCategoryReset}" Content="↺ За замовчуванням" HorizontalAlignment="Left" Margin="0,14,0,0"/>
 
         </StackPanel>
     </ScrollViewer>

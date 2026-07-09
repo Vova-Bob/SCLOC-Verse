@@ -63,16 +63,16 @@
         </Grid.RowDefinitions>
 
         <!-- ============ ЗАГОЛОВОК ============ -->
-        <Grid Grid.Row="0" Margin="20,16,20,8">
+        <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="20,16,20,8">
             <TextBlock Text="НАЛАШТУВАННЯ" FontFamily="Arial" Foreground="#EAF4FF" FontSize="18" FontWeight="Bold" VerticalAlignment="Center"/>
-            <TextBlock Text="· Центр керування" FontFamily="Segoe UI" Foreground="#5E84A0" FontSize="13" VerticalAlignment="Center" Margin="148,2,0,0"/>
-        </Grid>
+            <TextBlock Text="Центр керування застосунком" FontFamily="Segoe UI" Foreground="#4A6A85" FontSize="12" VerticalAlignment="Center" Margin="12,2,0,0"/>
+        </StackPanel>
 
         <!-- ============ ТІЛО: навігація + вміст ============ -->
         <Grid Grid.Row="1" Margin="20,0,20,0">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="200"/>
-                <ColumnDefinition Width="20"/>
+                <ColumnDefinition Width="32"/>
                 <ColumnDefinition Width="*"/>
             </Grid.ColumnDefinitions>
 

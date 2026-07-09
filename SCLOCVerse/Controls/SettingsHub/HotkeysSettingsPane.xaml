@@ -21,12 +21,12 @@
             </StackPanel>
             <TextBlock Style="{StaticResource HubHelpText}" Text="Перелік активних комбінацій. Працюють глобально, навіть коли гра на весь екран."/>
 
-            <!-- Опис стану (read-only, без редагування — P5) -->
-            <Border Background="#0E2A1C" BorderBrush="#2E6B45" BorderThickness="1" CornerRadius="8" Padding="14,10" Margin="0,0,0,14">
+            <!-- Опис стану (read-only, без редагування — P5) — компактний -->
+            <Border Background="#0E2A1C" BorderBrush="#2E6B45" BorderThickness="1" CornerRadius="6" Padding="10,6" Margin="0,0,0,12">
                 <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="ℹ" FontSize="16" Foreground="#7FA84A" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                    <TextBlock FontFamily="Segoe UI" FontSize="12.5" Foreground="#A7C6E7" TextWrapping="Wrap" MaxWidth="640">
-                        <Run Text="Це перелік активних комбінацій. "/>
+                    <TextBlock Text="ℹ" FontSize="13" Foreground="#7FA84A" VerticalAlignment="Center" Margin="0,0,8,0"/>
+                    <TextBlock FontFamily="Segoe UI" FontSize="12" Foreground="#A7C6E7" VerticalAlignment="Center">
+                        <Run Text="Перелік активних комбінацій. "/>
                         <Run Text="Редагування з'явиться в наступній версії." FontWeight="SemiBold" Foreground="#C9E0A0"/>
                     </TextBlock>
                 </StackPanel>

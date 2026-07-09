@@ -1,4 +1,8 @@
+using System.Linq;
+using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
+using SCLOCVerse.Helpers;
 
 namespace SCLOCVerse.Controls.SettingsHub
 {
@@ -26,5 +30,43 @@ namespace SCLOCVerse.Controls.SettingsHub
         public CheckBox MinimizeToTrayCheckBoxControl => MinimizeToTrayCheckBox;
         public CheckBox AutoUpdateLocalizationCheckBoxControl => AutoUpdateLocalizationCheckBox;
         public CheckBox AdvancedDiagnosticsCheckBoxControl => AdvancedDiagnosticsCheckBox;
+
+        /// <summary>
+        /// Оновлює бейджі середовищ і стан у cat-head за реальним шляхом до гри.
+        /// P0 — центр керування показує стан продукту.
+        /// </summary>
+        public void RefreshEnvironmentBadges(string? gameFolder)
+        {
+            EnvBadgesPanel.Children.Clear();
+            var existing = StarCitizenEnvironments.DetectExisting(gameFolder);
+
+            // Стан у cat-head.
+            SubtitleText.Text = string.IsNullOrWhiteSpace(gameFolder)
+                ? "шлях не задано"
+                : existing.Length > 0
+                    ? $"{existing.Length} середовищ знайдено"
+                    : "шлях задано, середовищ не знайдено";
+
+            if (existing.Length == 0)
+                return;
+
+            // Бейджі: знайдені середовища (зеленим). Незнайдені не показуємо — лише реальний стан (P5).
+            foreach (var env in StarCitizenEnvironments.Known.Where(e => existing.Contains(e)))
+            {
+                var badge = new Border
+                {
+                    Style = (Style)FindResource("HubEnvBadgeFound"),
+                    Child = new TextBlock
+                    {
+                        Text = "✓ " + env,
+                        FontFamily = new FontFamily("Segoe UI Semibold"),
+                        FontSize = 10.5,
+                        Foreground = new SolidColorBrush(Color.FromRgb(0x9E, 0xD8, 0xB0))
+                    },
+                    Margin = new Thickness(0, 0, 8, 0)
+                };
+                EnvBadgesPanel.Children.Add(badge);
+            }
+        }
     }
 }

@@ -109,5 +109,17 @@ namespace SCLOCVerse.Controls
 
         /// <summary>Доступ до панелі «Overlay».</summary>
         public OverlaySettingsPane? OverlayPane => PaneOverlay;
+
+        /// <summary>Доступ до панелі «Локалізація» (плейсхолдер).</summary>
+        public SettingsPlaceholderPane LocalizationPane => PaneLocalization;
+
+        /// <summary>Доступ до панелі «Профіль» (плейсхолдер).</summary>
+        public SettingsPlaceholderPane ProfilePane => PaneProfile;
+
+        /// <summary>Доступ до панелі «Інтерфейс» (плейсхолдер).</summary>
+        public SettingsPlaceholderPane InterfacePane => PaneInterface;
+
+        /// <summary>Доступ до панелі «Про програму» (плейсхолдер).</summary>
+        public SettingsPlaceholderPane AboutPane => PaneAbout;
     }
 }

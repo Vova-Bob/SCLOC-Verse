@@ -134,7 +134,7 @@
             <!-- Cat-head -->
             <StackPanel Orientation="Horizontal" Margin="2,0,0,4">
                 <TextBlock Text="ЗАГАЛЬНЕ" FontFamily="Segoe UI" FontSize="15" FontWeight="Bold" Foreground="#EAF4FF"/>
-                <TextBlock Text="основні параметри застосунку" Margin="12,0,0,0" FontFamily="Segoe UI" FontSize="11.5" Foreground="#5A7A8A" VerticalAlignment="Center"/>
+                <TextBlock x:Name="SubtitleText" Margin="12,0,0,0" FontFamily="Segoe UI" FontSize="11.5" Foreground="#5A7A8A" VerticalAlignment="Center"/>
             </StackPanel>
             <TextBlock Style="{StaticResource HubHelpText}" Text="Стан гри, запуск, оновлення та обслуговування."/>
 
@@ -158,6 +158,8 @@
                         <Button x:Name="BtnSelectFolder" Grid.Column="1" Style="{StaticResource ActionButton}" Content="Огляд…" Width="100" Margin="0,0,8,0"/>
                         <Button x:Name="BtnAutoSearch" Grid.Column="2" Style="{StaticResource AutoSearchButton}" Content="Автопошук" Width="118"/>
                     </Grid>
+                    <!-- Бейджі середовищ (P0 — стан видимий; заповнюються з StarCitizenEnvironments.DetectExisting) -->
+                    <StackPanel x:Name="EnvBadgesPanel" Orientation="Horizontal" Margin="0,12,0,0"/>
                 </StackPanel>
             </Border>
 

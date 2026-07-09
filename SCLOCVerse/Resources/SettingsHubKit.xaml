@@ -126,34 +126,41 @@
         </Setter>
     </Style>
 
-    <!-- Кнопка скидання категорії (↺ + текст, нейтральна) -->
+    <!-- Кнопка скидання категорії (↺ + текст, світло-сіра, НЕ конкурує з основними діями — P1) -->
     <Style x:Key="HubCategoryReset" TargetType="Button">
-        <Setter Property="Height" Value="32"/>
-        <Setter Property="Padding" Value="14,0"/>
+        <Setter Property="Height" Value="30"/>
+        <Setter Property="Padding" Value="0"/>
         <Setter Property="Cursor" Value="Hand"/>
-        <Setter Property="Foreground" Value="#8FAAB8"/>
+        <Setter Property="Foreground" Value="#6F8CA8"/>
         <Setter Property="FontFamily" Value="Segoe UI"/>
-        <Setter Property="FontSize" Value="12"/>
+        <Setter Property="FontSize" Value="11.5"/>
         <Setter Property="Background" Value="Transparent"/>
-        <Setter Property="BorderBrush" Value="#1E4357"/>
-        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="BorderBrush" Value="Transparent"/>
+        <Setter Property="BorderThickness" Value="0"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
-                    <Border x:Name="Bd" Background="{TemplateBinding Background}"
-                            BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1" CornerRadius="7">
-                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" Margin="{TemplateBinding Padding}"/>
+                    <Border x:Name="Bd" Background="{TemplateBinding Background}" CornerRadius="5" Padding="6,3">
+                        <ContentPresenter HorizontalAlignment="Left" VerticalAlignment="Center"/>
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="Bd" Property="BorderBrush" Value="#4AA3D8"/>
-                            <Setter Property="Foreground" Value="#EAF4FF"/>
                             <Setter TargetName="Bd" Property="Background" Value="#162E42"/>
+                            <Setter Property="Foreground" Value="#9DBBD4"/>
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
+    </Style>
+
+    <!-- Kbd-бейдж для підказок гарячих клавіш -->
+    <Style x:Key="HubKbdBadge" TargetType="Border">
+        <Setter Property="Background" Value="#0A1D29"/>
+        <Setter Property="BorderBrush" Value="#2A5A78"/>
+        <Setter Property="BorderThickness" Value="1"/>
+        <Setter Property="CornerRadius" Value="4"/>
+        <Setter Property="Padding" Value="6,2"/>
     </Style>
 
     <!-- ============ СТАТУСНІ БЕЙДЖІ (P0 — стан продукту видимий) ============ -->
