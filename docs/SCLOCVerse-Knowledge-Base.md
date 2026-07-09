@@ -1756,6 +1756,17 @@ Phase 3.7 (Security Hardening) — Backlog (DEFAULT PRIVILEGES); SEC-11 — ✅ 
 193. **Гарячі клавіші — Варіант A+ (read-only), ✅ VER+IMPL.** Forensic: `HotkeyService` не мав API переліку, а `CurrentGesture` ніколи не персистувався → повний редактор порушив би «контент лише для реалізованого». Phase 0 показує 13 реальних комбінацій read-only. Additive API: `IHotkeyService.GetDefinitions()`. Повний редактор (persistence/rebind/capture/conflict/reset/sync) → Phase 0.5.
 194. **Overlay — реальний редактор, ✅ VER+IMPL.** `IHangarSettingsService` персистує scale/opacity/X-Y. Оверлей читає налаштування лише при відкритті → зміни застосовуються при наступному показі (зазначено в UI). Additive: `IHangarTimerService.Settings`.
 
+## 14.26. Settings Hub — Дизайн-система (2026-07-10) — ✅ APPROVED
+
+> **Доктрина.** Повна специфікація: [`docs/backlog/settings-hub-design-system.md`](backlog/settings-hub-design-system.md).
+> Settings Hub — це **дизайн-система**, а не окремий екран: правила, за якими будується будь-яка сторінка налаштувань. «Центр керування» — інтерфейс, що показує стан продукту й дозволяє ним керувати, а не лише змінює параметри.
+
+195. **Коренева причина design-drift (✅ VER, UX Forensic 2026-07-10).** Реалізація Phase 0 виглядає як стара сторінка налаштувань (`SettingsCanvas`) із доданим меню, а не як окремий центр керування. Наслідки: чекбокси замість тоглів; README-блок (відсутній у концепції); прихований стан продукту (немає бейджів середовищ, статус-крапок); скидання виглядає як видалення; стиснутість; злиття тонів; плаваючі контролі; «Головна» як категорія-пустушка; невидимий індикатор активної категорії. Архітектура/функціональність — 10/10; візуальна мова/відповідність концепції — 6–7/10.
+196. **P0 Identity First — головне правило.** Settings Hub має сприйматись як окремий центр керування продуктом, а не як стара сторінка налаштувань із меню. Усі принципи нижче — наслідки P0; рішення, що суперечить P0, хибне.
+197. **Принципи дизайн-системи (наслідки P0):** P1 Reset≠Delete (скидання — оборотна дія, нейтральний стиль, не небезпечне); P2 Простір як ієрархія (щедрі відступи, спокій/делікатність); P3 Контраст і відокремлення (три шари глибини + м'які межі); P4 Єдина колонка контролов (усі контролі дії на одній правій вертикалі); P5 Progressive Disclosure (лише реалізований функціонал — див. §14.25 #185, #193).
+198. **Design Kit — спільний набір для всіх сторінок.** Каркас (заголовок+лічильник+опис+зона груп+рядок скидання категорії); групи з uppercase-заголовком; рядок «назва+опис ліворуч, контрол праворуч»; тогл для булевих; ↺ скидання per-control + per-category; видимі статуси продукту; єдина шкала відступів і палітра; «Головна» — навігація повернення. Нова категорія береться з набору, а не дизайнується з нуля.
+199. **Критерій завершення UX Polishing.** Не «список пунктів закрито», а сліпий перегляд впізнає Hub як окремий центр керування, а не як стару сторінку з меню (P0). Еталон відчуття — HTML-макети `.kilo/settings-mockups/` (та сама якість сприйняття, не піксель-в-піксель).
+
 ---
 
 # 15. Rejected Decisions (майстер-список)
@@ -2240,6 +2251,7 @@ auth.users (TABLE, 35 columns)  +  public.app_installations (TABLE)
 | 0 | **Гарячі клавіші** — **read-only** список реальних комбінацій (Варіант A+; інтерактивний редактор → Phase 0.5) | низька | ✅ DONE 2026-07-09 |
 | 0 | **Overlay** — Hangar Timer (масштаб/прозорість слайдерами); Anti-AFK — плейсхолдер | низька | ✅ DONE 2026-07-09 |
 | 0 | Зарезервовані категорії-плейсхолдери (Головна/Локалізація/Інтерфейс/Профіль/Про програму) | низька | ✅ DONE 2026-07-09 |
+| UX | **UX Polishing** — візуальна ідентичність «центр керування» за дизайн-системою (§14.26); виправлення design-drift | середня | 🔵 PLANNED ([`docs/backlog/settings-hub-design-system.md`](backlog/settings-hub-design-system.md)) |
 | 0.5 | **Повна система користувацьких гарячих клавіш** — persistence (`CurrentGesture` per id), runtime rebind, capture, conflict resolution, reset, cloud sync через Профіль | висока | 🔵 PLANNED (окремий forensic + design) |
 | 1 | **Профіль — `profile.json`** (локальний контракт/схема-версія, експорт/імпорт) | середня | 🔵 PLANNED |
 | 2 | **Профіль — синхронізація Supabase** (hotkey-bindings, overlay; НЕ hotkey-події — L3 Local Only) | висока | 🔵 PLANNED |
@@ -2262,6 +2274,7 @@ auth.users (TABLE, 35 columns)  +  public.app_installations (TABLE)
 | `docs/checklists/Database-Verification.md` | Чеклист RLS/таблиць (Стаття 17) — реалізує Extended Gates для БД-домену |
 | `docs/backlog/README.md` | SEW конвенція деталізації великих задач (картка в KB §17 + файл у `docs/backlog/`) |
 | `docs/backlog/settings-hub.md` | Settings Hub — повна специфікація (AC, варіанти A/B/C, зона впливу). Картка: KB §17.7, ADR-009 |
+| `docs/backlog/settings-hub-design-system.md` | Settings Hub — дизайн-система (P0 Identity First + P1–P5, Design Kit). Доктрина: KB §14.26 |
 | `docs/release/release-runbook-1.0.0.1.md` | Ранбук, cleanup-класифікація |
 | `docs/release/db-cleanup-forensic-analysis.md` | Початкова cleanup-політика (частково застаріла) |
 | `docs/release/post-cleanup-forensic-app-installations.md` | Актуальна cleanup-політика (B+C) |
