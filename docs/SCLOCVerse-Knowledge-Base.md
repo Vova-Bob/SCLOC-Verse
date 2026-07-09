@@ -1738,6 +1738,21 @@ Phase 3.7 (Security Hardening) — Backlog (DEFAULT PRIVILEGES); SEC-11 — ✅ 
 
 181. **SEW = AI Engineering Operating System** (Engineering Orchestrator), не окремий виконавець. SEW визначає правила/межі/якість/ресурси/цикли. Рівень автономії визначає виконавець (модель + середовище + Agent Framework). Метафора «головний інженер» відхилена (див. Rejected #76) як персоніфікація системи.
 
+## 14.25. Settings Hub — Центр керування налаштуваннями (2026-07-09) — 🔵 PLANNED
+
+> **Архітектурне рішення ADR-009.** Детальна специфікація: [`docs/backlog/settings-hub.md`](backlog/settings-hub.md). Макети затверджені: `.kilo/settings-mockups/` (01–05, PNG).
+
+182. **Settings Hub замінює `SettingsCanvas`.** Замість єдиного плоского `SettingsCanvas.xaml` (514 рядків) — нова оболонка: ліва панель-навігатор категорій + права панель вмісту. Варіант B серед 3 (див. ADR-009). Причина: плоский список не масштабується під overlay- та hotkey-налаштування; UX First — пошук параметра <30с.
+183. **Категорії за функцією, не за інструментом.** `Загальне`, `Гарячі клавіші`, `Overlay` (Phase 0) + зарезервовані `Головна`, `Локалізація`, `Інтерфейс`, `Профіль`, `Про програму`. Не «налаштування Hangar Timer» / «Anti-AFK».
+184. **Phase 0 категорії:** `Загальне` (Star Citizen шлях, автозапуск, трей, автооновлення локалізації, канал, менеджер версій, очистити кеш, розширена діагностика), `Гарячі клавіші` (14 дій через `HotkeyService`), `Overlay` (масштаб/прозорість/позиція через `HangarSettingsService`).
+185. **Контент лише для реалізованого функціоналу (no fabricated fields).** Anti-AFK без оверлея → плейсхолдер «інструмент не активний», а не вигадані повзунки. Зарезервовані категорії показують плейсхолдер, не порожні поля.
+186. **Миттєве збереження без Apply; мітка «•»** біля зміненого пункту. Reset лише **per-category** (унизу категорії) та **per-control** (↺). **Глобального «Скинути все» немає** (див. Rejected #80).
+187. **`F1` відкриває Hub лише при активному вікні SCLOC-Verse** (не глобально). Причина: уникнення конфлікту з ігровою/системною допомогою F1. Реалізація: Window-фокус-чек перед відкриттям.
+188. **Шлях до гри = `...\StarCitizen`** (не `\LIVE`); середовища (LIVE/PTU/EPTU/TECH-PREVIEW) — **read-only індикатори** автовизначення, не перемикачі. Опис шляху: «Використовується для встановлення локалізації та конфігурації.»
+189. **Reuse First — без нових сервісів у Phase 0.** Hub лише споживає існуючі контракти: `ISettingsService`/`IUpdateChannelService`/`IPreferencesService` (Загальне), `HotkeyService` + `HotkeyConflictPolicy` (Гарячі клавіші), `HangarSettingsService` (Overlay). Категорії реалізуються як Canvas (ADR-006).
+190. **Профіль зарезервований** для майбутнього `profile.json` (локальний контракт/схема-версія, Phase 1) та опціональної синхронізації Supabase (Phase 2). Hotkey-**bindings** — user preferences (можуть синхронізуватись); hotkey-**події** — L3 Local Only (ніколи).
+191. **Схема БД не зачіпається** (Phase 0 — суто UI-шар). Security Review не потрібне (UI/локалізація, не Auth/Installer/Network/SQL).
+
 ---
 
 # 15. Rejected Decisions (майстер-список)
@@ -1831,6 +1846,15 @@ Phase 3.7 (Security Hardening) — Backlog (DEFAULT PRIVILEGES); SEC-11 — ✅ 
 77. **Resource Discovery як 13-крокова жорстка ієрархія відхилена** — порушує KISS та Minimal Change для trivial задач. Замінено на адаптивний 5-рівневий механізм (Approved #174).
 78. **Task Classification як обовʼязковий жорсткий крок (Крок 1) відхилена** — багато задач SCLOC-Verse міждоменні (Phase 3.5 = БД+Telemetry+Arch+Security). Замінено на Adaptive Workflow матрицю як heuristic (Approved #175). Зовнішній доказ: Anthropic «heuristics rather than rigid rules».
 79. **«Expert AI» як окремий рівень Capability Escalation відхилена** — у платформах немає «Expert AI» як класу; є лише різні моделі (Haiku/Sonnet/Opus). Capability Escalation переформульована як «Specialized Agent → Human» (Approved #178).
+
+### 15.3.1. Settings Hub (2026-07-09)
+
+80. **Глобальна кнопка «Скинути все» відхилена** — надто руйнівна; порушує Minimal Change. Замінено на reset per-category + per-control (↺). Лише шлях до гри має власний reset (Approved #186).
+81. **Категоризація за інструментом відхилена** («налаштування Hangar Timer»/«Anti-AFK») — дублює логіку, ламається при нових інструментах. Замінено на категорії за функцією (Approved #183).
+82. **Передчасні категорії з вигаданими полями відхилені** — категорія існує лише з критичною масою реалізованих налаштувань; зарезервовані показують плейсхолдер (Approved #185).
+83. **`Діагностика` як окрема категорія відхилена** — згорнута в чекбокс «Розширена діагностика» у Загальне (один перемикач — не категорія).
+84. **`Поведінка` та `Оновлення` як окремі категорії відхилені** — замало контенту; згорнуті у Загальне.
+85. **`F1` як глобальна гаряча клавіша відхилена** — конфлікт з ігровою/системною допомогою. Обмежено активним вікном застосунку (Approved #187).
 
 ---
 
@@ -2202,6 +2226,20 @@ auth.users (TABLE, 35 columns)  +  public.app_installations (TABLE)
 - S2: механізм не додав бюрократії? (так → REJ)
 - S3: метрика успіху — реальне повторне використання, не «галочка пройдена».
 
+## 17.7. Settings Hub — Центр керування налаштуваннями (2026-07-09)
+
+> **ADR-009.** Деталі: [`docs/backlog/settings-hub.md`](backlog/settings-hub.md). Затверджені/відхилені рішення: §14.25, §15.3.1.
+
+| Phase | Задача | Складність | Статус |
+|---|---|---|---|
+| 0 | **Hub-оболонка** (ліва панель + CanvasManager-інтеграція, ⚙/F1-вхід) | середня | 🔵 PLANNED |
+| 0 | **Загальне** — міграція контенту SettingsCanvas (шлях/автозапуск/трей/локалізація/канал/менеджер/кеш/діагностика) | низька–середня | 🔵 PLANNED |
+| 0 | **Гарячі клавіші** — список `HotkeyService` + конфлікт-UX (Esc/Backspace/Перевизначити) + per-category reset | середня | 🔵 PLANNED |
+| 0 | **Overlay** — Hangar Timer (масштаб/прозорість/X-Y); Anti-AFK — плейсхолдер | низька | 🔵 PLANNED |
+| 0 | Зарезервовані категорії-плейсхолдери (Головна/Локалізація/Інтерфейс/Профіль/Про програму) | низька | 🔵 PLANNED |
+| 1 | **Профіль — `profile.json`** (локальний контракт/схема-версія, експорт/імпорт) | середня | 🔵 PLANNED |
+| 2 | **Профіль — синхронізація Supabase** (hotkey-bindings, overlay; НЕ hotkey-події — L3 Local Only) | висока | 🔵 PLANNED |
+
 ---
 
 # 18. Cross References
@@ -2211,7 +2249,7 @@ auth.users (TABLE, 35 columns)  +  public.app_installations (TABLE)
 | Документ | Що підтверджує |
 |---|---|
 | `AGENTS.md` | Конституція проєкту (Zero Regression, UTF-8 P0, українські commits, additive-only, структура, SEW Workflow) |
-| `ARCHITECTURE_DECISIONS.md` | ADR-001…008 (DI, hotkeys, MainWindow, overlay, canvas, lifetime, ISP) — **канонічний файл ADR** |
+| `ARCHITECTURE_DECISIONS.md` | ADR-001…009 (DI, hotkeys, MainWindow, overlay, canvas, lifetime, ISP, **Settings Hub**) — **канонічний файл ADR** |
 | `docs/architecture/Final-Architecture-Review.md` | Повна архітектура, TD-1…60, ZR-1…24, SEC-1…12 |
 | `docs/contracts/control_center.md` | Контракт Control Center, role `cc_readonly` |
 | `docs/LIA_INSTALLATION.md` | L.I.A. installer/cert/elevation/forensic |
@@ -2219,6 +2257,7 @@ auth.users (TABLE, 35 columns)  +  public.app_installations (TABLE)
 | `docs/checklists/Security-Review.md` | SEW Security Review за доменами (OAuth/Auth/Installer/Network/SQL/RLS/Crypto) |
 | `docs/checklists/Database-Verification.md` | Чеклист RLS/таблиць (Стаття 17) — реалізує Extended Gates для БД-домену |
 | `docs/backlog/README.md` | SEW конвенція деталізації великих задач (картка в KB §17 + файл у `docs/backlog/`) |
+| `docs/backlog/settings-hub.md` | Settings Hub — повна специфікація (AC, варіанти A/B/C, зона впливу). Картка: KB §17.7, ADR-009 |
 | `docs/release/release-runbook-1.0.0.1.md` | Ранбук, cleanup-класифікація |
 | `docs/release/db-cleanup-forensic-analysis.md` | Початкова cleanup-політика (частково застаріла) |
 | `docs/release/post-cleanup-forensic-app-installations.md` | Актуальна cleanup-політика (B+C) |
