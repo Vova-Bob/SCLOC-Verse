@@ -9,30 +9,32 @@ using SCLOCVerse.Services.InputSystem;
 namespace SCLOCVerse.Controls.SettingsHub
 {
     /// <summary>
-    /// Панель «Гарячі клавіші» Settings Hub — інтерактивний редактор (Phase 0.5).
-    /// Клік на комбінацію → capture → Rebind (з conflict-діалогом); reset per-item/per-category.
+    /// Панель «Гарячі клавіші» Settings Hub — інтерактивний редактор.
+    /// Головний принцип: НУЛЬОВИЙ LAYOUT-SHIFT. Геометрія рядка фіксована завжди.
+    /// Змінюється лише вміст фіксованих зон (keycap Content, icon Content/Opacity).
     /// </summary>
     public partial class HotkeysSettingsPane : UserControl
     {
         private IHotkeyService? _hotkeyService;
         private readonly Dictionary<string, HotkeyDefinition> _definitionsById = new();
 
-        // Поточний рядок у режимі capture (null = не в режимі).
-        private CaptureRow? _capture;
+        // Стани кожного рядка (для оновлення без перебудови Grid).
+        private readonly Dictionary<string, RowElements> _rows = new();
 
-        // Контекст для conflict-діалогу (pending Replace).
+        // Поточний рядок у режимі capture (null = не в режимі).
+        private RowElements? _capture;
+
+        // Контекст для conflict-діалогу.
         private HotkeyDefinition? _conflictDef;
         private HotkeyGesture _conflictGesture;
+        private List<HotkeyDefinition>? _pendingCategoryReset;
 
         public HotkeysSettingsPane()
         {
             InitializeComponent();
         }
 
-        /// <summary>
-        /// З'єднує панель із HotkeyService і будує read-only список.
-        /// Викликається з MainWindow після ініціалізації Hub.
-        /// </summary>
+        /// <summary>З'єднує панель із HotkeyService і будує список.</summary>
         public void Populate(IHotkeyService hotkeyService)
         {
             _hotkeyService = hotkeyService;
@@ -45,8 +47,10 @@ namespace SCLOCVerse.Controls.SettingsHub
         {
             HotkeyList.Children.Clear();
             _definitionsById.Clear();
+            _rows.Clear();
             var list = _hotkeyService?.GetDefinitions() ?? Enumerable.Empty<HotkeyDefinition>().ToList();
-            CountText.Text = $"{list.Count} дій · {list.Count(d => d.CurrentGesture.HasValue)} змінено";
+            var modifiedCount = list.Count(d => d.CurrentGesture.HasValue && d.CurrentGesture.Value != d.DefaultGesture);
+            CountText.Text = $"{list.Count()} дій" + (modifiedCount > 0 ? $" · {modifiedCount} змінено" : "");
 
             foreach (var group in list.GroupBy(d => ResolveGroup(d.Id.Value))
                                        .OrderBy(g => GroupOrder(g.Key)))
@@ -55,40 +59,184 @@ namespace SCLOCVerse.Controls.SettingsHub
                 foreach (var def in group)
                 {
                     _definitionsById[def.Id.Value] = def;
-                    HotkeyList.Children.Add(MakeRow(def));
+                    var row = MakeRow(def);
+                    HotkeyList.Children.Add(row.Grid);
                 }
             }
         }
 
-        // ============ Захоплення (capture) ============
+        // ============ Рядок: фіксована геометрія (Col0=*, Col1=130, Col2=30) ============
 
-        private void GestureButton_Click(object sender, RoutedEventArgs e)
+        private RowElements MakeRow(HotkeyDefinition def)
+        {
+            bool isModified = def.CurrentGesture.HasValue && def.CurrentGesture.Value != def.DefaultGesture;
+
+            var grid = new Grid { Margin = new Thickness(0, 2, 0, 2), MinHeight = 42 };
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(130) }); // keycap — фіксований
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(30) });   // icon — фіксований
+
+            // Колонка 0: опис + «Типово:» (тільки для modified).
+            var textPanel = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+
+            var desc = new TextBlock
+            {
+                Text = def.Description ?? def.Id.Value,
+                FontFamily = new FontFamily("Segoe UI Semibold"),
+                FontSize = 13,
+                Foreground = new SolidColorBrush(Color.FromRgb(0xEA, 0xF4, 0xFF)),
+                TextTrimming = TextTrimming.CharacterEllipsis
+            };
+            textPanel.Children.Add(desc);
+
+            var defaultLabel = new TextBlock
+            {
+                Text = "Типово: " + FormatGesture(def.DefaultGesture),
+                FontFamily = new FontFamily("Segoe UI"),
+                FontSize = 11,
+                Foreground = new SolidColorBrush(Color.FromRgb(0x6F, 0x8C, 0xA8)),
+                Opacity = isModified ? 0.6 : 0 // лише для modified
+            };
+            textPanel.Children.Add(defaultLabel);
+
+            Grid.SetColumn(textPanel, 0);
+            grid.Children.Add(textPanel);
+
+            // Колонка 1: keycap (фіксована ширина 130px, Consolas, центрований).
+            var keycap = new Button
+            {
+                Tag = def.Id.Value,
+                Content = FormatGesture(def.EffectiveGesture),
+                Background = new SolidColorBrush(Color.FromRgb(0x0A, 0x1D, 0x29)),
+                BorderBrush = new SolidColorBrush(isModified
+                    ? Color.FromRgb(0x4A, 0xA3, 0xD8)
+                    : Color.FromRgb(0x2A, 0x5A, 0x78)),
+                Foreground = new SolidColorBrush(Color.FromRgb(0xE8, 0xF3, 0xFF)),
+                FontFamily = new FontFamily("Consolas"),
+                FontSize = 12,
+                Cursor = Cursors.Hand,
+                Margin = new Thickness(10, 0, 0, 0),
+                Padding = new Thickness(8, 4, 8, 4),
+                HorizontalContentAlignment = HorizontalAlignment.Center,
+                ToolTip = "Клікніть, щоб змінити",
+                Template = MakeKeycapTemplate()
+            };
+            keycap.Click += Keycap_Click;
+            Grid.SetColumn(keycap, 1);
+            grid.Children.Add(keycap);
+
+            // Колонка 2: icon (↺ або ✕) — ЗАВЖДИ зарезервований, Opacity керує.
+            var icon = new Button
+            {
+                Tag = def.Id.Value,
+                Content = "↺",
+                Background = Brushes.Transparent,
+                BorderBrush = Brushes.Transparent,
+                BorderThickness = new Thickness(0),
+                Foreground = new SolidColorBrush(Color.FromRgb(0x6F, 0x8C, 0xA8)),
+                FontSize = 15,
+                Cursor = Cursors.Hand,
+                HorizontalContentAlignment = HorizontalAlignment.Center,
+                VerticalContentAlignment = VerticalAlignment.Center,
+                Opacity = isModified ? 1 : 0,      // modified = visible; default = invisible (but space reserved)
+                IsHitTestVisible = isModified,     // default = non-interactive
+                ToolTip = "Скинути до типової"
+            };
+            icon.Click += ResetIcon_Click;
+
+            // Hover: icon opacity 0→0.4 для unmodified.
+            grid.MouseEnter += (_, _) => { if (icon.Opacity == 0) icon.Opacity = 0.35; };
+            grid.MouseLeave += (_, _) => { if (!_rows.GetValueOrDefault(def.Id.Value)?.IsModified ?? false && icon.Content is "↺") icon.Opacity = 0; };
+
+            Grid.SetColumn(icon, 2);
+            grid.Children.Add(icon);
+
+            var elements = new RowElements(grid, keycap, icon, desc, defaultLabel, def)
+            {
+                IsModified = isModified
+            };
+            _rows[def.Id.Value] = elements;
+            return elements;
+        }
+
+        // ============ Стани рядка: змінюють лише Content + Opacity ============
+
+        private void SetCaptureState(RowElements row, string keycapText)
+        {
+            // Keycap → capture текст; Icon → ✕ (cancel), повна видимість.
+            row.Keycap.Content = keycapText;
+            row.Keycap.BorderBrush = new SolidColorBrush(Color.FromRgb(0xE3, 0x6D, 0x3A)); // помаранчевий
+            row.Keycap.Foreground = new SolidColorBrush(Color.FromRgb(0xE3, 0x6D, 0x3A));
+            row.Icon.Content = "✕";
+            row.Icon.Opacity = 1;
+            row.Icon.IsHitTestVisible = true;
+            row.Icon.ToolTip = "Скасувати";
+            row.DefaultLabel.Opacity = 0;
+        }
+
+        private void SetNormalState(RowElements row)
+        {
+            // Відновити з definition (після RebuildList або скасування).
+            bool isModified = row.Def.CurrentGesture.HasValue && row.Def.CurrentGesture.Value != row.Def.DefaultGesture;
+            row.Keycap.Content = FormatGesture(row.Def.EffectiveGesture);
+            row.Keycap.BorderBrush = new SolidColorBrush(isModified
+                ? Color.FromRgb(0x4A, 0xA3, 0xD8)
+                : Color.FromRgb(0x2A, 0x5A, 0x78));
+            row.Keycap.Foreground = new SolidColorBrush(Color.FromRgb(0xE8, 0xF3, 0xFF));
+            row.Icon.Content = "↺";
+            row.Icon.Opacity = isModified ? 1 : 0;
+            row.Icon.IsHitTestVisible = isModified;
+            row.Icon.ToolTip = "Скинути до типової";
+            row.DefaultLabel.Opacity = isModified ? 0.6 : 0;
+            row.IsModified = isModified;
+        }
+
+        // ============ Click handlers ============
+
+        private void Keycap_Click(object sender, RoutedEventArgs e)
         {
             if (sender is not Button btn || btn.Tag is not string id)
                 return;
-
-            if (!_definitionsById.TryGetValue(id, out var def))
+            if (!_rows.TryGetValue(id, out var row))
                 return;
 
-            // Вийти з попереднього режиму capture.
-            if (_capture is not null)
-                ExitCaptureMode(restore: true);
+            // Вийти з попереднього capture.
+            if (_capture is not null && _capture != row)
+                SetNormalState(_capture);
 
-            EnterCaptureMode(btn, def);
-        }
+            // Увійти в capture.
+            _capture = row;
+            SetCaptureState(row, "● Очікування…");
 
-        private void EnterCaptureMode(Button button, HotkeyDefinition def)
-        {
-            button.Background = MakeCaptureBrush();
-            button.Content = "● Очікування…";
-            button.ToolTip = "Esc — скасувати";
-            _capture = new CaptureRow(button, def);
-
-            // Підписуємось на клавіатуру вікна (PreviewKeyDown ловить до будь-якого контролу).
             var window = Window.GetWindow(this);
             if (window != null)
                 window.PreviewKeyDown += Capture_PreviewKeyDown;
         }
+
+        private void ResetIcon_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is not Button btn || btn.Tag is not string id)
+                return;
+
+            // Якщо зараз capture (icon = ✕) → скасувати.
+            if (_capture is not null && _capture.Def.Id.Value == id && btn.Content is "✕")
+            {
+                CancelCapture();
+                e.Handled = true;
+                return;
+            }
+
+            // Reset до типової.
+            if (!_definitionsById.TryGetValue(id, out var def))
+                return;
+            if (!def.CurrentGesture.HasValue || def.CurrentGesture.Value == def.DefaultGesture)
+                return;
+
+            _hotkeyService?.Rebind(def.Id, def.DefaultGesture, HotkeyConflictPolicy.Reject, out _);
+            RebuildList();
+        }
+
+        // ============ Capture ============
 
         private void Capture_PreviewKeyDown(object sender, KeyEventArgs e)
         {
@@ -97,38 +245,41 @@ namespace SCLOCVerse.Controls.SettingsHub
 
             var key = e.Key;
 
-            // Esc → скасувати capture (не зберігати).
             if (key == Key.Escape)
             {
-                ExitCaptureMode(restore: true);
+                CancelCapture();
                 e.Handled = true;
                 return;
             }
 
-            // Модифікатори самі по собі — не завершують capture, оновлюємо підказку.
             if (HotkeyCaptureMapper.IsModifierKey(key))
             {
-                _capture.Button.Content = FormatModifiers(Keyboard.Modifiers) + "+…";
+                _capture.Keycap.Content = FormatModifiers(Keyboard.Modifiers) + "+…";
                 return;
             }
 
-            // Мапити WPF Key → HotkeyGesture.
-            var modifiers = Keyboard.Modifiers;
-            var gesture = HotkeyCaptureMapper.TryMap(key, modifiers);
-
+            var gesture = HotkeyCaptureMapper.TryMap(key, Keyboard.Modifiers);
             if (gesture is null)
             {
-                // Невідома клавіша — показуємо «● Очікування…» (фіксована ширина).
-                _capture.Button.Content = "● Очікування…";
+                _capture.Keycap.Content = "● Очікування…";
                 return;
             }
 
             e.Handled = true;
-            AttemptRebind(_capture.Def, gesture.Value);
-            ExitCaptureMode(restore: false);
+            var def = _capture.Def;
+            var gestureVal = gesture.Value;
+
+            // Вийти з capture (відписатися від PreviewKeyDown).
+            var window = Window.GetWindow(this);
+            if (window != null)
+                window.PreviewKeyDown -= Capture_PreviewKeyDown;
+            _capture = null;
+
+            // Rebind.
+            AttemptRebind(def, gestureVal);
         }
 
-        private void ExitCaptureMode(bool restore)
+        private void CancelCapture()
         {
             if (_capture is null)
                 return;
@@ -137,14 +288,7 @@ namespace SCLOCVerse.Controls.SettingsHub
             if (window != null)
                 window.PreviewKeyDown -= Capture_PreviewKeyDown;
 
-            if (restore)
-            {
-                // Відновити відображення попереднього жеста.
-                _capture.Button.Background = MakeGestureBrush(_capture.Def);
-                _capture.Button.Content = FormatGesture(_capture.Def.EffectiveGesture);
-                _capture.Button.ToolTip = "Клікніть, щоб змінити комбінацію";
-            }
-
+            SetNormalState(_capture);
             _capture = null;
         }
 
@@ -164,10 +308,10 @@ namespace SCLOCVerse.Controls.SettingsHub
                     break;
 
                 case RebindResult.Unchanged:
+                    SetNormalState(_rows[def.Id.Value]);
                     break;
 
                 case RebindResult.Conflict:
-                    // Власний діалог (не MessageBox) — узгоджено з дизайн-системою Hub.
                     var conflictDef = _definitionsById.TryGetValue(conflictingId.Value, out var c) ? c : null;
                     var conflictName = conflictDef?.Description ?? conflictingId.Value;
                     _conflictDef = def;
@@ -177,14 +321,13 @@ namespace SCLOCVerse.Controls.SettingsHub
                     ConflictDialog.Visibility = Visibility.Visible;
                     break;
 
-                case RebindResult.InvalidGesture:
-                    break;
-
                 case RebindResult.RegistrationFailed:
                     ShowInlineError("Не вдалося зареєструвати комбінацію.\nМожливо, вона зайнята іншим застосунком.");
                     break;
             }
         }
+
+        // ============ Conflict dialog handlers ============
 
         private void ConflictConfirm_Click(object sender, RoutedEventArgs e)
         {
@@ -205,6 +348,9 @@ namespace SCLOCVerse.Controls.SettingsHub
         {
             ConflictDialog.Visibility = Visibility.Collapsed;
             _conflictDef = null;
+            // Відновити рядок якщо він був у capture.
+            if (_conflictDef is not null && _rows.TryGetValue(_conflictDef.Id.Value, out var row))
+                SetNormalState(row);
         }
 
         private void ShowInlineError(string message)
@@ -213,42 +359,24 @@ namespace SCLOCVerse.Controls.SettingsHub
             ConflictMessage.Text = message;
             ConflictConfirm.Content = "Зрозуміло";
             ConflictConfirm.Click -= ConflictConfirm_Click;
-            ConflictConfirm.Click += (_, _) => ConflictDialog.Visibility = Visibility.Collapsed;
+            ConflictConfirm.Click += (_, _) => { ConflictDialog.Visibility = Visibility.Collapsed; ConflictConfirm.Click -= (_, _) => { }; ConflictConfirm.Content = "Перевизначити"; };
             ConflictCancel.Visibility = Visibility.Collapsed;
             ConflictDialog.Visibility = Visibility.Visible;
         }
 
-        // ============ Reset ============
-
-        private void ResetItem_Click(object sender, RoutedEventArgs e)
-        {
-            if (sender is not Button btn || btn.Tag is not string id)
-                return;
-            if (!_definitionsById.TryGetValue(id, out var def))
-                return;
-
-            if (!def.CurrentGesture.HasValue)
-                return; // вже default
-
-            // Reset = Rebind до DefaultGesture (CurrentGesture → null, видаляється з JSON).
-            if (def.DefaultGesture == def.EffectiveGesture)
-                return;
-
-            var result = _hotkeyService?.Rebind(def.Id, def.DefaultGesture, HotkeyConflictPolicy.Reject, out _);
-            if (result == RebindResult.Success)
-                RebuildList();
-        }
+        // ============ Reset категорії ============
 
         private void CategoryReset_Click(object sender, RoutedEventArgs e)
         {
             if (_hotkeyService is null)
                 return;
 
-            var modified = _definitionsById.Values.Where(d => d.CurrentGesture.HasValue).ToList();
+            var modified = _definitionsById.Values
+                .Where(d => d.CurrentGesture.HasValue && d.CurrentGesture.Value != d.DefaultGesture)
+                .ToList();
             if (modified.Count == 0)
                 return;
 
-            // Власний діалог підтвердження (не MessageBox).
             _pendingCategoryReset = modified;
             ConflictTitle.Text = "Скидання гарячих клавіш";
             ConflictMessage.Text = $"Скинути {modified.Count} змінених комбінацій до типових?";
@@ -264,20 +392,13 @@ namespace SCLOCVerse.Controls.SettingsHub
         private void CategoryResetConfirm_Click(object sender, RoutedEventArgs e)
         {
             ConflictDialog.Visibility = Visibility.Collapsed;
-            ConflictConfirm.Click -= CategoryResetConfirm_Click;
-            ConflictConfirm.Click += ConflictConfirm_Click;
-            ConflictCancel.Click -= CategoryResetCancel_Click;
-            ConflictCancel.Click += ConflictCancel_Click;
-            ConflictConfirm.Content = "Перевизначити";
+            RestoreDialogHandlers();
 
             if (_hotkeyService is null || _pendingCategoryReset is null)
                 return;
 
             foreach (var def in _pendingCategoryReset)
-            {
-                if (def.DefaultGesture != def.EffectiveGesture)
-                    _hotkeyService.Rebind(def.Id, def.DefaultGesture, HotkeyConflictPolicy.Reject, out _);
-            }
+                _hotkeyService.Rebind(def.Id, def.DefaultGesture, HotkeyConflictPolicy.Reject, out _);
 
             _pendingCategoryReset = null;
             RebuildList();
@@ -286,17 +407,48 @@ namespace SCLOCVerse.Controls.SettingsHub
         private void CategoryResetCancel_Click(object sender, RoutedEventArgs e)
         {
             ConflictDialog.Visibility = Visibility.Collapsed;
+            RestoreDialogHandlers();
+            _pendingCategoryReset = null;
+        }
+
+        private void RestoreDialogHandlers()
+        {
             ConflictConfirm.Click -= CategoryResetConfirm_Click;
             ConflictConfirm.Click += ConflictConfirm_Click;
             ConflictCancel.Click -= CategoryResetCancel_Click;
             ConflictCancel.Click += ConflictCancel_Click;
             ConflictConfirm.Content = "Перевизначити";
-            _pendingCategoryReset = null;
+            ConflictCancel.Visibility = Visibility.Visible;
         }
 
-        private List<HotkeyDefinition>? _pendingCategoryReset;
+        // ============ Форматування ============
 
-        // ============ Форматування жесту ============
+        private static string FormatGesture(HotkeyGesture gesture)
+        {
+            var parts = new List<string>();
+            if ((gesture.Modifiers & HotkeyModifiers.Control) != 0) parts.Add("Ctrl");
+            if ((gesture.Modifiers & HotkeyModifiers.Alt) != 0) parts.Add("Alt");
+            if ((gesture.Modifiers & HotkeyModifiers.Shift) != 0) parts.Add("Shift");
+            if ((gesture.Modifiers & HotkeyModifiers.Win) != 0) parts.Add("Win");
+            parts.Add(FormatKey(gesture.Key));
+            return string.Join("+", parts);
+        }
+
+        private static string FormatKey(HotkeyKey key) => key switch
+        {
+            HotkeyKey.Escape => "Esc",
+            HotkeyKey.Space => "Space",
+            HotkeyKey.Tab => "Tab",
+            HotkeyKey.Enter => "Enter",
+            HotkeyKey.Insert => "Ins",
+            HotkeyKey.Delete => "Del",
+            HotkeyKey.PageUp => "PgUp",
+            HotkeyKey.PageDown => "PgDn",
+            HotkeyKey.OemMinus => "−",
+            HotkeyKey.OemPlus => "+",
+            HotkeyKey.D0 => "0",
+            _ => key.ToString()
+        };
 
         private static string FormatModifiers(ModifierKeys modifiers)
         {
@@ -305,30 +457,8 @@ namespace SCLOCVerse.Controls.SettingsHub
             if ((modifiers & ModifierKeys.Alt) != 0) parts.Add("Alt");
             if ((modifiers & ModifierKeys.Shift) != 0) parts.Add("Shift");
             if ((modifiers & ModifierKeys.Windows) != 0) parts.Add("Win");
-            return parts.Count > 0 ? string.Join("+", parts) : "Натисніть клавіші…";
+            return parts.Count > 0 ? string.Join("+", parts) : "";
         }
-
-        private static string FormatGesture(HotkeyGesture gesture)
-        {
-            var parts = new List<string>();
-
-            if ((gesture.Modifiers & HotkeyModifiers.Control) != 0) parts.Add("Ctrl");
-            if ((gesture.Modifiers & HotkeyModifiers.Alt) != 0) parts.Add("Alt");
-            if ((gesture.Modifiers & HotkeyModifiers.Shift) != 0) parts.Add("Shift");
-            if ((gesture.Modifiers & HotkeyModifiers.Win) != 0) parts.Add("Win");
-
-            parts.Add(FormatKey(gesture.Key));
-            return string.Join("+", parts);
-        }
-
-        private static string FormatKey(HotkeyKey key) => key switch
-        {
-            HotkeyKey.Escape => "Esc",
-            HotkeyKey.D0 => "0",
-            HotkeyKey.OemMinus => "−",
-            HotkeyKey.OemPlus => "+",
-            _ => key.ToString()
-        };
 
         // ============ Групування ============
 
@@ -350,7 +480,7 @@ namespace SCLOCVerse.Controls.SettingsHub
             _ => 9
         };
 
-        // ============ Побудова елементів UI ============
+        // ============ UI helpers ============
 
         private static UIElement MakeGroupHeader(string title)
         {
@@ -366,111 +496,22 @@ namespace SCLOCVerse.Controls.SettingsHub
             };
         }
 
-        private UIElement MakeRow(HotkeyDefinition def)
-        {
-            var grid = new Grid { Margin = new Thickness(0, 2, 0, 2), MinHeight = 40 };
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(130) }); // фіксована ширина keycap
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
-
-            // Назва дії + «Типово:» (показується лише при hover).
-            var textPanel = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
-
-            var desc = new TextBlock
-            {
-                Text = def.Description ?? def.Id.Value,
-                FontFamily = new FontFamily("Segoe UI Semibold"),
-                FontSize = 13,
-                Foreground = new SolidColorBrush(Color.FromRgb(0xEA, 0xF4, 0xFF)),
-                TextTrimming = TextTrimming.CharacterEllipsis
-            };
-            textPanel.Children.Add(desc);
-
-            var defaultText = new TextBlock
-            {
-                Text = "Типово: " + FormatGesture(def.DefaultGesture),
-                FontFamily = new FontFamily("Segoe UI"),
-                FontSize = 11,
-                Foreground = new SolidColorBrush(Color.FromRgb(0x6F, 0x8C, 0xA8)),
-                Opacity = 0, // видно лише при hover
-                Margin = new Thickness(0, 3, 0, 0)
-            };
-            textPanel.Children.Add(defaultText);
-
-            // Hover → показати «Типово:».
-            grid.MouseEnter += (_, _) => defaultText.Opacity = 0.6;
-            grid.MouseLeave += (_, _) => defaultText.Opacity = 0;
-
-            Grid.SetColumn(textPanel, 0);
-            grid.Children.Add(textPanel);
-
-            // Keycap-кнопка (фіксована ширина, моноширинний, keycap-стиль).
-            bool isModified = def.CurrentGesture.HasValue && def.CurrentGesture.Value != def.DefaultGesture;
-            var gestureBtn = new Button
-            {
-                Tag = def.Id.Value,
-                Content = FormatGesture(def.EffectiveGesture),
-                Background = MakeGestureBrush(def),
-                BorderBrush = new SolidColorBrush(isModified
-                    ? Color.FromRgb(0x4A, 0xA3, 0xD8)
-                    : Color.FromRgb(0x2A, 0x5A, 0x78)),
-                Foreground = new SolidColorBrush(Color.FromRgb(0xE8, 0xF3, 0xFF)),
-                FontFamily = new FontFamily("Consolas"),
-                FontSize = 12,
-                Cursor = Cursors.Hand,
-                Margin = new Thickness(10, 0, 0, 0),
-                Padding = new Thickness(8, 4, 8, 4),
-                HorizontalContentAlignment = HorizontalAlignment.Center,
-                ToolTip = "Клікніть, щоб змінити комбінацію",
-                Template = MakeKeycapTemplate()
-            };
-            gestureBtn.Click += GestureButton_Click;
-            Grid.SetColumn(gestureBtn, 1);
-            grid.Children.Add(gestureBtn);
-
-            // Reset (↺) — лише для змінених.
-            if (def.CurrentGesture.HasValue && def.CurrentGesture.Value != def.DefaultGesture)
-            {
-                var resetBtn = new Button
-                {
-                    Tag = def.Id.Value,
-                    Content = "↺",
-                    Style = (Style)FindResource("HubResetGlyph"),
-                    Margin = new Thickness(4, 0, 0, 0),
-                    ToolTip = "Скинути до типової",
-                    Cursor = Cursors.Hand
-                };
-                resetBtn.Click += ResetItem_Click;
-                Grid.SetColumn(resetBtn, 2);
-                grid.Children.Add(resetBtn);
-            }
-
-            return grid;
-        }
-
-        private static Brush MakeGestureBrush(HotkeyDefinition def)
-        {
-            // Змінені — блакитна рамка; default — нейтральна. Фон однаковий (темний).
-            bool modified = def.CurrentGesture.HasValue && def.CurrentGesture.Value != def.DefaultGesture;
-            return new SolidColorBrush(Color.FromRgb(0x0A, 0x1D, 0x29));
-        }
-
-        private static Brush MakeCaptureBrush()
-        {
-            return new SolidColorBrush(Color.FromRgb(0x1A, 0x3D, 0x58));
-        }
-
         private static ControlTemplate MakeKeycapTemplate()
         {
-            // Keycap-стиль: плоский Border (фон + рамка) + ContentPresenter (центр, обрізка довгих).
             var template = new ControlTemplate(typeof(Button));
             var factory = new FrameworkElementFactory(typeof(Border));
-            factory.SetBinding(Border.BackgroundProperty, new System.Windows.Data.Binding { RelativeSource = new System.Windows.Data.RelativeSource(System.Windows.Data.RelativeSourceMode.TemplatedParent), Path = new System.Windows.PropertyPath(Button.BackgroundProperty) });
-            factory.SetBinding(Border.BorderBrushProperty, new System.Windows.Data.Binding { RelativeSource = new System.Windows.Data.RelativeSource(System.Windows.Data.RelativeSourceMode.TemplatedParent), Path = new System.Windows.PropertyPath(Button.BorderBrushProperty) });
+            factory.SetBinding(Border.BackgroundProperty, new System.Windows.Data.Binding
+            {
+                RelativeSource = new System.Windows.Data.RelativeSource(System.Windows.Data.RelativeSourceMode.TemplatedParent),
+                Path = new System.Windows.PropertyPath(Button.BackgroundProperty)
+            });
+            factory.SetBinding(Border.BorderBrushProperty, new System.Windows.Data.Binding
+            {
+                RelativeSource = new System.Windows.Data.RelativeSource(System.Windows.Data.RelativeSourceMode.TemplatedParent),
+                Path = new System.Windows.PropertyPath(Button.BorderBrushProperty)
+            });
             factory.SetValue(Border.BorderThicknessProperty, new Thickness(1));
             factory.SetValue(Border.CornerRadiusProperty, new CornerRadius(4));
-            factory.SetValue(Border.PaddingProperty, new Thickness(8, 4, 8, 4));
-
             var cp = new FrameworkElementFactory(typeof(ContentPresenter));
             cp.SetValue(ContentPresenter.HorizontalAlignmentProperty, HorizontalAlignment.Center);
             cp.SetValue(ContentPresenter.VerticalAlignmentProperty, VerticalAlignment.Center);
@@ -479,12 +520,20 @@ namespace SCLOCVerse.Controls.SettingsHub
             return template;
         }
 
-        // ============ Стан capture ============
+        // ============ Стан рядка ============
 
-        private sealed class CaptureRow(Button button, HotkeyDefinition def)
+        private sealed class RowElements(
+            Grid grid, Button keycap, Button icon,
+            TextBlock desc, TextBlock defaultLabel,
+            HotkeyDefinition def)
         {
-            public Button Button { get; } = button;
+            public Grid Grid { get; } = grid;
+            public Button Keycap { get; } = keycap;
+            public Button Icon { get; } = icon;
+            public TextBlock Desc { get; } = desc;
+            public TextBlock DefaultLabel { get; } = defaultLabel;
             public HotkeyDefinition Def { get; } = def;
+            public bool IsModified { get; set; }
         }
     }
 }
