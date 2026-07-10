@@ -122,6 +122,17 @@
 * **Phase 1:** Профіль — `profile.json` (локальний контракт/схема-версія), експорт/імпорт.
 * **Phase 2:** Профіль — опціональна синхронізація Supabase (hotkey-bindings, overlay-налаштування; **не** hotkey-події — L3 Local Only).
 
+## Overlay — функціональні задачі (Phase 2)
+
+Зараз Overlay-панель показує UI для масштабу/прозорості (персистуються через `IHangarSettingsService`, застосовуються при наступному показі оверлея). Backlog на повноцінну інтерактивність:
+
+- **Live preview** — зміна масштабу/прозорості застосовується до відкритого оверлея в реальному часі (зараз оверлей читає налаштування лише при відкритті — `HangarOverlayWindow.LoadPersistedState`).
+- **Миттєве застосування** — без необхідності повторного показу оверлея (потребує механізму сповіщення overlay-вікна про зміну settings, напр. `IHangarSettingsService` change-event або команди через `IHangarOverlayService`).
+- **Reset** — повернення масштабу/прозорості до типових (0.6 / 0.92) — кнопка вже є (Overlay ResetButton); логіка частково реалізована (`OverlaySettingsPane.ResetButton_Click`).
+- **Persistence** — вже реалізовано (`Settings.Default.Save()`); перевірити цілісність при live-preview.
+
+Статус: 🔵 PLANNED — після завершення UX Polishing та Phase 0.5 (редактор гарячих клавіш).
+
 ## Статус
 
 * ✅ **Phase 0 РЕАЛІЗОВАНО (2026-07-09):** Hub-оболонка + Загальне (міграція) + Гарячі клавіші (read-only) + Overlay (редактор) + F1 (active-window-gated). Build 0 warnings.

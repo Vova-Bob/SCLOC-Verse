@@ -35,6 +35,12 @@
             <!-- Динамічно збудований список груп/рядків -->
             <StackPanel x:Name="HotkeyList" Orientation="Vertical"/>
 
+            <!-- Reset категорії — disabled (редактор гарячих клавіш — Phase 0.5).
+                 Присутнє місце сигналізує про майбутню дію, без fake-функціоналу (P5). -->
+            <Button Style="{StaticResource HubSecondaryButton}" Content="↺ За замовчуванням"
+                    HorizontalAlignment="Left" Margin="0,14,0,0" IsEnabled="False"
+                    ToolTip="Скидання комбінацій стане доступним разом із редактором гарячих клавіш (наступна версія)."/>
+
         </StackPanel>
     </ScrollViewer>
 </UserControl>

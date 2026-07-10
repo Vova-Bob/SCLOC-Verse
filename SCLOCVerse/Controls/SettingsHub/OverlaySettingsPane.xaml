@@ -16,18 +16,37 @@
                     <Setter.Value>
                         <ControlTemplate TargetType="Slider">
                             <Border Background="#0A1D29" BorderBrush="#1E4357" BorderThickness="1" CornerRadius="4" Padding="2">
-                                <Track Name="PART_Track">
+                                <Track Name="PART_Track" IsDirectionReversed="True">
                                     <Track.DecreaseRepeatButton>
-                                        <RepeatButton Background="#2478A9" Command="Slider.DecreaseLarge"/>
+                                        <!-- Плоский шаблон: без стандартного WPF hover-chrome (трек незмінний) -->
+                                        <RepeatButton Command="Slider.DecreaseLarge">
+                                            <RepeatButton.Template>
+                                                <ControlTemplate TargetType="RepeatButton">
+                                                    <Border Background="#2478A9"/>
+                                                </ControlTemplate>
+                                            </RepeatButton.Template>
+                                        </RepeatButton>
                                     </Track.DecreaseRepeatButton>
                                     <Track.IncreaseRepeatButton>
-                                        <RepeatButton Background="#0A1D29" Command="Slider.IncreaseLarge"/>
+                                        <RepeatButton Command="Slider.IncreaseLarge">
+                                            <RepeatButton.Template>
+                                                <ControlTemplate TargetType="RepeatButton">
+                                                    <Border Background="#0A1D29"/>
+                                                </ControlTemplate>
+                                            </RepeatButton.Template>
+                                        </RepeatButton>
                                     </Track.IncreaseRepeatButton>
                                     <Track.Thumb>
                                         <Thumb>
                                             <Thumb.Template>
                                                 <ControlTemplate TargetType="Thumb">
-                                                    <Border Background="#8DD0FF" BorderBrush="#EAF4FF" BorderThickness="1" CornerRadius="3" Width="11" Height="18"/>
+                                                    <Border x:Name="ThumbBd" Background="#8DD0FF" BorderBrush="#EAF4FF" BorderThickness="1" CornerRadius="3" Width="11" Height="18"/>
+                                                    <ControlTemplate.Triggers>
+                                                        <Trigger Property="IsMouseOver" Value="True">
+                                                            <Setter TargetName="ThumbBd" Property="Background" Value="#A8DEFF"/>
+                                                            <Setter TargetName="ThumbBd" Property="BorderBrush" Value="#FFFFFF"/>
+                                                        </Trigger>
+                                                    </ControlTemplate.Triggers>
                                                 </ControlTemplate>
                                             </Thumb.Template>
                                         </Thumb>
@@ -148,8 +167,8 @@
             <!-- Зміни застосовуються при наступному показі -->
             <TextBlock Style="{StaticResource HubFieldDesc}" Margin="4,10,0,0" Text="Зміни масштабу й прозорості застосовуються при наступному показі оверлея."/>
 
-            <!-- Reset категорії (P1 — світло-сіра, не конкурує) -->
-            <Button x:Name="ResetButton" Style="{StaticResource HubCategoryReset}" Content="↺ За замовчуванням" HorizontalAlignment="Left" Margin="0,14,0,0"/>
+            <!-- Reset категорії (P1 — Secondary Button, чітко видима) -->
+            <Button x:Name="ResetButton" Style="{StaticResource HubSecondaryButton}" Content="↺ За замовчуванням" HorizontalAlignment="Left" Margin="0,14,0,0"/>
 
         </StackPanel>
     </ScrollViewer>
