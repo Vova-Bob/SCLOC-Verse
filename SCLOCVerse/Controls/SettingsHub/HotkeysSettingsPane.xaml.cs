@@ -56,13 +56,43 @@ namespace SCLOCVerse.Controls.SettingsHub
             foreach (var group in list.GroupBy(d => ResolveGroup(d.Id.Value))
                                        .OrderBy(g => GroupOrder(g.Key)))
             {
-                HotkeyList.Children.Add(MakeGroupHeader(group.Key));
-                foreach (var def in group)
+                // Картка-секція (композиційний принцип Settings Hub).
+                var card = new Border
                 {
+                    Style = (Style)FindResource("HubGroupCard"),
+                    Margin = new Thickness(0, 0, 0, 14)
+                };
+
+                var cardBody = new StackPanel();
+                var groupLabel = new TextBlock
+                {
+                    Style = (Style)FindResource("HubGroupLabel"),
+                    Text = group.Key.ToUpperInvariant()
+                };
+                cardBody.Children.Add(groupLabel);
+
+                var rowList = group.ToList();
+                for (int i = 0; i < rowList.Count; i++)
+                {
+                    var def = rowList[i];
                     _definitionsById[def.Id.Value] = def;
                     var row = MakeRow(def);
-                    HotkeyList.Children.Add(row.Grid);
+                    cardBody.Children.Add(row.Grid);
+
+                    // Роздільник між рядками (не після останнього).
+                    if (i < rowList.Count - 1)
+                    {
+                        cardBody.Children.Add(new Border
+                        {
+                            Height = 1,
+                            Background = new SolidColorBrush(Color.FromRgb(0x1E, 0x43, 0x57)),
+                            Margin = new Thickness(0, 1, 0, 1)
+                        });
+                    }
                 }
+
+                card.Child = cardBody;
+                HotkeyList.Children.Add(card);
             }
         }
 
@@ -74,102 +104,111 @@ namespace SCLOCVerse.Controls.SettingsHub
             bool isUnassigned = def.IsUnassigned;
             bool isChanged = isModified || isUnassigned;
 
-            var grid = new Grid { Margin = new Thickness(0, 2, 0, 2), MinHeight = 42 };
+            var grid = new Grid { Margin = new Thickness(0, 1, 0, 1), MinHeight = 38 };
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(130) }); // keycap — фіксований
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(30) });   // icon — фіксований
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(130) });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(30) });
 
-            // Колонка 0: опис + «Типово:» (тільки для modified).
+            // Col0: Назва дії (первинна) + «Типово:» (вторинна, лише для changed).
             var textPanel = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
 
             var desc = new TextBlock
             {
+                Style = (Style)FindResource("HubFieldLabel"),
                 Text = def.Description ?? def.Id.Value,
-                FontFamily = new FontFamily("Segoe UI Semibold"),
-                FontSize = 13,
-                Foreground = new SolidColorBrush(Color.FromRgb(0xEA, 0xF4, 0xFF)),
                 TextTrimming = TextTrimming.CharacterEllipsis
             };
             textPanel.Children.Add(desc);
 
-            // «Типово:» — лише для modified або unassigned.
-            bool showDefault = isModified || def.IsUnassigned;
             var defaultLabel = new TextBlock
             {
+                Style = (Style)FindResource("HubFieldDesc"),
                 Text = "Типово: " + FormatGesture(def.DefaultGesture),
-                FontFamily = new FontFamily("Segoe UI"),
-                FontSize = 11,
-                Foreground = new SolidColorBrush(Color.FromRgb(0x6F, 0x8C, 0xA8)),
-                Opacity = showDefault ? 0.6 : 0
+                Opacity = isChanged ? 0.6 : 0
             };
             textPanel.Children.Add(defaultLabel);
 
             Grid.SetColumn(textPanel, 0);
             grid.Children.Add(textPanel);
 
-            // Колонка 1: keycap (фіксована ширина 130px).
+            // Col1: Keycap — компонент HubKeycap (вторинна інформація, не домінує).
             string keycapText = isUnassigned ? "Не призначено" : FormatGesture(def.EffectiveGesture);
-            Color keycapBorder = isUnassigned
-                ? Color.FromRgb(0x3A, 0x4A, 0x56)  // unassigned — сіра, приглушена
-                : isModified
-                    ? Color.FromRgb(0x4A, 0xA3, 0xD8)  // modified — блакитна
-                    : Color.FromRgb(0x2A, 0x5A, 0x78); // default — нейтральна
-            Color keycapText2 = isUnassigned
-                ? Color.FromRgb(0x6F, 0x8C, 0xA8)  // unassigned — приглушений
-                : Color.FromRgb(0xE8, 0xF3, 0xFF); // нормальний
-
             var keycap = new Button
             {
                 Tag = def.Id.Value,
+                Style = (Style)FindResource("HubKeycap"),
                 Content = keycapText,
-                Background = new SolidColorBrush(Color.FromRgb(0x0A, 0x1D, 0x29)),
-                BorderBrush = new SolidColorBrush(keycapBorder),
-                Foreground = new SolidColorBrush(keycapText2),
-                FontFamily = new FontFamily(isUnassigned ? "Segoe UI" : "Consolas"),
-                FontSize = isUnassigned ? 11 : 12,
-                Cursor = Cursors.Hand,
                 Margin = new Thickness(10, 0, 0, 0),
-                Padding = new Thickness(8, 4, 8, 4),
-                HorizontalContentAlignment = HorizontalAlignment.Center,
-                ToolTip = "Клікніть, щоб змінити",
-                Template = MakeKeycapTemplate()
+                ToolTip = "Клікніть, щоб змінити"
             };
+            ApplyKeycapState(keycap, def);
             keycap.Click += Keycap_Click;
             Grid.SetColumn(keycap, 1);
             grid.Children.Add(keycap);
 
-            // Колонка 2: icon (↺ або ✕) — ЗАВЖДИ зарезервований, Opacity керує.
+            // Col2: Reset icon — HubResetGlyph (з Kit), завжди зарезервований.
             var icon = new Button
             {
                 Tag = def.Id.Value,
+                Style = (Style)FindResource("HubResetGlyph"),
                 Content = "↺",
-                Background = Brushes.Transparent,
-                BorderBrush = Brushes.Transparent,
-                BorderThickness = new Thickness(0),
-                Foreground = new SolidColorBrush(Color.FromRgb(0x6F, 0x8C, 0xA8)),
-                FontSize = 15,
-                Cursor = Cursors.Hand,
-                HorizontalContentAlignment = HorizontalAlignment.Center,
-                VerticalContentAlignment = VerticalAlignment.Center,
                 Opacity = isChanged ? 1 : 0,
                 IsHitTestVisible = isChanged,
                 ToolTip = "Скинути до типової"
             };
             icon.Click += ResetIcon_Click;
 
-            // Hover: icon opacity 0→0.4 для unmodified.
+            // Hover → icon opacity для unchanged.
             grid.MouseEnter += (_, _) => { if (icon.Opacity == 0) icon.Opacity = 0.35; };
-            grid.MouseLeave += (_, _) => { if (!_rows.GetValueOrDefault(def.Id.Value)?.IsModified ?? false && icon.Content is "↺") icon.Opacity = 0; };
+            grid.MouseLeave += (_, _) =>
+            {
+                var d = _rows.GetValueOrDefault(def.Id.Value)?.Def;
+                var changed = d is not null && ((d.CurrentGesture.HasValue && d.CurrentGesture.Value != d.DefaultGesture) || d.IsUnassigned);
+                if (!changed && icon.Content is "↺") icon.Opacity = 0;
+            };
 
             Grid.SetColumn(icon, 2);
             grid.Children.Add(icon);
 
             var elements = new RowElements(grid, keycap, icon, desc, defaultLabel, def)
             {
-                IsModified = isModified
+                IsModified = isChanged
             };
             _rows[def.Id.Value] = elements;
             return elements;
+        }
+
+        // ============ Keycap візуальні стани (тільки кольори/текст, без геометрії) ============
+
+        private static void ApplyKeycapState(Button keycap, HotkeyDefinition def)
+        {
+            bool isModified = def.CurrentGesture.HasValue && def.CurrentGesture.Value != def.DefaultGesture;
+            bool isUnassigned = def.IsUnassigned;
+
+            keycap.Background = new SolidColorBrush(Color.FromRgb(0x0A, 0x1D, 0x29));
+            keycap.BorderThickness = new Thickness(1);
+
+            if (isUnassigned)
+            {
+                keycap.BorderBrush = new SolidColorBrush(Color.FromRgb(0x1E, 0x43, 0x57));
+                keycap.Foreground = new SolidColorBrush(Color.FromRgb(0x6F, 0x8C, 0xA8));
+                keycap.FontFamily = new FontFamily("Segoe UI");
+                keycap.FontSize = 11;
+            }
+            else if (isModified)
+            {
+                keycap.BorderBrush = new SolidColorBrush(Color.FromRgb(0x2A, 0x5A, 0x78));
+                keycap.Foreground = new SolidColorBrush(Color.FromRgb(0xC9, 0xDE, 0xEF));
+                keycap.FontFamily = new FontFamily("Consolas");
+                keycap.FontSize = 12;
+            }
+            else // default
+            {
+                keycap.BorderBrush = new SolidColorBrush(Color.FromRgb(0x1E, 0x43, 0x57));
+                keycap.Foreground = new SolidColorBrush(Color.FromRgb(0x8F, 0xAA, 0xB8));
+                keycap.FontFamily = new FontFamily("Consolas");
+                keycap.FontSize = 12;
+            }
         }
 
         // ============ Стани рядка: змінюють лише Content + Opacity ============
@@ -190,23 +229,14 @@ namespace SCLOCVerse.Controls.SettingsHub
         private void SetNormalState(RowElements row)
         {
             var def = row.Def;
-            bool isModified = def.CurrentGesture.HasValue && def.CurrentGesture.Value != def.DefaultGesture;
-            bool isUnassigned = def.IsUnassigned;
-            bool isChanged = isModified || isUnassigned;
+            bool isChanged = (def.CurrentGesture.HasValue && def.CurrentGesture.Value != def.DefaultGesture) || def.IsUnassigned;
 
-            // Keycap.
-            row.Keycap.Content = isUnassigned ? "Не призначено" : FormatGesture(def.EffectiveGesture);
-            row.Keycap.BorderBrush = new SolidColorBrush(
-                isUnassigned ? Color.FromRgb(0x3A, 0x4A, 0x56)
-                : isModified ? Color.FromRgb(0x4A, 0xA3, 0xD8)
-                : Color.FromRgb(0x2A, 0x5A, 0x78));
-            row.Keycap.Foreground = new SolidColorBrush(
-                isUnassigned ? Color.FromRgb(0x6F, 0x8C, 0xA8)
-                : Color.FromRgb(0xE8, 0xF3, 0xFF));
-            row.Keycap.FontFamily = new FontFamily(isUnassigned ? "Segoe UI" : "Consolas");
-            row.Keycap.FontSize = isUnassigned ? 11 : 12;
+            // Keycap — лише візуальні властивості (без геометрії).
+            row.Keycap.Content = def.IsUnassigned ? "Не призначено" : FormatGesture(def.EffectiveGesture);
+            ApplyKeycapState(row.Keycap, def);
 
             // Icon.
+            row.Icon.Style = (Style)FindResource("HubResetGlyph");
             row.Icon.Content = "↺";
             row.Icon.Opacity = isChanged ? 1 : 0;
             row.Icon.IsHitTestVisible = isChanged;
@@ -506,44 +536,6 @@ namespace SCLOCVerse.Controls.SettingsHub
         };
 
         // ============ UI helpers ============
-
-        private static UIElement MakeGroupHeader(string title)
-        {
-            return new TextBlock
-            {
-                Text = title.ToUpperInvariant(),
-                FontFamily = new FontFamily("Segoe UI"),
-                FontSize = 10.5,
-                FontWeight = FontWeights.SemiBold,
-                Foreground = new SolidColorBrush(Color.FromRgb(0x4A, 0xA3, 0xD8)),
-                Margin = new Thickness(2, 14, 0, 8),
-                Opacity = 0.95
-            };
-        }
-
-        private static ControlTemplate MakeKeycapTemplate()
-        {
-            var template = new ControlTemplate(typeof(Button));
-            var factory = new FrameworkElementFactory(typeof(Border));
-            factory.SetBinding(Border.BackgroundProperty, new System.Windows.Data.Binding
-            {
-                RelativeSource = new System.Windows.Data.RelativeSource(System.Windows.Data.RelativeSourceMode.TemplatedParent),
-                Path = new System.Windows.PropertyPath(Button.BackgroundProperty)
-            });
-            factory.SetBinding(Border.BorderBrushProperty, new System.Windows.Data.Binding
-            {
-                RelativeSource = new System.Windows.Data.RelativeSource(System.Windows.Data.RelativeSourceMode.TemplatedParent),
-                Path = new System.Windows.PropertyPath(Button.BorderBrushProperty)
-            });
-            factory.SetValue(Border.BorderThicknessProperty, new Thickness(1));
-            factory.SetValue(Border.CornerRadiusProperty, new CornerRadius(4));
-            var cp = new FrameworkElementFactory(typeof(ContentPresenter));
-            cp.SetValue(ContentPresenter.HorizontalAlignmentProperty, HorizontalAlignment.Center);
-            cp.SetValue(ContentPresenter.VerticalAlignmentProperty, VerticalAlignment.Center);
-            factory.AppendChild(cp);
-            template.VisualTree = factory;
-            return template;
-        }
 
         // ============ Стан рядка ============
 
