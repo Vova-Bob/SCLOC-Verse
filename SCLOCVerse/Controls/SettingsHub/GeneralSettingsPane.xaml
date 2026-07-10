@@ -52,8 +52,9 @@
             <Style x:Key="AutoSearchButton" TargetType="{x:Type Button}" BasedOn="{StaticResource ActionButton}">
                 <Style.Triggers>
                     <Trigger Property="Content" Value="Автопошук">
-                        <Setter Property="Background" Value="#1A5474"/>
-                        <Setter Property="BorderBrush" Value="#4AA3D8"/>
+                        <Setter Property="Background" Value="#2478A9"/>
+                        <Setter Property="BorderBrush" Value="#8DD0FF"/>
+                        <Setter Property="FontWeight" Value="Bold"/>
                     </Trigger>
                     <Trigger Property="Content" Value="Скинути">
                         <!-- P1: скидання шляху — нейтральне, не небезпечне (не червоне) -->

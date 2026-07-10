@@ -52,11 +52,11 @@
         </ResourceDictionary>
     </Canvas.Resources>
 
-    <!-- Кореневий Grid заповнює Canvas. Напівпрозорий темний overlay (≈35%) затемнює фонове
-         зображення лише в межах Hub → текст читабельніший, картки виділяються, фон не конкурує. -->
+    <!-- Кореневий Grid заповнює Canvas. Сильне затемнення фонового зображення (≈85%):
+         фон лишається лише текстурою, картки стають головним візуальним елементом. -->
     <Grid Width="{Binding ActualWidth, RelativeSource={RelativeSource AncestorType={x:Type Canvas}}}"
           Height="{Binding ActualHeight, RelativeSource={RelativeSource AncestorType={x:Type Canvas}}}"
-          Background="#5908131C">
+          Background="#D908131C">
 
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
