@@ -527,6 +527,7 @@ namespace SCLOCVerse.Controls.SettingsHub
 
         private static string ResolveGroup(string id)
         {
+            if (id.StartsWith("AntiAfk.", StringComparison.Ordinal)) return "Anti-AFK";
             if (id.Contains("Scale")) return "Overlay · масштаб";
             if (id.Contains("Opacity")) return "Overlay · прозорість";
             if (id.Contains("ToggleOverlay") || id.Contains("ToggleClickThrough") || id.Contains("BeginTemporaryDrag"))
@@ -540,6 +541,7 @@ namespace SCLOCVerse.Controls.SettingsHub
             "Hangar Timer · цикл" => 1,
             "Overlay · масштаб" => 2,
             "Overlay · прозорість" => 3,
+            "Anti-AFK" => 4,
             _ => 9
         };
 
