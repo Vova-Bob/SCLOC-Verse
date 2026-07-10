@@ -49,7 +49,8 @@ namespace SCLOCVerse.Controls.SettingsHub
             _definitionsById.Clear();
             _rows.Clear();
             var list = _hotkeyService?.GetDefinitions() ?? Enumerable.Empty<HotkeyDefinition>().ToList();
-            var modifiedCount = list.Count(d => d.CurrentGesture.HasValue && d.CurrentGesture.Value != d.DefaultGesture);
+            var modifiedCount = list.Count(d =>
+                (d.CurrentGesture.HasValue && d.CurrentGesture.Value != d.DefaultGesture) || d.IsUnassigned);
             CountText.Text = $"{list.Count()} дій" + (modifiedCount > 0 ? $" · {modifiedCount} змінено" : "");
 
             foreach (var group in list.GroupBy(d => ResolveGroup(d.Id.Value))
@@ -70,6 +71,8 @@ namespace SCLOCVerse.Controls.SettingsHub
         private RowElements MakeRow(HotkeyDefinition def)
         {
             bool isModified = def.CurrentGesture.HasValue && def.CurrentGesture.Value != def.DefaultGesture;
+            bool isUnassigned = def.IsUnassigned;
+            bool isChanged = isModified || isUnassigned;
 
             var grid = new Grid { Margin = new Thickness(0, 2, 0, 2), MinHeight = 42 };
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
@@ -89,31 +92,41 @@ namespace SCLOCVerse.Controls.SettingsHub
             };
             textPanel.Children.Add(desc);
 
+            // «Типово:» — лише для modified або unassigned.
+            bool showDefault = isModified || def.IsUnassigned;
             var defaultLabel = new TextBlock
             {
                 Text = "Типово: " + FormatGesture(def.DefaultGesture),
                 FontFamily = new FontFamily("Segoe UI"),
                 FontSize = 11,
                 Foreground = new SolidColorBrush(Color.FromRgb(0x6F, 0x8C, 0xA8)),
-                Opacity = isModified ? 0.6 : 0 // лише для modified
+                Opacity = showDefault ? 0.6 : 0
             };
             textPanel.Children.Add(defaultLabel);
 
             Grid.SetColumn(textPanel, 0);
             grid.Children.Add(textPanel);
 
-            // Колонка 1: keycap (фіксована ширина 130px, Consolas, центрований).
+            // Колонка 1: keycap (фіксована ширина 130px).
+            string keycapText = isUnassigned ? "Не призначено" : FormatGesture(def.EffectiveGesture);
+            Color keycapBorder = isUnassigned
+                ? Color.FromRgb(0x3A, 0x4A, 0x56)  // unassigned — сіра, приглушена
+                : isModified
+                    ? Color.FromRgb(0x4A, 0xA3, 0xD8)  // modified — блакитна
+                    : Color.FromRgb(0x2A, 0x5A, 0x78); // default — нейтральна
+            Color keycapText2 = isUnassigned
+                ? Color.FromRgb(0x6F, 0x8C, 0xA8)  // unassigned — приглушений
+                : Color.FromRgb(0xE8, 0xF3, 0xFF); // нормальний
+
             var keycap = new Button
             {
                 Tag = def.Id.Value,
-                Content = FormatGesture(def.EffectiveGesture),
+                Content = keycapText,
                 Background = new SolidColorBrush(Color.FromRgb(0x0A, 0x1D, 0x29)),
-                BorderBrush = new SolidColorBrush(isModified
-                    ? Color.FromRgb(0x4A, 0xA3, 0xD8)
-                    : Color.FromRgb(0x2A, 0x5A, 0x78)),
-                Foreground = new SolidColorBrush(Color.FromRgb(0xE8, 0xF3, 0xFF)),
-                FontFamily = new FontFamily("Consolas"),
-                FontSize = 12,
+                BorderBrush = new SolidColorBrush(keycapBorder),
+                Foreground = new SolidColorBrush(keycapText2),
+                FontFamily = new FontFamily(isUnassigned ? "Segoe UI" : "Consolas"),
+                FontSize = isUnassigned ? 11 : 12,
                 Cursor = Cursors.Hand,
                 Margin = new Thickness(10, 0, 0, 0),
                 Padding = new Thickness(8, 4, 8, 4),
@@ -138,8 +151,8 @@ namespace SCLOCVerse.Controls.SettingsHub
                 Cursor = Cursors.Hand,
                 HorizontalContentAlignment = HorizontalAlignment.Center,
                 VerticalContentAlignment = VerticalAlignment.Center,
-                Opacity = isModified ? 1 : 0,      // modified = visible; default = invisible (but space reserved)
-                IsHitTestVisible = isModified,     // default = non-interactive
+                Opacity = isChanged ? 1 : 0,
+                IsHitTestVisible = isChanged,
                 ToolTip = "Скинути до типової"
             };
             icon.Click += ResetIcon_Click;
@@ -176,19 +189,32 @@ namespace SCLOCVerse.Controls.SettingsHub
 
         private void SetNormalState(RowElements row)
         {
-            // Відновити з definition (після RebuildList або скасування).
-            bool isModified = row.Def.CurrentGesture.HasValue && row.Def.CurrentGesture.Value != row.Def.DefaultGesture;
-            row.Keycap.Content = FormatGesture(row.Def.EffectiveGesture);
-            row.Keycap.BorderBrush = new SolidColorBrush(isModified
-                ? Color.FromRgb(0x4A, 0xA3, 0xD8)
+            var def = row.Def;
+            bool isModified = def.CurrentGesture.HasValue && def.CurrentGesture.Value != def.DefaultGesture;
+            bool isUnassigned = def.IsUnassigned;
+            bool isChanged = isModified || isUnassigned;
+
+            // Keycap.
+            row.Keycap.Content = isUnassigned ? "Не призначено" : FormatGesture(def.EffectiveGesture);
+            row.Keycap.BorderBrush = new SolidColorBrush(
+                isUnassigned ? Color.FromRgb(0x3A, 0x4A, 0x56)
+                : isModified ? Color.FromRgb(0x4A, 0xA3, 0xD8)
                 : Color.FromRgb(0x2A, 0x5A, 0x78));
-            row.Keycap.Foreground = new SolidColorBrush(Color.FromRgb(0xE8, 0xF3, 0xFF));
+            row.Keycap.Foreground = new SolidColorBrush(
+                isUnassigned ? Color.FromRgb(0x6F, 0x8C, 0xA8)
+                : Color.FromRgb(0xE8, 0xF3, 0xFF));
+            row.Keycap.FontFamily = new FontFamily(isUnassigned ? "Segoe UI" : "Consolas");
+            row.Keycap.FontSize = isUnassigned ? 11 : 12;
+
+            // Icon.
             row.Icon.Content = "↺";
-            row.Icon.Opacity = isModified ? 1 : 0;
-            row.Icon.IsHitTestVisible = isModified;
+            row.Icon.Opacity = isChanged ? 1 : 0;
+            row.Icon.IsHitTestVisible = isChanged;
             row.Icon.ToolTip = "Скинути до типової";
-            row.DefaultLabel.Opacity = isModified ? 0.6 : 0;
-            row.IsModified = isModified;
+
+            // «Типово:».
+            row.DefaultLabel.Opacity = isChanged ? 0.6 : 0;
+            row.IsModified = isChanged;
         }
 
         // ============ Click handlers ============
@@ -226,14 +252,13 @@ namespace SCLOCVerse.Controls.SettingsHub
                 return;
             }
 
-            // Reset до типової.
+            // Reset до типової = Rebind до DefaultGesture (уніфікований flow).
             if (!_definitionsById.TryGetValue(id, out var def))
                 return;
-            if (!def.CurrentGesture.HasValue || def.CurrentGesture.Value == def.DefaultGesture)
+            if (!def.CurrentGesture.HasValue && !def.IsUnassigned)
                 return;
 
-            _hotkeyService?.Rebind(def.Id, def.DefaultGesture, HotkeyConflictPolicy.Reject, out _);
-            RebuildList();
+            AttemptRebind(def, def.DefaultGesture);
         }
 
         // ============ Capture ============
@@ -372,7 +397,7 @@ namespace SCLOCVerse.Controls.SettingsHub
                 return;
 
             var modified = _definitionsById.Values
-                .Where(d => d.CurrentGesture.HasValue && d.CurrentGesture.Value != d.DefaultGesture)
+                .Where(d => (d.CurrentGesture.HasValue && d.CurrentGesture.Value != d.DefaultGesture) || d.IsUnassigned)
                 .ToList();
             if (modified.Count == 0)
                 return;

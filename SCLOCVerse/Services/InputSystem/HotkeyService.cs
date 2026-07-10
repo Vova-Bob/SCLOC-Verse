@@ -99,20 +99,28 @@ namespace SCLOCVerse.Services.InputSystem
 
                 _definitionsById[definition.Id] = definition;
 
-                if (!_definitionsByGesture.TryGetValue(gesture, out var list))
+                // IsUnassigned → НЕ додавати до gesture-мапи (жест не зайнятий).
+                if (definition.HasGesture)
                 {
-                    list = [];
-                    _definitionsByGesture[gesture] = list;
+                    if (!_definitionsByGesture.TryGetValue(gesture, out var list))
+                    {
+                        list = [];
+                        _definitionsByGesture[gesture] = list;
 
-                    // Реєструємо новий жест у бекенді лише коли він з'являється вперше.
-                    if (_backend is RegisterHotkeyBackend registerBackend)
-                        registerBackend.TryRegister(gesture);
+                        // Реєструємо новий жест у бекенді лише коли він з'являється вперше.
+                        if (_backend is RegisterHotkeyBackend registerBackend)
+                            registerBackend.TryRegister(gesture);
+                    }
+
+                    list.Add(definition);
                 }
 
-                list.Add(definition);
                 _orderedDefinitions.Add(definition);
 
-                LogEvent($"Зареєстровано гарячу клавішу {definition.Id} -> {gesture}");
+                if (definition.HasGesture)
+                    LogEvent($"Зареєстровано гарячу клавішу {definition.Id} -> {gesture}");
+                else
+                    LogEvent($"Зареєстровано гарячу клавішу {definition.Id} -> Unassigned (не в gesture-мапі)");
             }
         }
 
@@ -191,84 +199,104 @@ namespace SCLOCVerse.Services.InputSystem
                     return RebindResult.InvalidGesture;
                 }
 
-                // Unchanged: новий жест == поточний.
-                if (gesture == definition.EffectiveGesture)
+                // Фаза 1: ВАЛІДАЦІЯ — без змін стану.
+
+                // Unchanged: новий жест == поточний effective (якщо not unassigned).
+                if (definition.HasGesture && gesture == definition.EffectiveGesture)
                     return RebindResult.Unchanged;
 
                 // Конфлікт: новий жест зайнятий іншою enabled-дією.
-                if (_definitionsByGesture.TryGetValue(gesture, out var existingList)
-                    && existingList.Count > 0
-                    && existingList.Any(d => d.Enabled && d.Id != id))
+                List<HotkeyDefinition>? conflictsToDisplace = null;
+                if (_definitionsByGesture.TryGetValue(gesture, out var existingList))
                 {
-                    var conflicting = existingList.FirstOrDefault(d => d.Enabled && d.Id != id);
-                    conflictingId = conflicting!.Id;
+                    conflictsToDisplace = existingList
+                        .Where(d => d.Enabled && d.Id != id)
+                        .ToList();
 
-                    if (policy != HotkeyConflictPolicy.Replace)
-                        return RebindResult.Conflict;
-
-                    // Replace: витісняємо всі конфліктуючі (їх CurrentGesture = null).
-                    foreach (var other in existingList.ToList())
+                    if (conflictsToDisplace.Count > 0)
                     {
-                        if (other.Id == id || !other.Enabled)
-                            continue;
+                        conflictingId = conflictsToDisplace[0].Id;
 
-                        other.CurrentGesture = null;
-                        existingList.Remove(other);
-                        LogEvent($"Rebind Replace: витіснено {other.Id} з жеста {gesture}");
+                        if (policy != HotkeyConflictPolicy.Replace)
+                            return RebindResult.Conflict;
+                    }
+                }
+
+                // Фаза 2: ПІДГОТОВКА відкату.
+                var oldGesture = definition.HasGesture ? definition.EffectiveGesture : (HotkeyGesture?)null;
+                var oldCurrentGesture = definition.CurrentGesture;
+                var oldIsUnassigned = definition.IsUnassigned;
+
+                // Фаза 3: TRY-REGISTER (для RegisterHotKey бекенду).
+                // Якщо жест новий (не в мапі), реєструємо в Win32 ДО змін стану.
+                var gestureNeedsRegister = !_definitionsByGesture.ContainsKey(gesture)
+                    || (_definitionsByGesture[gesture].Count == conflictsToDisplace?.Count);
+
+                if (gestureNeedsRegister && _backend is RegisterHotkeyBackend regBackend)
+                {
+                    // Якщо жест зараз зайнятий conflicts — звільнити для try-register.
+                    if (conflictsToDisplace is { Count: > 0 })
+                    {
+                        regBackend.Unregister(gesture);
                     }
 
-                    if (existingList.Count == 0)
+                    if (!regBackend.TryRegister(gesture))
+                    {
+                        // FAIL: відновити Win32 реєстрацію conflicts (якщо звільняли).
+                        if (conflictsToDisplace is { Count: > 0 })
+                            regBackend.TryRegister(gesture);
+
+                        LogEvent($"Rebind FAIL: Win32 реєстрація {gesture} невдала");
+                        return RebindResult.RegistrationFailed;
+                    }
+                }
+
+                // Фаза 4: ЗАСТОСУВАННЯ (атомарно під lock).
+
+                // 4a. Витіснити конфлікти → Unassigned (тристандартна модель).
+                if (conflictsToDisplace is { Count: > 0 })
+                {
+                    foreach (var other in conflictsToDisplace)
+                    {
+                        other.IsUnassigned = true;
+                        other.CurrentGesture = null;
+                        if (_definitionsByGesture.TryGetValue(gesture, out var cl))
+                            cl.Remove(other);
+                        LogEvent($"Rebind Replace: {other.Id} → Unassigned (звільнено {gesture})");
+                    }
+
+                    if (_definitionsByGesture.TryGetValue(gesture, out var cl2) && cl2.Count == 0)
                         _definitionsByGesture.Remove(gesture);
                 }
 
-                // Re-register: прибрати з旧ого gesture-списку.
-                var oldGesture = definition.EffectiveGesture;
-                if (_definitionsByGesture.TryGetValue(oldGesture, out var oldList))
+                // 4b. Прибрати definition зі старого gesture-списку.
+                if (oldGesture.HasValue && _definitionsByGesture.TryGetValue(oldGesture.Value, out var oldList))
                 {
                     oldList.Remove(definition);
                     if (oldList.Count == 0)
                     {
-                        _definitionsByGesture.Remove(oldGesture);
+                        _definitionsByGesture.Remove(oldGesture.Value);
                         if (_backend is RegisterHotkeyBackend oldBackend)
-                            oldBackend.Unregister(oldGesture);
+                            oldBackend.Unregister(oldGesture.Value);
                     }
                 }
 
-                // Оновити жест.
-                definition.CurrentGesture = gesture;
+                // 4c. Оновити стан definition.
+                definition.IsUnassigned = false;
+                definition.CurrentGesture = (gesture == definition.DefaultGesture) ? null : gesture;
 
-                // Додати до нового gesture-списку + зареєструвати у бекенді.
+                // 4d. Додати до нового gesture-списку.
                 if (!_definitionsByGesture.TryGetValue(gesture, out var newList))
                 {
                     newList = [];
                     _definitionsByGesture[gesture] = newList;
-
-                    if (_backend is RegisterHotkeyBackend newBackend)
-                    {
-                        if (!newBackend.TryRegister(gesture))
-                        {
-                            // Win32 FAIL — відкотити CurrentGesture.
-                            definition.CurrentGesture = oldGesture == definition.DefaultGesture ? null : oldGesture;
-                            if (!_definitionsByGesture.TryGetValue(oldGesture, out var revertList))
-                            {
-                                revertList = [];
-                                _definitionsByGesture[oldGesture] = revertList;
-                                if (_backend is RegisterHotkeyBackend rb)
-                                    rb.TryRegister(oldGesture);
-                            }
-                            revertList.Add(definition);
-                            LogEvent($"Rebind FAIL: Win32 реєстрація {gesture} невдала");
-                            return RebindResult.RegistrationFailed;
-                        }
-                    }
                 }
-
                 newList.Add(definition);
 
-                // Phase 0.5: персистувати перевизначення (override-only).
+                // Фаза 5: PERSIST.
                 PersistBindings();
 
-                LogEvent($"Rebind: {id} {oldGesture} -> {gesture}");
+                LogEvent($"Rebind: {id} -> {gesture}");
                 return RebindResult.Success;
             }
         }
@@ -393,31 +421,40 @@ namespace SCLOCVerse.Services.InputSystem
             if (_bindingsStore is null)
                 return;
 
-            var bindings = _bindingsStore.Load();
+            var (bindings, unassigned) = _bindingsStore.Load();
             if (bindings.TryGetValue(definition.Id.Value, out var storedGesture))
             {
                 definition.CurrentGesture = storedGesture;
                 LogEvent($"Rebind (restore): {definition.Id} -> {storedGesture} (з hotkeys.json)");
             }
+            else if (unassigned.Contains(definition.Id.Value))
+            {
+                definition.IsUnassigned = true;
+                LogEvent($"Rebind (restore): {definition.Id} -> Unassigned (з hotkeys.json)");
+            }
         }
 
-        /// <summary>
-        /// Персистує поточні перевизначення (override-only: лише CurrentGesture ≠ null).
-        /// Викликається після Rebind/Reset.
-        /// </summary>
         private void PersistBindings()
         {
             if (_bindingsStore is null)
                 return;
 
             var bindings = new Dictionary<string, HotkeyGesture>(StringComparer.Ordinal);
+            var unassigned = new HashSet<string>(StringComparer.Ordinal);
+
             foreach (var def in _definitionsById.Values)
             {
-                if (def.CurrentGesture.HasValue && def.CurrentGesture.Value != def.DefaultGesture)
+                if (def.IsUnassigned)
+                {
+                    unassigned.Add(def.Id.Value);
+                }
+                else if (def.CurrentGesture.HasValue && def.CurrentGesture.Value != def.DefaultGesture)
+                {
                     bindings[def.Id.Value] = def.CurrentGesture.Value;
+                }
             }
 
-            _bindingsStore.Save(bindings);
+            _bindingsStore.Save(bindings, unassigned);
         }
 
         private static void LogEvent(string message)

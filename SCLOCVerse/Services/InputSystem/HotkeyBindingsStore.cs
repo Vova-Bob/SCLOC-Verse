@@ -46,13 +46,15 @@ namespace SCLOCVerse.Services.InputSystem
         }
 
         /// <summary>
-        /// Завантажує всі перевизначені прив'язки. Повертає порожній словник при
-        /// відсутності файлу або помилці (fallback до default-жестів).
+        /// Завантажує всі перевизначення (custom + unassigned).
         /// </summary>
-        public Dictionary<string, HotkeyGesture> Load()
+        public (Dictionary<string, HotkeyGesture> bindings, HashSet<string> unassigned) Load()
         {
+            var emptyBindings = new Dictionary<string, HotkeyGesture>(StringComparer.Ordinal);
+            var emptyUnassigned = new HashSet<string>(StringComparer.Ordinal);
+
             if (!File.Exists(_filePath))
-                return new Dictionary<string, HotkeyGesture>(StringComparer.Ordinal);
+                return (emptyBindings, emptyUnassigned);
 
             try
             {
@@ -60,35 +62,41 @@ namespace SCLOCVerse.Services.InputSystem
                 var model = JsonSerializer.Deserialize<HotkeyBindingsModel>(json, JsonOptions)
                     ?? new HotkeyBindingsModel();
 
-                var result = new Dictionary<string, HotkeyGesture>(StringComparer.Ordinal);
+                var bindings = new Dictionary<string, HotkeyGesture>(StringComparer.Ordinal);
                 if (model.Bindings != null)
                 {
                     foreach (var (id, gestureStr) in model.Bindings)
                     {
                         if (HotkeyGestureString.TryParse(gestureStr, out var gesture))
-                            result[id] = gesture;
-                        // Невалідний запис ігноруємо (не crash).
+                            bindings[id] = gesture;
                     }
                 }
 
-                return result;
+                var unassigned = new HashSet<string>(StringComparer.Ordinal);
+                if (model.Unassigned != null)
+                {
+                    foreach (var id in model.Unassigned)
+                        unassigned.Add(id);
+                }
+
+                return (bindings, unassigned);
             }
             catch
             {
-                // Пошкоджений файл → fallback (усі default). Не crash.
-                return new Dictionary<string, HotkeyGesture>(StringComparer.Ordinal);
+                return (emptyBindings, emptyUnassigned);
             }
         }
 
         /// <summary>
-        /// Зберігає перевизначені прив'язки (override-only).
+        /// Зберігає перевизначення (override-only: custom bindings + unassigned IDs).
         /// </summary>
-        public void Save(Dictionary<string, HotkeyGesture> bindings)
+        public void Save(Dictionary<string, HotkeyGesture> bindings, HashSet<string> unassigned)
         {
             var model = new HotkeyBindingsModel
             {
                 Version = CurrentVersion,
-                Bindings = new Dictionary<string, string>(StringComparer.Ordinal)
+                Bindings = new Dictionary<string, string>(StringComparer.Ordinal),
+                Unassigned = unassigned.Count > 0 ? unassigned.ToList() : null
             };
 
             foreach (var (id, gesture) in bindings)
@@ -104,7 +112,7 @@ namespace SCLOCVerse.Services.InputSystem
             }
             catch
             {
-                // Помилка запису — не crash (жесті лишається в пам'яті до наступного запуску).
+                // Помилка запису — не crash.
             }
         }
 
@@ -115,6 +123,10 @@ namespace SCLOCVerse.Services.InputSystem
 
             [JsonPropertyName("bindings")]
             public Dictionary<string, string>? Bindings { get; set; }
+
+            [JsonPropertyName("unassigned")]
+            [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+            public List<string>? Unassigned { get; set; }
         }
     }
 }

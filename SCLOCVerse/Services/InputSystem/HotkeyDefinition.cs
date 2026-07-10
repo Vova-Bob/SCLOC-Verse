@@ -37,6 +37,18 @@ namespace SCLOCVerse.Services.InputSystem
         public bool Enabled { get; set; } = true;
 
         /// <summary>
+        /// True если жест явно відключено користувачем (Unassigned стан — тристандартна модель).
+        /// В цьому стані HasGesture=false — жест не займає жодної комбінації в gesture-мапі.
+        /// Phase 0.5 RC1 fix: дозволяє Replace для default-жестів без конфлікту.
+        /// </summary>
+        public bool IsUnassigned { get; set; }
+
+        /// <summary>
+        /// Чи має ця дія активний жест (не Unassigned).
+        /// </summary>
+        public bool HasGesture => !IsUnassigned;
+
+        /// <summary>
         /// Пріоритет обробки при конфлікті комбінацій.
         /// Більше значення — вищий пріоритет.
         /// </summary>
