@@ -302,7 +302,7 @@
                             <TextBlock Style="{StaticResource HubFieldLabel}" Text="Менеджер версій локалізації"/>
                             <TextBlock Style="{StaticResource HubFieldDesc}" Text="Вибір конкретної версії перекладу."/>
                         </StackPanel>
-                        <Button x:Name="UpdateHistoryButton" Grid.Column="1" Style="{StaticResource HubSecondaryButton}" Content="Відкрити…" Height="32"/>
+                        <Button x:Name="UpdateHistoryButton" Grid.Column="1" Style="{StaticResource HubSecondaryButton}" Content="Відкрити…" Width="110"/>
                     </Grid>
                 </StackPanel>
             </Border>
@@ -317,7 +317,7 @@
                             <TextBlock Style="{StaticResource HubFieldLabel}" Text="Очистити кеш гри"/>
                             <TextBlock Style="{StaticResource HubFieldDesc}" Text="Видаляє тимчасові файли Star Citizen. Налаштування SCLOC-Verse не зітруться."/>
                         </StackPanel>
-                        <Button x:Name="BtnResetCash" Grid.Column="1" Style="{StaticResource HubSecondaryButton}" Content="Очистити…" Height="32"/>
+                        <Button x:Name="BtnResetCash" Grid.Column="1" Style="{StaticResource HubSecondaryButton}" Content="Очистити…" Width="110"/>
                     </Grid>
                     <Border Height="1" Background="#1E4357" Margin="0,2"/>
                     <Grid Style="{StaticResource HubSettingRow}">
