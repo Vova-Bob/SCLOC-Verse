@@ -258,5 +258,79 @@ namespace SCLOCVerse {
                 this["LastToastTimestampUtc"] = value;
             }
         }
+
+        // ===== Anti-AFK =====
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool AntiAfkEnabled {
+            get {
+                return ((bool)(this["AntiAfkEnabled"]));
+            }
+            set {
+                this["AntiAfkEnabled"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("#4CAF50")]
+        public string AntiAfkIndicatorColor {
+            get {
+                return ((string)(this["AntiAfkIndicatorColor"]));
+            }
+            set {
+                this["AntiAfkIndicatorColor"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("TopRight")]
+        public string AntiAfkIndicatorPosition {
+            get {
+                return ((string)(this["AntiAfkIndicatorPosition"]));
+            }
+            set {
+                this["AntiAfkIndicatorPosition"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("12")]
+        public double AntiAfkIndicatorSize {
+            get {
+                return ((double)(this["AntiAfkIndicatorSize"]));
+            }
+            set {
+                this["AntiAfkIndicatorSize"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("Pulse")]
+        public string AntiAfkIndicatorAnimation {
+            get {
+                return ((string)(this["AntiAfkIndicatorAnimation"]));
+            }
+            set {
+                this["AntiAfkIndicatorAnimation"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("Running")]
+        public string AntiAfkIndicatorMode {
+            get {
+                return ((string)(this["AntiAfkIndicatorMode"]));
+            }
+            set {
+                this["AntiAfkIndicatorMode"] = value;
+            }
+        }
     }
 }

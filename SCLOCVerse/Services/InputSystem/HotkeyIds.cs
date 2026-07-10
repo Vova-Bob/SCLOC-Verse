@@ -69,5 +69,10 @@ namespace SCLOCVerse.Services.InputSystem
         /// Скинути прозорість overlay.
         /// </summary>
         public static HotkeyId HangarOpacityReset { get; } = new("HangarTimer.OpacityReset");
+
+        /// <summary>
+        /// Увімкнути / Вимкнути Anti-AFK.
+        /// </summary>
+        public static HotkeyId AntiAfkToggle { get; } = new("AntiAfk.Toggle");
     }
 }

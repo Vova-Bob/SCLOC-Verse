@@ -1,3 +1,5 @@
+using SCLOCVerse.Models.AntiAfk;
+
 namespace SCLOCVerse.Interfaces
 {
     /// <summary>
@@ -57,5 +59,31 @@ namespace SCLOCVerse.Interfaces
         /// </summary>
         string GetLastToastTimestampUtc();
         void SetLastToastTimestampUtc(string timestamp);
+
+        // --- Anti-AFK ---
+
+        /// <summary>Чи увімкнено Anti-AFK. Default: False.</summary>
+        bool GetAntiAfkEnabled();
+        void SetAntiAfkEnabled(bool value);
+
+        /// <summary>Колір індикатора як hex-рядок ("#4CAF50"), або "Hidden".</summary>
+        string GetAntiAfkIndicatorColor();
+        void SetAntiAfkIndicatorColor(string value);
+
+        /// <summary>Позиція індикатора на екрані. Default: TopRight.</summary>
+        AntiAfkIndicatorPosition GetAntiAfkIndicatorPosition();
+        void SetAntiAfkIndicatorPosition(AntiAfkIndicatorPosition value);
+
+        /// <summary>Розмір індикатора в пікселях (8–32). Default: 12.</summary>
+        double GetAntiAfkIndicatorSize();
+        void SetAntiAfkIndicatorSize(double value);
+
+        /// <summary>Тип анімації пульсації. Default: Pulse.</summary>
+        AntiAfkIndicatorAnimation GetAntiAfkIndicatorAnimation();
+        void SetAntiAfkIndicatorAnimation(AntiAfkIndicatorAnimation value);
+
+        /// <summary>Режим видимості індикатора. Default: Running.</summary>
+        AntiAfkIndicatorMode GetAntiAfkIndicatorMode();
+        void SetAntiAfkIndicatorMode(AntiAfkIndicatorMode value);
     }
 }

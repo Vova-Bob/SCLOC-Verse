@@ -1,0 +1,44 @@
+<Window x:Class="SCLOCVerse.Controls.AntiAfkIndicatorWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="AntiAfkIndicator"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        ShowInTaskbar="False"
+        Topmost="True"
+        ResizeMode="NoResize"
+        Width="16"
+        Height="16"
+        ShowActivated="False">
+
+    <Window.Resources>
+        <!-- Pulse: рiзкий ритмiчний пульс (0.6с цикл) -->
+        <Storyboard x:Key="PulseAnimation">
+            <DoubleAnimation Storyboard.TargetName="IndicatorDot"
+                             Storyboard.TargetProperty="Opacity"
+                             From="1.0" To="0.3"
+                             Duration="0:0:0.3"
+                             AutoReverse="True"
+                             RepeatBehavior="Forever"/>
+        </Storyboard>
+
+        <!-- Breathing: повiльне дихання (2.5с цикл, плавний fade) -->
+        <Storyboard x:Key="BreathingAnimation">
+            <DoubleAnimation Storyboard.TargetName="IndicatorDot"
+                             Storyboard.TargetProperty="Opacity"
+                             From="1.0" To="0.55"
+                             Duration="0:0:1.25"
+                             AutoReverse="True"
+                             RepeatBehavior="Forever">
+                <DoubleAnimation.EasingFunction>
+                    <SineEase EasingMode="EaseInOut"/>
+                </DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+        </Storyboard>
+    </Window.Resources>
+
+    <Grid>
+        <Ellipse x:Name="IndicatorDot" Fill="#4CAF50" Width="12" Height="12"/>
+    </Grid>
+</Window>

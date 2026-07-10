@@ -160,16 +160,110 @@
                 </StackPanel>
             </Border>
 
-            <!-- ============ ANTI-AFK (не активний, притлумлений) ============ -->
-            <Border Style="{StaticResource HubGroupCard}" Opacity="0.55">
+            <!-- ============ ANTI-AFK (активний) ============ -->
+            <Border Style="{StaticResource HubGroupCard}">
                 <StackPanel Orientation="Vertical">
-                    <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                        <Ellipse Width="9" Height="9" Fill="#44505A" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                        <TextBlock Text="Anti-AFK" FontFamily="Segoe UI Semibold" FontSize="13.5" Foreground="#A7C6E7" VerticalAlignment="Center"/>
-                        <TextBlock Text="· інструмент не активний" FontFamily="Segoe UI" FontSize="11" Foreground="#5A7A8A" VerticalAlignment="Center" Margin="8,0,0,0"/>
+                    <!-- Заголовок-смужка зі статус-крапкою -->
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,10">
+                        <Ellipse x:Name="AntiAfkStatusDot" Width="9" Height="9" Fill="#44505A" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                        <TextBlock Text="Anti-AFK" FontFamily="Segoe UI Semibold" FontSize="13.5" Foreground="#EAF4FF" VerticalAlignment="Center"/>
+                        <TextBlock x:Name="AntiAfkStatusText" Text="· вимкнено" FontFamily="Segoe UI" FontSize="11" Foreground="#5A7A8A" VerticalAlignment="Center" Margin="8,0,0,0"/>
                     </StackPanel>
-                    <TextBlock Style="{StaticResource HubFieldLabel}" Text="Налаштування оверлея недоступні"/>
-                    <TextBlock Style="{StaticResource HubFieldDesc}" TextWrapping="Wrap" Text="Anti-AFK зараз не виводить оверлей. Коли інструмент стане активним, тут з'являться масштаб, прозорість і позиція."/>
+
+                    <!-- Увімкнути Anti-AFK -->
+                    <Grid Margin="0,2,0,6">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="120"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                            <TextBlock Style="{StaticResource HubFieldLabel}" Text="Стан"/>
+                            <TextBlock Style="{StaticResource HubFieldDesc}" Text="гаряча клавіша — End"/>
+                        </StackPanel>
+                        <CheckBox Grid.Column="1" x:Name="AntiAfkEnabledToggle" Style="{StaticResource HubToggle}" Content="Увімкнути Anti-AFK" VerticalAlignment="Center"/>
+                    </Grid>
+
+                    <!-- Колір індикатора -->
+                    <Grid Margin="0,6,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="120"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                            <TextBlock Style="{StaticResource HubFieldLabel}" Text="Колір індикатора"/>
+                        </StackPanel>
+                        <ComboBox Grid.Column="1" x:Name="AntiAfkColorBox" VerticalAlignment="Center" Margin="0,0,10,0">
+                            <ComboBoxItem Content="Приховати" Tag="Hidden"/>
+                            <ComboBoxItem Content="Зелений" Tag="#4CAF50"/>
+                            <ComboBoxItem Content="Синій" Tag="#42A5F5"/>
+                            <ComboBoxItem Content="Жовтий" Tag="#FFEE58"/>
+                            <ComboBoxItem Content="Червоний" Tag="#EF5350"/>
+                        </ComboBox>
+                    </Grid>
+
+                    <!-- Позиція -->
+                    <Grid Margin="0,10,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="120"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                            <TextBlock Style="{StaticResource HubFieldLabel}" Text="Позиція"/>
+                        </StackPanel>
+                        <ComboBox Grid.Column="1" x:Name="AntiAfkPositionBox" VerticalAlignment="Center" Margin="0,0,10,0">
+                            <ComboBoxItem Content="Лівий верхній кут" Tag="TopLeft"/>
+                            <ComboBoxItem Content="Правий верхній кут" Tag="TopRight"/>
+                            <ComboBoxItem Content="Лівий нижній кут" Tag="BottomLeft"/>
+                            <ComboBoxItem Content="Правий нижній кут" Tag="BottomRight"/>
+                            <ComboBoxItem Content="По центру" Tag="Center"/>
+                        </ComboBox>
+                    </Grid>
+
+                    <!-- Розмір -->
+                    <Grid Margin="0,10,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="120"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="50"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                            <TextBlock Style="{StaticResource HubFieldLabel}" Text="Розмір"/>
+                            <TextBlock Style="{StaticResource HubFieldDesc}" Text="8–32 px"/>
+                        </StackPanel>
+                        <Slider Grid.Column="1" x:Name="AntiAfkSizeSlider" Style="{StaticResource HubSlider}" Minimum="8" Maximum="32" TickFrequency="1" IsSnapToTickEnabled="True" VerticalAlignment="Center" Margin="10,0"/>
+                        <TextBlock Grid.Column="2" x:Name="AntiAfkSizeValue" FontFamily="Consolas" FontSize="13" FontWeight="SemiBold" Foreground="#C9DEEF" Width="52" TextAlignment="Right" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                    </Grid>
+
+                    <!-- Анімація -->
+                    <Grid Margin="0,10,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="120"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                            <TextBlock Style="{StaticResource HubFieldLabel}" Text="Анімація"/>
+                        </StackPanel>
+                        <ComboBox Grid.Column="1" x:Name="AntiAfkAnimationBox" VerticalAlignment="Center" Margin="0,0,10,0">
+                            <ComboBoxItem Content="Pulse (різкий)" Tag="Pulse"/>
+                            <ComboBoxItem Content="Breathing (плавний)" Tag="Breathing"/>
+                        </ComboBox>
+                    </Grid>
+
+                    <!-- Режим -->
+                    <Grid Margin="0,10,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="120"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                            <TextBlock Style="{StaticResource HubFieldLabel}" Text="Режим"/>
+                            <TextBlock Style="{StaticResource HubFieldDesc}" Text="постійно / лише при дії"/>
+                        </StackPanel>
+                        <ComboBox Grid.Column="1" x:Name="AntiAfkModeBox" VerticalAlignment="Center" Margin="0,0,10,0">
+                            <ComboBoxItem Content="Running (постійно)" Tag="Running"/>
+                            <ComboBoxItem Content="Idle Only (при дії)" Tag="IdleOnly"/>
+                        </ComboBox>
+                    </Grid>
                 </StackPanel>
             </Border>
 

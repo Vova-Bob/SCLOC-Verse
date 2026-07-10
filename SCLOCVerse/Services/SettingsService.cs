@@ -1,4 +1,5 @@
 ﻿using SCLOCVerse.Interfaces;
+using SCLOCVerse.Models.AntiAfk;
 using System.Diagnostics;
 using System.IO;
 
@@ -139,6 +140,84 @@ namespace SCLOCVerse.Services
         public void SetLastToastTimestampUtc(string timestamp)
         {
             Settings.Default.LastToastTimestampUtc = timestamp ?? string.Empty;
+            Settings.Default.Save();
+        }
+
+        // ===== Anti-AFK =====
+
+        public bool GetAntiAfkEnabled()
+        {
+            return Settings.Default.AntiAfkEnabled;
+        }
+
+        public void SetAntiAfkEnabled(bool value)
+        {
+            Settings.Default.AntiAfkEnabled = value;
+            Settings.Default.Save();
+        }
+
+        public string GetAntiAfkIndicatorColor()
+        {
+            return Settings.Default.AntiAfkIndicatorColor ?? "#4CAF50";
+        }
+
+        public void SetAntiAfkIndicatorColor(string value)
+        {
+            Settings.Default.AntiAfkIndicatorColor = value ?? "Hidden";
+            Settings.Default.Save();
+        }
+
+        public AntiAfkIndicatorPosition GetAntiAfkIndicatorPosition()
+        {
+            return Enum.TryParse<AntiAfkIndicatorPosition>(
+                Settings.Default.AntiAfkIndicatorPosition, out var pos)
+                ? pos
+                : AntiAfkIndicatorPosition.TopRight;
+        }
+
+        public void SetAntiAfkIndicatorPosition(AntiAfkIndicatorPosition value)
+        {
+            Settings.Default.AntiAfkIndicatorPosition = value.ToString();
+            Settings.Default.Save();
+        }
+
+        public double GetAntiAfkIndicatorSize()
+        {
+            var value = Settings.Default.AntiAfkIndicatorSize;
+            return value < 8 ? 12 : value;
+        }
+
+        public void SetAntiAfkIndicatorSize(double value)
+        {
+            Settings.Default.AntiAfkIndicatorSize = value;
+            Settings.Default.Save();
+        }
+
+        public AntiAfkIndicatorAnimation GetAntiAfkIndicatorAnimation()
+        {
+            return Enum.TryParse<AntiAfkIndicatorAnimation>(
+                Settings.Default.AntiAfkIndicatorAnimation, out var anim)
+                ? anim
+                : AntiAfkIndicatorAnimation.Pulse;
+        }
+
+        public void SetAntiAfkIndicatorAnimation(AntiAfkIndicatorAnimation value)
+        {
+            Settings.Default.AntiAfkIndicatorAnimation = value.ToString();
+            Settings.Default.Save();
+        }
+
+        public AntiAfkIndicatorMode GetAntiAfkIndicatorMode()
+        {
+            return Enum.TryParse<AntiAfkIndicatorMode>(
+                Settings.Default.AntiAfkIndicatorMode, out var mode)
+                ? mode
+                : AntiAfkIndicatorMode.Running;
+        }
+
+        public void SetAntiAfkIndicatorMode(AntiAfkIndicatorMode value)
+        {
+            Settings.Default.AntiAfkIndicatorMode = value.ToString();
             Settings.Default.Save();
         }
     }

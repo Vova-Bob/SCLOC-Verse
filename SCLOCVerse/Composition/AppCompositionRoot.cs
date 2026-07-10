@@ -2,6 +2,7 @@ using SCLOCVerse.Helpers;
 using SCLOCVerse.Interfaces;
 using SCLOCVerse.Models.Observability;
 using SCLOCVerse.Services;
+using SCLOCVerse.Services.AntiAfk;
 using SCLOCVerse.Services.ApplicationInstance;
 using SCLOCVerse.Services.ApplicationUpdate;
 using SCLOCVerse.Services.Autostart;
@@ -53,6 +54,7 @@ namespace SCLOCVerse.Composition
         private readonly IApplicationInstanceService _applicationInstanceService;
         private readonly IAutostartService _autostartService;
         private readonly IToastNotificationService _toastNotificationService;
+        private readonly IAntiAfkService _antiAfkService;
 
         public AppCompositionRoot()
         {
@@ -98,6 +100,9 @@ namespace SCLOCVerse.Composition
                 _hangarOverlayService,
                 _hangarSettingsService,
                 _hotkeyService);
+
+            // Anti-AFK: 2 залежності (хоткеї + налаштування). Повністю незалежний від Hangar Overlay.
+            _antiAfkService = new AntiAfkService(_hotkeyService, _preferencesService);
 
             _applicationUpdateService = new ApplicationUpdateService(
                 "Vova-Bob",
@@ -187,6 +192,10 @@ namespace SCLOCVerse.Composition
             if (_hangarOverlayService is IDisposable overlayDisposable)
                 overlayDisposable.Dispose();
 
+            // Anti-AFK: зупинка таймера + закриття індикатора (до hangar timer dispose).
+            if (_antiAfkService is IDisposable antiAfkDisposable)
+                antiAfkDisposable.Dispose();
+
             if (_hangarTimerService is IDisposable hangarDisposable)
                 hangarDisposable.Dispose();
 
@@ -212,6 +221,7 @@ namespace SCLOCVerse.Composition
 
         public IHangarTimerService HangarTimerService => _hangarTimerService;
         public IHotkeyService HotkeyService => _hotkeyService;
+        public IAntiAfkService AntiAfkService => _antiAfkService;
 
         /// <summary>Tray-сервіс для зовнішнього використання (наприклад, App_OnExit).</summary>
         public ITrayService TrayService => _trayService;
@@ -251,7 +261,8 @@ namespace SCLOCVerse.Composition
                 uiPolicy,
                 _preferencesService,
                 _notificationRouter,
-                _toastNotificationService);
+                _toastNotificationService,
+                _antiAfkService);
         }
 
         private static string GetSupabaseUrl()

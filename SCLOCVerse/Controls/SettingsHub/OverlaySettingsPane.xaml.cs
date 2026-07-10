@@ -5,6 +5,7 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
 using SCLOCVerse.Interfaces;
+using SCLOCVerse.Models.AntiAfk;
 using SCLOCVerse.Models.HangarTimer;
 using SCLOCVerse.Services.HangarTimer;
 
@@ -30,6 +31,15 @@ namespace SCLOCVerse.Controls.SettingsHub
 
         /// <summary>true під час програмної зміни слайдерів (уникнення зациклення).</summary>
         private bool _isSyncing;
+
+        // ===== Anti-AFK =====
+
+        private IAntiAfkService? _antiAfk;
+        private IPreferencesService? _antiAfkPrefs;
+        private bool _isAntiAfkSyncing;
+
+        private static readonly SolidColorBrush AntiAfkDotOn = new(Color.FromRgb(0x5B, 0xC9, 0x8A));
+        private static readonly SolidColorBrush AntiAfkDotOff = new(Color.FromRgb(0x44, 0x50, 0x5A));
 
         public OverlaySettingsPane()
         {
@@ -87,6 +97,164 @@ namespace SCLOCVerse.Controls.SettingsHub
             // Drag sync: переміщення overlay → поля X/Y оновлюються.
             if (_overlay != null)
                 _overlay.PositionChanged += Overlay_PositionChanged;
+        }
+
+        // ============ Anti-AFK ============
+
+        /// <summary>
+        /// Прив'язує контроли Anti-AFK до сервісу та налаштувань.
+        /// Завантажує поточні значення та встановлює обробники.
+        /// </summary>
+        public void BindAntiAfk(IAntiAfkService antiAfkService, IPreferencesService preferences)
+        {
+            _antiAfk = antiAfkService;
+            _antiAfkPrefs = preferences;
+
+            // Завантаження поточних значень.
+            _isAntiAfkSyncing = true;
+            try
+            {
+                SyncAntiAfkToggle(antiAfkService.IsRunning);
+
+                var color = preferences.GetAntiAfkIndicatorColor();
+                SelectComboBoxByTag(AntiAfkColorBox, color);
+
+                var pos = preferences.GetAntiAfkIndicatorPosition();
+                SelectComboBoxByTag(AntiAfkPositionBox, pos.ToString());
+
+                var size = preferences.GetAntiAfkIndicatorSize();
+                AntiAfkSizeSlider.Value = size;
+                AntiAfkSizeValue.Text = size.ToString("0");
+
+                var anim = preferences.GetAntiAfkIndicatorAnimation();
+                SelectComboBoxByTag(AntiAfkAnimationBox, anim.ToString());
+
+                var mode = preferences.GetAntiAfkIndicatorMode();
+                SelectComboBoxByTag(AntiAfkModeBox, mode.ToString());
+            }
+            finally
+            {
+                _isAntiAfkSyncing = false;
+            }
+
+            // Підписка на події.
+            antiAfkService.StateChanged += OnAntiAfkStateChanged;
+            AntiAfkEnabledToggle.Checked += AntiAfkToggle_Changed;
+            AntiAfkEnabledToggle.Unchecked += AntiAfkToggle_Changed;
+            AntiAfkColorBox.SelectionChanged += AntiAfkColor_Changed;
+            AntiAfkPositionBox.SelectionChanged += AntiAfkPosition_Changed;
+            AntiAfkSizeSlider.ValueChanged += AntiAfkSize_Changed;
+            AntiAfkAnimationBox.SelectionChanged += AntiAfkAnimation_Changed;
+            AntiAfkModeBox.SelectionChanged += AntiAfkMode_Changed;
+        }
+
+        private void OnAntiAfkStateChanged(object? sender, bool running)
+        {
+            if (!Dispatcher.CheckAccess())
+            {
+                Dispatcher.BeginInvoke(() => OnAntiAfkStateChanged(sender, running));
+                return;
+            }
+
+            _isAntiAfkSyncing = true;
+            try
+            {
+                SyncAntiAfkToggle(running);
+            }
+            finally
+            {
+                _isAntiAfkSyncing = false;
+            }
+        }
+
+        private void SyncAntiAfkToggle(bool running)
+        {
+            AntiAfkEnabledToggle.IsChecked = running;
+            AntiAfkStatusDot.Fill = running ? AntiAfkDotOn : AntiAfkDotOff;
+            AntiAfkStatusText.Text = running ? "· увімкнено" : "· вимкнено";
+        }
+
+        private void AntiAfkToggle_Changed(object sender, RoutedEventArgs e)
+        {
+            if (_isAntiAfkSyncing || _antiAfk is null)
+                return;
+
+            bool wantEnabled = AntiAfkEnabledToggle.IsChecked == true;
+            if (wantEnabled != _antiAfk.IsRunning)
+                _antiAfk.Toggle();
+        }
+
+        private void AntiAfkColor_Changed(object sender, SelectionChangedEventArgs e)
+        {
+            if (_isAntiAfkSyncing || _antiAfkPrefs is null || GetComboBoxTag(AntiAfkColorBox) is not string tag)
+                return;
+
+            _antiAfkPrefs.SetAntiAfkIndicatorColor(tag);
+            _antiAfk?.ApplyIndicatorSettings();
+        }
+
+        private void AntiAfkPosition_Changed(object sender, SelectionChangedEventArgs e)
+        {
+            if (_isAntiAfkSyncing || _antiAfkPrefs is null || GetComboBoxTag(AntiAfkPositionBox) is not string tag)
+                return;
+
+            if (Enum.TryParse<AntiAfkIndicatorPosition>(tag, out var pos))
+            {
+                _antiAfkPrefs.SetAntiAfkIndicatorPosition(pos);
+                _antiAfk?.ApplyIndicatorSettings();
+            }
+        }
+
+        private void AntiAfkSize_Changed(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            if (_isAntiAfkSyncing || _antiAfkPrefs is null)
+                return;
+
+            var size = Math.Round(e.NewValue, 0);
+            AntiAfkSizeValue.Text = size.ToString("0");
+            _antiAfkPrefs.SetAntiAfkIndicatorSize(size);
+            _antiAfk?.ApplyIndicatorSettings();
+        }
+
+        private void AntiAfkAnimation_Changed(object sender, SelectionChangedEventArgs e)
+        {
+            if (_isAntiAfkSyncing || _antiAfkPrefs is null || GetComboBoxTag(AntiAfkAnimationBox) is not string tag)
+                return;
+
+            if (Enum.TryParse<AntiAfkIndicatorAnimation>(tag, out var anim))
+            {
+                _antiAfkPrefs.SetAntiAfkIndicatorAnimation(anim);
+                _antiAfk?.ApplyIndicatorSettings();
+            }
+        }
+
+        private void AntiAfkMode_Changed(object sender, SelectionChangedEventArgs e)
+        {
+            if (_isAntiAfkSyncing || _antiAfkPrefs is null || GetComboBoxTag(AntiAfkModeBox) is not string tag)
+                return;
+
+            if (Enum.TryParse<AntiAfkIndicatorMode>(tag, out var mode))
+            {
+                _antiAfkPrefs.SetAntiAfkIndicatorMode(mode);
+                _antiAfk?.ApplyIndicatorSettings();
+            }
+        }
+
+        private static string? GetComboBoxTag(ComboBox box)
+        {
+            return box.SelectedItem is ComboBoxItem cbi ? cbi.Tag as string : null;
+        }
+
+        private static void SelectComboBoxByTag(ComboBox box, string tagValue)
+        {
+            foreach (var item in box.Items)
+            {
+                if (item is ComboBoxItem cbi && cbi.Tag is string tag && tag == tagValue)
+                {
+                    box.SelectedItem = cbi;
+                    return;
+                }
+            }
         }
 
         // ============ Jump-to-click: клік по доріжці = точна позиція ============
