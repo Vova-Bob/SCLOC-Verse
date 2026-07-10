@@ -19,27 +19,22 @@
                 <TextBlock Text="ГАРЯЧІ КЛАВІШІ" FontFamily="Segoe UI" FontSize="15" FontWeight="Bold" Foreground="#EAF4FF"/>
                 <TextBlock x:Name="CountText" Margin="12,0,0,0" FontFamily="Segoe UI" FontSize="11.5" Foreground="#5A7A8A" VerticalAlignment="Center"/>
             </StackPanel>
-            <TextBlock Style="{StaticResource HubHelpText}" Text="Перелік активних комбінацій. Працюють глобально, навіть коли гра на весь екран."/>
-
-            <!-- Опис стану (read-only, без редагування — P5) — компактний -->
-            <Border Background="#0E2A1C" BorderBrush="#2E6B45" BorderThickness="1" CornerRadius="6" Padding="10,6" Margin="0,0,0,12">
-                <StackPanel Orientation="Horizontal">
-                    <TextBlock Text="ℹ" FontSize="13" Foreground="#7FA84A" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                    <TextBlock FontFamily="Segoe UI" FontSize="12" Foreground="#A7C6E7" VerticalAlignment="Center">
-                        <Run Text="Перелік активних комбінацій. "/>
-                        <Run Text="Редагування з'явиться в наступній версії." FontWeight="SemiBold" Foreground="#C9E0A0"/>
-                    </TextBlock>
-                </StackPanel>
-            </Border>
+            <TextBlock Style="{StaticResource HubHelpText}" Text="Натисніть на комбінацію, щоб змінити її. Працюють глобально, навіть коли гра на весь екран."/>
 
             <!-- Динамічно збудований список груп/рядків -->
             <StackPanel x:Name="HotkeyList" Orientation="Vertical"/>
 
-            <!-- Reset категорії — disabled (редактор гарячих клавіш — Phase 0.5).
-                 Присутнє місце сигналізує про майбутню дію, без fake-функціоналу (P5). -->
-            <Button Style="{StaticResource HubSecondaryButton}" Content="↺ За замовчуванням"
-                    HorizontalAlignment="Left" Margin="0,14,0,0" IsEnabled="False"
-                    ToolTip="Скидання комбінацій стане доступним разом із редактором гарячих клавіш (наступна версія)."/>
+            <!-- Footer: інструкція + reset-категорія -->
+            <StackPanel Orientation="Horizontal" Margin="2,10,0,0">
+                <Border Style="{StaticResource HubKbdBadge}"><TextBlock Text="Esc" FontFamily="Segoe UI Semibold" FontSize="10.5" Foreground="#8DD0FF"/></Border>
+                <TextBlock Text="скасовує введення" FontFamily="Segoe UI" FontSize="11" Foreground="#6F8CA8" VerticalAlignment="Center" Margin="6,0,24,0"/>
+                <Border Style="{StaticResource HubKbdBadge}"><TextBlock Text="Backspace" FontFamily="Segoe UI Semibold" FontSize="10.5" Foreground="#8DD0FF"/></Border>
+                <TextBlock Text="те саме" FontFamily="Segoe UI" FontSize="11" Foreground="#6F8CA8" VerticalAlignment="Center" Margin="6,0,0,0"/>
+            </StackPanel>
+
+            <Button x:Name="CategoryResetButton" Style="{StaticResource HubSecondaryButton}" Content="↺ Скинути всі гарячі клавіші"
+                    HorizontalAlignment="Left" Margin="0,14,0,0" Click="CategoryReset_Click"
+                    ToolTip="Скинути всі комбінації до типових. Лише ця категорія."/>
 
         </StackPanel>
     </ScrollViewer>
