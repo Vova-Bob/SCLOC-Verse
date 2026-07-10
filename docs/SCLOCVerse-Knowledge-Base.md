@@ -1767,6 +1767,31 @@ Phase 3.7 (Security Hardening) — Backlog (DEFAULT PRIVILEGES); SEC-11 — ✅ 
 198. **Design Kit — спільний набір для всіх сторінок.** Каркас (заголовок+лічильник+опис+зона груп+рядок скидання категорії); групи з uppercase-заголовком; рядок «назва+опис ліворуч, контрол праворуч»; тогл для булевих; ↺ скидання per-control + per-category; видимі статуси продукту; єдина шкала відступів і палітра; «Головна» — навігація повернення. Нова категорія береться з набору, а не дизайнується з нуля.
 199. **Критерій завершення UX Polishing.** Не «список пунктів закрито», а сліпий перегляд впізнає Hub як окремий центр керування, а не як стару сторінку з меню (P0). Еталон відчуття — HTML-макети `.kilo/settings-mockups/` (та сама якість сприйняття, не піксель-в-піксель).
 
+## 14.27. Anti-AFK — модуль анти-AFK (2026-07-10) — ✅ IMPL
+
+> Міграція функціональності з SCLOCUA (WinForms .NET 4.8) → SCLOC-Verse (WPF .NET 9).
+> Форензик: 5 ревізій (R1–R5). Джерело: `F:\C\SCLOCUA\AntiAFK.cs`.
+
+200. **GetLastInputInfo замість глобальних hooks (✅ VER+IMPL).** Старий код використовував `WH_KEYBOARD_LL` + `WH_MOUSE_LL` (72 рядки `HookManager`, always-on keylogger). Замінено на `GetLastInputInfo()` — 1 PInvoke, 0 hooks, privacy-safe. Root Cause First: коренева причина hooks — виявлення бездіяльності; GetLastInputInfo вирішує це в один виклик system-wide. Zero Regression: `RawInputBackend` не зачеплено (жодних hooks).
+
+201. **AntiAfkService — координатор (✅ IMPL).** 2 залежності: `IHotkeyService` + `IPreferencesService`. `System.Threading.Timer` (1с poll) → idle check → `SendInput(±1px, MOUSEEVENTF_MOVE)` + random threshold (1–60с, анти-детект). `IDisposable`. Auto-start зі збереженого стану. Не залежить від Hangar Overlay.
+
+202. **AntiAfkIndicatorWindow — окремий overlay (✅ IMPL).** Пульсуюча точка (Ellipse). Win32 `WS_EX_TRANSPARENT | WS_EX_LAYERED` — click-through. 2 анімації: Pulse (0.6с, різкий) / Breathing (2.5с, SineEase). GPU-accelerated Opacity animation. 5 позицій (TopLeft/TopRight/BottomLeft/BottomRight/Center). Не залежить від Hangar Overlay — повністю незалежний життєвий цикл.
+
+203. **Налаштування через IPreferencesService (✅ IMPL).** 6 additive пар: enabled (bool), color (hex string, `"Hidden"` = приховати), position (enum, string у Settings), size (8–32px double), animation (enum), mode (enum). Enum у коді, string у Settings.Designer — конверсія `Enum.TryParse` на межі `SettingsService`.
+
+204. **Гаряча клавіша End (✅ IMPL).** `HotkeyIds.AntiAfkToggle` = `"AntiAfk.Toggle"`, `HotkeyGesture(None, End)`. Rebind-able через Phase 0.5 editor. Автоматично з'являється у «Гарячі клавіші» через `GetDefinitions()`.
+
+205. **Indicator Mode: Running / IdleOnly (✅ IMPL).** Running — індикатор видимий безперервно при on. IdleOnly — спалах (~1.5с) при кожному `SendInput` (зворотний зв'язок: бачити момент дії).
+
+206. **Settings Hub — блок у Overlay (✅ IMPL).** Плейсхолдер (OverlaySettingsPane.xaml:163–174) замінено на реальний `HubGroupCard`: toggle + 4 ComboBox (колір/позиція/анімація/режим) + slider (розмір). Live Preview через `IAntiAfkService.ApplyIndicatorSettings()`. `_isAntiAfkSyncing` flag запобігає зацикленню (аналог `_isSyncing` для Hangar).
+
+207. **FollowOverlay відхилено (✅ REJ).** Ревізія R4 пропонувала позицію «Follow Overlay» (індикатор слідкує за Hangar Overlay). Прибрано в R5: крос-модульна залежність задля 1 опції суперечить KISS. Anti-AFK повністю незалежний від Hangar Overlay.
+
+208. **Телеметрія відкладена.** `anti_afk.toggle` event не входить у першу реалізацію. Спочатку стабільність функції + UX, потім observability.
+
+209. **Схема БД не зачеплена.** Anti-AFK — суто локальний модуль (user.config persistence). Security Review не потрібне.
+
 ---
 
 # 15. Rejected Decisions (майстер-список)
@@ -2255,6 +2280,7 @@ auth.users (TABLE, 35 columns)  +  public.app_installations (TABLE)
 | 0.5 | **Повна система користувацьких гарячих клавіш** — persistence (`CurrentGesture` per id), runtime rebind, capture, conflict resolution, reset, cloud sync через Профіль | висока | ✅ DONE 2026-07-10 (JSON persistence + Rebind API + capture + conflict + reset) |
 | 0.5+ | **Overlay — повна функціональність** — live-preview (слайдер → state → overlay), bidirectional sync (хоткеї → слайдери), jump-to-click, drag→позиція синхронізація, reset позиції | середня | ✅ DONE 2026-07-10 (state.PropertyChanged + PositionChanged + PreviewMouseLeftButtonDown) |
 | — | **Оптимізація збірки** — Debug = framework-dependent (SelfContained=false) | низька | ✅ DONE 2026-07-10 (8× швидше: 26s → 3s) |
+| — | **Anti-AFK** — міграція з SCLOCUA: GetLastInputInfo замість hooks, AntiAfkService, AntiAfkIndicatorWindow (пульсуюча точка, 5 позицій, 2 анімації), хоткей End, 6 налаштувань через IPreferencesService, Settings Hub блок, Indicator Mode (Running/IdleOnly) | висока | ✅ DONE 2026-07-10 (§14.27; build 0 warnings) |
 | 1 | **Профіль — `profile.json`** (локальний контракт/схема-версія, експорт/імпорт) | середня | 🔵 PLANNED |
 | 2 | **Профіль — синхронізація Supabase** (hotkey-bindings, overlay; НЕ hotkey-події — L3 Local Only) | висока | 🔵 PLANNED |
 
