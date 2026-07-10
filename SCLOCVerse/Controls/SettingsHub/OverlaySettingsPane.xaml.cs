@@ -1,7 +1,9 @@
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
+using System.Windows.Media;
 using SCLOCVerse.Interfaces;
 using SCLOCVerse.Models.HangarTimer;
 using SCLOCVerse.Services.HangarTimer;
@@ -69,6 +71,8 @@ namespace SCLOCVerse.Controls.SettingsHub
 
             ScaleSlider.ValueChanged += ScaleSlider_ValueChanged;
             OpacitySlider.ValueChanged += OpacitySlider_ValueChanged;
+            ScaleSlider.PreviewMouseLeftButtonDown += Slider_PreviewMouseLeftButtonDown;
+            OpacitySlider.PreviewMouseLeftButtonDown += Slider_PreviewMouseLeftButtonDown;
             ResetButton.Click += ResetButton_Click;
 
             PosXBox.LostFocus += PosBox_LostFocus;
@@ -83,6 +87,41 @@ namespace SCLOCVerse.Controls.SettingsHub
             // Drag sync: переміщення overlay → поля X/Y оновлюються.
             if (_overlay != null)
                 _overlay.PositionChanged += Overlay_PositionChanged;
+        }
+
+        // ============ Jump-to-click: клік по доріжці = точна позиція ============
+
+        private void Slider_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+        {
+            if (sender is not Slider slider)
+                return;
+
+            // Клік по Thumb — не втручаємось (drag працює штатно).
+            if (IsDescendantOf(e.OriginalSource as DependencyObject, typeof(Thumb)))
+                return;
+
+            var track = slider.Template.FindName("PART_Track", slider) as Track;
+            if (track is null || track.ActualWidth <= 0)
+                return;
+
+            double pct = e.GetPosition(track).X / track.ActualWidth;
+            double value = slider.Minimum + pct * (slider.Maximum - slider.Minimum);
+            slider.Value = Math.Clamp(value, slider.Minimum, slider.Maximum);
+
+            // Capture mouse щоб подальший drag працював без повторного кліку.
+            slider.CaptureMouse();
+            e.Handled = true;
+        }
+
+        private static bool IsDescendantOf(DependencyObject? element, Type ancestorType)
+        {
+            while (element != null)
+            {
+                if (element.GetType() == ancestorType || element.GetType().IsSubclassOf(ancestorType))
+                    return true;
+                element = VisualTreeHelper.GetParent(element);
+            }
+            return false;
         }
 
         // ============ Слайдер → State + Settings (з live-preview) ============
