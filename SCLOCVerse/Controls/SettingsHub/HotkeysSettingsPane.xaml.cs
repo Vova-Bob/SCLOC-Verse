@@ -80,8 +80,8 @@ namespace SCLOCVerse.Controls.SettingsHub
         private void EnterCaptureMode(Button button, HotkeyDefinition def)
         {
             button.Background = MakeCaptureBrush();
-            button.Content = "Натисніть клавіші…";
-            button.ToolTip = "Esc або Backspace — скасувати";
+            button.Content = "● Очікування…";
+            button.ToolTip = "Esc — скасувати";
             _capture = new CaptureRow(button, def);
 
             // Підписуємось на клавіатуру вікна (PreviewKeyDown ловить до будь-якого контролу).
@@ -97,8 +97,8 @@ namespace SCLOCVerse.Controls.SettingsHub
 
             var key = e.Key;
 
-            // Esc/Backspace → скасувати capture (не зберігати).
-            if (key == Key.Escape || key == Key.Back)
+            // Esc → скасувати capture (не зберігати).
+            if (key == Key.Escape)
             {
                 ExitCaptureMode(restore: true);
                 e.Handled = true;
@@ -118,7 +118,8 @@ namespace SCLOCVerse.Controls.SettingsHub
 
             if (gesture is null)
             {
-                // Клавіша поза відомим набором — не завершує capture, ігноруємо.
+                // Невідома клавіша — показуємо «● Очікування…» (фіксована ширина).
+                _capture.Button.Content = "● Очікування…";
                 return;
             }
 
@@ -369,35 +370,41 @@ namespace SCLOCVerse.Controls.SettingsHub
         {
             var grid = new Grid { Margin = new Thickness(0, 2, 0, 2), MinHeight = 40 };
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+            grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(130) }); // фіксована ширина keycap
             grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
-            // Опис дії.
+            // Назва дії + «Типово:» (показується лише при hover).
+            var textPanel = new StackPanel { VerticalAlignment = VerticalAlignment.Center };
+
             var desc = new TextBlock
             {
                 Text = def.Description ?? def.Id.Value,
                 FontFamily = new FontFamily("Segoe UI Semibold"),
                 FontSize = 13,
                 Foreground = new SolidColorBrush(Color.FromRgb(0xEA, 0xF4, 0xFF)),
-                VerticalAlignment = VerticalAlignment.Center,
                 TextTrimming = TextTrimming.CharacterEllipsis
             };
-            Grid.SetColumn(desc, 0);
-            grid.Children.Add(desc);
+            textPanel.Children.Add(desc);
 
-            // Типово (описовий рядок під назвою).
             var defaultText = new TextBlock
             {
                 Text = "Типово: " + FormatGesture(def.DefaultGesture),
                 FontFamily = new FontFamily("Segoe UI"),
                 FontSize = 11,
                 Foreground = new SolidColorBrush(Color.FromRgb(0x6F, 0x8C, 0xA8)),
-                Margin = new Thickness(0, 18, 0, 0)
+                Opacity = 0, // видно лише при hover
+                Margin = new Thickness(0, 3, 0, 0)
             };
-            Grid.SetColumn(defaultText, 0);
-            grid.Children.Add(defaultText);
+            textPanel.Children.Add(defaultText);
 
-            // Кнопка жеста (клікабельна → capture).
+            // Hover → показати «Типово:».
+            grid.MouseEnter += (_, _) => defaultText.Opacity = 0.6;
+            grid.MouseLeave += (_, _) => defaultText.Opacity = 0;
+
+            Grid.SetColumn(textPanel, 0);
+            grid.Children.Add(textPanel);
+
+            // Keycap-кнопка (фіксована ширина, моноширинний, keycap-стиль).
             bool isModified = def.CurrentGesture.HasValue && def.CurrentGesture.Value != def.DefaultGesture;
             var gestureBtn = new Button
             {
@@ -405,16 +412,17 @@ namespace SCLOCVerse.Controls.SettingsHub
                 Content = FormatGesture(def.EffectiveGesture),
                 Background = MakeGestureBrush(def),
                 BorderBrush = new SolidColorBrush(isModified
-                    ? Color.FromRgb(0x4A, 0xA3, 0xD8)   // змінена — блакитна рамка
-                    : Color.FromRgb(0x2A, 0x5A, 0x78)),  // default — нейтральна
+                    ? Color.FromRgb(0x4A, 0xA3, 0xD8)
+                    : Color.FromRgb(0x2A, 0x5A, 0x78)),
                 Foreground = new SolidColorBrush(Color.FromRgb(0xE8, 0xF3, 0xFF)),
-                FontFamily = new FontFamily("Segoe UI Semibold"),
-                FontSize = 12.5,
+                FontFamily = new FontFamily("Consolas"),
+                FontSize = 12,
                 Cursor = Cursors.Hand,
                 Margin = new Thickness(10, 0, 0, 0),
-                Padding = new Thickness(12, 5, 12, 5),
+                Padding = new Thickness(8, 4, 8, 4),
+                HorizontalContentAlignment = HorizontalAlignment.Center,
                 ToolTip = "Клікніть, щоб змінити комбінацію",
-                Template = MakeGestureButtonTemplate()
+                Template = MakeKeycapTemplate()
             };
             gestureBtn.Click += GestureButton_Click;
             Grid.SetColumn(gestureBtn, 1);
@@ -452,16 +460,17 @@ namespace SCLOCVerse.Controls.SettingsHub
             return new SolidColorBrush(Color.FromRgb(0x1A, 0x3D, 0x58));
         }
 
-        private static ControlTemplate MakeGestureButtonTemplate()
+        private static ControlTemplate MakeKeycapTemplate()
         {
-            // Плоский шаблон: Border (фон + рамка) + ContentPresenter.
+            // Keycap-стиль: плоский Border (фон + рамка) + ContentPresenter (центр, обрізка довгих).
             var template = new ControlTemplate(typeof(Button));
             var factory = new FrameworkElementFactory(typeof(Border));
             factory.SetBinding(Border.BackgroundProperty, new System.Windows.Data.Binding { RelativeSource = new System.Windows.Data.RelativeSource(System.Windows.Data.RelativeSourceMode.TemplatedParent), Path = new System.Windows.PropertyPath(Button.BackgroundProperty) });
             factory.SetBinding(Border.BorderBrushProperty, new System.Windows.Data.Binding { RelativeSource = new System.Windows.Data.RelativeSource(System.Windows.Data.RelativeSourceMode.TemplatedParent), Path = new System.Windows.PropertyPath(Button.BorderBrushProperty) });
             factory.SetValue(Border.BorderThicknessProperty, new Thickness(1));
-            factory.SetValue(Border.CornerRadiusProperty, new CornerRadius(5));
-            factory.SetValue(Border.PaddingProperty, new Thickness(12, 5, 12, 5));
+            factory.SetValue(Border.CornerRadiusProperty, new CornerRadius(4));
+            factory.SetValue(Border.PaddingProperty, new Thickness(8, 4, 8, 4));
+
             var cp = new FrameworkElementFactory(typeof(ContentPresenter));
             cp.SetValue(ContentPresenter.HorizontalAlignmentProperty, HorizontalAlignment.Center);
             cp.SetValue(ContentPresenter.VerticalAlignmentProperty, VerticalAlignment.Center);

@@ -25,16 +25,16 @@
             <!-- Динамічно збудований список груп/рядків -->
             <StackPanel x:Name="HotkeyList" Orientation="Vertical"/>
 
-            <!-- Footer: інструкція + reset-категорія -->
-            <StackPanel Orientation="Horizontal" Margin="2,10,0,0">
+            <!-- Footer: інструкція (Esc) -->
+            <StackPanel Orientation="Horizontal" Margin="2,14,0,0">
                 <Border Style="{StaticResource HubKbdBadge}"><TextBlock Text="Esc" FontFamily="Segoe UI Semibold" FontSize="10.5" Foreground="#8DD0FF"/></Border>
-                <TextBlock Text="скасовує введення" FontFamily="Segoe UI" FontSize="11" Foreground="#6F8CA8" VerticalAlignment="Center" Margin="6,0,24,0"/>
-                <Border Style="{StaticResource HubKbdBadge}"><TextBlock Text="Backspace" FontFamily="Segoe UI Semibold" FontSize="10.5" Foreground="#8DD0FF"/></Border>
-                <TextBlock Text="те саме" FontFamily="Segoe UI" FontSize="11" Foreground="#6F8CA8" VerticalAlignment="Center" Margin="6,0,0,0"/>
+                <TextBlock Text="скасовує введення" FontFamily="Segoe UI" FontSize="11" Foreground="#6F8CA8" VerticalAlignment="Center" Margin="6,0,0,0"/>
             </StackPanel>
 
+            <!-- Роздільник + Reset категорії (окрема дія, не частина capture) -->
+            <Border Height="1" Background="#1E4357" Margin="2,16,2,14"/>
             <Button x:Name="CategoryResetButton" Style="{StaticResource HubSecondaryButton}" Content="↺ Скинути всі гарячі клавіші"
-                    HorizontalAlignment="Left" Margin="0,14,0,0" Click="CategoryReset_Click"
+                    HorizontalAlignment="Left" Click="CategoryReset_Click"
                     ToolTip="Скинути всі комбінації до типових. Лише ця категорія."/>
 
         </StackPanel>
@@ -58,8 +58,8 @@
             <TextBlock x:Name="ConflictTitle" FontFamily="Segoe UI" FontSize="15" FontWeight="Bold" Foreground="#EAF4FF" Margin="0,0,0,12"/>
             <TextBlock x:Name="ConflictMessage" FontFamily="Segoe UI" FontSize="13" Foreground="#A7C6E7" TextWrapping="Wrap" Margin="0,0,0,20"/>
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-                <Button x:Name="ConflictCancel" Style="{StaticResource HubSecondaryButton}" Content="Скасувати" Padding="16,4" Margin="0,0,10,0" Click="ConflictCancel_Click"/>
-                <Button x:Name="ConflictConfirm" Style="{StaticResource HubActionButton}" Content="Перевизначити" Padding="16,4" Click="ConflictConfirm_Click"/>
+                <Button x:Name="ConflictConfirm" Style="{StaticResource HubActionButton}" Content="Перевизначити" Padding="16,4" Margin="0,0,10,0" Click="ConflictConfirm_Click"/>
+                <Button x:Name="ConflictCancel" Style="{StaticResource HubSecondaryButton}" Content="Скасувати" Padding="16,4" Click="ConflictCancel_Click"/>
             </StackPanel>
         </StackPanel>
     </Border>
