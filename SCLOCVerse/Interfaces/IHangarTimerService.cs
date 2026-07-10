@@ -57,5 +57,11 @@ namespace SCLOCVerse.Interfaces
         /// Additive: надає Settings Hub доступ до персистентних overlay-налаштувань.
         /// </summary>
         IHangarSettingsService Settings { get; }
+
+        /// <summary>
+        /// Сервіс керування overlay (live-preview масштабу/прозорості).
+        /// Additive: Settings Hub застосовує зміни слайдерів до відкритого overlay.
+        /// </summary>
+        IHangarOverlayService OverlayService { get; }
     }
 }

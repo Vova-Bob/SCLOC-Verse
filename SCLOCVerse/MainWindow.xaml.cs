@@ -189,8 +189,9 @@ namespace SCLOCVerse
             // «Гарячі клавіші»: інтерактивний редактор (Phase 0.5) — capture + conflict + reset.
             CanvasSettings.HotkeysPane?.Populate(_hotkeyService);
 
-            // «Overlay»: реальні налаштування оверлея Hangar Timer (масштаб/прозорість/позиція).
-            CanvasSettings.OverlayPane?.Bind(_hangarTimerService.Settings);
+            // «Overlay»: реальні налаштування оверлея Hangar Timer (масштаб/прозорість/позиція)
+            // + live-preview при зміні слайдерів на відкритому overlay.
+            CanvasSettings.OverlayPane?.Bind(_hangarTimerService.Settings, _hangarTimerService.OverlayService);
 
             // Стан зарезервованих категорій у cat-head (P0 — центр керування показує стан).
             CanvasSettings.ProfilePane.Subtitle = "не налаштовано";

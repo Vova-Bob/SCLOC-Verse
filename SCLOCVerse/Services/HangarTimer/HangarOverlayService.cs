@@ -222,6 +222,31 @@ namespace SCLOCVerse.Services.HangarTimer
             _state.Opacity = 0.92;
         }
 
+        /// <summary>
+        /// Застосувати масштаб у реальному часі (live-preview зі Settings Hub).
+        /// Оновлює стан → вікно реагує через PropertyChanged. Не персистить
+        /// (персистенцію робить OverlaySettingsPane через IHangarSettingsService).
+        /// </summary>
+        public void ApplyScale(double scale)
+        {
+            if (_disposed)
+                return;
+
+            _state.Scale = scale;
+        }
+
+        /// <summary>
+        /// Застосувати прозорість у реальному часі (live-preview зі Settings Hub).
+        /// Оновлює стан → вікно реагує через PropertyChanged.
+        /// </summary>
+        public void ApplyOpacity(double opacity)
+        {
+            if (_disposed)
+                return;
+
+            _state.Opacity = opacity;
+        }
+
         private void OnWindowClosed()
         {
             _timer.Stop();

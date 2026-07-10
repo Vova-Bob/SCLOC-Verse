@@ -41,6 +41,9 @@ namespace SCLOCVerse.Services.HangarTimer
         /// <inheritdoc/>
         public IHangarSettingsService Settings => _settingsService;
 
+        /// <inheritdoc/>
+        public IHangarOverlayService OverlayService => _overlayService;
+
         private bool _disposed;
 
         public HangarTimerService(

@@ -183,8 +183,8 @@
                 <TextBlock Text="прозорість — на активному оверлеї" FontFamily="Segoe UI" FontSize="11" Foreground="#6F8CA8" VerticalAlignment="Center" Margin="6,0,0,0"/>
             </StackPanel>
 
-            <!-- Зміни застосовуються при наступному показі -->
-            <TextBlock Style="{StaticResource HubFieldDesc}" Margin="4,10,0,0" Text="Зміни масштабу й прозорості застосовуються при наступному показі оверлея."/>
+            <!-- Зміни застосовуються негайно (overlay відкритий) або при наступному показі -->
+            <TextBlock Style="{StaticResource HubFieldDesc}" Margin="4,10,0,0" Text="Зміни масштабу й прозорості застосовуються негайно, якщо overlay відкритий."/>
 
             <!-- Reset категорії (P1 — Secondary Button, чітко видима) -->
             <Button x:Name="ResetButton" Style="{StaticResource HubSecondaryButton}" Content="↺ За замовчуванням" HorizontalAlignment="Left" Margin="0,14,0,0"/>
