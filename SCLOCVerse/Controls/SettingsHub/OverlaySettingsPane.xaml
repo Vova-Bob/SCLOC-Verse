@@ -192,7 +192,7 @@
                         <StackPanel Grid.Column="0" VerticalAlignment="Center">
                             <TextBlock Style="{StaticResource HubFieldLabel}" Text="Колір індикатора"/>
                         </StackPanel>
-                        <ComboBox Grid.Column="1" x:Name="AntiAfkColorBox" VerticalAlignment="Center" Margin="0,0,10,0">
+                        <ComboBox Grid.Column="1" x:Name="AntiAfkColorBox" Style="{StaticResource HubComboBox}" VerticalAlignment="Center" Margin="0,0,10,0">
                             <ComboBoxItem Content="Приховати" Tag="Hidden"/>
                             <ComboBoxItem Content="Зелений" Tag="#4CAF50"/>
                             <ComboBoxItem Content="Синій" Tag="#42A5F5"/>
@@ -210,7 +210,7 @@
                         <StackPanel Grid.Column="0" VerticalAlignment="Center">
                             <TextBlock Style="{StaticResource HubFieldLabel}" Text="Позиція"/>
                         </StackPanel>
-                        <ComboBox Grid.Column="1" x:Name="AntiAfkPositionBox" VerticalAlignment="Center" Margin="0,0,10,0">
+                        <ComboBox Grid.Column="1" x:Name="AntiAfkPositionBox" Style="{StaticResource HubComboBox}" VerticalAlignment="Center" Margin="0,0,10,0">
                             <ComboBoxItem Content="Лівий верхній кут" Tag="TopLeft"/>
                             <ComboBoxItem Content="Правий верхній кут" Tag="TopRight"/>
                             <ComboBoxItem Content="Лівий нижній кут" Tag="BottomLeft"/>
@@ -243,7 +243,7 @@
                         <StackPanel Grid.Column="0" VerticalAlignment="Center">
                             <TextBlock Style="{StaticResource HubFieldLabel}" Text="Анімація"/>
                         </StackPanel>
-                        <ComboBox Grid.Column="1" x:Name="AntiAfkAnimationBox" VerticalAlignment="Center" Margin="0,0,10,0">
+                        <ComboBox Grid.Column="1" x:Name="AntiAfkAnimationBox" Style="{StaticResource HubComboBox}" VerticalAlignment="Center" Margin="0,0,10,0">
                             <ComboBoxItem Content="Pulse (різкий)" Tag="Pulse"/>
                             <ComboBoxItem Content="Breathing (плавний)" Tag="Breathing"/>
                         </ComboBox>
@@ -259,7 +259,7 @@
                             <TextBlock Style="{StaticResource HubFieldLabel}" Text="Режим"/>
                             <TextBlock Style="{StaticResource HubFieldDesc}" Text="постійно / лише при дії"/>
                         </StackPanel>
-                        <ComboBox Grid.Column="1" x:Name="AntiAfkModeBox" VerticalAlignment="Center" Margin="0,0,10,0">
+                        <ComboBox Grid.Column="1" x:Name="AntiAfkModeBox" Style="{StaticResource HubComboBox}" VerticalAlignment="Center" Margin="0,0,10,0">
                             <ComboBoxItem Content="Running (постійно)" Tag="Running"/>
                             <ComboBoxItem Content="Idle Only (при дії)" Tag="IdleOnly"/>
                         </ComboBox>

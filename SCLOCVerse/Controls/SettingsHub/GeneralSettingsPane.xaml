@@ -134,69 +134,6 @@
                 </Setter>
             </Style>
 
-            <Style x:Key="UpdateChannelComboBoxStyle" TargetType="{x:Type ComboBox}">
-                <Setter Property="Foreground" Value="White"/>
-                <Setter Property="Background" Value="#0A1D29"/>
-                <Setter Property="BorderBrush" Value="#2A5A78"/>
-                <Setter Property="BorderThickness" Value="1"/>
-                <Setter Property="Padding" Value="0"/>
-                <Setter Property="Height" Value="32"/>
-                <Setter Property="VerticalContentAlignment" Value="Center"/>
-                <Setter Property="Template">
-                    <Setter.Value>
-                        <ControlTemplate TargetType="{x:Type ComboBox}">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                </Grid.ColumnDefinitions>
-                                <Border Grid.ColumnSpan="2" Background="{TemplateBinding Background}"
-                                        BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="6"/>
-                                <ContentPresenter Grid.Column="0" Margin="10,0,4,0" VerticalAlignment="Center"
-                                                  Content="{TemplateBinding SelectionBoxItem}"
-                                                  ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
-                                                  ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}"
-                                                  IsHitTestVisible="False"/>
-                                <ToggleButton Grid.Column="1" Width="22" Height="22" Margin="0,0,3,0"
-                                              Background="Transparent" BorderBrush="{x:Null}" Focusable="False"
-                                              IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}">
-                                    <Path Data="M0,5 L6,11 L12,5" Stroke="#4AA3D8" StrokeThickness="1.5" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                </ToggleButton>
-                                <Popup x:Name="PART_Popup" Placement="Bottom" IsOpen="{TemplateBinding IsDropDownOpen}"
-                                       PopupAnimation="Fade" AllowsTransparency="True" StaysOpen="False" MinWidth="{TemplateBinding ActualWidth}">
-                                    <Border Background="#0A1D29" BorderBrush="#2A5A78" BorderThickness="1" CornerRadius="6">
-                                        <ScrollViewer MaxHeight="200" CanContentScroll="True" HorizontalScrollBarVisibility="Disabled">
-                                            <StackPanel IsItemsHost="True" KeyboardNavigation.DirectionalNavigation="Contained"/>
-                                        </ScrollViewer>
-                                    </Border>
-                                </Popup>
-                            </Grid>
-                        </ControlTemplate>
-                    </Setter.Value>
-                </Setter>
-                <Setter Property="ItemContainerStyle">
-                    <Setter.Value>
-                        <Style TargetType="{x:Type ComboBoxItem}">
-                            <Setter Property="Foreground" Value="#E8F3FF"/>
-                            <Setter Property="Padding" Value="10,6"/>
-                            <Setter Property="Template">
-                                <Setter.Value>
-                                    <ControlTemplate TargetType="{x:Type ComboBoxItem}">
-                                        <Border Name="Bd" Background="{TemplateBinding Background}">
-                                            <ContentPresenter Margin="{TemplateBinding Padding}" VerticalAlignment="Center"/>
-                                        </Border>
-                                        <ControlTemplate.Triggers>
-                                            <Trigger Property="IsHighlighted" Value="True"><Setter TargetName="Bd" Property="Background" Value="#162E42"/></Trigger>
-                                            <Trigger Property="IsSelected" Value="True"><Setter TargetName="Bd" Property="Background" Value="#2478A9"/></Trigger>
-                                        </ControlTemplate.Triggers>
-                                    </ControlTemplate>
-                                </Setter.Value>
-                            </Setter>
-                        </Style>
-                    </Setter.Value>
-                </Setter>
-            </Style>
-
             <!-- Рядок налаштування: назва+опис ліворуч, контрол у правій колонці (P4) -->
             <Style x:Key="HubSettingRow" TargetType="Grid">
                 <Setter Property="MinHeight" Value="48"/>
@@ -293,7 +230,7 @@
                             <TextBlock Style="{StaticResource HubFieldLabel}" Text="Канал оновлень"/>
                             <TextBlock Style="{StaticResource HubFieldDesc}" Text="Які збірки застосунку пропонувати при перевірці нової версії."/>
                         </StackPanel>
-                        <ComboBox x:Name="UpdateChannelComboBox" Grid.Column="1" Width="150" DisplayMemberPath="DisplayName" SelectedValuePath="Value" Style="{StaticResource UpdateChannelComboBoxStyle}"/>
+                        <ComboBox x:Name="UpdateChannelComboBox" Grid.Column="1" Width="150" DisplayMemberPath="DisplayName" SelectedValuePath="Value" Style="{StaticResource HubComboBox}"/>
                     </Grid>
                     <Border Height="1" Background="#1E4357" Margin="0,2"/>
                     <Grid Style="{StaticResource HubSettingRow}">
