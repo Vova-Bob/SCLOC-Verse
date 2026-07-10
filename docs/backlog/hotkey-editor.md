@@ -97,5 +97,5 @@ public enum RebindResult
 
 ## Статус
 
-- 🔵 **PLANNED** — forensic + Decision Engine готові. Очікує погодження плану.
+- ✅ **DONE — Phase 0.5 реалізовано (2026-07-10).** JSON persistence (`hotkeys.json`, override-only, versioned) + `IHotkeyService.Rebind` API (RebindResult enum) + capture (PreviewKeyDown, capture-валідація) + conflict-діалог (Reject/Replace) + reset (per-item/per-category). Build 0 warnings.
 - Останнє оновлення: 2026-07-10.

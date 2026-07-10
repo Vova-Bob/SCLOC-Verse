@@ -2252,7 +2252,7 @@ auth.users (TABLE, 35 columns)  +  public.app_installations (TABLE)
 | 0 | **Overlay** — Hangar Timer (масштаб/прозорість слайдерами); Anti-AFK — плейсхолдер | низька | ✅ DONE 2026-07-09 |
 | 0 | Зарезервовані категорії-плейсхолдери (Головна/Локалізація/Інтерфейс/Профіль/Про програму) | низька | ✅ DONE 2026-07-09 |
 | UX | **UX Polishing** — візуальна ідентичність «центр керування» за дизайн-системою (§14.26); виправлення design-drift | середня | ✅ DONE 2026-07-10 (зауважень немає; арх/композ/атмосфера 9.5–10/10) |
-| 0.5 | **Повна система користувацьких гарячих клавіш** — persistence (`CurrentGesture` per id), runtime rebind, capture, conflict resolution, reset, cloud sync через Профіль | висока | 🔵 PLANNED (окремий forensic + design) |
+| 0.5 | **Повна система користувацьких гарячих клавіш** — persistence (`CurrentGesture` per id), runtime rebind, capture, conflict resolution, reset, cloud sync через Профіль | висока | ✅ DONE 2026-07-10 (JSON persistence + Rebind API + capture + conflict + reset) |
 | 1 | **Профіль — `profile.json`** (локальний контракт/схема-версія, експорт/імпорт) | середня | 🔵 PLANNED |
 | 2 | **Профіль — синхронізація Supabase** (hotkey-bindings, overlay; НЕ hotkey-події — L3 Local Only) | висока | 🔵 PLANNED |
 
@@ -2275,6 +2275,7 @@ auth.users (TABLE, 35 columns)  +  public.app_installations (TABLE)
 | `docs/backlog/README.md` | SEW конвенція деталізації великих задач (картка в KB §17 + файл у `docs/backlog/`) |
 | `docs/backlog/settings-hub.md` | Settings Hub — повна специфікація (AC, варіанти A/B/C, зона впливу). Картка: KB §17.7, ADR-009 |
 | `docs/backlog/settings-hub-design-system.md` | Settings Hub — дизайн-система (P0 Identity First + P1–P5, Design Kit). Доктрина: KB §14.26 |
+| `docs/backlog/hotkey-editor.md` | Phase 0.5 — редактор гарячих клавіш (JSON persistence, Rebind, capture, conflict, reset). Картка: KB §17.7 |
 | `docs/release/release-runbook-1.0.0.1.md` | Ранбук, cleanup-класифікація |
 | `docs/release/db-cleanup-forensic-analysis.md` | Початкова cleanup-політика (частково застаріла) |
 | `docs/release/post-cleanup-forensic-app-installations.md` | Актуальна cleanup-політика (B+C) |
