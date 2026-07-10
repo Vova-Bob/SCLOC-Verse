@@ -92,7 +92,7 @@ namespace SCLOCVerse.Composition
             _hangarOverlayService = new HangarOverlayService(_hangarSettingsService);
             _hotkeyBackend = CreateHotkeyBackend();
             var diagnosticsEnabled = IsHotkeyDiagnosticsEnabled();
-            _hotkeyService = new HotkeyService(_hotkeyBackend, diagnosticsEnabled);
+            _hotkeyService = new HotkeyService(_hotkeyBackend, diagnosticsEnabled, new HotkeyBindingsStore());
             _hangarTimerService = new HangarTimerService(
                 _hangarStartTimeProvider,
                 _hangarOverlayService,

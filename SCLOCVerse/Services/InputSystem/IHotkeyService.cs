@@ -42,5 +42,18 @@ namespace SCLOCVerse.Services.InputSystem
         /// Additive API для відображення в Settings Hub (read-only).
         /// </summary>
         IReadOnlyList<HotkeyDefinition> GetDefinitions();
+
+        /// <summary>
+        /// Змінює жест гарячої клавіші на льоту (runtime rebind).
+        /// Атомарно: конфлікт-перевірка → оновити CurrentGesture → re-register у бекенді.
+        /// Handler лишається (init). Повертає детальний статус без винятків.
+        /// За замовчуванням policy=Reject; Replace — після явного підтвердження користувача.
+        /// </summary>
+        /// <param name="id">Ідентифікатор гарячої клавіші.</param>
+        /// <param name="gesture">Новий жест.</param>
+        /// <param name="policy">Політика конфлікту (Reject за замовчуванням).</param>
+        /// <param name="conflictingId">Якщо Conflict — ідентифікатор дії, що займає жест.</param>
+        RebindResult Rebind(HotkeyId id, HotkeyGesture gesture, HotkeyConflictPolicy policy,
+            out HotkeyId conflictingId);
     }
 }

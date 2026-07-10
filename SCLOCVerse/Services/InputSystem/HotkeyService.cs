@@ -15,6 +15,7 @@ namespace SCLOCVerse.Services.InputSystem
     {
         private readonly IHotkeyBackend _backend;
         private readonly bool _diagnosticsEnabled;
+        private readonly HotkeyBindingsStore? _bindingsStore;
         private readonly Lock _lock = new();
         private readonly Dictionary<HotkeyId, HotkeyDefinition> _definitionsById = [];
         private readonly Dictionary<HotkeyGesture, List<HotkeyDefinition>> _definitionsByGesture = [];
@@ -26,10 +27,14 @@ namespace SCLOCVerse.Services.InputSystem
         /// <summary>
         /// Створює сервіс гарячих клавіш із заданим бекендом.
         /// </summary>
-        public HotkeyService(IHotkeyBackend backend, bool enableDiagnostics = false)
+        /// <param name="bindingsStore">Опціональний JSON-store перевизначених жестів (Phase 0.5).
+        /// null — поведінка як раніше (без persistence). Additive, Zero Regression.</param>
+        public HotkeyService(IHotkeyBackend backend, bool enableDiagnostics = false,
+            HotkeyBindingsStore? bindingsStore = null)
         {
             _backend = backend ?? throw new ArgumentNullException(nameof(backend));
             _diagnosticsEnabled = enableDiagnostics;
+            _bindingsStore = bindingsStore;
             _backend.GestureDetected += OnGestureDetected;
 
             // Key-up підтримують лише бекенди, що реалізують IKeyStateBackend (Raw Input).
@@ -51,6 +56,9 @@ namespace SCLOCVerse.Services.InputSystem
             lock (_lock)
             {
                 ObjectDisposedException.ThrowIf(_disposed, this);
+
+                // Phase 0.5: застосувати збережені перевизначення жестів (override-only).
+                ApplyStoredBindings(definition);
 
                 var gesture = definition.EffectiveGesture;
 
@@ -168,6 +176,104 @@ namespace SCLOCVerse.Services.InputSystem
         }
 
         /// <inheritdoc/>
+        public RebindResult Rebind(HotkeyId id, HotkeyGesture gesture, HotkeyConflictPolicy policy,
+            out HotkeyId conflictingId)
+        {
+            conflictingId = default;
+
+            lock (_lock)
+            {
+                ObjectDisposedException.ThrowIf(_disposed, this);
+
+                if (!_definitionsById.TryGetValue(id, out var definition))
+                {
+                    LogEvent($"Rebind: неіснуюча гаряча клавіша {id}");
+                    return RebindResult.InvalidGesture;
+                }
+
+                // Unchanged: новий жест == поточний.
+                if (gesture == definition.EffectiveGesture)
+                    return RebindResult.Unchanged;
+
+                // Конфлікт: новий жест зайнятий іншою enabled-дією.
+                if (_definitionsByGesture.TryGetValue(gesture, out var existingList)
+                    && existingList.Count > 0
+                    && existingList.Any(d => d.Enabled && d.Id != id))
+                {
+                    var conflicting = existingList.FirstOrDefault(d => d.Enabled && d.Id != id);
+                    conflictingId = conflicting!.Id;
+
+                    if (policy != HotkeyConflictPolicy.Replace)
+                        return RebindResult.Conflict;
+
+                    // Replace: витісняємо всі конфліктуючі (їх CurrentGesture = null).
+                    foreach (var other in existingList.ToList())
+                    {
+                        if (other.Id == id || !other.Enabled)
+                            continue;
+
+                        other.CurrentGesture = null;
+                        existingList.Remove(other);
+                        LogEvent($"Rebind Replace: витіснено {other.Id} з жеста {gesture}");
+                    }
+
+                    if (existingList.Count == 0)
+                        _definitionsByGesture.Remove(gesture);
+                }
+
+                // Re-register: прибрати з旧ого gesture-списку.
+                var oldGesture = definition.EffectiveGesture;
+                if (_definitionsByGesture.TryGetValue(oldGesture, out var oldList))
+                {
+                    oldList.Remove(definition);
+                    if (oldList.Count == 0)
+                    {
+                        _definitionsByGesture.Remove(oldGesture);
+                        if (_backend is RegisterHotkeyBackend oldBackend)
+                            oldBackend.Unregister(oldGesture);
+                    }
+                }
+
+                // Оновити жест.
+                definition.CurrentGesture = gesture;
+
+                // Додати до нового gesture-списку + зареєструвати у бекенді.
+                if (!_definitionsByGesture.TryGetValue(gesture, out var newList))
+                {
+                    newList = [];
+                    _definitionsByGesture[gesture] = newList;
+
+                    if (_backend is RegisterHotkeyBackend newBackend)
+                    {
+                        if (!newBackend.TryRegister(gesture))
+                        {
+                            // Win32 FAIL — відкотити CurrentGesture.
+                            definition.CurrentGesture = oldGesture == definition.DefaultGesture ? null : oldGesture;
+                            if (!_definitionsByGesture.TryGetValue(oldGesture, out var revertList))
+                            {
+                                revertList = [];
+                                _definitionsByGesture[oldGesture] = revertList;
+                                if (_backend is RegisterHotkeyBackend rb)
+                                    rb.TryRegister(oldGesture);
+                            }
+                            revertList.Add(definition);
+                            LogEvent($"Rebind FAIL: Win32 реєстрація {gesture} невдала");
+                            return RebindResult.RegistrationFailed;
+                        }
+                    }
+                }
+
+                newList.Add(definition);
+
+                // Phase 0.5: персистувати перевизначення (override-only).
+                PersistBindings();
+
+                LogEvent($"Rebind: {id} {oldGesture} -> {gesture}");
+                return RebindResult.Success;
+            }
+        }
+
+        /// <inheritdoc/>
         public void Dispose()
         {
             lock (_lock)
@@ -276,6 +382,42 @@ namespace SCLOCVerse.Services.InputSystem
             {
                 LogEvent($"Помилка обробника гарячої клавіші: {ex}");
             }
+        }
+
+        /// <summary>
+        /// Завантажує збережені перевизначення жестів із store (override-only).
+        /// Викликається при Register: якщо store має entry для id → CurrentGesture застосовується.
+        /// </summary>
+        private void ApplyStoredBindings(HotkeyDefinition definition)
+        {
+            if (_bindingsStore is null)
+                return;
+
+            var bindings = _bindingsStore.Load();
+            if (bindings.TryGetValue(definition.Id.Value, out var storedGesture))
+            {
+                definition.CurrentGesture = storedGesture;
+                LogEvent($"Rebind (restore): {definition.Id} -> {storedGesture} (з hotkeys.json)");
+            }
+        }
+
+        /// <summary>
+        /// Персистує поточні перевизначення (override-only: лише CurrentGesture ≠ null).
+        /// Викликається після Rebind/Reset.
+        /// </summary>
+        private void PersistBindings()
+        {
+            if (_bindingsStore is null)
+                return;
+
+            var bindings = new Dictionary<string, HotkeyGesture>(StringComparer.Ordinal);
+            foreach (var def in _definitionsById.Values)
+            {
+                if (def.CurrentGesture.HasValue && def.CurrentGesture.Value != def.DefaultGesture)
+                    bindings[def.Id.Value] = def.CurrentGesture.Value;
+            }
+
+            _bindingsStore.Save(bindings);
         }
 
         private static void LogEvent(string message)
