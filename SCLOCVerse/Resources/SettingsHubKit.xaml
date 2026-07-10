@@ -60,20 +60,22 @@
         <Setter Property="TextWrapping" Value="Wrap"/>
     </Style>
 
-    <!-- ============ KEYCAP — компактний індикатор клавіші (не кнопка) ============ -->
-    <!-- Легкий, непомітний. Стани змінюють лише кольори/текст. Геометрія незмінна. -->
+    <!-- ============ KEYCAP — об'ємний індикатор клавіші (піднята плитка) ============ -->
+    <!-- Читається як інтерактивний елемент: світліший за картку, рамка, тінь, bevel, hover.
+         Стани (default/modified/unassigned) змінюють Background/BorderBrush/Foreground через ApplyKeycapState.
+         Геометрія незмінна (нульовий layout-shift). -->
 
     <Style x:Key="HubKeycap" TargetType="Button">
         <Setter Property="Cursor" Value="Hand"/>
         <Setter Property="FontFamily" Value="Consolas"/>
         <Setter Property="FontSize" Value="13"/>
         <Setter Property="FontWeight" Value="Normal"/>
-        <Setter Property="Foreground" Value="#B0CCE0"/>
-        <Setter Property="Background" Value="#142B3D"/>
-        <Setter Property="BorderBrush" Value="#1A3D54"/>
+        <Setter Property="Foreground" Value="#D8EAFA"/>
+        <Setter Property="Background" Value="#1E445C"/>
+        <Setter Property="BorderBrush" Value="#4A88A8"/>
         <Setter Property="BorderThickness" Value="1"/>
-        <Setter Property="Height" Value="26"/>
-        <Setter Property="Padding" Value="8,0"/>
+        <Setter Property="Height" Value="28"/>
+        <Setter Property="Padding" Value="10,0"/>
         <Setter Property="HorizontalContentAlignment" Value="Center"/>
         <Setter Property="VerticalContentAlignment" Value="Center"/>
         <Setter Property="Template">
@@ -83,10 +85,24 @@
                             Background="{TemplateBinding Background}"
                             BorderBrush="{TemplateBinding BorderBrush}"
                             BorderThickness="{TemplateBinding BorderThickness}"
-                            CornerRadius="3">
-                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"
-                                          Margin="{TemplateBinding Padding}"/>
+                            CornerRadius="4">
+                        <Border.Effect>
+                            <DropShadowEffect Color="#000000" BlurRadius="4" ShadowDepth="1.5"
+                                              Direction="270" Opacity="0.35"/>
+                        </Border.Effect>
+                        <Grid>
+                            <!-- Світла верхня грань (bevel — підняття keycap) -->
+                            <Border CornerRadius="3,3,0,0" Height="1" VerticalAlignment="Top"
+                                    Background="#7AC4E8" Opacity="0.18" Margin="3,1,3,0"/>
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"
+                                              Margin="{TemplateBinding Padding}"/>
+                        </Grid>
                     </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Bd" Property="BorderBrush" Value="#6BB0DA"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>
         </Setter>

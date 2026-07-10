@@ -198,20 +198,20 @@ namespace SCLOCVerse.Controls.SettingsHub
             }
             else if (isModified)
             {
-                // Modified: ледь помітніший (не яскравий — не конкурує з назвою).
-                keycap.Background = new SolidColorBrush(Color.FromRgb(0x16, 0x30, 0x46));
-                keycap.BorderBrush = new SolidColorBrush(Color.FromRgb(0x24, 0x57, 0x76));
-                keycap.Foreground = new SolidColorBrush(Color.FromRgb(0xC4, 0xDC, 0xEE));
+                // Modified: теплий акцент (зеленуватий — користувацьке призначення).
+                keycap.Background = new SolidColorBrush(Color.FromRgb(0x1E, 0x44, 0x38));
+                keycap.BorderBrush = new SolidColorBrush(Color.FromRgb(0x4A, 0x8A, 0x6E));
+                keycap.Foreground = new SolidColorBrush(Color.FromRgb(0xD4, 0xEE, 0xD8));
                 keycap.FontFamily = new FontFamily("Consolas");
                 keycap.FontSize = 13;
                 keycap.FontWeight = FontWeights.Normal;
                 keycap.FontStyle = FontStyles.Normal;
             }
-            else // default — найнепомітніший
+            else // default — блакитна плитка, піднята над карткою
             {
-                keycap.Background = new SolidColorBrush(Color.FromRgb(0x14, 0x2B, 0x3D));
-                keycap.BorderBrush = new SolidColorBrush(Color.FromRgb(0x1A, 0x3D, 0x54));
-                keycap.Foreground = new SolidColorBrush(Color.FromRgb(0xB0, 0xCC, 0xE0));
+                keycap.Background = new SolidColorBrush(Color.FromRgb(0x1E, 0x44, 0x5C));
+                keycap.BorderBrush = new SolidColorBrush(Color.FromRgb(0x4A, 0x88, 0xA8));
+                keycap.Foreground = new SolidColorBrush(Color.FromRgb(0xD8, 0xEA, 0xFA));
                 keycap.FontFamily = new FontFamily("Consolas");
                 keycap.FontSize = 13;
                 keycap.FontWeight = FontWeights.Normal;
