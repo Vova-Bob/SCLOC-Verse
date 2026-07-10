@@ -23,6 +23,12 @@
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
   </PropertyGroup>
 
+  <!-- Debug: framework-dependent — швидка збірка без копіювання .NET runtime (~150 DLL) -->
+  <!-- Release: успадковує SelfContained=true + RuntimeIdentifier з PropertyGroup вище -->
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
+    <SelfContained>false</SelfContained>
+  </PropertyGroup>
+
   <ItemGroup>
     <None Remove="app_icon.ico" />
     <None Remove="Images\background_general.png" />
