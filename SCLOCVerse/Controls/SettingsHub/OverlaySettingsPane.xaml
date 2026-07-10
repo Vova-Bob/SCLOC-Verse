@@ -15,23 +15,25 @@
                 <Setter Property="Template">
                     <Setter.Value>
                         <ControlTemplate TargetType="Slider">
-                            <Border Background="#0A1D29" BorderBrush="#1E4357" BorderThickness="1" CornerRadius="4" Padding="2">
-                                <Track Name="PART_Track" IsDirectionReversed="True">
+                            <Border Background="#0F2030" BorderBrush="#1E4357" BorderThickness="1" CornerRadius="4" Padding="2">
+                                <!-- Напрямок за замовчуванням: більше значення → правіше (IsDirectionReversed=False) -->
+                                <Track Name="PART_Track">
                                     <Track.DecreaseRepeatButton>
-                                        <!-- Плоский шаблон: без стандартного WPF hover-chrome (трек незмінний) -->
+                                        <!-- Заповнена частина (ліворуч від thumb): приглушена, не неонова -->
                                         <RepeatButton Command="Slider.DecreaseLarge">
                                             <RepeatButton.Template>
                                                 <ControlTemplate TargetType="RepeatButton">
-                                                    <Border Background="#2478A9"/>
+                                                    <Border Background="#2D5E7E"/>
                                                 </ControlTemplate>
                                             </RepeatButton.Template>
                                         </RepeatButton>
                                     </Track.DecreaseRepeatButton>
                                     <Track.IncreaseRepeatButton>
+                                        <!-- Порожній трек: темний, без hover-chrome -->
                                         <RepeatButton Command="Slider.IncreaseLarge">
                                             <RepeatButton.Template>
                                                 <ControlTemplate TargetType="RepeatButton">
-                                                    <Border Background="#0A1D29"/>
+                                                    <Border Background="#0F2030"/>
                                                 </ControlTemplate>
                                             </RepeatButton.Template>
                                         </RepeatButton>
@@ -40,11 +42,28 @@
                                         <Thumb>
                                             <Thumb.Template>
                                                 <ControlTemplate TargetType="Thumb">
-                                                    <Border x:Name="ThumbBd" Background="#8DD0FF" BorderBrush="#EAF4FF" BorderThickness="1" CornerRadius="3" Width="11" Height="18"/>
+                                                    <Border x:Name="ThumbBd" CornerRadius="5" BorderBrush="#4AA3D8" BorderThickness="1" Width="14" Height="20">
+                                                        <Border.Background>
+                                                            <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                                                <GradientStop Color="#B0E2FF" Offset="0"/>
+                                                                <GradientStop Color="#6FBCE8" Offset="1"/>
+                                                            </LinearGradientBrush>
+                                                        </Border.Background>
+                                                        <Border.Effect>
+                                                            <DropShadowEffect Color="#000000" BlurRadius="4" ShadowDepth="1" Direction="270" Opacity="0.3"/>
+                                                        </Border.Effect>
+                                                    </Border>
                                                     <ControlTemplate.Triggers>
                                                         <Trigger Property="IsMouseOver" Value="True">
-                                                            <Setter TargetName="ThumbBd" Property="Background" Value="#A8DEFF"/>
-                                                            <Setter TargetName="ThumbBd" Property="BorderBrush" Value="#FFFFFF"/>
+                                                            <Setter TargetName="ThumbBd" Property="BorderBrush" Value="#8DD0FF"/>
+                                                            <Setter TargetName="ThumbBd" Property="Background">
+                                                                <Setter.Value>
+                                                                    <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                                                        <GradientStop Color="#C6ECFF" Offset="0"/>
+                                                                        <GradientStop Color="#82CCEE" Offset="1"/>
+                                                                    </LinearGradientBrush>
+                                                                </Setter.Value>
+                                                            </Setter>
                                                         </Trigger>
                                                     </ControlTemplate.Triggers>
                                                 </ControlTemplate>
@@ -104,7 +123,7 @@
                             <TextBlock Style="{StaticResource HubFieldDesc}" Text="за замовч. 0.60"/>
                         </StackPanel>
                         <Slider Grid.Column="1" x:Name="ScaleSlider" Style="{StaticResource HubSlider}" Minimum="0.2" Maximum="2.0" TickFrequency="0.05" IsSnapToTickEnabled="True" VerticalAlignment="Center" Margin="10,0"/>
-                        <TextBlock Grid.Column="2" x:Name="ScaleValue" Style="{StaticResource HubFieldLabel}" HorizontalAlignment="Right"/>
+                        <TextBlock Grid.Column="2" x:Name="ScaleValue" FontFamily="Consolas" FontSize="13" FontWeight="SemiBold" Foreground="#C9DEEF" Width="52" TextAlignment="Right" HorizontalAlignment="Right" VerticalAlignment="Center"/>
                     </Grid>
 
                     <!-- Прозорість -->
@@ -119,7 +138,7 @@
                             <TextBlock Style="{StaticResource HubFieldDesc}" Text="за замовч. 0.92"/>
                         </StackPanel>
                         <Slider Grid.Column="1" x:Name="OpacitySlider" Style="{StaticResource HubSlider}" Minimum="0.2" Maximum="1.0" TickFrequency="0.02" IsSnapToTickEnabled="True" VerticalAlignment="Center" Margin="10,0"/>
-                        <TextBlock Grid.Column="2" x:Name="OpacityValue" Style="{StaticResource HubFieldLabel}" HorizontalAlignment="Right"/>
+                        <TextBlock Grid.Column="2" x:Name="OpacityValue" FontFamily="Consolas" FontSize="13" FontWeight="SemiBold" Foreground="#C9DEEF" Width="52" TextAlignment="Right" HorizontalAlignment="Right" VerticalAlignment="Center"/>
                     </Grid>
 
                     <!-- Позиція (службова) -->
