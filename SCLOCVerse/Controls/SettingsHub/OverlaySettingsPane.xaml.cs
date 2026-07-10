@@ -107,9 +107,6 @@ namespace SCLOCVerse.Controls.SettingsHub
             double pct = e.GetPosition(track).X / track.ActualWidth;
             double value = slider.Minimum + pct * (slider.Maximum - slider.Minimum);
             slider.Value = Math.Clamp(value, slider.Minimum, slider.Maximum);
-
-            // Capture mouse щоб подальший drag працював без повторного кліку.
-            slider.CaptureMouse();
             e.Handled = true;
         }
 
