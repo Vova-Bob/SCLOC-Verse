@@ -52,9 +52,8 @@ namespace SCLOCVerse.Services.AntiAfk
             SetRandomAfkThreshold();
             RegisterHotkey();
 
-            // Авто-старт якщо раніше було увімкнено.
-            if (_preferences.GetAntiAfkEnabled())
-                StartInternal();
+            // Anti-AFK завжди стартує вимкненим. Користувач вмикає його явно
+            // (хоткея End або тоглом у Settings Hub). Стан не персистується для авто-старту.
         }
 
         /// <inheritdoc/>
@@ -91,6 +90,8 @@ namespace SCLOCVerse.Services.AntiAfk
             _timer.Change(0, PollIntervalMs);
             _preferences.SetAntiAfkEnabled(true);
 
+            Debug.WriteLine($"[AntiAfk] Toggle: ON (timer {PollIntervalMs}ms, threshold {_afkThreshold}ms)");
+
             // Індикатор: показати лише в Running режимі (IdleOnly спалахує при дії).
             var mode = _preferences.GetAntiAfkIndicatorMode();
             if (mode == AntiAfkIndicatorMode.Running)
@@ -105,6 +106,8 @@ namespace SCLOCVerse.Services.AntiAfk
             _timer.Change(Timeout.Infinite, Timeout.Infinite);
             _preferences.SetAntiAfkEnabled(false);
 
+            Debug.WriteLine("[AntiAfk] Toggle: OFF (timer stopped)");
+
             HideIndicator();
 
             StateChanged?.Invoke(this, false);
@@ -117,10 +120,15 @@ namespace SCLOCVerse.Services.AntiAfk
 
             // Перевірка бездіяльності через GetLastInputInfo (без hooks).
             int idleMs = GetIdleMilliseconds();
+
             if (idleMs < _afkThreshold)
+            {
+                Debug.WriteLine($"[AntiAfk] Poll: idle={idleMs}ms threshold={_afkThreshold}ms → skip (user active)");
                 return;
+            }
 
             // Користувач бездіяльний — імітуємо рух миші.
+            Debug.WriteLine($"[AntiAfk] Poll: idle={idleMs}ms threshold={_afkThreshold}ms → SendInput (±1px)");
             SimulateMouseMove();
             SetRandomAfkThreshold();
 
@@ -325,7 +333,12 @@ namespace SCLOCVerse.Services.AntiAfk
 
             try
             {
-                SendInput(1, [input], Marshal.SizeOf<INPUT>());
+                uint result = SendInput(1, [input], Marshal.SizeOf<INPUT>());
+                if (result == 0)
+                {
+                    int err = Marshal.GetLastWin32Error();
+                    Debug.WriteLine($"[AntiAfk] SendInput FAILED: returned 0, Win32Error={err}");
+                }
             }
             catch (Exception ex)
             {
