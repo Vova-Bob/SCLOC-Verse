@@ -52,6 +52,11 @@ namespace SCLOCVerse.Services.HangarTimer
         /// </summary>
         public HangarTimerState State => _state;
 
+        /// <summary>
+        /// Сповіщає при переміщенні overlay (drag). Settings Hub оновлює поля X/Y.
+        /// </summary>
+        public event EventHandler<(double X, double Y)>? PositionChanged;
+
         public void Show(long cycleStartMs)
         {
             if (_disposed)
@@ -66,6 +71,8 @@ namespace SCLOCVerse.Services.HangarTimer
             _cycleStartMs = cycleStartMs;
 
             _window = new HangarOverlayWindow(_state, _settingsService, OnWindowClosed);
+            // Підписка на переміщення вікна → транслиція в PositionChanged.
+            _window.LocationChanged += OnWindowLocationChanged;
             _window.Show();
             _timer.Start();
             UpdateModel();
@@ -253,9 +260,19 @@ namespace SCLOCVerse.Services.HangarTimer
             _state.Opacity = opacity;
         }
 
+        private void OnWindowLocationChanged(object? sender, EventArgs e)
+        {
+            if (_window is null)
+                return;
+
+            PositionChanged?.Invoke(this, (_window.Left, _window.Top));
+        }
+
         private void OnWindowClosed()
         {
             _timer.Stop();
+            if (_window != null)
+                _window.LocationChanged -= OnWindowLocationChanged;
             _window = null;
         }
 

@@ -19,6 +19,8 @@ namespace SCLOCVerse.Controls.SettingsHub
     {
         private const double DefaultScale = 0.6;
         private const double DefaultOpacity = 0.92;
+        private const double DefaultPosX = 20.0;
+        private const double DefaultPosY = 20.0;
 
         private IHangarSettingsService? _settings;
         private HangarOverlayService? _overlay;
@@ -77,6 +79,10 @@ namespace SCLOCVerse.Controls.SettingsHub
             // Bidirectional sync: хоткеї/програмні зміни → слайдери оновлюються.
             if (_state != null)
                 _state.PropertyChanged += State_PropertyChanged;
+
+            // Drag sync: переміщення overlay → поля X/Y оновлюються.
+            if (_overlay != null)
+                _overlay.PositionChanged += Overlay_PositionChanged;
         }
 
         // ============ Слайдер → State + Settings (з live-preview) ============
@@ -156,6 +162,26 @@ namespace SCLOCVerse.Controls.SettingsHub
             }
         }
 
+        // ============ Drag → Settings Hub (позиція) ============
+
+        private void Overlay_PositionChanged(object? sender, (double X, double Y) pos)
+        {
+            if (!Dispatcher.CheckAccess())
+            {
+                Dispatcher.BeginInvoke(() => Overlay_PositionChanged(sender, pos));
+                return;
+            }
+
+            // Оновити поля лише якщо користувач не редагує їх зараз.
+            if (!PosXBox.IsFocused)
+                PosXBox.Text = pos.X.ToString("0");
+            if (!PosYBox.IsFocused)
+                PosYBox.Text = pos.Y.ToString("0");
+
+            // Персистити нову позицію.
+            _settings?.SetOverlayPosition(pos.X, pos.Y);
+        }
+
         // ============ Позиція (Bug 1 — редаговна + live-apply) ============
 
         private void PosBox_LostFocus(object sender, RoutedEventArgs e)
@@ -216,15 +242,29 @@ namespace SCLOCVerse.Controls.SettingsHub
             {
                 _settings.SetOverlayScale(DefaultScale);
                 _settings.SetOverlayOpacity(DefaultOpacity);
+                _settings.SetOverlayPosition(DefaultPosX, DefaultPosY);
                 ScaleSlider.Value = DefaultScale;
                 OpacitySlider.Value = DefaultOpacity;
                 ScaleValue.Text = DefaultScale.ToString("0.00");
                 OpacityValue.Text = DefaultOpacity.ToString("0.00");
+                PosXBox.Text = DefaultPosX.ToString("0");
+                PosYBox.Text = DefaultPosY.ToString("0");
 
                 if (_state != null)
                 {
                     _state.Scale = DefaultScale;
                     _state.Opacity = DefaultOpacity;
+                }
+
+                // Live-preview позиції.
+                if (_overlay?.IsOpen == true)
+                {
+                    var window = _overlay.GetWindow();
+                    if (window != null)
+                    {
+                        window.Left = DefaultPosX;
+                        window.Top = DefaultPosY;
+                    }
                 }
             }
             finally
