@@ -20,6 +20,10 @@ namespace SCLOCVerse.Controls.SettingsHub
         // Поточний рядок у режимі capture (null = не в режимі).
         private CaptureRow? _capture;
 
+        // Контекст для conflict-діалогу (pending Replace).
+        private HotkeyDefinition? _conflictDef;
+        private HotkeyGesture _conflictGesture;
+
         public HotkeysSettingsPane()
         {
             InitializeComponent();
@@ -101,9 +105,12 @@ namespace SCLOCVerse.Controls.SettingsHub
                 return;
             }
 
-            // Модифікатори самі по собі — не завершують capture.
+            // Модифікатори самі по собі — не завершують capture, оновлюємо підказку.
             if (HotkeyCaptureMapper.IsModifierKey(key))
+            {
+                _capture.Button.Content = FormatModifiers(Keyboard.Modifiers) + "+…";
                 return;
+            }
 
             // Мапити WPF Key → HotkeyGesture.
             var modifiers = Keyboard.Modifiers;
@@ -156,35 +163,58 @@ namespace SCLOCVerse.Controls.SettingsHub
                     break;
 
                 case RebindResult.Unchanged:
-                    // Жест не змінився — нічого не робимо.
                     break;
 
                 case RebindResult.Conflict:
-                    // Знайти конфліктуючу дію.
+                    // Власний діалог (не MessageBox) — узгоджено з дизайн-системою Hub.
                     var conflictDef = _definitionsById.TryGetValue(conflictingId.Value, out var c) ? c : null;
                     var conflictName = conflictDef?.Description ?? conflictingId.Value;
-                    var msg = $"Комбінація вже використовується:\n\n«{conflictName}»\n\nПеревизначити? (Та комбінація буде скинута.)";
-                    var confirm = MessageBox.Show(msg, "Конфлікт комбінацій", MessageBoxButton.YesNo, MessageBoxImage.Question);
-                    if (confirm == MessageBoxResult.Yes)
-                    {
-                        var r2 = _hotkeyService.Rebind(def.Id, gesture, HotkeyConflictPolicy.Replace, out _);
-                        if (r2 == RebindResult.Success)
-                            RebuildList();
-                        else if (r2 == RebindResult.RegistrationFailed)
-                            MessageBox.Show("Не вдалося зареєструвати комбінацію.\nМожливо, вона зайнята іншим застосунком.",
-                                "Помилка", MessageBoxButton.OK, MessageBoxImage.Warning);
-                    }
+                    _conflictDef = def;
+                    _conflictGesture = gesture;
+                    ConflictTitle.Text = "Конфлікт комбінацій";
+                    ConflictMessage.Text = $"«{conflictName}» уже використовує цю комбінацію.\nПеревизначити? (Та комбінація буде скинута.)";
+                    ConflictDialog.Visibility = Visibility.Visible;
                     break;
 
                 case RebindResult.InvalidGesture:
-                    // Capture-валідація не пропустила — не показуємо (capture ігнорує невідомі клавіші).
                     break;
 
                 case RebindResult.RegistrationFailed:
-                    MessageBox.Show("Не вдалося зареєструвати комбінацію.\nМожливо, вона зайнята іншим застосунком.",
-                        "Помилка", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    ShowInlineError("Не вдалося зареєструвати комбінацію.\nМожливо, вона зайнята іншим застосунком.");
                     break;
             }
+        }
+
+        private void ConflictConfirm_Click(object sender, RoutedEventArgs e)
+        {
+            ConflictDialog.Visibility = Visibility.Collapsed;
+            if (_conflictDef is null || _hotkeyService is null)
+                return;
+
+            var r2 = _hotkeyService.Rebind(_conflictDef.Id, _conflictGesture, HotkeyConflictPolicy.Replace, out _);
+            if (r2 == RebindResult.Success)
+                RebuildList();
+            else if (r2 == RebindResult.RegistrationFailed)
+                ShowInlineError("Не вдалося зареєструвати комбінацію.\nМожливо, вона зайнята іншим застосунком.");
+
+            _conflictDef = null;
+        }
+
+        private void ConflictCancel_Click(object sender, RoutedEventArgs e)
+        {
+            ConflictDialog.Visibility = Visibility.Collapsed;
+            _conflictDef = null;
+        }
+
+        private void ShowInlineError(string message)
+        {
+            ConflictTitle.Text = "Помилка";
+            ConflictMessage.Text = message;
+            ConflictConfirm.Content = "Зрозуміло";
+            ConflictConfirm.Click -= ConflictConfirm_Click;
+            ConflictConfirm.Click += (_, _) => ConflictDialog.Visibility = Visibility.Collapsed;
+            ConflictCancel.Visibility = Visibility.Collapsed;
+            ConflictDialog.Visibility = Visibility.Visible;
         }
 
         // ============ Reset ============
@@ -217,21 +247,65 @@ namespace SCLOCVerse.Controls.SettingsHub
             if (modified.Count == 0)
                 return;
 
-            var confirm = MessageBox.Show($"Скинути {modified.Count} змінених комбінацій до типових?",
-                "Скидання гарячих клавіш", MessageBoxButton.YesNo, MessageBoxImage.Question);
-            if (confirm != MessageBoxResult.Yes)
+            // Власний діалог підтвердження (не MessageBox).
+            _pendingCategoryReset = modified;
+            ConflictTitle.Text = "Скидання гарячих клавіш";
+            ConflictMessage.Text = $"Скинути {modified.Count} змінених комбінацій до типових?";
+            ConflictConfirm.Content = "Скинути";
+            ConflictConfirm.Click -= ConflictConfirm_Click;
+            ConflictConfirm.Click += CategoryResetConfirm_Click;
+            ConflictCancel.Visibility = Visibility.Visible;
+            ConflictCancel.Click -= ConflictCancel_Click;
+            ConflictCancel.Click += CategoryResetCancel_Click;
+            ConflictDialog.Visibility = Visibility.Visible;
+        }
+
+        private void CategoryResetConfirm_Click(object sender, RoutedEventArgs e)
+        {
+            ConflictDialog.Visibility = Visibility.Collapsed;
+            ConflictConfirm.Click -= CategoryResetConfirm_Click;
+            ConflictConfirm.Click += ConflictConfirm_Click;
+            ConflictCancel.Click -= CategoryResetCancel_Click;
+            ConflictCancel.Click += ConflictCancel_Click;
+            ConflictConfirm.Content = "Перевизначити";
+
+            if (_hotkeyService is null || _pendingCategoryReset is null)
                 return;
 
-            foreach (var def in modified)
+            foreach (var def in _pendingCategoryReset)
             {
                 if (def.DefaultGesture != def.EffectiveGesture)
                     _hotkeyService.Rebind(def.Id, def.DefaultGesture, HotkeyConflictPolicy.Reject, out _);
             }
 
+            _pendingCategoryReset = null;
             RebuildList();
         }
 
+        private void CategoryResetCancel_Click(object sender, RoutedEventArgs e)
+        {
+            ConflictDialog.Visibility = Visibility.Collapsed;
+            ConflictConfirm.Click -= CategoryResetConfirm_Click;
+            ConflictConfirm.Click += ConflictConfirm_Click;
+            ConflictCancel.Click -= CategoryResetCancel_Click;
+            ConflictCancel.Click += ConflictCancel_Click;
+            ConflictConfirm.Content = "Перевизначити";
+            _pendingCategoryReset = null;
+        }
+
+        private List<HotkeyDefinition>? _pendingCategoryReset;
+
         // ============ Форматування жесту ============
+
+        private static string FormatModifiers(ModifierKeys modifiers)
+        {
+            var parts = new List<string>(4);
+            if ((modifiers & ModifierKeys.Control) != 0) parts.Add("Ctrl");
+            if ((modifiers & ModifierKeys.Alt) != 0) parts.Add("Alt");
+            if ((modifiers & ModifierKeys.Shift) != 0) parts.Add("Shift");
+            if ((modifiers & ModifierKeys.Windows) != 0) parts.Add("Win");
+            return parts.Count > 0 ? string.Join("+", parts) : "Натисніть клавіші…";
+        }
 
         private static string FormatGesture(HotkeyGesture gesture)
         {

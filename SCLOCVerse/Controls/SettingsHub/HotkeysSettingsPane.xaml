@@ -11,6 +11,7 @@
         </ResourceDictionary>
     </UserControl.Resources>
 
+    <Grid>
     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="0,0,8,0">
         <StackPanel Orientation="Vertical" Margin="0,0,0,16">
 
@@ -38,4 +39,29 @@
 
         </StackPanel>
     </ScrollViewer>
+
+    <!-- Власний діалог конфлікту (поверх Hub, не системний MessageBox) -->
+    <Border x:Name="ConflictDialog"
+            Background="#E608131C"
+            BorderBrush="#E36D3A"
+            BorderThickness="1"
+            CornerRadius="10"
+            Padding="24,20"
+            Width="420"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Center"
+            Visibility="Collapsed">
+        <Border.Effect>
+            <DropShadowEffect Color="#000000" BlurRadius="24" ShadowDepth="8" Opacity="0.7"/>
+        </Border.Effect>
+        <StackPanel Orientation="Vertical">
+            <TextBlock x:Name="ConflictTitle" FontFamily="Segoe UI" FontSize="15" FontWeight="Bold" Foreground="#EAF4FF" Margin="0,0,0,12"/>
+            <TextBlock x:Name="ConflictMessage" FontFamily="Segoe UI" FontSize="13" Foreground="#A7C6E7" TextWrapping="Wrap" Margin="0,0,0,20"/>
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                <Button x:Name="ConflictCancel" Style="{StaticResource HubSecondaryButton}" Content="Скасувати" Padding="16,4" Margin="0,0,10,0" Click="ConflictCancel_Click"/>
+                <Button x:Name="ConflictConfirm" Style="{StaticResource HubActionButton}" Content="Перевизначити" Padding="16,4" Click="ConflictConfirm_Click"/>
+            </StackPanel>
+        </StackPanel>
+    </Border>
+    </Grid>
 </UserControl>
