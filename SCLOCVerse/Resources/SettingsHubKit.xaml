@@ -9,6 +9,12 @@
 
     <!-- ============ ГРУПА (P3 — контраст і відокремлення) ============ -->
 
+    <!-- x:Shared="False": кожна картка отримує ВЛАСНИЙ екземпляр ефекту.
+         Без цього DropShadowEffect (невзаморожений Freezable) у Style.Setter,
+         застосованому до кількох Border, кидає XamlParseException (DeferrableContent). -->
+    <DropShadowEffect x:Key="HubCardShadow" x:Shared="False"
+                      Color="#000000" BlurRadius="14" ShadowDepth="4" Direction="270" Opacity="0.55"/>
+
     <Style x:Key="HubGroupCard" TargetType="Border">
         <Setter Property="Background" Value="#102A3A"/>
         <Setter Property="BorderBrush" Value="#2F6D88"/>
@@ -17,11 +23,7 @@
         <Setter Property="Margin" Value="0,0,0,22"/>
         <Setter Property="Padding" Value="16,12"/>
         <!-- Підняття картки над затемненим фоном (атмосфера Control Center) -->
-        <Setter Property="Effect">
-            <Setter.Value>
-                <DropShadowEffect Color="#000000" BlurRadius="14" ShadowDepth="4" Direction="270" Opacity="0.55"/>
-            </Setter.Value>
-        </Setter>
+        <Setter Property="Effect" Value="{StaticResource HubCardShadow}"/>
     </Style>
 
     <Style x:Key="HubGroupLabel" TargetType="TextBlock">
