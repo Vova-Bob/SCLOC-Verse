@@ -46,6 +46,12 @@ namespace SCLOCVerse.Services.HangarTimer
 
         public bool IsOpen => _window != null;
 
+        /// <summary>
+        /// Runtime стан overlay (Single Source of Truth для масштабу/прозорості).
+        /// Settings Hub підписується на PropertyChanged для двосторонньої синхронізації.
+        /// </summary>
+        public HangarTimerState State => _state;
+
         public void Show(long cycleStartMs)
         {
             if (_disposed)

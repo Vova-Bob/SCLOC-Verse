@@ -84,7 +84,6 @@
                 <Setter Property="Background" Value="#0A1D29"/>
                 <Setter Property="BorderBrush" Value="#2A5A78"/>
                 <Setter Property="BorderThickness" Value="1"/>
-                <Setter Property="IsReadOnly" Value="True"/>
                 <Setter Property="VerticalContentAlignment" Value="Center"/>
                 <Setter Property="Padding" Value="8,0"/>
             </Style>
@@ -122,7 +121,7 @@
                             <TextBlock Style="{StaticResource HubFieldLabel}" Text="Масштаб"/>
                             <TextBlock Style="{StaticResource HubFieldDesc}" Text="за замовч. 0.60"/>
                         </StackPanel>
-                        <Slider Grid.Column="1" x:Name="ScaleSlider" Style="{StaticResource HubSlider}" Minimum="0.2" Maximum="2.0" TickFrequency="0.05" IsSnapToTickEnabled="True" VerticalAlignment="Center" Margin="10,0"/>
+                        <Slider Grid.Column="1" x:Name="ScaleSlider" Style="{StaticResource HubSlider}" Minimum="0.2" Maximum="2.0" VerticalAlignment="Center" Margin="10,0"/>
                         <TextBlock Grid.Column="2" x:Name="ScaleValue" FontFamily="Consolas" FontSize="13" FontWeight="SemiBold" Foreground="#C9DEEF" Width="52" TextAlignment="Right" HorizontalAlignment="Right" VerticalAlignment="Center"/>
                     </Grid>
 
@@ -137,7 +136,7 @@
                             <TextBlock Style="{StaticResource HubFieldLabel}" Text="Прозорість"/>
                             <TextBlock Style="{StaticResource HubFieldDesc}" Text="за замовч. 0.92"/>
                         </StackPanel>
-                        <Slider Grid.Column="1" x:Name="OpacitySlider" Style="{StaticResource HubSlider}" Minimum="0.2" Maximum="1.0" TickFrequency="0.02" IsSnapToTickEnabled="True" VerticalAlignment="Center" Margin="10,0"/>
+                        <Slider Grid.Column="1" x:Name="OpacitySlider" Style="{StaticResource HubSlider}" Minimum="0.2" Maximum="1.0" VerticalAlignment="Center" Margin="10,0"/>
                         <TextBlock Grid.Column="2" x:Name="OpacityValue" FontFamily="Consolas" FontSize="13" FontWeight="SemiBold" Foreground="#C9DEEF" Width="52" TextAlignment="Right" HorizontalAlignment="Right" VerticalAlignment="Center"/>
                     </Grid>
 
