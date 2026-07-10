@@ -233,35 +233,64 @@
         <Setter Property="Padding" Value="9,3"/>
     </Style>
 
-    <!-- ============ КОМАНДНА КНОПКА (первинна дія) ============ -->
+    <!-- ============ КОМАНДНА КНОПКА (первинна дія — об'ємна, градієнт + підняття) ============ -->
 
     <Style x:Key="HubActionButton" TargetType="Button">
-        <Setter Property="Height" Value="32"/>
+        <Setter Property="Height" Value="34"/>
         <Setter Property="Padding" Value="14,0"/>
         <Setter Property="Cursor" Value="Hand"/>
-        <Setter Property="Foreground" Value="#EAF4FF"/>
+        <Setter Property="Foreground" Value="#FFFFFF"/>
         <Setter Property="FontFamily" Value="Segoe UI"/>
         <Setter Property="FontSize" Value="12.5"/>
         <Setter Property="FontWeight" Value="SemiBold"/>
-        <Setter Property="Background" Value="#1A5474"/>
-        <Setter Property="BorderBrush" Value="#4AA3D8"/>
-        <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="Button">
-                    <Border x:Name="Bd" Background="{TemplateBinding Background}"
-                            BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1" CornerRadius="7">
-                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" Margin="{TemplateBinding Padding}"/>
+                    <Border x:Name="Bd" CornerRadius="7" BorderBrush="#4AA3D8" BorderThickness="1">
+                        <Border.Background>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                <GradientStop Color="#3492D8" Offset="0"/>
+                                <GradientStop Color="#1F5F86" Offset="1"/>
+                            </LinearGradientBrush>
+                        </Border.Background>
+                        <Border.Effect>
+                            <DropShadowEffect Color="#000000" BlurRadius="6" ShadowDepth="2" Direction="270" Opacity="0.4"/>
+                        </Border.Effect>
+                        <Grid>
+                            <!-- Світла верхня грань (підняття) -->
+                            <Border CornerRadius="6,6,0,0" Height="1" VerticalAlignment="Top" Background="#9ECAEE" Opacity="0.6" Margin="2,1,2,0"/>
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" Margin="{TemplateBinding Padding}"/>
+                        </Grid>
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="Bd" Property="Background" Value="#2478A9"/>
+                            <Setter TargetName="Bd" Property="BorderBrush" Value="#8DD0FF"/>
+                            <Setter TargetName="Bd" Property="Background">
+                                <Setter.Value>
+                                    <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                        <GradientStop Color="#46A6E8" Offset="0"/>
+                                        <GradientStop Color="#267AA8" Offset="1"/>
+                                    </LinearGradientBrush>
+                                </Setter.Value>
+                            </Setter>
                         </Trigger>
                         <Trigger Property="IsPressed" Value="True">
-                            <Setter TargetName="Bd" Property="Background" Value="#1A5474"/>
+                            <Setter TargetName="Bd" Property="Background">
+                                <Setter.Value>
+                                    <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                        <GradientStop Color="#1F5F86" Offset="0"/>
+                                        <GradientStop Color="#164A68" Offset="1"/>
+                                    </LinearGradientBrush>
+                                </Setter.Value>
+                            </Setter>
+                            <Setter TargetName="Bd" Property="Effect">
+                                <Setter.Value>
+                                    <DropShadowEffect Color="#000000" BlurRadius="3" ShadowDepth="1" Direction="270" Opacity="0.3"/>
+                                </Setter.Value>
+                            </Setter>
                         </Trigger>
                         <Trigger Property="IsEnabled" Value="False">
-                            <Setter Property="Opacity" Value="0.5"/>
+                            <Setter Property="Opacity" Value="0.45"/>
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>
@@ -269,12 +298,63 @@
         </Setter>
     </Style>
 
-    <!-- Вторинна (приглушена) дія -->
-    <Style x:Key="HubSecondaryButton" TargetType="Button" BasedOn="{StaticResource HubActionButton}">
-        <Setter Property="Background" Value="#0A1828"/>
-        <Setter Property="BorderBrush" Value="#1E4357"/>
+    <!-- Вторинна (приглушена) дія — об'ємна, але ледь піднята над фоном, рамкова -->
+    <Style x:Key="HubSecondaryButton" TargetType="Button">
+        <Setter Property="Height" Value="34"/>
+        <Setter Property="Padding" Value="14,0"/>
+        <Setter Property="Cursor" Value="Hand"/>
         <Setter Property="Foreground" Value="#6F8CA8"/>
+        <Setter Property="FontFamily" Value="Segoe UI"/>
+        <Setter Property="FontSize" Value="12.5"/>
         <Setter Property="FontWeight" Value="Normal"/>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="Bd" CornerRadius="7" BorderBrush="#2A5A78" BorderThickness="1">
+                        <Border.Background>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                <GradientStop Color="#173049" Offset="0"/>
+                                <GradientStop Color="#0C2030" Offset="1"/>
+                            </LinearGradientBrush>
+                        </Border.Background>
+                        <Border.Effect>
+                            <DropShadowEffect Color="#000000" BlurRadius="4" ShadowDepth="1" Direction="270" Opacity="0.3"/>
+                        </Border.Effect>
+                        <Grid>
+                            <Border CornerRadius="6,6,0,0" Height="1" VerticalAlignment="Top" Background="#9ECAEE" Opacity="0.25" Margin="2,1,2,0"/>
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" Margin="{TemplateBinding Padding}"/>
+                        </Grid>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter Property="Foreground" Value="#A7C6E7"/>
+                            <Setter TargetName="Bd" Property="BorderBrush" Value="#3A7A98"/>
+                            <Setter TargetName="Bd" Property="Background">
+                                <Setter.Value>
+                                    <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                        <GradientStop Color="#21425E" Offset="0"/>
+                                        <GradientStop Color="#142B40" Offset="1"/>
+                                    </LinearGradientBrush>
+                                </Setter.Value>
+                            </Setter>
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="Bd" Property="Background">
+                                <Setter.Value>
+                                    <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                        <GradientStop Color="#0C2030" Offset="0"/>
+                                        <GradientStop Color="#0A1A28" Offset="1"/>
+                                    </LinearGradientBrush>
+                                </Setter.Value>
+                            </Setter>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.4"/>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
     </Style>
 
 </ResourceDictionary>

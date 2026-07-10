@@ -22,26 +22,111 @@
             <Style x:Key="ActionButton" TargetType="{x:Type Button}">
                 <Setter Property="Height" Value="34"/>
                 <Setter Property="FontFamily" Value="Segoe UI"/>
-                <Setter Property="Foreground" Value="#EAF4FF"/>
+                <Setter Property="Foreground" Value="#FFFFFF"/>
                 <Setter Property="FontWeight" Value="SemiBold"/>
                 <Setter Property="FontSize" Value="13"/>
-                <Setter Property="Background" Value="{StaticResource BtnFill}"/>
                 <Setter Property="Cursor" Value="Hand"/>
                 <Setter Property="Template">
                     <Setter.Value>
                         <ControlTemplate TargetType="{x:Type Button}">
-                            <Border x:Name="Bd" Background="{TemplateBinding Background}" CornerRadius="7" Padding="14,0">
-                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            <Border x:Name="Bd" CornerRadius="7" BorderBrush="#4AA3D8" BorderThickness="1">
+                                <Border.Background>
+                                    <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                        <GradientStop Color="#3492D8" Offset="0"/>
+                                        <GradientStop Color="#1F5F86" Offset="1"/>
+                                    </LinearGradientBrush>
+                                </Border.Background>
+                                <Border.Effect>
+                                    <DropShadowEffect Color="#000000" BlurRadius="6" ShadowDepth="2" Direction="270" Opacity="0.4"/>
+                                </Border.Effect>
+                                <Grid>
+                                    <Border CornerRadius="6,6,0,0" Height="1" VerticalAlignment="Top" Background="#9ECAEE" Opacity="0.6" Margin="2,1,2,0"/>
+                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Grid>
                             </Border>
                             <ControlTemplate.Triggers>
                                 <Trigger Property="IsMouseOver" Value="True">
-                                    <Setter TargetName="Bd" Property="Background" Value="{StaticResource BtnFillHover}"/>
+                                    <Setter TargetName="Bd" Property="BorderBrush" Value="#8DD0FF"/>
+                                    <Setter TargetName="Bd" Property="Background">
+                                        <Setter.Value>
+                                            <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                                <GradientStop Color="#46A6E8" Offset="0"/>
+                                                <GradientStop Color="#267AA8" Offset="1"/>
+                                            </LinearGradientBrush>
+                                        </Setter.Value>
+                                    </Setter>
                                 </Trigger>
                                 <Trigger Property="IsPressed" Value="True">
-                                    <Setter TargetName="Bd" Property="Background" Value="#2A4658"/>
+                                    <Setter TargetName="Bd" Property="Background">
+                                        <Setter.Value>
+                                            <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                                <GradientStop Color="#1F5F86" Offset="0"/>
+                                                <GradientStop Color="#164A68" Offset="1"/>
+                                            </LinearGradientBrush>
+                                        </Setter.Value>
+                                    </Setter>
                                 </Trigger>
                                 <Trigger Property="IsEnabled" Value="False">
-                                    <Setter Property="Opacity" Value="0.5"/>
+                                    <Setter Property="Opacity" Value="0.45"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <Style x:Key="AutoSearchButton" TargetType="{x:Type Button}">
+                <Setter Property="Height" Value="34"/>
+                <Setter Property="FontFamily" Value="Segoe UI"/>
+                <Setter Property="Foreground" Value="#FFFFFF"/>
+                <Setter Property="FontSize" Value="13"/>
+                <Setter Property="Cursor" Value="Hand"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="{x:Type Button}">
+                            <Border x:Name="Bd" CornerRadius="7" BorderBrush="#8DD0FF" BorderThickness="1">
+                                <!-- Типово (Автопошук) — яскравий primary-градієнт -->
+                                <Border.Background>
+                                    <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                        <GradientStop Color="#3FA0E4" Offset="0"/>
+                                        <GradientStop Color="#1F6694" Offset="1"/>
+                                    </LinearGradientBrush>
+                                </Border.Background>
+                                <Border.Effect>
+                                    <DropShadowEffect Color="#000000" BlurRadius="6" ShadowDepth="2" Direction="270" Opacity="0.4"/>
+                                </Border.Effect>
+                                <Grid>
+                                    <Border CornerRadius="6,6,0,0" Height="1" VerticalAlignment="Top" Background="#C9E6F7" Opacity="0.7" Margin="2,1,2,0"/>
+                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Grid>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="Content" Value="Скинути">
+                                    <!-- P1: скидання шляху — нейтральне сіре, не небезпечне -->
+                                    <Setter Property="FontWeight" Value="Normal"/>
+                                    <Setter Property="Foreground" Value="#9DB8C8"/>
+                                    <Setter TargetName="Bd" Property="BorderBrush" Value="#3A4A56"/>
+                                    <Setter TargetName="Bd" Property="Background">
+                                        <Setter.Value>
+                                            <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                                <GradientStop Color="#44545F" Offset="0"/>
+                                                <GradientStop Color="#33414B" Offset="1"/>
+                                            </LinearGradientBrush>
+                                        </Setter.Value>
+                                    </Setter>
+                                </Trigger>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="Bd" Property="BorderBrush" Value="#8DD0FF"/>
+                                </Trigger>
+                                <Trigger Property="IsPressed" Value="True">
+                                    <Setter TargetName="Bd" Property="Effect">
+                                        <Setter.Value>
+                                            <DropShadowEffect Color="#000000" BlurRadius="3" ShadowDepth="1" Direction="270" Opacity="0.3"/>
+                                        </Setter.Value>
+                                    </Setter>
+                                </Trigger>
+                                <Trigger Property="IsEnabled" Value="False">
+                                    <Setter Property="Opacity" Value="0.45"/>
                                 </Trigger>
                             </ControlTemplate.Triggers>
                         </ControlTemplate>

@@ -116,7 +116,7 @@
         </Grid>
 
         <!-- ============ FOOTER ============ -->
-        <TextBlock Grid.Row="2" Margin="20,4,20,12" FontFamily="Segoe UI" FontSize="11" Foreground="#4A6A85">
+        <TextBlock Grid.Row="2" Margin="20,4,20,12" FontFamily="Segoe UI" FontSize="11" Foreground="#6A8AA5">
             <Run FontFamily="Segoe UI Semibold" Foreground="#6F8CA8">F1</Run>
             <Run Text=" — відкрити Центр керування, лише якщо активне вікно SCLOC-Verse"/>
         </TextBlock>
