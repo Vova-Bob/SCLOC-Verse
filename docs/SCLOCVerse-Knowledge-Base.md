@@ -83,7 +83,7 @@
 
 - `MainWindow` — WPF code-behind-координатор (ADR-004); бізнес-логіка в сервісах і presenter-ах. **Проте ~903 рядки, ~20 ctor-параметрів, ~31 field → God Class** (TD-6).
 - Canvas-навігація через `CanvasManager` (ADR-006) — перемикає видимість Canvas-ів у межах одного `MainWindow`.
-- Overlay — окреме вікно `HangarOverlayWindow` + `HangarOverlayService` (Win32 `WS_EX_TRANSPARENT`/`WS_EX_LAYERED`, ADR-005).
+- Overlay — окреме вікно `HangarOverlayWindow` + `HangarOverlayService` (Win32 `WS_EX_TRANSPARENT`/`WS_EX_LAYERED`, ADR-005). `HangarTimerState` — SSOT для масштабу/прозорості (двостороння синхронізація: слайдери ↔ хоткеї ↔ overlay через `PropertyChanged`). `HangarOverlayService.PositionChanged` event — drag → Settings Hub.
 
 ## 2.5. Гарячі клавіші
 
@@ -1738,9 +1738,9 @@ Phase 3.7 (Security Hardening) — Backlog (DEFAULT PRIVILEGES); SEC-11 — ✅ 
 
 181. **SEW = AI Engineering Operating System** (Engineering Orchestrator), не окремий виконавець. SEW визначає правила/межі/якість/ресурси/цикли. Рівень автономії визначає виконавець (модель + середовище + Agent Framework). Метафора «головний інженер» відхилена (див. Rejected #76) як персоніфікація системи.
 
-## 14.25. Settings Hub — Центр керування налаштуваннями (2026-07-09) — ✅ IMPL (Phase 0)
+## 14.25. Settings Hub — Центр керування налаштуваннями (2026-07-09) — ✅ IMPL (Phase 0 + Phase 0.5 + Overlay)
 
-> **Архітектурне рішення ADR-009.** Детальна специфікація: [`docs/backlog/settings-hub.md`](backlog/settings-hub.md). Phase 0 реалізовано: Hub-оболонка + Загальне + Гарячі клавіші (read-only) + Overlay. Build 0 warnings.
+> **Архітектурне рішення ADR-009.** Детальна специфікація: [`docs/backlog/settings-hub.md`](backlog/settings-hub.md). Phase 0 + Phase 0.5 (hotkey editor) + Overlay (live-preview, bidirectional sync, position) реалізовано. Build 0 warnings.
 
 182. **Settings Hub замінює `SettingsCanvas`.** Замість єдиного плоского `SettingsCanvas.xaml` (514 рядків) — нова оболонка: ліва панель-навігатор категорій + права панель вмісту. Варіант B серед 3 (див. ADR-009). Причина: плоский список не масштабується під overlay- та hotkey-налаштування; UX First — пошук параметра <30с.
 183. **Категорії за функцією, не за інструментом.** `Загальне`, `Гарячі клавіші`, `Overlay` (Phase 0) + зарезервовані `Головна`, `Локалізація`, `Інтерфейс`, `Профіль`, `Про програму`. Не «налаштування Hangar Timer» / «Anti-AFK».
@@ -1754,7 +1754,7 @@ Phase 3.7 (Security Hardening) — Backlog (DEFAULT PRIVILEGES); SEC-11 — ✅ 
 191. **Схема БД не зачіпається** (Phase 0 — суто UI-шар). Security Review не потрібне (UI/локалізація, не Auth/Installer/Network/SQL).
 192. **Phase 0 реалізовано через SettingsCanvas-фаçade (Zero Regression).** SettingsCanvas залишається Canvas (сумісність із CanvasManager); мігровані контролі «Загальне» живуть у `GeneralSettingsPane`, а SettingsCanvas зберігає фасадну property-поверхню → MainWindow.xaml.cs працює без змін.
 193. **Гарячі клавіші — Варіант A+ (read-only), ✅ VER+IMPL.** Forensic: `HotkeyService` не мав API переліку, а `CurrentGesture` ніколи не персистувався → повний редактор порушив би «контент лише для реалізованого». Phase 0 показує 13 реальних комбінацій read-only. Additive API: `IHotkeyService.GetDefinitions()`. Повний редактор (persistence/rebind/capture/conflict/reset/sync) → Phase 0.5.
-194. **Overlay — реальний редактор, ✅ VER+IMPL.** `IHangarSettingsService` персистує scale/opacity/X-Y. Оверлей читає налаштування лише при відкритті → зміни застосовуються при наступному показі (зазначено в UI). Additive: `IHangarTimerService.Settings`.
+194. **Overlay — реальний редактор з live-preview + двосторонньою синхронізацією, ✅ VER+IMPL.** `IHangarSettingsService` персистує scale/opacity/X-Y. `HangarTimerState` — SSOT: слайдер пише в settings + state; хоткеї пишуть в state; `state.PropertyChanged` синхронізує UI. Зміни застосовуються негайно до відкритого overlay. `IHangarTimerService.OverlayService` (additive) надає доступ. Drag оверлея → `PositionChanged` event → поля X/Y оновлюються. Повзунок: jump-to-click (PreviewMouseLeftButtonDown обчислює точне значення). Build оптимізація: Debug = framework-dependent (8× швидше, 283→40 файлів).
 
 ## 14.26. Settings Hub — Дизайн-система (2026-07-10) — ✅ APPROVED
 
@@ -2253,6 +2253,8 @@ auth.users (TABLE, 35 columns)  +  public.app_installations (TABLE)
 | 0 | Зарезервовані категорії-плейсхолдери (Головна/Локалізація/Інтерфейс/Профіль/Про програму) | низька | ✅ DONE 2026-07-09 |
 | UX | **UX Polishing** — візуальна ідентичність «центр керування» за дизайн-системою (§14.26); виправлення design-drift | середня | ✅ DONE 2026-07-10 (зауважень немає; арх/композ/атмосфера 9.5–10/10) |
 | 0.5 | **Повна система користувацьких гарячих клавіш** — persistence (`CurrentGesture` per id), runtime rebind, capture, conflict resolution, reset, cloud sync через Профіль | висока | ✅ DONE 2026-07-10 (JSON persistence + Rebind API + capture + conflict + reset) |
+| 0.5+ | **Overlay — повна функціональність** — live-preview (слайдер → state → overlay), bidirectional sync (хоткеї → слайдери), jump-to-click, drag→позиція синхронізація, reset позиції | середня | ✅ DONE 2026-07-10 (state.PropertyChanged + PositionChanged + PreviewMouseLeftButtonDown) |
+| — | **Оптимізація збірки** — Debug = framework-dependent (SelfContained=false) | низька | ✅ DONE 2026-07-10 (8× швидше: 26s → 3s) |
 | 1 | **Профіль — `profile.json`** (локальний контракт/схема-версія, експорт/імпорт) | середня | 🔵 PLANNED |
 | 2 | **Профіль — синхронізація Supabase** (hotkey-bindings, overlay; НЕ hotkey-події — L3 Local Only) | висока | 🔵 PLANNED |
 
