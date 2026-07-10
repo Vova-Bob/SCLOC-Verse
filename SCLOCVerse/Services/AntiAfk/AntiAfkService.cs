@@ -21,7 +21,7 @@ namespace SCLOCVerse.Services.AntiAfk
         private const int MovementDelta = 1;
         private const int PollIntervalMs = 1000;
         private const int ThresholdMinMs = 1000;
-        private const int ThresholdMaxMs = 60000;
+        private const int ThresholdMaxMs = 30000;
         private const double IdleFlashSeconds = 1.5;
 
         private readonly IHotkeyService _hotkeyService;
@@ -51,9 +51,6 @@ namespace SCLOCVerse.Services.AntiAfk
             _timer = new System.Threading.Timer(TimerCallback, null, Timeout.Infinite, Timeout.Infinite);
             SetRandomAfkThreshold();
             RegisterHotkey();
-
-            // Anti-AFK завжди стартує вимкненим. Користувач вмикає явно
-            // (хоткея End або тоглом у Settings Hub).
         }
 
         /// <inheritdoc/>
@@ -90,7 +87,6 @@ namespace SCLOCVerse.Services.AntiAfk
             _timer.Change(0, PollIntervalMs);
             _preferences.SetAntiAfkEnabled(true);
 
-            // Індикатор: показати лише в Running режимі (IdleOnly спалахує при дії).
             var mode = _preferences.GetAntiAfkIndicatorMode();
             if (mode == AntiAfkIndicatorMode.Running)
                 ShowIndicator();
@@ -114,17 +110,14 @@ namespace SCLOCVerse.Services.AntiAfk
             if (_disposed || !IsRunning)
                 return;
 
-            // Перевірка бездіяльності через GetLastInputInfo (без hooks).
             int idleMs = GetIdleMilliseconds();
 
             if (idleMs < _afkThreshold)
                 return;
 
-            // Користувач бездіяльний — імітуємо рух миші.
             SimulateMouseMove();
             SetRandomAfkThreshold();
 
-            // IdleOnly: спалах індикатора в момент дії.
             var mode = _preferences.GetAntiAfkIndicatorMode();
             if (mode == AntiAfkIndicatorMode.IdleOnly)
                 FlashIndicator();
