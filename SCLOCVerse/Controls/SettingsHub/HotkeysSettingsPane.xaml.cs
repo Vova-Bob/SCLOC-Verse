@@ -185,29 +185,37 @@ namespace SCLOCVerse.Controls.SettingsHub
             bool isModified = def.CurrentGesture.HasValue && def.CurrentGesture.Value != def.DefaultGesture;
             bool isUnassigned = def.IsUnassigned;
 
-            keycap.Background = new SolidColorBrush(Color.FromRgb(0x0A, 0x1D, 0x29));
-            keycap.BorderThickness = new Thickness(1);
-
             if (isUnassigned)
             {
-                keycap.BorderBrush = new SolidColorBrush(Color.FromRgb(0x1E, 0x43, 0x57));
-                keycap.Foreground = new SolidColorBrush(Color.FromRgb(0x6F, 0x8C, 0xA8));
+                // Badge, не disabled button: без рамки, курсив, приглушений.
+                keycap.Background = Brushes.Transparent;
+                keycap.BorderBrush = Brushes.Transparent;
+                keycap.Foreground = new SolidColorBrush(Color.FromRgb(0x5A, 0x7A, 0x8A));
                 keycap.FontFamily = new FontFamily("Segoe UI");
                 keycap.FontSize = 11;
+                keycap.FontWeight = FontWeights.Normal;
+                keycap.FontStyle = FontStyles.Italic;
             }
             else if (isModified)
             {
-                keycap.BorderBrush = new SolidColorBrush(Color.FromRgb(0x2A, 0x5A, 0x78));
-                keycap.Foreground = new SolidColorBrush(Color.FromRgb(0xC9, 0xDE, 0xEF));
+                // Modified: ледь помітніший (не яскравий — не конкурує з назвою).
+                keycap.Background = new SolidColorBrush(Color.FromRgb(0x16, 0x30, 0x46));
+                keycap.BorderBrush = new SolidColorBrush(Color.FromRgb(0x24, 0x57, 0x76));
+                keycap.Foreground = new SolidColorBrush(Color.FromRgb(0xC4, 0xDC, 0xEE));
                 keycap.FontFamily = new FontFamily("Consolas");
-                keycap.FontSize = 12;
+                keycap.FontSize = 13;
+                keycap.FontWeight = FontWeights.Normal;
+                keycap.FontStyle = FontStyles.Normal;
             }
-            else // default
+            else // default — найнепомітніший
             {
-                keycap.BorderBrush = new SolidColorBrush(Color.FromRgb(0x1E, 0x43, 0x57));
-                keycap.Foreground = new SolidColorBrush(Color.FromRgb(0x8F, 0xAA, 0xB8));
+                keycap.Background = new SolidColorBrush(Color.FromRgb(0x14, 0x2B, 0x3D));
+                keycap.BorderBrush = new SolidColorBrush(Color.FromRgb(0x1A, 0x3D, 0x54));
+                keycap.Foreground = new SolidColorBrush(Color.FromRgb(0xB0, 0xCC, 0xE0));
                 keycap.FontFamily = new FontFamily("Consolas");
-                keycap.FontSize = 12;
+                keycap.FontSize = 13;
+                keycap.FontWeight = FontWeights.Normal;
+                keycap.FontStyle = FontStyles.Normal;
             }
         }
 
