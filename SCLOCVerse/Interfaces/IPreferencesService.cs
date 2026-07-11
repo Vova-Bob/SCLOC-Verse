@@ -1,4 +1,5 @@
 using SCLOCVerse.Models.AntiAfk;
+using SCLOCVerse.Services.InputSystem;
 
 namespace SCLOCVerse.Interfaces
 {
@@ -85,5 +86,19 @@ namespace SCLOCVerse.Interfaces
         /// <summary>Режим видимості індикатора. Default: Running.</summary>
         AntiAfkIndicatorMode GetAntiAfkIndicatorMode();
         void SetAntiAfkIndicatorMode(AntiAfkIndicatorMode value);
+
+        // --- Auto Key ---
+
+        /// <summary>Чи увімкнено Auto Key. Default: False.</summary>
+        bool GetAutoKeyEnabled();
+        void SetAutoKeyEnabled(bool value);
+
+        /// <summary>Клавіша, що автоматично натискається (Action Key). Default: Oem4 ('[').</summary>
+        HotkeyKey GetAutoKeyActionKey();
+        void SetAutoKeyActionKey(HotkeyKey value);
+
+        /// <summary>Інтервал автоматичного натискання, мс (100–2000). Default: 1000.</summary>
+        int GetAutoKeyIntervalMs();
+        void SetAutoKeyIntervalMs(int value);
     }
 }

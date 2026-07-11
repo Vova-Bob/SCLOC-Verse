@@ -3,6 +3,7 @@ using SCLOCVerse.Interfaces;
 using SCLOCVerse.Models.Observability;
 using SCLOCVerse.Services;
 using SCLOCVerse.Services.AntiAfk;
+using SCLOCVerse.Services.AutoKey;
 using SCLOCVerse.Services.ApplicationInstance;
 using SCLOCVerse.Services.ApplicationUpdate;
 using SCLOCVerse.Services.Autostart;
@@ -55,6 +56,7 @@ namespace SCLOCVerse.Composition
         private readonly IAutostartService _autostartService;
         private readonly IToastNotificationService _toastNotificationService;
         private readonly IAntiAfkService _antiAfkService;
+        private readonly IAutoKeyService _autoKeyService;
 
         public AppCompositionRoot()
         {
@@ -103,6 +105,10 @@ namespace SCLOCVerse.Composition
 
             // Anti-AFK: 2 залежності (хоткеї + налаштування). Повністю незалежний від Hangar Overlay.
             _antiAfkService = new AntiAfkService(_hotkeyService, _preferencesService);
+
+            // Auto Key: 2 залежності (хоткеї + налаштування). Stateless foreground-гейт,
+            // повністю незалежний від Anti-AFK та Hangar Timer.
+            _autoKeyService = new AutoKeyService(_hotkeyService, _preferencesService);
 
             _applicationUpdateService = new ApplicationUpdateService(
                 "Vova-Bob",
@@ -196,6 +202,10 @@ namespace SCLOCVerse.Composition
             if (_antiAfkService is IDisposable antiAfkDisposable)
                 antiAfkDisposable.Dispose();
 
+            // Auto Key: зупинка таймера + закриття індикатора.
+            if (_autoKeyService is IDisposable autoKeyDisposable)
+                autoKeyDisposable.Dispose();
+
             if (_hangarTimerService is IDisposable hangarDisposable)
                 hangarDisposable.Dispose();
 
@@ -222,6 +232,7 @@ namespace SCLOCVerse.Composition
         public IHangarTimerService HangarTimerService => _hangarTimerService;
         public IHotkeyService HotkeyService => _hotkeyService;
         public IAntiAfkService AntiAfkService => _antiAfkService;
+        public IAutoKeyService AutoKeyService => _autoKeyService;
 
         /// <summary>Tray-сервіс для зовнішнього використання (наприклад, App_OnExit).</summary>
         public ITrayService TrayService => _trayService;
@@ -262,7 +273,8 @@ namespace SCLOCVerse.Composition
                 _preferencesService,
                 _notificationRouter,
                 _toastNotificationService,
-                _antiAfkService);
+                _antiAfkService,
+                _autoKeyService);
         }
 
         private static string GetSupabaseUrl()

@@ -59,5 +59,14 @@
     <Setting Name="LastToastTimestampUtc" Type="System.String" Scope="User">
       <Value Profile="(Default)" />
     </Setting>
+    <Setting Name="AutoKeyEnabled" Type="System.Boolean" Scope="User">
+      <Value Profile="(Default)">False</Value>
+    </Setting>
+    <Setting Name="AutoKeyActionKey" Type="System.String" Scope="User">
+      <Value Profile="(Default)">Oem4</Value>
+    </Setting>
+    <Setting Name="AutoKeyIntervalMs" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">1000</Value>
+    </Setting>
   </Settings>
 </SettingsFile>

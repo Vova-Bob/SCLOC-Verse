@@ -332,5 +332,43 @@ namespace SCLOCVerse {
                 this["AntiAfkIndicatorMode"] = value;
             }
         }
+
+        // ===== Auto Key =====
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool AutoKeyEnabled {
+            get {
+                return ((bool)(this["AutoKeyEnabled"]));
+            }
+            set {
+                this["AutoKeyEnabled"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("Oem4")]
+        public string AutoKeyActionKey {
+            get {
+                return ((string)(this["AutoKeyActionKey"]));
+            }
+            set {
+                this["AutoKeyActionKey"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("1000")]
+        public int AutoKeyIntervalMs {
+            get {
+                return ((int)(this["AutoKeyIntervalMs"]));
+            }
+            set {
+                this["AutoKeyIntervalMs"] = value;
+            }
+        }
     }
 }

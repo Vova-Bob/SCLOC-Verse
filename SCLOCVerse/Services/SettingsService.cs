@@ -1,5 +1,6 @@
 ﻿using SCLOCVerse.Interfaces;
 using SCLOCVerse.Models.AntiAfk;
+using SCLOCVerse.Services.InputSystem;
 using System.Diagnostics;
 using System.IO;
 
@@ -218,6 +219,44 @@ namespace SCLOCVerse.Services
         public void SetAntiAfkIndicatorMode(AntiAfkIndicatorMode value)
         {
             Settings.Default.AntiAfkIndicatorMode = value.ToString();
+            Settings.Default.Save();
+        }
+
+        // ===== Auto Key =====
+
+        public bool GetAutoKeyEnabled()
+        {
+            return Settings.Default.AutoKeyEnabled;
+        }
+
+        public void SetAutoKeyEnabled(bool value)
+        {
+            Settings.Default.AutoKeyEnabled = value;
+            Settings.Default.Save();
+        }
+
+        public HotkeyKey GetAutoKeyActionKey()
+        {
+            return Enum.TryParse<HotkeyKey>(Settings.Default.AutoKeyActionKey, out var key)
+                ? key
+                : HotkeyKey.Oem4;
+        }
+
+        public void SetAutoKeyActionKey(HotkeyKey value)
+        {
+            Settings.Default.AutoKeyActionKey = value.ToString();
+            Settings.Default.Save();
+        }
+
+        public int GetAutoKeyIntervalMs()
+        {
+            var value = Settings.Default.AutoKeyIntervalMs;
+            return value is >= 100 and <= 2000 ? value : 1000;
+        }
+
+        public void SetAutoKeyIntervalMs(int value)
+        {
+            Settings.Default.AutoKeyIntervalMs = value;
             Settings.Default.Save();
         }
     }

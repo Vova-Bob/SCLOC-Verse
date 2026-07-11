@@ -6,8 +6,10 @@ using System.Windows.Input;
 using System.Windows.Media;
 using SCLOCVerse.Interfaces;
 using SCLOCVerse.Models.AntiAfk;
+using SCLOCVerse.Models.AutoKey;
 using SCLOCVerse.Models.HangarTimer;
 using SCLOCVerse.Services.HangarTimer;
+using SCLOCVerse.Services.InputSystem;
 
 namespace SCLOCVerse.Controls.SettingsHub
 {
@@ -40,6 +42,17 @@ namespace SCLOCVerse.Controls.SettingsHub
 
         private static readonly SolidColorBrush AntiAfkDotOn = new(Color.FromRgb(0x5B, 0xC9, 0x8A));
         private static readonly SolidColorBrush AntiAfkDotOff = new(Color.FromRgb(0x44, 0x50, 0x5A));
+
+        // ===== Auto Key =====
+
+        private IAutoKeyService? _autoKey;
+        private IPreferencesService? _autoKeyPrefs;
+        private bool _isAutoKeySyncing;
+        private bool _isActionKeyCapturing;
+
+        private static readonly SolidColorBrush AutoKeyDotRunning = new(Color.FromRgb(0x5B, 0xC9, 0x8A)); // зелений
+        private static readonly SolidColorBrush AutoKeyDotPaused = new(Color.FromRgb(0xFF, 0xC1, 0x07));  // жовтий
+        private static readonly SolidColorBrush AutoKeyDotOff = new(Color.FromRgb(0x44, 0x50, 0x5A));     // сірий
 
         public OverlaySettingsPane()
         {
@@ -243,6 +256,179 @@ namespace SCLOCVerse.Controls.SettingsHub
         private static string? GetComboBoxTag(ComboBox box)
         {
             return box.SelectedItem is ComboBoxItem cbi ? cbi.Tag as string : null;
+        }
+
+        // ============ Auto Key ============
+
+        /// <summary>
+        /// Прив'язує контроли Auto Key до сервісу та налаштувань.
+        /// Завантажує поточні значення та встановлює обробники.
+        /// </summary>
+        public void BindAutoKey(IAutoKeyService autoKeyService, IPreferencesService preferences)
+        {
+            _autoKey = autoKeyService;
+            _autoKeyPrefs = preferences;
+
+            _isAutoKeySyncing = true;
+            try
+            {
+                SyncAutoKeyUi(autoKeyService.State, autoKeyService.IsEnabled);
+
+                var interval = preferences.GetAutoKeyIntervalMs();
+                AutoKeyIntervalSlider.Value = interval;
+                AutoKeyIntervalValue.Text = interval + " ms";
+
+                UpdateActionKeyDisplay(preferences.GetAutoKeyActionKey());
+            }
+            finally
+            {
+                _isAutoKeySyncing = false;
+            }
+
+            // Підписка на події.
+            autoKeyService.StateChanged += OnAutoKeyStateChanged;
+            AutoKeyEnabledToggle.Checked += AutoKeyToggle_Changed;
+            AutoKeyEnabledToggle.Unchecked += AutoKeyToggle_Changed;
+            AutoKeyIntervalSlider.ValueChanged += AutoKeyInterval_Changed;
+            AutoKeyIntervalSlider.PreviewMouseLeftButtonDown += Slider_PreviewMouseLeftButtonDown;
+            AutoKeyActionKeyKeycap.Click += AutoKeyActionKeyKeycap_Click;
+        }
+
+        private void OnAutoKeyStateChanged(object? sender, AutoKeyState state)
+        {
+            if (!Dispatcher.CheckAccess())
+            {
+                Dispatcher.BeginInvoke(() => OnAutoKeyStateChanged(sender, state));
+                return;
+            }
+
+            _isAutoKeySyncing = true;
+            try
+            {
+                SyncAutoKeyUi(state, _autoKey?.IsEnabled ?? false);
+            }
+            finally
+            {
+                _isAutoKeySyncing = false;
+            }
+        }
+
+        private void SyncAutoKeyUi(AutoKeyState state, bool enabled)
+        {
+            AutoKeyEnabledToggle.IsChecked = enabled;
+
+            var (dot, text) = state switch
+            {
+                AutoKeyState.Running => (AutoKeyDotRunning, "· працює"),
+                AutoKeyState.Paused => (AutoKeyDotPaused, "· очікує Star Citizen"),
+                _ => (AutoKeyDotOff, "· вимкнено")
+            };
+
+            AutoKeyStatusDot.Fill = dot;
+            AutoKeyStatusText.Text = text;
+        }
+
+        private void AutoKeyToggle_Changed(object sender, RoutedEventArgs e)
+        {
+            if (_isAutoKeySyncing || _autoKey is null)
+                return;
+
+            bool wantEnabled = AutoKeyEnabledToggle.IsChecked == true;
+            if (wantEnabled != _autoKey.IsEnabled)
+                _autoKey.Toggle();
+        }
+
+        private void AutoKeyInterval_Changed(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            if (_isAutoKeySyncing || _autoKeyPrefs is null)
+                return;
+
+            var interval = (int)Math.Round(e.NewValue, 0);
+            AutoKeyIntervalValue.Text = interval + " ms";
+            _autoKeyPrefs.SetAutoKeyIntervalMs(interval);
+            _autoKey?.ApplySettings();
+        }
+
+        // ============ Action Key capture ============
+
+        private void AutoKeyActionKeyKeycap_Click(object sender, RoutedEventArgs e)
+        {
+            if (_isActionKeyCapturing)
+            {
+                CancelActionKeyCapture();
+                return;
+            }
+
+            _isActionKeyCapturing = true;
+            AutoKeyActionKeyKeycap.Content = "● Очікування…";
+            AutoKeyActionKeyKeycap.BorderBrush = new SolidColorBrush(Color.FromRgb(0xE3, 0x6D, 0x3A));
+            AutoKeyActionKeyKeycap.Foreground = new SolidColorBrush(Color.FromRgb(0xE3, 0x6D, 0x3A));
+
+            var window = Window.GetWindow(this);
+            if (window != null)
+                window.PreviewKeyDown += ActionKeyCapture_PreviewKeyDown;
+        }
+
+        private void ActionKeyCapture_PreviewKeyDown(object? sender, KeyEventArgs e)
+        {
+            if (!_isActionKeyCapturing)
+                return;
+
+            var key = e.Key;
+
+            if (key == Key.Escape)
+            {
+                CancelActionKeyCapture();
+                e.Handled = true;
+                return;
+            }
+
+            // Модифікатори не є самостійною клавішею дії — чекаємо далі.
+            if (HotkeyCaptureMapper.IsModifierKey(key))
+                return;
+
+            // WPF Key → VK-код (через KeyInterop, без звернення до InputSystem-коду).
+            int vk = KeyInterop.VirtualKeyFromKey(key);
+            if (vk <= 0)
+            {
+                AutoKeyActionKeyKeycap.Content = "● Очікування…";
+                return;
+            }
+
+            e.Handled = true;
+
+            var actionKey = (HotkeyKey)vk;
+            if (_autoKeyPrefs is not null)
+                _autoKeyPrefs.SetAutoKeyActionKey(actionKey);
+            _autoKey?.ApplySettings();
+
+            UpdateActionKeyDisplay(actionKey);
+            EndActionKeyCapture();
+        }
+
+        private void CancelActionKeyCapture()
+        {
+            EndActionKeyCapture();
+            if (_autoKeyPrefs is not null)
+                UpdateActionKeyDisplay(_autoKeyPrefs.GetAutoKeyActionKey());
+        }
+
+        private void EndActionKeyCapture()
+        {
+            if (!_isActionKeyCapturing)
+                return;
+
+            _isActionKeyCapturing = false;
+            var window = Window.GetWindow(this);
+            if (window != null)
+                window.PreviewKeyDown -= ActionKeyCapture_PreviewKeyDown;
+        }
+
+        private void UpdateActionKeyDisplay(HotkeyKey key)
+        {
+            AutoKeyActionKeyKeycap.Content = AutoKeyFormats.FormatKey(key);
+            AutoKeyActionKeyKeycap.BorderBrush = new SolidColorBrush(Color.FromRgb(0x4A, 0x88, 0xA8));
+            AutoKeyActionKeyKeycap.Foreground = new SolidColorBrush(Color.FromRgb(0xD8, 0xEA, 0xFA));
         }
 
         private static void SelectComboBoxByTag(ComboBox box, string tagValue)

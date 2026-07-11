@@ -527,6 +527,7 @@ namespace SCLOCVerse.Controls.SettingsHub
 
         private static string ResolveGroup(string id)
         {
+            if (id.StartsWith("AutoKey.", StringComparison.Ordinal)) return "Auto Key";
             if (id.StartsWith("AntiAfk.", StringComparison.Ordinal)) return "Anti-AFK";
             if (id.Contains("Scale")) return "Накладання · масштаб";
             if (id.Contains("Opacity")) return "Накладання · прозорість";
@@ -542,6 +543,7 @@ namespace SCLOCVerse.Controls.SettingsHub
             "Накладання · масштаб" => 2,
             "Накладання · прозорість" => 3,
             "Anti-AFK" => 4,
+            "Auto Key" => 5,
             _ => 9
         };
 

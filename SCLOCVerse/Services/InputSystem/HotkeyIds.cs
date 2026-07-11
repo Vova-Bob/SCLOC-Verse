@@ -74,5 +74,10 @@ namespace SCLOCVerse.Services.InputSystem
         /// Увімкнути / Вимкнути Anti-AFK.
         /// </summary>
         public static HotkeyId AntiAfkToggle { get; } = new("AntiAfk.Toggle");
+
+        /// <summary>
+        /// Увімкнути / Вимкнути Auto Key.
+        /// </summary>
+        public static HotkeyId AutoKeyToggle { get; } = new("AutoKey.Toggle");
     }
 }

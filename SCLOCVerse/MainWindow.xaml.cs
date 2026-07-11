@@ -60,6 +60,7 @@ namespace SCLOCVerse
         private readonly INotificationRouter _notificationRouter;
         private readonly IToastNotificationService _osToast;
         private readonly IAntiAfkService _antiAfkService;
+        private readonly IAutoKeyService _autoKeyService;
         private IHotkeyMessageSource? _hotkeyMessageSource;
         private bool _showGameFolderToast = true;
         private DateTime? _suppressStartupUpdateCheckUntil;
@@ -106,7 +107,7 @@ namespace SCLOCVerse
         private readonly UpdateCheckerService _updateCheckerService;
         private readonly CleanupController _cacheCleanupController;
 
-        public MainWindow(MainWindowViewModel viewModel, IWindowHelper windowHelper, ILocalizationInstaller localizationInstaller, IReadmeService readmeService,     IUpdater updater, UpdateCheckerService updateCheckerService, IApplicationUpdateService applicationUpdateService, IBackgroundUpdateMonitor backgroundUpdateMonitor, IUpdateChannelService updateChannelService, IApplicationVersionProvider applicationVersionProvider, IUpdateDownloader updateDownloader, IUpdateInstaller updateInstaller, IUpdateHistoryService updateHistoryService, IUpdateVerifier updateVerifier, IGitHubReleaseClient gitHubReleaseClient, IDialogService dialogService, IAuthService authService, IAuthStatusProvider authStatusProvider, IHangarTimerService hangarTimerService, IHotkeyService hotkeyService, ITrayService trayService, IApplicationInstanceService applicationInstanceService, IAutostartService autostartService, IUiInteractionPolicy uiPolicy, IPreferencesService preferencesService, INotificationRouter notificationRouter, IToastNotificationService toastNotificationService, IAntiAfkService antiAfkService)
+        public MainWindow(MainWindowViewModel viewModel, IWindowHelper windowHelper, ILocalizationInstaller localizationInstaller, IReadmeService readmeService,     IUpdater updater, UpdateCheckerService updateCheckerService, IApplicationUpdateService applicationUpdateService, IBackgroundUpdateMonitor backgroundUpdateMonitor, IUpdateChannelService updateChannelService, IApplicationVersionProvider applicationVersionProvider, IUpdateDownloader updateDownloader, IUpdateInstaller updateInstaller, IUpdateHistoryService updateHistoryService, IUpdateVerifier updateVerifier, IGitHubReleaseClient gitHubReleaseClient, IDialogService dialogService, IAuthService authService, IAuthStatusProvider authStatusProvider, IHangarTimerService hangarTimerService, IHotkeyService hotkeyService, ITrayService trayService, IApplicationInstanceService applicationInstanceService, IAutostartService autostartService, IUiInteractionPolicy uiPolicy, IPreferencesService preferencesService, INotificationRouter notificationRouter, IToastNotificationService toastNotificationService, IAntiAfkService antiAfkService, IAutoKeyService autoKeyService)
         {
             InitializeComponent();
 
@@ -138,6 +139,7 @@ namespace SCLOCVerse
             _notificationRouter = notificationRouter;
             _osToast = toastNotificationService;
             _antiAfkService = antiAfkService;
+            _autoKeyService = autoKeyService;
 
             _toastService = new ToastService(AppToast.ToastBorder, AppToast.ToastText);
             _linkService = new LinkService(_toastService);
@@ -197,6 +199,9 @@ namespace SCLOCVerse
 
             // «Overlay» → Anti-AFK: тогл + колір/позиція/розмір/анімація/режим індикатора.
             CanvasSettings.OverlayPane?.BindAntiAfk(_antiAfkService, _preferencesService);
+
+            // «Overlay» → Auto Key: тогл + Action Key + інтервал.
+            CanvasSettings.OverlayPane?.BindAutoKey(_autoKeyService, _preferencesService);
 
             // Стан зарезервованих категорій у cat-head (P0 — центр керування показує стан).
             CanvasSettings.ProfilePane.Subtitle = "не налаштовано";
