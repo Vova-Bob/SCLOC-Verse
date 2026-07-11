@@ -93,10 +93,14 @@ namespace SCLOCVerse.Composition
 
             _hangarSettingsService = new HangarSettingsService();
             _hangarStartTimeProvider = new HangarStartTimeProvider(httpClient, _hangarSettingsService);
-            _hangarOverlayService = new HangarOverlayService(_hangarSettingsService);
+
+            // HotkeyService створюється ДО HangarOverlayService: overlay використовує
+            // GetDefinitions() для динамічної підказки гарячих клавіш (SSOT, без дублювання).
             _hotkeyBackend = CreateHotkeyBackend();
             var diagnosticsEnabled = IsHotkeyDiagnosticsEnabled();
             _hotkeyService = new HotkeyService(_hotkeyBackend, diagnosticsEnabled, new HotkeyBindingsStore());
+
+            _hangarOverlayService = new HangarOverlayService(_hangarSettingsService, _hotkeyService);
             _hangarTimerService = new HangarTimerService(
                 _hangarStartTimeProvider,
                 _hangarOverlayService,

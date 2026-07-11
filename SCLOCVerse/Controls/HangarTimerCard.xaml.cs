@@ -1,6 +1,8 @@
 using SCLOCVerse.Interfaces;
 using SCLOCVerse.Models.HangarTimer;
+using SCLOCVerse.Services.InputSystem;
 using System;
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -12,7 +14,42 @@ namespace SCLOCVerse.Controls
 {
     public partial class HangarTimerCard : UserControl
     {
+        /// <summary>
+        /// Presentation-структура груп popup: заголовок + порядок HotkeyId.
+        /// Це НЕ дублювання комбінацій — самі жести/описи читаються live з
+        /// IHotkeyService.GetDefinitions() при кожному відкритті popup.
+        /// </summary>
+        private static readonly (string Title, HotkeyId[] Ids)[] HangarHotkeyGroups =
+        {
+            ("Основні", new[]
+            {
+                HotkeyIds.HangarToggleOverlay,
+                HotkeyIds.HangarToggleClickThrough,
+                HotkeyIds.HangarBeginTemporaryDrag
+            }),
+            ("Цикл", new[]
+            {
+                HotkeyIds.HangarSetStartNow,
+                HotkeyIds.HangarPromptManualStart,
+                HotkeyIds.HangarForceSync,
+                HotkeyIds.HangarClearOverrideAndSync
+            }),
+            ("Масштаб", new[]
+            {
+                HotkeyIds.HangarScaleDown,
+                HotkeyIds.HangarScaleUp,
+                HotkeyIds.HangarScaleReset
+            }),
+            ("Прозорість", new[]
+            {
+                HotkeyIds.HangarOpacityDown,
+                HotkeyIds.HangarOpacityUp,
+                HotkeyIds.HangarOpacityReset
+            })
+        };
+
         private IHangarTimerService? _hangarTimerService;
+        private IHotkeyService? _hotkeyService;
         private DispatcherTimer? _timer;
         private bool _isHoveringButton;
         private bool _isHoveringPopup;
@@ -32,6 +69,14 @@ namespace SCLOCVerse.Controls
             _hangarTimerService = service;
             _hangarTimerService.CycleStartChanged += OnServiceCycleStartChanged;
             OnTimerTick(null, EventArgs.Empty);
+        }
+
+        /// <summary>
+        /// Передає сервіс гарячих клавіш (SSOT) для динамічної підказки popup.
+        /// </summary>
+        public void SetHotkeyService(IHotkeyService service)
+        {
+            _hotkeyService = service;
         }
 
         private void OnLoaded(object sender, RoutedEventArgs e)
@@ -201,8 +246,79 @@ namespace SCLOCVerse.Controls
             OnUnloaded(sender, e);
         }
 
-        private void OpenPopup() => HotkeyPopup.IsOpen = true;
+        private void OpenPopup()
+        {
+            // Перебудова з live-даних при кожному відкритті (події зміни визначень у
+            // IHotkeyService немає — KISS: recompute-on-open). Будь-який rebind у
+            // «Гарячих клавішах» відображається при наступному відкритті popup.
+            RebuildHotkeyPopup();
+            HotkeyPopup.IsOpen = true;
+        }
+
         private void ClosePopup() => HotkeyPopup.IsOpen = false;
+
+        /// <summary>
+        /// Будує вміст popup з IHotkeyService.GetDefinitions() — єдине джерело жестів та описів.
+        /// Зберігає дизайн: стилі PopupGroupHeaderStyle / PopupKeyStyle / PopupHintTextStyle,
+        /// 2-колонковий Grid (ключ + опис) на групу.
+        /// </summary>
+        private void RebuildHotkeyPopup()
+        {
+            HotkeyGroupsHost.Children.Clear();
+            if (_hotkeyService is null)
+                return;
+
+            var byId = _hotkeyService.GetDefinitions().ToDictionary(d => d.Id);
+
+            var keyStyle = (Style)FindResource("PopupKeyStyle");
+            var hintStyle = (Style)FindResource("PopupHintTextStyle");
+            var groupStyle = (Style)FindResource("PopupGroupHeaderStyle");
+
+            foreach (var (title, ids) in HangarHotkeyGroups)
+            {
+                var rows = ids
+                    .Where(id => byId.ContainsKey(id))
+                    .Select(id => byId[id])
+                    .ToList();
+
+                if (rows.Count == 0)
+                    continue;
+
+                HotkeyGroupsHost.Children.Add(new TextBlock
+                {
+                    Text = title,
+                    Style = groupStyle
+                });
+
+                var grid = new Grid();
+                grid.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
+                grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(10) });
+                grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+
+                var keysCol = new StackPanel();
+                var descCol = new StackPanel();
+                Grid.SetColumn(descCol, 2);
+
+                foreach (var def in rows)
+                {
+                    // Unassigned → «—» (жест не призначено).
+                    var gestureText = def.IsUnassigned
+                        ? "—"
+                        : HotkeyGestureFormat.Format(def.EffectiveGesture);
+
+                    keysCol.Children.Add(new TextBlock { Text = gestureText, Style = keyStyle });
+                    descCol.Children.Add(new TextBlock
+                    {
+                        Text = def.Description ?? def.Id.Value,
+                        Style = hintStyle
+                    });
+                }
+
+                grid.Children.Add(keysCol);
+                grid.Children.Add(descCol);
+                HotkeyGroupsHost.Children.Add(grid);
+            }
+        }
 
         private void DelayClosePopup()
         {

@@ -160,6 +160,7 @@ namespace SCLOCVerse
             _buttonHelper = new ButtonHelper();
             _authStatusPresenter = new AuthStatusPresenter(BtnAccount, _authStatusProvider);
             CanvasScTools.SetHangarTimerService(_hangarTimerService);
+            CanvasScTools.SetHotkeyService(_hotkeyService);
 
             // Auth Gate створюється програмно, оскільки потребує IAuthService через DI.
             var authGate = new AuthGateCanvas(_authService);

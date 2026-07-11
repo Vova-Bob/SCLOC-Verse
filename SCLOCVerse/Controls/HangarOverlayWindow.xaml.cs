@@ -91,6 +91,15 @@ namespace SCLOCVerse.Controls
             InitializeLedPositions();
         }
 
+        /// <summary>
+        /// Встановлює текст підказки гарячих клавіш. Будується зовні (HangarOverlayService)
+        /// з IHotkeyService.GetDefinitions() — єдине джерело жестів та описів.
+        /// </summary>
+        public void SetHotkeyHint(string text)
+        {
+            HotkeyHintText.Text = text;
+        }
+
         private void InitializeLedPositions()
         {
             double rowWidth = LedCount * LedDiameter + (LedCount - 1) * LedSpacing;

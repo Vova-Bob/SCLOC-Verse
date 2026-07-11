@@ -1,6 +1,9 @@
 using SCLOCVerse.Controls;
 using SCLOCVerse.Interfaces;
 using SCLOCVerse.Models.HangarTimer;
+using SCLOCVerse.Services.InputSystem;
+using System.Linq;
+using System.Text;
 using System.Windows;
 using System.Windows.Threading;
 
@@ -25,6 +28,7 @@ namespace SCLOCVerse.Services.HangarTimer
         private const double ScaleStep = 0.05;
 
         private readonly IHangarSettingsService _settingsService;
+        private readonly IHotkeyService _hotkeyService;
         private readonly DispatcherTimer _timer;
         private readonly HangarTimerState _state;
 
@@ -32,9 +36,10 @@ namespace SCLOCVerse.Services.HangarTimer
         private long _cycleStartMs;
         private bool _disposed;
 
-        public HangarOverlayService(IHangarSettingsService settingsService)
+        public HangarOverlayService(IHangarSettingsService settingsService, IHotkeyService hotkeyService)
         {
             _settingsService = settingsService;
+            _hotkeyService = hotkeyService;
             _state = new HangarTimerState();
 
             _timer = new DispatcherTimer(DispatcherPriority.Render)
@@ -64,6 +69,7 @@ namespace SCLOCVerse.Services.HangarTimer
 
             if (_window != null)
             {
+                _window.SetHotkeyHint(BuildHotkeyHint());
                 _window.Activate();
                 return;
             }
@@ -73,9 +79,42 @@ namespace SCLOCVerse.Services.HangarTimer
             _window = new HangarOverlayWindow(_state, _settingsService, OnWindowClosed);
             // Підписка на переміщення вікна → транслиція в PositionChanged.
             _window.LocationChanged += OnWindowLocationChanged;
+            _window.SetHotkeyHint(BuildHotkeyHint());
             _window.Show();
             _timer.Start();
             UpdateModel();
+        }
+
+        /// <summary>
+        /// Будує рядок підказки гарячих клавіш з IHotkeyService.GetDefinitions()
+        /// (SSOT) — «жест: опис • жест: опис • … • Esc: закрити».
+        /// Esc — локальне закриття вікна (не глобальний хоткей), тому статичний суфікс.
+        /// </summary>
+        private string BuildHotkeyHint()
+        {
+            var sb = new StringBuilder();
+
+            foreach (var def in _hotkeyService.GetDefinitions())
+            {
+                if (!def.Id.Value.StartsWith("HangarTimer.", System.StringComparison.Ordinal))
+                    continue;
+
+                if (sb.Length > 0)
+                    sb.Append(" • ");
+
+                var gesture = def.IsUnassigned
+                    ? "—"
+                    : HotkeyGestureFormat.Format(def.EffectiveGesture);
+
+                sb.Append(gesture).Append(": ").Append(def.Description ?? def.Id.Value);
+            }
+
+            // Esc — локальна клавіша закриття overlay (не частина HotkeyService).
+            if (sb.Length > 0)
+                sb.Append(" • ");
+            sb.Append("Esc: закрити");
+
+            return sb.ToString();
         }
 
         public void Hide()

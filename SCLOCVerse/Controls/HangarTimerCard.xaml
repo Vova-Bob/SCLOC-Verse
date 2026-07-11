@@ -245,87 +245,9 @@
                                FontFamily="Arial"
                                Margin="0,0,0,8"/>
 
-                    <!-- Основні -->
-                    <TextBlock Text="Основні" Style="{StaticResource PopupGroupHeaderStyle}"/>
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="10"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <StackPanel Grid.Column="0">
-                            <TextBlock Text="F6" Style="{StaticResource PopupKeyStyle}"/>
-                            <TextBlock Text="Shift + F8" Style="{StaticResource PopupKeyStyle}"/>
-                            <TextBlock Text="Ctrl + F8" Style="{StaticResource PopupKeyStyle}"/>
-                        </StackPanel>
-                        <StackPanel Grid.Column="2">
-                            <TextBlock Text="Показати / приховати Overlay" Style="{StaticResource PopupHintTextStyle}"/>
-                            <TextBlock Text="Click-through overlay" Style="{StaticResource PopupHintTextStyle}"/>
-                            <TextBlock Text="Тимчасове перетягування" Style="{StaticResource PopupHintTextStyle}"/>
-                        </StackPanel>
-                    </Grid>
-
-                    <!-- Цикл -->
-                    <TextBlock Text="Цикл" Style="{StaticResource PopupGroupHeaderStyle}"/>
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="10"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <StackPanel Grid.Column="0">
-                            <TextBlock Text="Ctrl + Shift + F7" Style="{StaticResource PopupKeyStyle}"/>
-                            <TextBlock Text="Shift + F7" Style="{StaticResource PopupKeyStyle}"/>
-                            <TextBlock Text="F9" Style="{StaticResource PopupKeyStyle}"/>
-                            <TextBlock Text="Shift + F9" Style="{StaticResource PopupKeyStyle}"/>
-                        </StackPanel>
-                        <StackPanel Grid.Column="2">
-                            <TextBlock Text="Почати цикл зараз" Style="{StaticResource PopupHintTextStyle}"/>
-                            <TextBlock Text="Встановити час вручну" Style="{StaticResource PopupHintTextStyle}"/>
-                            <TextBlock Text="Синхронізувати цикл" Style="{StaticResource PopupHintTextStyle}"/>
-                            <TextBlock Text="Очистити override" Style="{StaticResource PopupHintTextStyle}"/>
-                        </StackPanel>
-                    </Grid>
-
-                    <!-- Масштаб -->
-                    <TextBlock Text="Масштаб" Style="{StaticResource PopupGroupHeaderStyle}"/>
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="10"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <StackPanel Grid.Column="0">
-                            <TextBlock Text="Ctrl + −" Style="{StaticResource PopupKeyStyle}"/>
-                            <TextBlock Text="Ctrl + +" Style="{StaticResource PopupKeyStyle}"/>
-                            <TextBlock Text="Ctrl + 0" Style="{StaticResource PopupKeyStyle}"/>
-                        </StackPanel>
-                        <StackPanel Grid.Column="2">
-                            <TextBlock Text="Масштаб -" Style="{StaticResource PopupHintTextStyle}"/>
-                            <TextBlock Text="Масштаб +" Style="{StaticResource PopupHintTextStyle}"/>
-                            <TextBlock Text="Масштаб 100%" Style="{StaticResource PopupHintTextStyle}"/>
-                        </StackPanel>
-                    </Grid>
-
-                    <!-- Прозорість -->
-                    <TextBlock Text="Прозорість" Style="{StaticResource PopupGroupHeaderStyle}"/>
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="10"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <StackPanel Grid.Column="0">
-                            <TextBlock Text="Ctrl + Alt + −" Style="{StaticResource PopupKeyStyle}"/>
-                            <TextBlock Text="Ctrl + Alt + +" Style="{StaticResource PopupKeyStyle}"/>
-                            <TextBlock Text="Ctrl + Alt + 0" Style="{StaticResource PopupKeyStyle}"/>
-                        </StackPanel>
-                        <StackPanel Grid.Column="2">
-                            <TextBlock Text="Прозорість -" Style="{StaticResource PopupHintTextStyle}"/>
-                            <TextBlock Text="Прозорість +" Style="{StaticResource PopupHintTextStyle}"/>
-                            <TextBlock Text="Прозорість 100%" Style="{StaticResource PopupHintTextStyle}"/>
-                        </StackPanel>
-                    </Grid>
+                    <!-- Динамічно будуються з IHotkeyService.GetDefinitions()
+                         (групи: Основні / Цикл / Масштаб / Прозорість). -->
+                    <StackPanel x:Name="HotkeyGroupsHost"/>
 
                     <!-- Підказка -->
                     <TextBlock Text="💡 Утримуйте клавішу приблизно 1 секунду для безперервної зміни масштабу або прозорості."

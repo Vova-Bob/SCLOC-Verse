@@ -487,31 +487,7 @@ namespace SCLOCVerse.Controls.SettingsHub
         // ============ Форматування ============
 
         private static string FormatGesture(HotkeyGesture gesture)
-        {
-            var parts = new List<string>();
-            if ((gesture.Modifiers & HotkeyModifiers.Control) != 0) parts.Add("Ctrl");
-            if ((gesture.Modifiers & HotkeyModifiers.Alt) != 0) parts.Add("Alt");
-            if ((gesture.Modifiers & HotkeyModifiers.Shift) != 0) parts.Add("Shift");
-            if ((gesture.Modifiers & HotkeyModifiers.Win) != 0) parts.Add("Win");
-            parts.Add(FormatKey(gesture.Key));
-            return string.Join("+", parts);
-        }
-
-        private static string FormatKey(HotkeyKey key) => key switch
-        {
-            HotkeyKey.Escape => "Esc",
-            HotkeyKey.Space => "Space",
-            HotkeyKey.Tab => "Tab",
-            HotkeyKey.Enter => "Enter",
-            HotkeyKey.Insert => "Ins",
-            HotkeyKey.Delete => "Del",
-            HotkeyKey.PageUp => "PgUp",
-            HotkeyKey.PageDown => "PgDn",
-            HotkeyKey.OemMinus => "−",
-            HotkeyKey.OemPlus => "+",
-            HotkeyKey.D0 => "0",
-            _ => key.ToString()
-        };
+            => HotkeyGestureFormat.Format(gesture);
 
         private static string FormatModifiers(ModifierKeys modifiers)
         {

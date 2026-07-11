@@ -1,4 +1,5 @@
 using SCLOCVerse.Interfaces;
+using SCLOCVerse.Services.InputSystem;
 using System.Collections.ObjectModel;
 using System.Windows.Controls;
 
@@ -10,6 +11,7 @@ namespace SCLOCVerse.Controls
     public partial class ScToolsCanvas : Canvas
     {
         private IHangarTimerService? _hangarTimerService;
+        private IHotkeyService? _hotkeyService;
 
         public ScToolsCanvas()
         {
@@ -22,6 +24,15 @@ namespace SCLOCVerse.Controls
         public void SetHangarTimerService(IHangarTimerService service)
         {
             _hangarTimerService = service;
+            PopulateTools();
+        }
+
+        /// <summary>
+        /// Передає сервіс гарячих клавіш для динамічних підказок карток (SSOT).
+        /// </summary>
+        public void SetHotkeyService(IHotkeyService service)
+        {
+            _hotkeyService = service;
             PopulateTools();
         }
 
@@ -46,6 +57,8 @@ namespace SCLOCVerse.Controls
             var card = new HangarTimerCard();
             if (_hangarTimerService != null)
                 card.SetHangarTimerService(_hangarTimerService);
+            if (_hotkeyService != null)
+                card.SetHotkeyService(_hotkeyService);
             return card;
         }
     }
