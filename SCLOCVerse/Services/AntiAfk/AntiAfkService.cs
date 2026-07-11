@@ -1,4 +1,5 @@
 using SCLOCVerse.Controls;
+using SCLOCVerse.Helpers;
 using SCLOCVerse.Interfaces;
 using SCLOCVerse.Models.AntiAfk;
 using SCLOCVerse.Services.InputSystem;
@@ -108,6 +109,11 @@ namespace SCLOCVerse.Services.AntiAfk
         private void TimerCallback(object? state)
         {
             if (_disposed || !IsRunning)
+                return;
+
+            // Foreground Gate (спільний з Auto Key): Anti-AFK діє лише коли активне
+            // вікно Star Citizen. Alt+Tab → тиша (без SendInput); повернення → відновлення.
+            if (!StarCitizenForeground.IsStarCitizenForeground())
                 return;
 
             int idleMs = GetIdleMilliseconds();

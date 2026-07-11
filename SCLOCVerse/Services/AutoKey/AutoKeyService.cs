@@ -1,11 +1,10 @@
 using SCLOCVerse.Controls;
+using SCLOCVerse.Helpers;
 using SCLOCVerse.Interfaces;
 using SCLOCVerse.Models.AutoKey;
 using SCLOCVerse.Services.InputSystem;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
-using System.IO;
-using System.Text;
 using System.Windows;
 
 namespace SCLOCVerse.Services.AutoKey
@@ -28,7 +27,6 @@ namespace SCLOCVerse.Services.AutoKey
     /// </summary>
     public sealed class AutoKeyService : IAutoKeyService
     {
-        private const string StarCitizenProcessName = "StarCitizen.exe";
         private const int DefaultIntervalMs = 1000;
         private const int MinIntervalMs = 100;
         private const int MaxIntervalMs = 2000;
@@ -120,28 +118,15 @@ namespace SCLOCVerse.Services.AutoKey
         }
 
         /// <summary>
-        /// Stateless-цикл: ідентифікація активного вікна за іменем процесу.
-        /// Спочатку стан, потім дія (RUNNING → SendInput).
+        /// Stateless-цикл: Foreground Gate (спільний з Anti-AFK) → стан → дія.
         /// </summary>
         private void TimerCallback(object? state)
         {
             if (_disposed || !IsEnabled)
                 return;
 
-            // ForegroundWindow → PID → ProcessName. Без стану, без кешу.
-            var hwnd = GetForegroundWindow();
-            bool isStarCitizen = false;
-
-            if (hwnd != IntPtr.Zero
-                && GetWindowThreadProcessId(hwnd, out uint pid) != 0
-                && pid != 0)
-            {
-                var name = TryGetProcessName(pid); // null, якщо OpenProcess не відкрився — тихо
-                isStarCitizen = string.Equals(name, StarCitizenProcessName, StringComparison.OrdinalIgnoreCase);
-            }
-
-            // Спочатку стан, потім дія.
-            if (isStarCitizen)
+            // Foreground Gate: лише активне вікно Star Citizen. Спільний helper з Anti-AFK (DRY).
+            if (StarCitizenForeground.IsStarCitizenForeground())
             {
                 SetState(AutoKeyState.Running);
                 SendKeyPress(_actionKey);
@@ -221,54 +206,6 @@ namespace SCLOCVerse.Services.AutoKey
                 return;
 
             _indicator = new AutoKeyIndicatorWindow();
-        }
-
-        // ===== PInvoke: ідентифікація процесу активного вікна =====
-
-        private const uint ProcessQueryLimitedInformation = 0x1000;
-        private const int MaxPath = 260;
-
-        [DllImport("user32.dll")]
-        private static extern IntPtr GetForegroundWindow();
-
-        [DllImport("user32.dll")]
-        private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
-
-        [DllImport("kernel32.dll", SetLastError = true)]
-        private static extern IntPtr OpenProcess(uint dwDesiredAccess, bool bInheritHandle, uint dwProcessId);
-
-        [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
-        [return: MarshalAs(UnmanagedType.Bool)]
-        private static extern bool QueryFullProcessImageName(
-            IntPtr hProcess, uint dwFlags, StringBuilder lpExeName, ref int lpdwSize);
-
-        [DllImport("kernel32.dll", SetLastError = true)]
-        [return: MarshalAs(UnmanagedType.Bool)]
-        private static extern bool CloseHandle(IntPtr hObject);
-
-        /// <summary>
-        /// Повертає ім'я exe активного процесу (з розширенням), або null,
-        /// якщо OpenProcess не відкрився або шлях не прочитано. Тихо — без логів/винятків.
-        /// </summary>
-        private static string? TryGetProcessName(uint pid)
-        {
-            var handle = OpenProcess(ProcessQueryLimitedInformation, bInheritHandle: false, pid);
-            if (handle == IntPtr.Zero)
-                return null;
-
-            try
-            {
-                var buffer = new StringBuilder(MaxPath);
-                int size = buffer.Capacity;
-                if (QueryFullProcessImageName(handle, dwFlags: 0, buffer, ref size))
-                    return Path.GetFileName(buffer.ToString());
-
-                return null;
-            }
-            finally
-            {
-                CloseHandle(handle);
-            }
         }
 
         // ===== PInvoke: SendInput (клавіатура) =====
