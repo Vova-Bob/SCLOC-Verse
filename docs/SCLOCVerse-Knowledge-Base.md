@@ -1792,6 +1792,35 @@ Phase 3.7 (Security Hardening) — Backlog (DEFAULT PRIVILEGES); SEC-11 — ✅ 
 
 209. **Схема БД не зачеплена.** Anti-AFK — суто локальний модуль (user.config persistence). Security Review не потрібне.
 
+## 14.28. Auto Key — модуль авто-натискання клавіші (2026-07-11) — ✅ IMPL
+
+> Незалежний модуль: автоматичне натискання заданої клавіші через заданий інтервал,
+> лише коли активне вікно (foreground) — Star Citizen. Перша задача — авто-прийняття
+> місій/запрошень. Повністю незалежний від Anti-AFK та Hangar Timer.
+> Форензик: 3 ітерації Decision Engine (Caption → кеш PID → stateless PID).
+
+210. **Stateless foreground-гейт за PID процесу (✅ VER+IMPL).** Кожен send-цикл: `GetForegroundWindow()` → `GetWindowThreadProcessId()` → `OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION)` → `QueryFullProcessImageName()` → `Path.GetFileName` → `string.Equals(name, "StarCitizen.exe", OrdinalIgnoreCase)`. **Жодного кешу PID, жодної логіки відновлення** — сервіс завжди бачить поточний стан системи. Переживає краш/перезапуск/Alt+Tab гри та запуск гри після SCLOC-Verse. Доведено Spy++: процес `StarCitizen.exe`, вікно Class=`CryENGINE`, Caption=`Star Citizen`. Перевірка за PID процесу, а не за Caption (не залежить від локалізації/редакції заголовка).
+
+211. **Відхилено: кешування PID (✅ REJ).** Кеш PID на весь час життя сервісу ламається при краші/перезапуску гри (нова PID → сервіс «помирає»). Також відхилено Caption-Contains (залежність від заголовка) та `Process.GetProcessesByName` як gate на циклі (заборонено ТЗ, дорожче). Лінива re-resolve + Auto Recover (throttle) також відхилені як зайва складність — stateless-підхід усуває весь клас ризиків відсутністю стану.
+
+212. **OpenProcess == NULL → тихо PAUSED (✅ IMPL).** Якщо `OpenProcess` не відкрився (доступ/перехід вікна) — `TryGetProcessName` повертає `null` без логів і без винятків → стан PAUSED, **0 SendInput**. SendInput виконується лише у стані RUNNING (активне вікно Star Citizen), після встановлення стану (спочатку стан, потім дія).
+
+213. **AutoKeyService — координатор (✅ IMPL).** 2 залежності: `IHotkeyService` + `IPreferencesService`. `System.Threading.Timer` (100–2000мс, default 1000). `SendInput(KEYBDINPUT, key-down + key-up)`. `IDisposable`. Не авто-стартує при конструюванні (патерн Anti-AFK: toggle/хоткей керує). Не залежить від Anti-AFK та Hangar Timer.
+
+214. **AutoKeyIndicatorWindow — окремий overlay (✅ IMPL).** Компактний badge «● Auto Key», click-through (`WS_EX_TRANSPARENT | WS_EX_LAYERED`), фіксована позиція **TopLeft** (не перетинається з Anti-AFK у TopRight). 3 стани: Off (сірий, приховано) / Running (зелений) / Paused (жовтий, «Auto Key · Paused»). Повністю незалежний життєвий цикл.
+
+215. **Налаштування через IPreferencesService (✅ IMPL).** 3 additive пари: enabled (bool), actionKey (`HotkeyKey` enum, string у Settings, default `Oem4`='['), intervalMs (int 100–2000, default 1000). Enum у коді, string у Settings.Designer — конверсія `Enum.TryParse` на межі `SettingsService`.
+
+216. **Гаряча клавіша Home (✅ IMPL).** `HotkeyIds.AutoKeyToggle` = `"AutoKey.Toggle"`, `HotkeyGesture(None, Home)`. Home вільний (Hangar: F6–F9, Anti-AFK: End). Rebind-able через Phase 0.5 editor. Автоматично з'являється у «Гарячі клавіші» через `ResolveGroup` → група «Auto Key» (`GroupOrder`=5).
+
+217. **Settings Hub — блок у Overlay (✅ IMPL).** `HubGroupCard`: toggle (Enable) + Action Key keycap (capture через `KeyInterop.VirtualKeyFromKey`) + slider (інтервал 100–2000мс, snap 50). Live Preview через `IAutoKeyService.ApplySettings()` (перезапуск таймера з новим інтервалом). `_isAutoKeySyncing` flag запобігає зацикленню. Статус-крапка + текст («працює»/«очікує Star Citizen»/«вимкнено») синхронізуються через `StateChanged`.
+
+218. **Action Key capture без зміни InputSystem (✅ IMPL).** Capture використовує WPF `KeyInterop.VirtualKeyFromKey(Key)` → VK → cast `(HotkeyKey)vk`. Не зачіпає `HotkeyCaptureMapper` (DRY — окремий шлях для однієї клавіші без модифікаторів). Display через `AutoKeyFormats.FormatKey` (OEM-символи: `[`, `]`, `\` тощо).
+
+219. **Телеметрія відкладена.** `auto_key.toggle` event не входить у першу реалізацію (патерн Anti-AFK). Спочатку стабільність + UX, потім observability.
+
+220. **Схема БД не зачеплена.** Auto Key — суто локальний модуль (user.config persistence). Security Review не потрібне (SendInput локальний, PID-гейт deterministic).
+
 ---
 
 # 15. Rejected Decisions (майстер-список)
@@ -2281,6 +2310,7 @@ auth.users (TABLE, 35 columns)  +  public.app_installations (TABLE)
 | 0.5+ | **Overlay — повна функціональність** — live-preview (слайдер → state → overlay), bidirectional sync (хоткеї → слайдери), jump-to-click, drag→позиція синхронізація, reset позиції | середня | ✅ DONE 2026-07-10 (state.PropertyChanged + PositionChanged + PreviewMouseLeftButtonDown) |
 | — | **Оптимізація збірки** — Debug = framework-dependent (SelfContained=false) | низька | ✅ DONE 2026-07-10 (8× швидше: 26s → 3s) |
 | — | **Anti-AFK** — міграція з SCLOCUA: GetLastInputInfo замість hooks, AntiAfkService, AntiAfkIndicatorWindow (пульсуюча точка, 5 позицій, 2 анімації), хоткей End, 6 налаштувань через IPreferencesService, Settings Hub блок, Indicator Mode (Running/IdleOnly) | висока | ✅ DONE 2026-07-10 (§14.27; build 0 warnings) |
+| — | **Auto Key** — незалежний модуль авто-натискання клавіші: stateless foreground-гейт за PID процесу (StarCitizen.exe), AutoKeyService (SendInput keyboard), AutoKeyIndicatorWindow (3 стани), хоткей Home, Action Key (default `[`), інтервал 100–2000мс, Settings Hub блок | висока | ✅ DONE 2026-07-11 (§14.28; build 0 warnings) |
 | 1 | **Профіль — `profile.json`** (локальний контракт/схема-версія, експорт/імпорт) | середня | 🔵 PLANNED |
 | 2 | **Профіль — синхронізація Supabase** (hotkey-bindings, overlay; НЕ hotkey-події — L3 Local Only) | висока | 🔵 PLANNED |
 
