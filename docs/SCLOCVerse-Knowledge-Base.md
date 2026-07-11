@@ -1821,6 +1821,23 @@ Phase 3.7 (Security Hardening) — Backlog (DEFAULT PRIVILEGES); SEC-11 — ✅ 
 
 220. **Схема БД не зачеплена.** Auto Key — суто локальний модуль (user.config persistence). Security Review не потрібне (SendInput локальний, PID-гейт deterministic).
 
+## 14.29. Динамічні підказки гарячих клавіш — SSOT (2026-07-11) — ✅ IMPL
+
+> UX-регресія: підказки Hangar Timer містили жорстко прописані комбінації в XAML
+> → брехали після rebind у «Гарячих клавішах». Прибрано дублювання даних.
+
+221. **Коренева причина (✅ VER).** `HangarTimerCard.xaml` popup (4 групи) та `HangarOverlayWindow.xaml` (рядок-підказка) містили статичні `TextBlock`-и з комбінаціями. Жодного зв'язку з `IHotkeyService` → після rebind `CurrentGesture` оновлювався, але підказки показували заводські жести довічно.
+
+222. **SSOT — GetDefinitions (✅ IMPL).** Підказки читають `IHotkeyService.GetDefinitions()` (то ж джерело, що й «Гарячі клавіші»). `HangarTimerCard.RebuildHotkeyPopup` — при кожному відкритті popup (recompute-on-open, KISS: події зміни визначень у `IHotkeyService` немає). `HangarOverlayService.BuildHotkeyHint` — при показі overlay. Жодного жорстко прописаного жесту в XAML підказок.
+
+223. **Спільний форматувальник (✅ IMPL, DRY).** `HotkeyGestureFormat.Format(HotkeyGesture)` — єдине місце форматування gesture→«Ctrl+Shift+F7». Споживачі: `HotkeysSettingsPane` (делегує), `HangarTimerCard`, `HangarOverlayService`. Прибрано приватні дублікати `FormatKey`/`FormatGesture` з `HotkeysSettingsPane`.
+
+224. **Дизайн незмінний (Zero Regression).** Popup зберіг стилі (`PopupKeyStyle`/`PopupHintTextStyle`/`PopupGroupHeaderStyle`), 2-колонковий Grid на групу, ⌨-хедер, 💡-тіп. Описи тепер = `Definition.Description` (SSOT), формат жестів уніфікований з «Гарячими клавішами».
+
+225. **Presentation-структура груп popup (✅ IMPL).** Явне групування `group → [HotkeyId]` у `HangarTimerCard` (Основні/Цикл/Масштаб/Прозорість). Це **не дублювання комбінацій** (жести/описи читаються live) — лише те, які id показати разом. Overlay-підказка фільтрує `Id.Value.StartsWith("HangarTimer.")`; `Esc: закрити` — статичний суфікс (локальна клавіша вікна, не HotkeyService).
+
+226. **Інʼєкція (additive).** `IHotkeyService` → `HangarTimerCard.SetHotkeyService` (через `ScToolsCanvas.SetHotkeyService` ← `MainWindow`) та у `HangarOverlayService` (новий ctor-параметр; у `AppCompositionRoot` конструкція `HotkeyService` перенесена ДО `HangarOverlayService`). `IHangarTimerService` не розширювався.
+
 ---
 
 # 15. Rejected Decisions (майстер-список)
