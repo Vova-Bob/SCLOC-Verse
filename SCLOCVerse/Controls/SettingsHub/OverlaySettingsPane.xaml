@@ -95,10 +95,10 @@
 
             <!-- Cat-head -->
             <StackPanel Orientation="Horizontal" Margin="2,0,0,4">
-                <TextBlock Text="OVERLAY" FontFamily="Segoe UI" FontSize="15" FontWeight="Bold" Foreground="#EAF4FF"/>
+                <TextBlock Text="НАКЛАДАННЯ" FontFamily="Segoe UI" FontSize="15" FontWeight="Bold" Foreground="#EAF4FF"/>
                 <TextBlock Text="тип інтерфейсу · 1 активний" Margin="12,0,0,0" FontFamily="Segoe UI" FontSize="11.5" Foreground="#5A7A8A" VerticalAlignment="Center"/>
             </StackPanel>
-            <TextBlock Style="{StaticResource HubHelpText}" Text="Спільні налаштування оверлеїв. Швидкі зміни — гарячими клавішами на оверлеї; точні — тут."/>
+            <TextBlock Style="{StaticResource HubHelpText}" Text="Спільні налаштування накладань. Швидкі зміни — гарячими клавішами на накладанні; точні — тут."/>
 
             <!-- ============ HANGAR TIMER (активний) ============ -->
             <Border Style="{StaticResource HubGroupCard}">
@@ -115,14 +115,14 @@
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="120"/>
                             <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="50"/>
+                            <ColumnDefinition Width="56"/>
                         </Grid.ColumnDefinitions>
                         <StackPanel Grid.Column="0" VerticalAlignment="Center">
                             <TextBlock Style="{StaticResource HubFieldLabel}" Text="Масштаб"/>
                             <TextBlock Style="{StaticResource HubFieldDesc}" Text="за замовч. 0.60"/>
                         </StackPanel>
-                        <Slider Grid.Column="1" x:Name="ScaleSlider" Style="{StaticResource HubSlider}" Minimum="0.2" Maximum="2.0" VerticalAlignment="Center" Margin="10,0"/>
-                        <TextBlock Grid.Column="2" x:Name="ScaleValue" FontFamily="Consolas" FontSize="13" FontWeight="SemiBold" Foreground="#C9DEEF" Width="52" TextAlignment="Right" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                        <Slider Grid.Column="1" x:Name="ScaleSlider" Style="{StaticResource HubSlider}" Minimum="0.2" Maximum="2.0" VerticalAlignment="Center" Margin="10,0,10,0"/>
+                        <TextBlock Grid.Column="2" x:Name="ScaleValue" FontFamily="Consolas" FontSize="13" FontWeight="SemiBold" Foreground="#C9DEEF" TextAlignment="Right" VerticalAlignment="Center"/>
                     </Grid>
 
                     <!-- Прозорість -->
@@ -130,14 +130,14 @@
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="120"/>
                             <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="50"/>
+                            <ColumnDefinition Width="56"/>
                         </Grid.ColumnDefinitions>
                         <StackPanel Grid.Column="0" VerticalAlignment="Center">
                             <TextBlock Style="{StaticResource HubFieldLabel}" Text="Прозорість"/>
                             <TextBlock Style="{StaticResource HubFieldDesc}" Text="за замовч. 0.92"/>
                         </StackPanel>
-                        <Slider Grid.Column="1" x:Name="OpacitySlider" Style="{StaticResource HubSlider}" Minimum="0.2" Maximum="1.0" VerticalAlignment="Center" Margin="10,0"/>
-                        <TextBlock Grid.Column="2" x:Name="OpacityValue" FontFamily="Consolas" FontSize="13" FontWeight="SemiBold" Foreground="#C9DEEF" Width="52" TextAlignment="Right" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                        <Slider Grid.Column="1" x:Name="OpacitySlider" Style="{StaticResource HubSlider}" Minimum="0.2" Maximum="1.0" VerticalAlignment="Center" Margin="10,0,10,0"/>
+                        <TextBlock Grid.Column="2" x:Name="OpacityValue" FontFamily="Consolas" FontSize="13" FontWeight="SemiBold" Foreground="#C9DEEF" TextAlignment="Right" VerticalAlignment="Center"/>
                     </Grid>
 
                     <!-- Позиція (службова) -->
@@ -150,7 +150,7 @@
                             <TextBlock Style="{StaticResource HubFieldLabel}" Text="Позиція"/>
                             <TextBlock Style="{StaticResource HubFieldDesc}" Text="службова · у пікселях"/>
                         </StackPanel>
-                        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="10,0,0,0">
                             <TextBlock Text="X" Style="{StaticResource HubFieldLabel}" Margin="0,0,6,0" Foreground="#6F8CA8"/>
                             <TextBox x:Name="PosXBox" Style="{StaticResource PosBox}" Width="80" Height="28"/>
                             <TextBlock Text="Y" Style="{StaticResource HubFieldLabel}" Margin="16,0,6,0" Foreground="#6F8CA8"/>
@@ -170,7 +170,7 @@
                         <TextBlock x:Name="AntiAfkStatusText" Text="· вимкнено" FontFamily="Segoe UI" FontSize="11" Foreground="#5A7A8A" VerticalAlignment="Center" Margin="8,0,0,0"/>
                     </StackPanel>
 
-                    <!-- Увімкнути Anti-AFK -->
+                    <!-- Стан (toggle рядок) -->
                     <Grid Margin="0,2,0,6">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="120"/>
@@ -180,10 +180,10 @@
                             <TextBlock Style="{StaticResource HubFieldLabel}" Text="Стан"/>
                             <TextBlock Style="{StaticResource HubFieldDesc}" Text="гаряча клавіша — End"/>
                         </StackPanel>
-                        <CheckBox Grid.Column="1" x:Name="AntiAfkEnabledToggle" Style="{StaticResource HubToggle}" Content="Увімкнути Anti-AFK" VerticalAlignment="Center"/>
+                        <CheckBox Grid.Column="1" x:Name="AntiAfkEnabledToggle" Style="{StaticResource HubToggle}" Content="Увімкнути Anti-AFK" VerticalAlignment="Center" HorizontalAlignment="Left"/>
                     </Grid>
 
-                    <!-- Колір індикатора -->
+                    <!-- Колір індикатора (combo рядок) -->
                     <Grid Margin="0,6,0,0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="120"/>
@@ -192,7 +192,7 @@
                         <StackPanel Grid.Column="0" VerticalAlignment="Center">
                             <TextBlock Style="{StaticResource HubFieldLabel}" Text="Колір індикатора"/>
                         </StackPanel>
-                        <ComboBox Grid.Column="1" x:Name="AntiAfkColorBox" Style="{StaticResource HubComboBox}" VerticalAlignment="Center" Margin="0,0,10,0">
+                        <ComboBox Grid.Column="1" x:Name="AntiAfkColorBox" Style="{StaticResource HubComboBox}" VerticalAlignment="Center" Margin="0,0,0,0">
                             <ComboBoxItem Content="Приховати" Tag="Hidden"/>
                             <ComboBoxItem Content="Зелений" Tag="#4CAF50"/>
                             <ComboBoxItem Content="Синій" Tag="#42A5F5"/>
@@ -201,7 +201,7 @@
                         </ComboBox>
                     </Grid>
 
-                    <!-- Позиція -->
+                    <!-- Позиція (combo рядок) -->
                     <Grid Margin="0,10,0,0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="120"/>
@@ -210,7 +210,7 @@
                         <StackPanel Grid.Column="0" VerticalAlignment="Center">
                             <TextBlock Style="{StaticResource HubFieldLabel}" Text="Позиція"/>
                         </StackPanel>
-                        <ComboBox Grid.Column="1" x:Name="AntiAfkPositionBox" Style="{StaticResource HubComboBox}" VerticalAlignment="Center" Margin="0,0,10,0">
+                        <ComboBox Grid.Column="1" x:Name="AntiAfkPositionBox" Style="{StaticResource HubComboBox}" VerticalAlignment="Center" Margin="0,0,0,0">
                             <ComboBoxItem Content="Лівий верхній кут" Tag="TopLeft"/>
                             <ComboBoxItem Content="Правий верхній кут" Tag="TopRight"/>
                             <ComboBoxItem Content="Лівий нижній кут" Tag="BottomLeft"/>
@@ -219,22 +219,22 @@
                         </ComboBox>
                     </Grid>
 
-                    <!-- Розмір -->
+                    <!-- Розмір (slider рядок) -->
                     <Grid Margin="0,10,0,0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="120"/>
                             <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="50"/>
+                            <ColumnDefinition Width="56"/>
                         </Grid.ColumnDefinitions>
                         <StackPanel Grid.Column="0" VerticalAlignment="Center">
                             <TextBlock Style="{StaticResource HubFieldLabel}" Text="Розмір"/>
                             <TextBlock Style="{StaticResource HubFieldDesc}" Text="8–32 px"/>
                         </StackPanel>
-                        <Slider Grid.Column="1" x:Name="AntiAfkSizeSlider" Style="{StaticResource HubSlider}" Minimum="8" Maximum="32" TickFrequency="1" IsSnapToTickEnabled="True" VerticalAlignment="Center" Margin="10,0"/>
-                        <TextBlock Grid.Column="2" x:Name="AntiAfkSizeValue" FontFamily="Consolas" FontSize="13" FontWeight="SemiBold" Foreground="#C9DEEF" Width="52" TextAlignment="Right" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                        <Slider Grid.Column="1" x:Name="AntiAfkSizeSlider" Style="{StaticResource HubSlider}" Minimum="8" Maximum="32" TickFrequency="1" IsSnapToTickEnabled="True" VerticalAlignment="Center" Margin="10,0,10,0"/>
+                        <TextBlock Grid.Column="2" x:Name="AntiAfkSizeValue" FontFamily="Consolas" FontSize="13" FontWeight="SemiBold" Foreground="#C9DEEF" TextAlignment="Right" VerticalAlignment="Center"/>
                     </Grid>
 
-                    <!-- Анімація -->
+                    <!-- Анімація (combo рядок) -->
                     <Grid Margin="0,10,0,0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="120"/>
@@ -243,13 +243,13 @@
                         <StackPanel Grid.Column="0" VerticalAlignment="Center">
                             <TextBlock Style="{StaticResource HubFieldLabel}" Text="Анімація"/>
                         </StackPanel>
-                        <ComboBox Grid.Column="1" x:Name="AntiAfkAnimationBox" Style="{StaticResource HubComboBox}" VerticalAlignment="Center" Margin="0,0,10,0">
-                            <ComboBoxItem Content="Pulse (різкий)" Tag="Pulse"/>
-                            <ComboBoxItem Content="Breathing (плавний)" Tag="Breathing"/>
+                        <ComboBox Grid.Column="1" x:Name="AntiAfkAnimationBox" Style="{StaticResource HubComboBox}" VerticalAlignment="Center" Margin="0,0,0,0">
+                            <ComboBoxItem Content="Пульсація" Tag="Pulse"/>
+                            <ComboBoxItem Content="Плавна пульсація" Tag="Breathing"/>
                         </ComboBox>
                     </Grid>
 
-                    <!-- Режим -->
+                    <!-- Режим (combo рядок) -->
                     <Grid Margin="0,10,0,0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="120"/>
@@ -257,11 +257,11 @@
                         </Grid.ColumnDefinitions>
                         <StackPanel Grid.Column="0" VerticalAlignment="Center">
                             <TextBlock Style="{StaticResource HubFieldLabel}" Text="Режим"/>
-                            <TextBlock Style="{StaticResource HubFieldDesc}" Text="постійно / лише при дії"/>
+                            <TextBlock Style="{StaticResource HubFieldDesc}" Text="постійно / під час спрацювання"/>
                         </StackPanel>
-                        <ComboBox Grid.Column="1" x:Name="AntiAfkModeBox" Style="{StaticResource HubComboBox}" VerticalAlignment="Center" Margin="0,0,10,0">
-                            <ComboBoxItem Content="Running (постійно)" Tag="Running"/>
-                            <ComboBoxItem Content="Idle Only (при дії)" Tag="IdleOnly"/>
+                        <ComboBox Grid.Column="1" x:Name="AntiAfkModeBox" Style="{StaticResource HubComboBox}" VerticalAlignment="Center" Margin="0,0,0,0">
+                            <ComboBoxItem Content="Постійно" Tag="Running"/>
+                            <ComboBoxItem Content="Лише під час спрацювання" Tag="IdleOnly"/>
                         </ComboBox>
                     </Grid>
                 </StackPanel>
@@ -273,11 +273,11 @@
                 <Border Style="{StaticResource HubKbdBadge}"><TextBlock Text="Ctrl ±" FontFamily="Segoe UI Semibold" FontSize="11" Foreground="#8DD0FF"/></Border>
                 <TextBlock Text="масштаб" FontFamily="Segoe UI" FontSize="11" Foreground="#6F8CA8" VerticalAlignment="Center" Margin="6,0,12,0"/>
                 <Border Style="{StaticResource HubKbdBadge}"><TextBlock Text="Ctrl+Alt ±" FontFamily="Segoe UI Semibold" FontSize="11" Foreground="#8DD0FF"/></Border>
-                <TextBlock Text="прозорість — на активному оверлеї" FontFamily="Segoe UI" FontSize="11" Foreground="#6F8CA8" VerticalAlignment="Center" Margin="6,0,0,0"/>
+                <TextBlock Text="прозорість — на активному накладанні" FontFamily="Segoe UI" FontSize="11" Foreground="#6F8CA8" VerticalAlignment="Center" Margin="6,0,0,0"/>
             </StackPanel>
 
-            <!-- Зміни застосовуються негайно (overlay відкритий) або при наступному показі -->
-            <TextBlock Style="{StaticResource HubFieldDesc}" Margin="4,10,0,0" Text="Зміни масштабу й прозорості застосовуються негайно, якщо overlay відкритий."/>
+            <!-- Зміни застосовуються негайно (накладання відкрите) або при наступному показі -->
+            <TextBlock Style="{StaticResource HubFieldDesc}" Margin="4,10,0,0" Text="Зміни масштабу й прозорості застосовуються негайно, якщо накладання відкрите."/>
 
             <!-- Reset категорії (P1 — Secondary Button, чітко видима) -->
             <Button x:Name="ResetButton" Style="{StaticResource HubSecondaryButton}" Content="↺ За замовчуванням" HorizontalAlignment="Left" Margin="0,14,0,0"/>

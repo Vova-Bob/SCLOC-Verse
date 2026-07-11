@@ -220,7 +220,7 @@
     <!-- ============ COMBOBOX (P0 — єдина мова, не стандартна) ============ -->
 
     <Style x:Key="HubComboBox" TargetType="ComboBox">
-        <Setter Property="Foreground" Value="#A7C6E7"/>
+        <Setter Property="Foreground" Value="#C9DEEF"/>
         <Setter Property="Background" Value="#0A1D29"/>
         <Setter Property="BorderBrush" Value="#2A5A78"/>
         <Setter Property="BorderThickness" Value="1"/>
@@ -243,17 +243,40 @@
                                 BorderBrush="{TemplateBinding BorderBrush}"
                                 BorderThickness="{TemplateBinding BorderThickness}"
                                 CornerRadius="6"/>
+                        <!-- ToggleButton охоплює всю ширину — клік будь-де відкриває dropdown.
+                             Style нейтралізує стандартний WPF hover/checked-засвіт через Background. -->
+                        <ToggleButton Grid.ColumnSpan="2"
+                                      Background="Transparent" BorderBrush="{x:Null}" BorderThickness="0"
+                                      Focusable="False"
+                                      IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}">
+                            <ToggleButton.Style>
+                                <Style TargetType="ToggleButton">
+                                    <Setter Property="Background" Value="Transparent"/>
+                                    <Setter Property="BorderBrush" Value="{x:Null}"/>
+                                    <Setter Property="BorderThickness" Value="0"/>
+                                    <Setter Property="Template">
+                                        <Setter.Value>
+                                            <ControlTemplate TargetType="ToggleButton">
+                                                <Border Background="{TemplateBinding Background}"
+                                                        BorderBrush="{TemplateBinding BorderBrush}"
+                                                        BorderThickness="{TemplateBinding BorderThickness}"
+                                                        CornerRadius="6"/>
+                                            </ControlTemplate>
+                                        </Setter.Value>
+                                    </Setter>
+                                </Style>
+                            </ToggleButton.Style>
+                        </ToggleButton>
+                        <!-- Foreground закріплений явним TextBlock.Foreground для стабільності контрасту -->
                         <ContentPresenter Grid.Column="0" Margin="10,0,4,0" VerticalAlignment="Center"
+                                          TextBlock.Foreground="#C9DEEF"
                                           Content="{TemplateBinding SelectionBoxItem}"
                                           ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
                                           ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}"
                                           IsHitTestVisible="False"/>
-                        <ToggleButton Grid.Column="1" Width="22" Height="22" Margin="0,0,3,0"
-                                      Background="Transparent" BorderBrush="{x:Null}" Focusable="False"
-                                      IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}">
-                            <Path x:Name="Arrow" Data="M0,5 L6,11 L12,5" Stroke="#4AA3D8" StrokeThickness="1.5"
-                                  HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        </ToggleButton>
+                        <Path x:Name="Arrow" Grid.Column="1" Data="M0,5 L6,11 L12,5" Stroke="#4AA3D8" StrokeThickness="1.5"
+                              HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,0,6,0"
+                              IsHitTestVisible="False"/>
                         <Popup x:Name="PART_Popup" Placement="Bottom" IsOpen="{TemplateBinding IsDropDownOpen}"
                                PopupAnimation="Fade" AllowsTransparency="True" StaysOpen="False"
                                MinWidth="{TemplateBinding ActualWidth}">
@@ -265,10 +288,12 @@
                         </Popup>
                     </Grid>
                     <ControlTemplate.Triggers>
+                        <!-- Hover: лише яскравіша рамка + стрілка. Фон НЕ змінюється. -->
                         <Trigger Property="IsMouseOver" Value="True">
-                            <Setter TargetName="Bd" Property="BorderBrush" Value="#4AA3D8"/>
-                            <Setter TargetName="Arrow" Property="Stroke" Value="#8DD0FF"/>
+                            <Setter TargetName="Bd" Property="BorderBrush" Value="#3A7090"/>
+                            <Setter TargetName="Arrow" Property="Stroke" Value="#6FBCE8"/>
                         </Trigger>
+                        <!-- Open: лише яскрава рамка. Фон НЕ змінюється. -->
                         <Trigger Property="IsDropDownOpen" Value="True">
                             <Setter TargetName="Bd" Property="BorderBrush" Value="#4AA3D8"/>
                         </Trigger>

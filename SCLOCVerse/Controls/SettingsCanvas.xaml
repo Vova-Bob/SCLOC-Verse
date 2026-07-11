@@ -92,7 +92,7 @@
                     <Button x:Name="NavLocalization" Style="{StaticResource HubNavItem}" Content="Локалізація"      Tag="{x:Reference PaneLocalization}" Click="NavButton_Click"/>
                     <Button x:Name="NavInterface"   Style="{StaticResource HubNavItem}" Content="Інтерфейс"        Tag="{x:Reference PaneInterface}"  Click="NavButton_Click"/>
                     <Button x:Name="NavHotkeys"     Style="{StaticResource HubNavItem}" Content="Гарячі клавіші"   Tag="{x:Reference PaneHotkeys}"    Click="NavButton_Click"/>
-                    <Button x:Name="NavOverlay"     Style="{StaticResource HubNavItem}" Content="Overlay"          Tag="{x:Reference PaneOverlay}"    Click="NavButton_Click"/>
+                    <Button x:Name="NavOverlay"     Style="{StaticResource HubNavItem}" Content="Накладання"        Tag="{x:Reference PaneOverlay}"    Click="NavButton_Click"/>
                     <Button x:Name="NavProfile"     Style="{StaticResource HubNavItem}" Content="Профіль"          Tag="{x:Reference PaneProfile}"    Click="NavButton_Click"/>
                     <Button x:Name="NavAbout"       Style="{StaticResource HubNavItem}" Content="Про програму"     Tag="{x:Reference PaneAbout}"      Click="NavButton_Click"/>
                 </StackPanel>

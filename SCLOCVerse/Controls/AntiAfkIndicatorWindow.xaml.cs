@@ -113,9 +113,21 @@ namespace SCLOCVerse.Controls
         /// </summary>
         public void UpdatePosition(AntiAfkIndicatorPosition position, double size)
         {
-            var screen = SystemParameters.WorkArea;
-            double w = screen.Width;
-            double h = screen.Height;
+            var workArea = SystemParameters.WorkArea;
+            double w = workArea.Width;
+            double h = workArea.Height;
+
+            // Для Center — геометричний центр повного екрана (без taskbar-відступу).
+            // WorkArea виключає taskbar (на 2560×1440 → Height=1392, центр=696 замість 720).
+            // PrimaryScreenWidth/Height = повний фізичний екран.
+            if (position == AntiAfkIndicatorPosition.Center)
+            {
+                double fullW = SystemParameters.PrimaryScreenWidth;
+                double fullH = SystemParameters.PrimaryScreenHeight;
+                Left = (fullW - size) / 2;
+                Top = (fullH - size) / 2;
+                return;
+            }
 
             Left = position switch
             {
@@ -123,7 +135,6 @@ namespace SCLOCVerse.Controls
                 AntiAfkIndicatorPosition.TopRight => w - size - EdgeMargin,
                 AntiAfkIndicatorPosition.BottomLeft => EdgeMargin,
                 AntiAfkIndicatorPosition.BottomRight => w - size - EdgeMargin,
-                AntiAfkIndicatorPosition.Center => (w - size) / 2,
                 _ => w - size - EdgeMargin
             };
 
@@ -133,7 +144,6 @@ namespace SCLOCVerse.Controls
                 AntiAfkIndicatorPosition.TopRight => EdgeMargin,
                 AntiAfkIndicatorPosition.BottomLeft => h - size - EdgeMargin,
                 AntiAfkIndicatorPosition.BottomRight => h - size - EdgeMargin,
-                AntiAfkIndicatorPosition.Center => (h - size) / 2,
                 _ => EdgeMargin
             };
         }

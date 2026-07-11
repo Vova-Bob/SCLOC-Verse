@@ -528,19 +528,19 @@ namespace SCLOCVerse.Controls.SettingsHub
         private static string ResolveGroup(string id)
         {
             if (id.StartsWith("AntiAfk.", StringComparison.Ordinal)) return "Anti-AFK";
-            if (id.Contains("Scale")) return "Overlay · масштаб";
-            if (id.Contains("Opacity")) return "Overlay · прозорість";
+            if (id.Contains("Scale")) return "Накладання · масштаб";
+            if (id.Contains("Opacity")) return "Накладання · прозорість";
             if (id.Contains("ToggleOverlay") || id.Contains("ToggleClickThrough") || id.Contains("BeginTemporaryDrag"))
-                return "Hangar Timer · overlay";
+                return "Hangar Timer · накладання";
             return "Hangar Timer · цикл";
         }
 
         private static int GroupOrder(string group) => group switch
         {
-            "Hangar Timer · overlay" => 0,
+            "Hangar Timer · накладання" => 0,
             "Hangar Timer · цикл" => 1,
-            "Overlay · масштаб" => 2,
-            "Overlay · прозорість" => 3,
+            "Накладання · масштаб" => 2,
+            "Накладання · прозорість" => 3,
             "Anti-AFK" => 4,
             _ => 9
         };
