@@ -4,7 +4,7 @@
 > Якщо інформація тут є — не перечитуй десятки forensic-документів.
 > Якщо інформація тут суперечить сирому документу — сирий документ має пріоритет, але повідом про розбіжність (розділ 18.3).
 >
-> **Версія застосунку:** 1.0.0.1 (Observability Release, RC)
+> **Версія застосунку:** 1.0.2.0 (Stable Release)
 > **Supabase project:** `nrytczdbhehiotflaagl` (eu-west-1)
 > **Живий документ:** постійно оновлюється при розвитку системи. Дозволено додавати, оновлювати, видаляти та переносити дані між розділами. Заборонено лише дублювання інформації та створення нових документів для вже описаних підсистем (див. AGENTS.md, «Knowledge Base — живий документ»).
 
@@ -1848,6 +1848,15 @@ Phase 3.7 (Security Hardening) — Backlog (DEFAULT PRIVILEGES); SEC-11 — ✅ 
 228. **AutoKeyService — прибрано дубль + видимість за гейтом (✅ IMPL, Zero Regression).** Приватний foreground PInvoke-блок + `StarCitizenProcessName` видалено; `TimerCallback` делегує `StarCitizenForeground.IsStarCitizenForeground()`. **Видимість індикатора (2026-07-11, ✅ IMPL):** `SetState` показує індикатор лише у `Running` (SC-foreground), приховує у `Paused`/`Off`. Guard `_state==newState` захищає від churn. `StartInternal` — миттєвий фідбек видимості (без SendInput). Стани Off/Running/Paused + SendInput незмінні.
 
 229. **AntiAfkService — підключено гейт (✅ IMPL).** Один рядок у `TimerCallback` (після disposed/running): `if (!StarCitizenForeground.IsStarCitizenForeground()) return;`. При SC-foreground — байт-в-байт як раніше; при не-SC — skip `SimulateMouseMove` + skip `FlashIndicator`. Детекція бездіяльності/SendInput/індикатор/хоткей не зачеплені. UI незмінний.
+
+---
+
+## 14.31. Release v1.0.2.0 Stable (2026-07-11) — ✅ IMPL
+
+> Version bump після Release Readiness Forensic. 68 комітів після v1.0.1.0 (`e30fb886`): Auto Key, Anti-AFK міграція, Foreground Gate, Overlay Settings, динамічні підказки хоткеїв, десятки UI-fixes.
+
+230. **Version Update: 1.0.1.0 → 1.0.2.0.** Колізія версії виявлена під час Release Readiness Forensic: csproj=1.0.1.0 вже було PUBLISHED (tag `v1.0.1.0` на `e30fb886`, 68 комітів тому). Змінено 3 рядки у `SCLOCVerse.csproj` (`<Version>`, `<AssemblyVersion>`, `<FileVersion>` → `1.0.2.0`). `AssemblyInformationalVersion` не заданий явно — MSBuild використовує `<Version>` (single-source-of-truth, #150). Інсталятор `.iss` читає версію з exe через `GetFileVersion` → автоматично синхронізується. Release-білд: 0 warnings, 0 errors.
+231. **Release scope v1.0.2.0.** 68 комітів `v1.0.1.0..HEAD` (`f25123d`). Нові модулі: Auto Key (#14.28, SendInput з кореневим фіксом INPUT=40 байт), Anti-AFK міграція з WinForms (#14.27, GetLastInputInfo замість hooks), StarCitizenForeground Foreground Gate (#14.30), динамічні підказки хоткеїв SSOT (#14.29). Settings Hub Phase 0.5 + Overlay live-preview (#14.25). Жодних breaking changes (additive-only, Settings мігрують автоматично). Release Notes: `Installer/Release-Notes-v1.0.2.0.md`.
 
 ---
 
