@@ -180,7 +180,7 @@
                             <TextBlock Style="{StaticResource HubFieldLabel}" Text="Стан"/>
                             <TextBlock Style="{StaticResource HubFieldDesc}" Text="гаряча клавіша — End"/>
                         </StackPanel>
-                        <CheckBox Grid.Column="1" x:Name="AntiAfkEnabledToggle" Style="{StaticResource HubToggle}" Content="Увімкнути Anti-AFK" VerticalAlignment="Center" HorizontalAlignment="Left"/>
+                        <CheckBox Grid.Column="1" x:Name="AntiAfkEnabledToggle" Style="{StaticResource HubToggle}" Content="Увімкнути Anti-AFK" VerticalAlignment="Center"/>
                     </Grid>
 
                     <!-- Колір індикатора (combo рядок) -->
