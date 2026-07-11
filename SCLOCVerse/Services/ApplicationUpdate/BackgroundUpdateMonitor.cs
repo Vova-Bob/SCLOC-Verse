@@ -145,7 +145,7 @@ namespace SCLOCVerse.Services.ApplicationUpdate
             {
                 var result = await _updateService.CheckForUpdatesAsync(forceRefresh: false, cancellationToken).ConfigureAwait(false);
                 if (result?.IsUpdateAvailable == true)
-                    _telemetry.Track("Orchestrator", "AppCheck", "UpdateFound", level: TelemetryLevel.Diagnostic);
+                    _telemetry.Track("Orchestrator", "AppCheck", "Skipped", level: TelemetryLevel.Diagnostic);
                 return result;
             }
             catch (Exception ex)
@@ -194,7 +194,7 @@ namespace SCLOCVerse.Services.ApplicationUpdate
                     if (result.HasUpdate)
                     {
                         results.Add(result);
-                        var outcome = autoUpdate ? "Updated" : "UpdateAvailable";
+                        var outcome = autoUpdate ? "Succeeded" : "Skipped";
                         _telemetry.Track("Orchestrator", "LocalizationCheck", outcome,
                             new TelemetryContext { Detail = new() { { "environment", env }, { "version", result.Version ?? "" } } },
                             level: TelemetryLevel.Diagnostic);
@@ -222,7 +222,7 @@ namespace SCLOCVerse.Services.ApplicationUpdate
             {
                 var status = await _updater.GetStatusAsync(cancellationToken).ConfigureAwait(false);
                 if (status?.IsUpdateAvailable == true)
-                    _telemetry.Track("Orchestrator", "LiaCheck", "UpdateFound", level: TelemetryLevel.Diagnostic);
+                    _telemetry.Track("Orchestrator", "LiaCheck", "Skipped", level: TelemetryLevel.Diagnostic);
                 return status;
             }
             catch (Exception ex)
