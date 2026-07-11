@@ -283,11 +283,27 @@ namespace SCLOCVerse.Services.AutoKey
             public InputUnion u;
         }
 
+        // Win32 INPUT union.
+        // MOUSEINPUT визначає підсумковий розмір INPUT (40 байт на x64).
+        // Keyboard-only union має 32 байти, що несумісно із SendInput.
         [StructLayout(LayoutKind.Explicit)]
         private struct InputUnion
         {
             [FieldOffset(0)]
+            public MOUSEINPUT mi;
+            [FieldOffset(0)]
             public KEYBDINPUT ki;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct MOUSEINPUT
+        {
+            public int dx;
+            public int dy;
+            public int mouseData;
+            public uint dwFlags;
+            public uint time;
+            public IntPtr dwExtraInfo;
         }
 
         [StructLayout(LayoutKind.Sequential)]
@@ -302,6 +318,10 @@ namespace SCLOCVerse.Services.AutoKey
 
         private const uint InputKeyboard = 1;
         private const uint KeyeventfKeyup = 0x0002;
+        private const uint MapvkVkToVsc = 0;
+
+        [DllImport("user32.dll")]
+        private static extern uint MapVirtualKey(uint uCode, uint uMapType);
 
         /// <summary>
         /// Надсилає одне натискання клавіші (key-down + key-up) у активне вікно.
@@ -310,17 +330,21 @@ namespace SCLOCVerse.Services.AutoKey
         private void SendKeyPress(HotkeyKey key)
         {
             var keyCode = (ushort)key;
+            // Scan code через MapVirtualKey: CryEngine/ігри часто ігнорують wVk і
+            // читають лише scan code. Встановлюємо обидва для максимальної сумісності
+            // (вкл. OEM-клавіші типу [, що залежать від розкладки).
+            var scan = (ushort)MapVirtualKey(keyCode, MapvkVkToVsc);
 
             var inputs = new INPUT[2];
             inputs[0] = new INPUT
             {
                 type = InputKeyboard,
-                u = new InputUnion { ki = new KEYBDINPUT { wVk = keyCode } }
+                u = new InputUnion { ki = new KEYBDINPUT { wVk = keyCode, wScan = scan } }
             };
             inputs[1] = new INPUT
             {
                 type = InputKeyboard,
-                u = new InputUnion { ki = new KEYBDINPUT { wVk = keyCode, dwFlags = KeyeventfKeyup } }
+                u = new InputUnion { ki = new KEYBDINPUT { wVk = keyCode, wScan = scan, dwFlags = KeyeventfKeyup } }
             };
 
             try
