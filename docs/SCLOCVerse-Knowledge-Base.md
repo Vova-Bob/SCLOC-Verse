@@ -4,7 +4,7 @@
 > Якщо інформація тут є — не перечитуй десятки forensic-документів.
 > Якщо інформація тут суперечить сирому документу — сирий документ має пріоритет, але повідом про розбіжність (розділ 18.3).
 >
-> **Версія застосунку:** 1.0.2.0 (Stable Release)
+> **Версія застосунку:** 1.0.2.1 (Hotfix)
 > **Supabase project:** `nrytczdbhehiotflaagl` (eu-west-1)
 > **Живий документ:** постійно оновлюється при розвитку системи. Дозволено додавати, оновлювати, видаляти та переносити дані між розділами. Заборонено лише дублювання інформації та створення нових документів для вже описаних підсистем (див. AGENTS.md, «Knowledge Base — живий документ»).
 
@@ -113,11 +113,11 @@
 | Базові таблиці | 15 (+12 backup) | 14 у `public` + 1 singleton у `control_center` + 12 у `backup_pre_1_0_0_1` |
 | Звичайні VIEW | 25 | 24 у `control_center` + `public.user_analytics` |
 | Materialized VIEW | 1 | `control_center.knowledge_coverage` |
-| SECURITY DEFINER функції | 28 | promotion, incident workflow, knowledge lifecycle; лише 2 з 28 мають `SET search_path` (SEC-11) |
+| SECURITY DEFINER функції | 30 | promotion, incident workflow, knowledge lifecycle, retention pipeline; 4 з 30 мають `SET search_path` (SEC-11: 2 legacy + 2 retention) |
 | Triggers | 4 | geoip, failed-promote, incident-refresh, knowledge-audit |
 | БД-ролі | 4 | `anon`, `authenticated`, `cc_readonly`, `cc_notifier` |
 | RLS policies (`public`) | 28 | deny-all RESTRICTIVE + owner-only permissive + cc_notifier |
-| pg_cron | 0 | **НЕ встановлений** — план «Retention 14д» з Observability-Architecture не виконано |
+| pg_cron | 1 job | ✅ **Installed** (Phase 5.1, 2026-07-11) — `retention-pipeline-daily`, schedule `0 3 * * *` |
 
 ## 3.2. Таблиці (призначення)
 
@@ -563,7 +563,7 @@
 | pipeline_health_meta | FOREVER | singleton | — |
 | auth.users | Supabase-managed | GoTrue lifecycle | auth.admin API |
 
-> ⚠ **Retention (90d/30d) НЕ реалізовано** — `pg_cron` не встановлений (KB §3.1, Rejected TBD). Backlog: Phase 5 Retention Pipeline.
+> ✅ **Retention Phase 5.1 Implemented (2026-07-11)** — `telemetry_events` (90d) через `pg_cron` + `run_retention_pipeline()`. Інші таблиці (notification_queue 30d, notification_attempts 90d, telemetry_incidents 1y) — Phase 5.2+, закоментовано в dispatcher.
 
 ---
 
@@ -622,7 +622,7 @@
 | `FeatureFlagService` (remote→env→setting→default, reload 10 хв) | yes | ❌ не реалізовано — лише env kill-switch |
 | Конфігурований endpoint → Edge Function ingest (Phase 5) | yes | ❌ PostgREST напряму |
 | `telemetry_rollup_mv` MATVIEW (2 роки) | yes | ❌ не реалізовано |
-| Retention 14д pg_cron purge | yes | ⚠ план у release-runbook; перевірити деплой |
+| Retention 90d pg_cron purge | yes | ✅ **IMPL Phase 5.1** (2026-07-11): `run_retention_pipeline()` daily 03:00 UTC, telemetry_events 90d |
 | Global `UnhandledException` handler (Стаття 8) | yes | ❌ **GAP** — WPF-краш минає спостережуваність (F3) |
 | `git_commit` на кожній події | MSBuild target | ❌ завжди NULL (target відкладено) |
 | `category` диференційована | Critical/Operational/Diagnostic/Analytics | ⚠ завжди `'Operational'` |
@@ -1673,7 +1673,8 @@ Phase 3.6 (Replica Synchronization) — ✅ Closed (replica deleted 2026-07-07)
 Phase 3A (3 міграції) — ✅ **DEPLOYED to production** (2026-07-07, Post-Impl Forensic PASSED)
 Phase 3.5.1 (Mandatory Event Optimization) — ✅ **Implemented as Zero Noise Policy** (2026-07-07)
 Phase 4 (Data Presentation Layer) — ⏸
-Phase 5 (Retention Pipeline) — Backlog (pg_cron)
+Phase 5.1 (Retention Pipeline — telemetry_events) — ✅ **Implemented** (2026-07-11, pg_cron + SECURITY DEFINER)
+Phase 5.2+ (Retention — notification_queue, notification_attempts, incidents) — Backlog (додати рядки у dispatcher)
 Phase 3.7 (Security Hardening) — Backlog (DEFAULT PRIVILEGES); SEC-11 — ✅ COMPLETED
 ```
 
@@ -1859,6 +1860,16 @@ Phase 3.7 (Security Hardening) — Backlog (DEFAULT PRIVILEGES); SEC-11 — ✅ 
 231. **Release scope v1.0.2.0.** 68 комітів `v1.0.1.0..HEAD` (`f25123d`). Нові модулі: Auto Key (#14.28, SendInput з кореневим фіксом INPUT=40 байт), Anti-AFK міграція з WinForms (#14.27, GetLastInputInfo замість hooks), StarCitizenForeground Foreground Gate (#14.30), динамічні підказки хоткеїв SSOT (#14.29). Settings Hub Phase 0.5 + Overlay live-preview (#14.25). Жодних breaking changes (additive-only, Settings мігрують автоматично). Release Notes: `Installer/Release-Notes-v1.0.2.0.md`.
 232. **Release v1.0.2.0 PUBLISHED.** Git tag `v1.0.2.0` → коміт `c473e63`. GitHub Release створено: https://github.com/Vova-Bob/SCLOC-Verse/releases/tag/v1.0.2.0 (Latest, не Draft/Pre-release). Інсталятор `SCLOC-Verse_Setup.exe` (68.4 МБ, ProductVersion=1.0.2.0, SHA256 `eaba2204…`) прикріплений. Release notes українською без mojibake. Build: 0 warnings, 0 errors. MojibakeScanner: 8 false-positives (патерн `\u0420\u0456` = «Рі» — легітимний український, верифіковано byte-level; 1 — коментар-документація в `Updater.cs:764`).
 
+233. **Forensic: Supabase Production Audit (2026-07-11).** Повний аудит production (`nrytczdbhehiotflaagl`): API, Postgres, Auth, Realtime, Storage, Edge Functions, Database Health. Знайдено: (1) **RC-1** ✅ VER — `BackgroundUpdateMonitor` відправляв 3 невалідних outcome (`Updated`, `UpdateAvailable`, `UpdateFound`), яких немає в `chk_telemetry_outcome` (дозволені: Started/Succeeded/Failed/Cancelled/Skipped). Кожна така подія відхилялась БД → requeue → нескінченний retry loop (~2880 ERROR/добу). (2) **RC-0** ✅ VER — Retention Pipeline відсутній повністю: pg_cron не встановлений, cleanup-функцій не існуло, GRANT DELETE відсутній. Таблиця `telemetry_events` росла без обмеження. (3) **LIA failures** 🔵 HYP — 23 Failed (17× GitHub API `InvalidOperationException` + 6× PowerShell `UnknownExitCode`), але HTTP status/PowerShell output втрачені в exception wrapping — root cause не доведено. (4) **Notifier Worker offline** ✅ VER — 2 Pending notifications, 0 attempts.
+
+234. **RC-1 Fix: BackgroundUpdateMonitor invalid outcomes (2026-07-11).** ✅ IMPL — Виправлено 3 рядки в `BackgroundUpdateMonitor.cs`: `UpdateFound`→`Skipped` (AppCheck, LiaCheck), `Updated`→`Succeeded` + `UpdateAvailable`→`Skipped` (LocalizationCheck). Commit `a84ab59`. Build 0/0. Семантика: `Skipped` не входить у success_rate формулу. Статус: реалізовано, **очікує production deploy** для верифікації зникнення `chk_telemetry_outcome`.
+
+235. **Phase 5.1: Retention Pipeline — telemetry_events 90d (2026-07-11).** ✅ IMPL — Міграція `20260711180000_retention_pipeline_phase5_1.sql`: встановлено `pg_cron`, створено `purge_old_telemetry_events(int)` + `run_retention_pipeline()` (SECURITY DEFINER, owner postgres, `SET search_path = public, pg_catalog`). Dispatcher pattern: єдина точка входу, майбутні таблиці додаються одним `RETURN QUERY`. Cron: daily 03:00 UTC. FK `ON DELETE SET NULL` — безпечно для incidents. RAISE LOG на старті/завершенні. Guard: `retention_days <= 0 → EXCEPTION`. Verification V1-V7 пройдено (113 rows незмінно, 0 purged, логи підтверджені). Commit `37a5a2a`.
+
+236. **RC-2: BackgroundUpdateMonitor repeated Diagnostic telemetry (2026-07-11).** 🟢 VER — При `AdvancedDiagnostics=true` та `AutoUpdateLocalization=false`, `CheckLocalizationAsync` генерує Diagnostic event кожен цикл (1 год) для того ж `HasUpdate=true` стану. Toast layer має version-based dedup (`NotificationRouter.BuildLocalizationCandidates`, `LastLocalizationToast`), телеметрія — ні. Побічний ефект, не задумана поведінка. Обсяг: 2-5 events/годину на Diagnostic-ON користувача. Статус: HYP→VER, **очікує план після закриття RC-1**.
+
+237. **Hotfix v1.0.2.1 — RC-1 Production Release (2026-07-11).** ✅ IMPL — Hotfix для v1.0.2.0: version bump 1.0.2.0→1.0.2.1 (csproj), build з HEAD (`37a5a2a`). Стратегія: Варіант A (build з HEAD, не cherry-pick) — безпечно, бо лише 1 compiled-файл з runtime-зміною (`BackgroundUpdateMonitor.cs`, 3 рядки). Release notes: `Installer/Release-Notes-v1.0.2.1.md`. Статус: реалізовано, **очікує deploy + production verification**.
+
 ---
 
 # 15. Rejected Decisions (майстер-список)
@@ -2025,7 +2036,7 @@ Phase 3.7 (Security Hardening) — Backlog (DEFAULT PRIVILEGES); SEC-11 — ✅ 
 | C-3 | `detail.signal_name` НЕ існує в живих даних (0 зустрічей) | `jsonb_object_keys` частотний аналіз; KB §5.7 було неточне |
 | C-4 | VIEWs у KB §3.1 занижено: 19 → 25 фактично (24 cc + 1 public) | `pg_class WHERE relkind IN ('v','m')` |
 | C-5 | SECURITY DEFINER функцій: ~24 → 28 фактично; лише 2 з 28 мають `SET search_path` | `pg_proc WHERE prosecdef=true` + `proconfig` |
-| C-6 | `pg_cron` НЕ встановлений — план «Retention 14д» з Observability-Architecture не виконано | `relation cron.jobs does not exist` |
+| C-6 | ~~`pg_cron` НЕ встановлений — план «Retention 14д» не виконано~~ → ✅ **RESOLVED**: Phase 5.1 (2026-07-11) — pg_cron installed, `run_retention_pipeline()` daily 03:00 UTC | ~~`relation cron.jobs does not exist`~~ → `cron.job` 1 row active |
 | C-7 | Дубль індексу `app_installations.install_id`: NON-UNIQUE (1266 scans) + UNIQUE constraint (18 scans) | `pg_stat_user_indexes` — планувальник обходить UNIQUE |
 | C-8 | `ecosystem_stats()` — мертва (`.Rpc(` в C# не знайдено; `pg_depend=[]`) | лише docs як RPC-контракт (KB §181, app-installations-forensic) |
 | C-9 | `promote_incident_candidates()` (batch) — мертва (`pg_depend=[]`, F6 на рівні БД) | тригер викликає лише `_for_event` |
