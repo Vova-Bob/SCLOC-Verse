@@ -103,8 +103,10 @@ namespace SCLOCVerse.Services.AutoKey
 
             _timer.Change(_intervalMs, _intervalMs);
 
-            ShowIndicator();
-            SetState(AutoKeyState.Paused);
+            // Миттєвий фідбек видимості (без SendInput): показати лише якщо SC активний.
+            SetState(StarCitizenForeground.IsStarCitizenForeground()
+                ? AutoKeyState.Running
+                : AutoKeyState.Paused);
         }
 
         private void StopInternal()
@@ -114,7 +116,6 @@ namespace SCLOCVerse.Services.AutoKey
             _preferences.SetAutoKeyEnabled(false);
 
             SetState(AutoKeyState.Off);
-            HideIndicator();
         }
 
         /// <summary>
@@ -143,6 +144,14 @@ namespace SCLOCVerse.Services.AutoKey
                 return;
 
             _state = newState;
+
+            // Видимість індикатора прив'язана до Foreground Gate:
+            // Running → показати, Paused/Off → приховати. Guard _state==newState захищає від churn.
+            if (newState == AutoKeyState.Running)
+                ShowIndicator();
+            else
+                HideIndicator();
+
             UpdateIndicator(newState);
             StateChanged?.Invoke(this, newState);
         }

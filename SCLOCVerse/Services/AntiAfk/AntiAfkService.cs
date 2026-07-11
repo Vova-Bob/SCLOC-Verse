@@ -37,6 +37,7 @@ namespace SCLOCVerse.Services.AntiAfk
 
         private AntiAfkIndicatorWindow? _indicator;
         private DispatcherTimer? _idleFlashTimer;
+        private bool _isIndicatorVisible;
 
         /// <inheritdoc/>
         public bool IsRunning => Volatile.Read(ref _isRunning);
@@ -77,6 +78,10 @@ namespace SCLOCVerse.Services.AntiAfk
             if (mode == AntiAfkIndicatorMode.IdleOnly)
                 return;
 
+            // Foreground Gate: live-preview лише при активному вікні Star Citizen.
+            if (!StarCitizenForeground.IsStarCitizenForeground())
+                return;
+
             ShowIndicator();
         }
 
@@ -88,9 +93,8 @@ namespace SCLOCVerse.Services.AntiAfk
             _timer.Change(0, PollIntervalMs);
             _preferences.SetAntiAfkEnabled(true);
 
-            var mode = _preferences.GetAntiAfkIndicatorMode();
-            if (mode == AntiAfkIndicatorMode.Running)
-                ShowIndicator();
+            // Видимість індикатора керується Foreground Gate у TimerCallback:
+            // перший тик (dueTime=0) покаже, лише якщо SC активний.
 
             StateChanged?.Invoke(this, true);
         }
@@ -112,9 +116,18 @@ namespace SCLOCVerse.Services.AntiAfk
                 return;
 
             // Foreground Gate (спільний з Auto Key): Anti-AFK діє лише коли активне
-            // вікно Star Citizen. Alt+Tab → тиша (без SendInput); повернення → відновлення.
+            // вікно Star Citizen. Alt+Tab → тиша (без SendInput) + індикатор приховано;
+            // повернення → відновлення + індикатор з'являється знову.
             if (!StarCitizenForeground.IsStarCitizenForeground())
+            {
+                EnsureIndicatorHidden();
                 return;
+            }
+
+            // SC активний: для Running-режиму — показати індикатор (idempotent, без churn).
+            var mode = _preferences.GetAntiAfkIndicatorMode();
+            if (mode == AntiAfkIndicatorMode.Running)
+                EnsureIndicatorVisible();
 
             int idleMs = GetIdleMilliseconds();
 
@@ -124,7 +137,6 @@ namespace SCLOCVerse.Services.AntiAfk
             SimulateMouseMove();
             SetRandomAfkThreshold();
 
-            var mode = _preferences.GetAntiAfkIndicatorMode();
             if (mode == AntiAfkIndicatorMode.IdleOnly)
                 FlashIndicator();
         }
@@ -153,6 +165,7 @@ namespace SCLOCVerse.Services.AntiAfk
 
         private void ShowIndicator()
         {
+            _isIndicatorVisible = true;
             Application.Current?.Dispatcher.BeginInvoke(new Action(() =>
             {
                 if (_disposed)
@@ -169,12 +182,35 @@ namespace SCLOCVerse.Services.AntiAfk
 
         private void HideIndicator()
         {
+            _isIndicatorVisible = false;
             Application.Current?.Dispatcher.BeginInvoke(new Action(() =>
             {
                 _idleFlashTimer?.Stop();
                 _indicator?.StopAnimation();
                 _indicator?.Hide();
             }));
+        }
+
+        /// <summary>
+        /// Показати індикатор лише якщо він зараз прихований (idempotent, без churn щотику).
+        /// </summary>
+        private void EnsureIndicatorVisible()
+        {
+            if (_isIndicatorVisible)
+                return;
+
+            ShowIndicator();
+        }
+
+        /// <summary>
+        /// Приховати індикатор лише якщо він зараз видимий (idempotent, без churn щотику).
+        /// </summary>
+        private void EnsureIndicatorHidden()
+        {
+            if (!_isIndicatorVisible)
+                return;
+
+            HideIndicator();
         }
 
         /// <summary>
@@ -195,6 +231,7 @@ namespace SCLOCVerse.Services.AntiAfk
                 if (_indicator is null)
                     return;
 
+                _isIndicatorVisible = true;
                 ApplyIndicatorAppearance(_indicator);
                 _indicator.Show();
 
@@ -206,6 +243,7 @@ namespace SCLOCVerse.Services.AntiAfk
                 _idleFlashTimer.Tick += (_, _) =>
                 {
                     _idleFlashTimer?.Stop();
+                    _isIndicatorVisible = false;
                     _indicator?.StopAnimation();
                     _indicator?.Hide();
                 };
