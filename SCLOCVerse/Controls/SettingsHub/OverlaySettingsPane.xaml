@@ -277,14 +277,14 @@
                         <TextBlock x:Name="AutoKeyStatusText" Text="· вимкнено" FontFamily="Segoe UI" FontSize="11" Foreground="#5A7A8A" VerticalAlignment="Center" Margin="8,0,0,0"/>
                     </StackPanel>
 
-                    <!-- Стан (toggle рядок) -->
+                    <!-- Перемикач (toggle рядок) -->
                     <Grid Margin="0,2,0,6">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="120"/>
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
                         <StackPanel Grid.Column="0" VerticalAlignment="Center">
-                            <TextBlock Style="{StaticResource HubFieldLabel}" Text="Стан"/>
+                            <TextBlock Style="{StaticResource HubFieldLabel}" Text="Перемикач"/>
                             <TextBlock Style="{StaticResource HubFieldDesc}" Text="гаряча клавіша — Home"/>
                         </StackPanel>
                         <CheckBox Grid.Column="1" x:Name="AutoKeyEnabledToggle" Style="{StaticResource HubToggle}" Content="Увімкнути Auto Key" VerticalAlignment="Center"/>
@@ -300,7 +300,7 @@
                             <TextBlock Style="{StaticResource HubFieldLabel}" Text="Клавіша дії"/>
                             <TextBlock Style="{StaticResource HubFieldDesc}" Text="натискається автоматично"/>
                         </StackPanel>
-                        <Button Grid.Column="1" x:Name="AutoKeyActionKeyKeycap" Style="{StaticResource HubKeycap}" Content="[" Margin="0,0,0,0" ToolTip="Клікніть, щоб змінити"/>
+                        <Button Grid.Column="1" x:Name="AutoKeyActionKeyKeycap" Style="{StaticResource HubKeycap}" Content="[" HorizontalAlignment="Left" Width="120" ToolTip="Клікніть, щоб змінити"/>
                     </Grid>
 
                     <!-- Інтервал (slider рядок) -->
@@ -332,8 +332,8 @@
             <!-- Зміни застосовуються негайно (накладання відкрите) або при наступному показі -->
             <TextBlock Style="{StaticResource HubFieldDesc}" Margin="4,10,0,0" Text="Зміни масштабу й прозорості застосовуються негайно, якщо накладання відкрите."/>
 
-            <!-- Reset категорії (P1 — Secondary Button, чітко видима) -->
-            <Button x:Name="ResetButton" Style="{StaticResource HubSecondaryButton}" Content="↺ За замовчуванням" HorizontalAlignment="Left" Margin="0,14,0,0"/>
+            <!-- Reset усіх накладань (P1 — Secondary Button, чітко видима) -->
+            <Button x:Name="ResetButton" Style="{StaticResource HubSecondaryButton}" Content="↺ Скинути всі накладання" HorizontalAlignment="Left" Margin="0,14,0,0"/>
 
         </StackPanel>
     </ScrollViewer>

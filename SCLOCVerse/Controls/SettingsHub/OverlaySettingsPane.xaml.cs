@@ -624,43 +624,107 @@ namespace SCLOCVerse.Controls.SettingsHub
 
         private void ResetButton_Click(object sender, RoutedEventArgs e)
         {
-            if (_settings is null)
-                return;
-
-            _isSyncing = true;
-            try
+            // --- Hangar Timer ---
+            if (_settings is not null)
             {
-                _settings.SetOverlayScale(DefaultScale);
-                _settings.SetOverlayOpacity(DefaultOpacity);
-                _settings.SetOverlayPosition(DefaultPosX, DefaultPosY);
-                ScaleSlider.Value = DefaultScale;
-                OpacitySlider.Value = DefaultOpacity;
-                ScaleValue.Text = DefaultScale.ToString("0.00");
-                OpacityValue.Text = DefaultOpacity.ToString("0.00");
-                PosXBox.Text = DefaultPosX.ToString("0");
-                PosYBox.Text = DefaultPosY.ToString("0");
-
-                if (_state != null)
+                _isSyncing = true;
+                try
                 {
-                    _state.Scale = DefaultScale;
-                    _state.Opacity = DefaultOpacity;
-                }
+                    _settings.SetOverlayScale(DefaultScale);
+                    _settings.SetOverlayOpacity(DefaultOpacity);
+                    _settings.SetOverlayPosition(DefaultPosX, DefaultPosY);
+                    ScaleSlider.Value = DefaultScale;
+                    OpacitySlider.Value = DefaultOpacity;
+                    ScaleValue.Text = DefaultScale.ToString("0.00");
+                    OpacityValue.Text = DefaultOpacity.ToString("0.00");
+                    PosXBox.Text = DefaultPosX.ToString("0");
+                    PosYBox.Text = DefaultPosY.ToString("0");
 
-                // Live-preview позиції.
-                if (_overlay?.IsOpen == true)
-                {
-                    var window = _overlay.GetWindow();
-                    if (window != null)
+                    if (_state != null)
                     {
-                        window.Left = DefaultPosX;
-                        window.Top = DefaultPosY;
+                        _state.Scale = DefaultScale;
+                        _state.Opacity = DefaultOpacity;
+                    }
+
+                    // Live-preview позиції.
+                    if (_overlay?.IsOpen == true)
+                    {
+                        var window = _overlay.GetWindow();
+                        if (window != null)
+                        {
+                            window.Left = DefaultPosX;
+                            window.Top = DefaultPosY;
+                        }
                     }
                 }
+                finally
+                {
+                    _isSyncing = false;
+                }
+            }
+
+            ResetAntiAfkToDefaults();
+            ResetAutoKeyToDefaults();
+        }
+
+        private void ResetAntiAfkToDefaults()
+        {
+            if (_antiAfk is null || _antiAfkPrefs is null)
+                return;
+
+            // Factory default: вимкнено.
+            if (_antiAfk.IsRunning)
+                _antiAfk.Toggle();
+
+            _isAntiAfkSyncing = true;
+            try
+            {
+                _antiAfkPrefs.SetAntiAfkIndicatorColor("#4CAF50");
+                _antiAfkPrefs.SetAntiAfkIndicatorPosition(AntiAfkIndicatorPosition.TopRight);
+                _antiAfkPrefs.SetAntiAfkIndicatorSize(12);
+                _antiAfkPrefs.SetAntiAfkIndicatorAnimation(AntiAfkIndicatorAnimation.Pulse);
+                _antiAfkPrefs.SetAntiAfkIndicatorMode(AntiAfkIndicatorMode.Running);
+
+                SelectComboBoxByTag(AntiAfkColorBox, "#4CAF50");
+                SelectComboBoxByTag(AntiAfkPositionBox, AntiAfkIndicatorPosition.TopRight.ToString());
+                AntiAfkSizeSlider.Value = 12;
+                AntiAfkSizeValue.Text = "12";
+                SelectComboBoxByTag(AntiAfkAnimationBox, AntiAfkIndicatorAnimation.Pulse.ToString());
+                SelectComboBoxByTag(AntiAfkModeBox, AntiAfkIndicatorMode.Running.ToString());
             }
             finally
             {
-                _isSyncing = false;
+                _isAntiAfkSyncing = false;
             }
+
+            _antiAfk.ApplyIndicatorSettings();
+        }
+
+        private void ResetAutoKeyToDefaults()
+        {
+            if (_autoKey is null || _autoKeyPrefs is null)
+                return;
+
+            // Factory default: вимкнено.
+            if (_autoKey.IsEnabled)
+                _autoKey.Toggle();
+
+            _isAutoKeySyncing = true;
+            try
+            {
+                _autoKeyPrefs.SetAutoKeyActionKey(HotkeyKey.Oem4);
+                _autoKeyPrefs.SetAutoKeyIntervalMs(1000);
+
+                AutoKeyIntervalSlider.Value = 1000;
+                AutoKeyIntervalValue.Text = "1000 ms";
+                UpdateActionKeyDisplay(HotkeyKey.Oem4);
+            }
+            finally
+            {
+                _isAutoKeySyncing = false;
+            }
+
+            _autoKey.ApplySettings();
         }
     }
 }
