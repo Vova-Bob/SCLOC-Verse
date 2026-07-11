@@ -4,6 +4,8 @@ using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Threading;
+using SCLOCVerse.Helpers;
 using SCLOCVerse.Interfaces;
 using SCLOCVerse.Models.AntiAfk;
 using SCLOCVerse.Models.AutoKey;
@@ -40,8 +42,13 @@ namespace SCLOCVerse.Controls.SettingsHub
         private IPreferencesService? _antiAfkPrefs;
         private bool _isAntiAfkSyncing;
 
-        private static readonly SolidColorBrush AntiAfkDotOn = new(Color.FromRgb(0x5B, 0xC9, 0x8A));
-        private static readonly SolidColorBrush AntiAfkDotOff = new(Color.FromRgb(0x44, 0x50, 0x5A));
+        private static readonly SolidColorBrush AntiAfkDotRunning = new(Color.FromRgb(0x5B, 0xC9, 0x8A)); // зелений
+        private static readonly SolidColorBrush AntiAfkDotWaiting = new(Color.FromRgb(0xFF, 0xC1, 0x07)); // жовтий
+        private static readonly SolidColorBrush AntiAfkDotOff = new(Color.FromRgb(0x44, 0x50, 0x5A));     // сірий
+
+        // UI-опитувач статусу Anti-AFK: 1с DispatcherTimer читає IsRunning + Foreground Gate.
+        // Без змін до IAntiAfkService — картка сама відображає поточний стан.
+        private DispatcherTimer? _antiAfkStatusTimer;
 
         // ===== Auto Key =====
 
@@ -159,6 +166,11 @@ namespace SCLOCVerse.Controls.SettingsHub
             AntiAfkSizeSlider.ValueChanged += AntiAfkSize_Changed;
             AntiAfkAnimationBox.SelectionChanged += AntiAfkAnimation_Changed;
             AntiAfkModeBox.SelectionChanged += AntiAfkMode_Changed;
+
+            // UI-опитувач статусу: 1с, читає IsRunning + Foreground Gate.
+            _antiAfkStatusTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
+            _antiAfkStatusTimer.Tick += (_, _) => SyncAntiAfkStatus();
+            _antiAfkStatusTimer.Start();
         }
 
         private void OnAntiAfkStateChanged(object? sender, bool running)
@@ -183,8 +195,33 @@ namespace SCLOCVerse.Controls.SettingsHub
         private void SyncAntiAfkToggle(bool running)
         {
             AntiAfkEnabledToggle.IsChecked = running;
-            AntiAfkStatusDot.Fill = running ? AntiAfkDotOn : AntiAfkDotOff;
-            AntiAfkStatusText.Text = running ? "· увімкнено" : "· вимкнено";
+            SyncAntiAfkStatus();
+        }
+
+        /// <summary>
+        /// Оновлює статус-крапку картки Anti-AFK (симетрично Auto Key) суто з UI:
+        /// OFF → сірий, ON + SC-foreground → зелений, ON + не-SC → жовтий.
+        /// Без звернення до IAntiAfkService beyond IsRunning — лише Foreground Gate.
+        /// </summary>
+        private void SyncAntiAfkStatus()
+        {
+            if (_antiAfk is null || !_antiAfk.IsRunning)
+            {
+                AntiAfkStatusDot.Fill = AntiAfkDotOff;
+                AntiAfkStatusText.Text = "· вимкнено";
+                return;
+            }
+
+            if (StarCitizenForeground.IsStarCitizenForeground())
+            {
+                AntiAfkStatusDot.Fill = AntiAfkDotRunning;
+                AntiAfkStatusText.Text = "· працює";
+            }
+            else
+            {
+                AntiAfkStatusDot.Fill = AntiAfkDotWaiting;
+                AntiAfkStatusText.Text = "· очікує Star Citizen";
+            }
         }
 
         private void AntiAfkToggle_Changed(object sender, RoutedEventArgs e)
@@ -725,6 +762,15 @@ namespace SCLOCVerse.Controls.SettingsHub
             }
 
             _autoKey.ApplySettings();
+        }
+
+        private void OverlaySettingsPane_Unloaded(object sender, RoutedEventArgs e)
+        {
+            if (_antiAfkStatusTimer != null)
+            {
+                _antiAfkStatusTimer.Stop();
+                _antiAfkStatusTimer = null;
+            }
         }
     }
 }

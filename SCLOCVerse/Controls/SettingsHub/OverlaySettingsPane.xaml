@@ -1,7 +1,8 @@
 <UserControl x:Class="SCLOCVerse.Controls.SettingsHub.OverlaySettingsPane"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             Background="Transparent">
+             Background="Transparent"
+             Unloaded="OverlaySettingsPane_Unloaded">
 
     <UserControl.Resources>
         <ResourceDictionary>
