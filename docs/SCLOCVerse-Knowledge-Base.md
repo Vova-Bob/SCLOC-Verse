@@ -1774,7 +1774,7 @@ Phase 3.7 (Security Hardening) — Backlog (DEFAULT PRIVILEGES); SEC-11 — ✅ 
 
 200. **GetLastInputInfo замість глобальних hooks (✅ VER+IMPL).** Старий код використовував `WH_KEYBOARD_LL` + `WH_MOUSE_LL` (72 рядки `HookManager`, always-on keylogger). Замінено на `GetLastInputInfo()` — 1 PInvoke, 0 hooks, privacy-safe. Root Cause First: коренева причина hooks — виявлення бездіяльності; GetLastInputInfo вирішує це в один виклик system-wide. Zero Regression: `RawInputBackend` не зачеплено (жодних hooks).
 
-201. **AntiAfkService — координатор (✅ IMPL).** 2 залежності: `IHotkeyService` + `IPreferencesService`. `System.Threading.Timer` (1с poll) → idle check → `SendInput(±1px, MOUSEEVENTF_MOVE)` + random threshold (1–60с, анти-детект). `IDisposable`. Auto-start зі збереженого стану. Не залежить від Hangar Overlay.
+201. **AntiAfkService — координатор (✅ IMPL).** 2 залежності: `IHotkeyService` + `IPreferencesService`. `System.Threading.Timer` (1с poll) → idle check → `SendInput(±1px, MOUSEEVENTF_MOVE)` + random threshold (1–60с, анти-детект). `IDisposable`. Auto-start зі збереженого стану. Не залежить від Hangar Overlay. **Foreground Gate (2026-07-11, ✅ IMPL):** `TimerCallback` пропускає дію, коли активне вікно ≠ Star Citizen — спільний `StarCitizenForeground.IsStarCitizenForeground()` (див. §14.30). Alt+Tab → тиша (без SendInput), повернення у SC → відновлення. UI/індикатор незмінні (без Paused-стану — це фіча Auto Key).
 
 202. **AntiAfkIndicatorWindow — окремий overlay (✅ IMPL).** Пульсуюча точка (Ellipse). Win32 `WS_EX_TRANSPARENT | WS_EX_LAYERED` — click-through. 2 анімації: Pulse (0.6с, різкий) / Breathing (2.5с, SineEase). GPU-accelerated Opacity animation. 5 позицій (TopLeft/TopRight/BottomLeft/BottomRight/Center). Не залежить від Hangar Overlay — повністю незалежний життєвий цикл.
 
@@ -1837,6 +1837,17 @@ Phase 3.7 (Security Hardening) — Backlog (DEFAULT PRIVILEGES); SEC-11 — ✅ 
 225. **Presentation-структура груп popup (✅ IMPL).** Явне групування `group → [HotkeyId]` у `HangarTimerCard` (Основні/Цикл/Масштаб/Прозорість). Це **не дублювання комбінацій** (жести/описи читаються live) — лише те, які id показати разом. Overlay-підказка фільтрує `Id.Value.StartsWith("HangarTimer.")`; `Esc: закрити` — статичний суфікс (локальна клавіша вікна, не HotkeyService).
 
 226. **Інʼєкція (additive).** `IHotkeyService` → `HangarTimerCard.SetHotkeyService` (через `ScToolsCanvas.SetHotkeyService` ← `MainWindow`) та у `HangarOverlayService` (новий ctor-параметр; у `AppCompositionRoot` конструкція `HotkeyService` перенесена ДО `HangarOverlayService`). `IHangarTimerService` не розширювався.
+
+## 14.30. StarCitizenForeground — спільний Foreground Gate (2026-07-11) — ✅ IMPL
+
+> DRY: stateless-перевірка активного вікна Star Citizen винесена з AutoKeyService у
+> спільний helper; підключена до Anti-AFK (див. §14.27 item 201).
+
+227. **StarCitizenForeground (✅ IMPL).** `Helpers/StarCitizenForeground.IsStarCitizenForeground()` — stateless: `GetForegroundWindow` → `GetWindowThreadProcessId` → `OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION)` → `QueryFullProcessImageName` → `Path.GetFileName` → `string.Equals(name, "StarCitizen.exe", OrdinalIgnoreCase)`. `OpenProcess==NULL` → тихо `false` (без логів/винятків). Перевірка за PID процесу, а не за Caption.
+
+228. **AutoKeyService — прибрано дубль (✅ IMPL, Zero Regression).** Приватний foreground PInvoke-блок + `StarCitizenProcessName` видалено; `TimerCallback` делегує `StarCitizenForeground.IsStarCitizenForeground()`. Стани Off/Running/Paused + SendInput незмінні. Логіка відтворена 1:1.
+
+229. **AntiAfkService — підключено гейт (✅ IMPL).** Один рядок у `TimerCallback` (після disposed/running): `if (!StarCitizenForeground.IsStarCitizenForeground()) return;`. При SC-foreground — байт-в-байт як раніше; при не-SC — skip `SimulateMouseMove` + skip `FlashIndicator`. Детекція бездіяльності/SendInput/індикатор/хоткей не зачеплені. UI незмінний.
 
 ---
 
