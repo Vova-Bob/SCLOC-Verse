@@ -761,7 +761,7 @@ namespace SCLOCVerse.Services.LiaServices
             // за замовчуванням серіалізує stdout/stderr через OEM code page системи — на укр/рос
             // Windows це CP1251 або CP866. Клієнт читає з Encoding.UTF8 (StandardOutputEncoding),
             // тож кирилиця перетворюється на невалідні байти → заміна на U+FFFD ('?') →
-            // користувач бачить «HRESULT 0x80131500. ���� ࠠࠢ뢠���...» замість оригінального
+            // користувач бачить «HRESULT 0x80131500. [пошкоджений текст]...» замість оригінального
             // локалізованого повідомлення Add-AppxPackage / Import-Certificate.
             //
             // Override [Console]::OutputEncoding + $OutputEncoding на початку скрипта
