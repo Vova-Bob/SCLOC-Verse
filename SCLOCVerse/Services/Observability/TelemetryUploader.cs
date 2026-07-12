@@ -1,5 +1,6 @@
 using SCLOCVerse.Interfaces;
 using SCLOCVerse.Models.Observability;
+using Supabase.Postgrest.Exceptions;
 using System;
 using System.Diagnostics;
 using System.Threading;
@@ -78,6 +79,13 @@ namespace SCLOCVerse.Services.Observability
                     catch (Exception ex)
                     {
                         Debug.WriteLine($"[Telemetry] Помилка відправки події: {ex.Message}");
+
+                        // RC-401: 401 Unauthorized — сесія недійсна (expired JWT після failed refresh).
+                        // Requeue створить нескінченний цикл 401. Подія втрачається (Стаття 1 — best-effort).
+                        if (ex is PostgrestException { StatusCode: 401 } ||
+                            ex.InnerException is PostgrestException { StatusCode: 401 })
+                            continue;
+
                         failed.Add(evt);
                     }
                 }
