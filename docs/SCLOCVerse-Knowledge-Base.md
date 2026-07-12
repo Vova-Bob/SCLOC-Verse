@@ -1868,7 +1868,23 @@ Phase 3.7 (Security Hardening) — Backlog (DEFAULT PRIVILEGES); SEC-11 — ✅ 
 
 236. **RC-2: BackgroundUpdateMonitor repeated Diagnostic telemetry (2026-07-11).** 🟢 VER — При `AdvancedDiagnostics=true` та `AutoUpdateLocalization=false`, `CheckLocalizationAsync` генерує Diagnostic event кожен цикл (1 год) для того ж `HasUpdate=true` стану. Toast layer має version-based dedup (`NotificationRouter.BuildLocalizationCandidates`, `LastLocalizationToast`), телеметрія — ні. Побічний ефект, не задумана поведінка. Обсяг: 2-5 events/годину на Diagnostic-ON користувача. Статус: HYP→VER, **очікує план після закриття RC-1**.
 
-237. **Hotfix v1.0.2.1 — RC-1 Production Release (2026-07-11).** ✅ IMPL — Hotfix для v1.0.2.0: version bump 1.0.2.0→1.0.2.1 (csproj), build з HEAD (`37a5a2a`). Стратегія: Варіант A (build з HEAD, не cherry-pick) — безпечно, бо лише 1 compiled-файл з runtime-зміною (`BackgroundUpdateMonitor.cs`, 3 рядки). Release notes: `Installer/Release-Notes-v1.0.2.1.md`. Статус: реалізовано, **очікує deploy + production verification**.
+237. **Hotfix v1.0.2.1 — RC-1 Production Release (2026-07-11).** ✅ IMPL + VER — Hotfix для v1.0.2.0: version bump 1.0.2.0→1.0.2.1 (csproj), build з HEAD (`37a5a2a`). Стратегія: Варіант A (build з HEAD, не cherry-pick) — безпечно, бо лише 1 compiled-файл з runtime-зміною (`BackgroundUpdateMonitor.cs`, 3 рядки). Release notes: `Installer/Release-Notes-v1.0.2.1.md`. GitHub Release: https://github.com/Vova-Bob/SCLOC-Verse/releases/tag/v1.0.2.1, asset `SCLOC-Verse_Setup.exe` (60.7 МБ, SHA256 `2472ca2962285ae72c83b78aceaa64203cef81bbe06bf221093baadb75821ee6`).
+
+## 14.32. Post-Release Production Forensic v1.0.2.1 (2026-07-12)
+
+> Повний аудит production стану після релізу v1.0.2.1. Evidence First. Жодних припущень без даних.
+
+238. **RC-1 (`chk_telemetry_outcome`) — ✅ ЗАКРИТО.** Жодної невалідної події в `telemetry_events` за весь час (0 invalid outcomes). Postgres logs — 0 продакшн-помилок `chk_telemetry_outcome`. Джерело: SQL `COUNT(*) FILTER (WHERE outcome NOT IN (...))` = 0; source — `BackgroundUpdateMonitor.cs` fix (`a84ab59`). Версії: історичні порушення були виключно від `<1.0.2.1`; від `1.0.2.1` — 0 випадків.
+
+239. **v1.0.2.1 adoption — ✅ VER.** `app_installations.app_version='1.0.2.1'` = 17 active installs (last_seen 2026-07-11 17:46 … 2026-07-12 17:45 UTC). v1.0.2.0 — 5 installs (останній last_seen 2026-07-11 16:09). v1.0.1.0 — 14 installs. v1.0.0.1 — 2 installs. v1.0.0.0 — 31 installs. Є телеметрія, позначена `app_version='1.0.2.1'` — 1 подія.
+
+240. **Telemetry silence у v1.0.2.1 — 🔵 HYP (нова аномалія).** 17 installs оновили `app_installations.last_seen`, але лише 1 подія `telemetry_events` має `app_version='1.0.2.1'` (LIA|Install|Failed, install `edd8372f...`). 0 подій `Application/Start/Started` від v1.0.2.1. Порівняння: v1.0.1.0 за 24h — 18 events; v1.0.0.1 — 11 events; v1.0.2.1 — 1 event. Два інсталяції (0148b502…, dc627da2…) мали багату історію телеметрії у старих версіях, але після переходу `app_installations.app_version='1.0.2.1'` жодної нової події від них не надійшло. Гіпотези (не доведено): (a) Zero Noise Policy — після оновлення немає Failed-подій; (b) v1.0.2.1 процес не відправляє телеметрію успішного запуску; (c) користувачі запускали updater, але не перезапускали основний застосунок. **Потребує подальшого розслідування.**
+
+241. **LIA Install failure — ⚠ ПРОДОВЖУЄТЬСЯ (pre-existing, не регресія v1.0.2.1).** Новий інцидент `INC-2026-00031` (`LIA|Install|InvalidOperationException|1.0.2.1`, Active, 1 user/install, peak_failure_pct=100%). Подія: 2026-07-11 17:47:38 UTC, install `edd8372f...`, user `7927f83f...`. Root cause — той самий InvalidOperationException, що й `INC-2026-00029/30` (v1.0.1.0, зараз Closed). Git diff v1.0.2.0→v1.0.2.1 у `LiaServices/Updater.cs` — лише коментар (UTF-8 fix), функціональних змін немає. Статус: не нова помилка, а той самий LIA pipeline на новій інсталяції. **Потребує окремого фіксу LIA (Backlog §17.1).**
+
+242. **Notifier Worker offline — ❌ НОВА ПРОБЛЕМА (операційна).** `notification_queue` — 3 Pending записи (INC-29, INC-30, INC-31), 0 attempts за останні 24h, `notification_attempts` порожня. Сповіщення про інциденти не доставляються. Trigger promotion працює (INC-31 створився автоматично), але downstream Worker не обробляє чергу. **Потребує перевірки стану Notifier Worker / Discord webhook / host.**
+
+243. **Phase 5.1 Retention Pipeline — ✅ VER.** `pg_cron` job `retention-pipeline-daily` active, schedule `0 3 * * *`. Перший запуск: 2026-07-12 03:00:00 UTC, status `succeeded`, duration ~51 мс. `telemetry_events` = 143 live rows (retention 90d). Ніяких purge ще не відбулось (дані молодші 90d).
 
 ---
 
@@ -2246,6 +2262,8 @@ auth.users (TABLE, 35 columns)  +  public.app_installations (TABLE)
 | Global `UnhandledException` handler (F3) | forensic | низька |
 | Розширити `PrivacySanitizer` на `Detail` (F4) | forensic | низька |
 | Terminal `FlushAsync` у 5 ApplicationUpdate Failed (F5) | forensic | низька |
+| Розслідувати telemetry silence у v1.0.2.1 | §14.32 #240 | середня |
+| Перевірити Notifier Worker / Discord webhook (3 Pending notifications) | §14.32 #242 | низька |
 | Розширити enum `telemetry_incidents.status` (F2) | forensic | низька |
 | Видалити мертвий `LiaForensicParser.TryParseMinimal` (F7) | forensic | низька |
 | MSBuild target для `git_commit` у BuildInfo | forensic | низька |
