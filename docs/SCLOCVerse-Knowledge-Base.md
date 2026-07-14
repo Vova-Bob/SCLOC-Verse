@@ -1951,6 +1951,23 @@ Phase 3.7 (Security Hardening) — ✅ SEC-12 + SEC-11 completed (REVOKE EXECUTE
 265. **Release scope v1.0.2.3.** 3 коміти після v1.0.2.2 (`2a72268`): RC-401 defense-in-depth (C+D+D++F), SEC-12 fix (REVOKE EXECUTE), SEC-11 (2 функції search_path), Performance Advisor (RLS init plan + FK indexes + backup schema DROP), KB Synchronization. Жодних breaking changes (additive-only, Settings мігрують автоматично). Release Notes: `Installer/Release-Notes-v1.0.2.3.md`.
 266. **Release v1.0.2.3 PUBLISHED.** GitHub Release: https://github.com/Vova-Bob/SCLOC-Verse/releases/tag/v1.0.2.3 (Latest, не Draft/Pre-release). Asset `SCLOC-Verse_Setup.exe` (10.4 МБ, SHA256 `2b8bc9a83d3168b780c775846b7a53d4b269cdc0ee586fc24a45bcc7cb1eaa1e`) прикріплений. Release notes українською.
 
+## 14.38. Спрощений скін overlay Hangar Timer (2026-07-14) — ✅ IMPL
+
+> **Additive feature.** Компактний горизонтальний бейдж як альтернативний вигляд накладання Hangar Timer.
+> Перемикач у Settings Hub → Overlay. Концепт: `docs/images/concept-ex-hangar-overley.png`.
+
+267. **`HangarOverlayMode` enum** (`Classic=0` / `Simplified=1`) — нова модель у `Models/HangarTimer/HangarOverlayMode.cs`. Default `Classic` (Zero Regression). Зберігається через `IHangarSettingsService.GetOverlayMode`/`SetOverlayMode` → `Settings.HangarOverlayMode` (int, default 0).
+
+268. **Візуальна реалізація — Visibility-перемикання у вже існуючому `HangarOverlayWindow`.** Замість архітектури `IOverlayRenderer` (занадто складної для простого скіну) — `Viewbox` містить `Grid` з двома панелями: `ClassicPanel` (існуючий Canvas) та `CompactBadge` (новий Border). Перемикання через `ApplyMode(HangarOverlayMode)`: Classic → `ClassicPanel.Visible` + `CompactBadge.Collapsed`; Simplified → навпаки. Drag/scale/opacity/click-through/Win32 не зачеплено — працюють для всього вікна.
+
+269. **Компактний бейдж:** горизонтальний `Border` (`Background=#CC0A1D29`, `BorderBrush=#2A5A78`, `BorderThickness=2`, `CornerRadius=18`, `Padding=24,14`) з `StackPanel Orientation=Horizontal`: 5 `Ellipse` 22×22 (LED, `LightStateToBrushConverter`, margin 14) + `TextBlock` з `TimerText` (Consolas 30px Bold, `#E0E8F0`). Без статусного тексту, підказок, лейблів LED — лише індикатори + таймер.
+
+270. **Settings Hub → Overlay — ComboBox «Вигляд»** (`HangarModeBox`) з варіантами «Класичний» (`Tag=Classic`) та «Спрощений» (`Tag=Simplified`). `OverlaySettingsPane.Bind` завантажує поточний режим; `HangarMode_Changed` персистить + live-apply через `HangarOverlayWindow.ApplyMode` (якщо overlay відкритий). Reset-кнопка скидає до Classic.
+
+271. **Zero Regression.** Класичний вигляд не змінено (лише перенесений з `Canvas` у `Grid`; layout ідентичний). `HangarOverlayService`, `HangarCycleCalculator`, `HangarTimerState` — без змін. Build: 0 warnings, 0 errors.
+
+272. **Схема БД не зачеплена.** Суто UI-фічa (user.config persistence). Security Review не потрібне (UI/локалізація, не Auth/Installer/Network/SQL).
+
 ---
 
 # 15. Rejected Decisions (майстер-список)
