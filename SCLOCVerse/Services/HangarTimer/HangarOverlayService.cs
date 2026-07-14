@@ -138,6 +138,8 @@ namespace SCLOCVerse.Services.HangarTimer
                 _window.LocationChanged += OnWindowLocationChanged;
                 _overlayWindow?.SetHotkeyHint(BuildHotkeyHint());
                 _window.Show();
+                _timer.Start();
+                UpdateModel();
             }
         }
 
