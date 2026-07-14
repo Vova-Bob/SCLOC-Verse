@@ -23,12 +23,20 @@ function Test-InnoSetupCompiler {
 function Publish-Application {
     Write-Host "Publishing application..." -ForegroundColor Cyan
     $projectPath = Join-Path $ProjectDir "SCLOCVerse.csproj"
+
+    # Очищуємо стару publish-директорію, щоб уникнути змішування self-contained та framework-dependent файлів
+    if (Test-Path $publishDir) {
+        Write-Host "Cleaning existing publish directory: $publishDir" -ForegroundColor DarkGray
+        Remove-Item -Path $publishDir -Recurse -Force
+    }
+
     $arguments = @(
         "publish",
         "$projectPath",
         "-c", $Configuration,
         "-r", $RuntimeIdentifier,
         "--self-contained",
+        "-p:SelfContained=true",
         "-p:PublishSingleFile=true",
         "-p:PublishReadyToRun=true"
     )

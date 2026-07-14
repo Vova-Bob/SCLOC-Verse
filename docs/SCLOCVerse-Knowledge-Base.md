@@ -4,7 +4,7 @@
 > Якщо інформація тут є — не перечитуй десятки forensic-документів.
 > Якщо інформація тут суперечить сирому документу — сирий документ має пріоритет, але повідом про розбіжність (розділ 18.3).
 >
-> **Версія застосунку:** 1.0.2.3 (Stable)
+> **Версія застосунку:** 1.0.2.4 (Stable)
 > **Supabase project:** `nrytczdbhehiotflaagl` (eu-west-1)
 > **Живий документ:** постійно оновлюється при розвитку системи. Дозволено додавати, оновлювати, видаляти та переносити дані між розділами. Заборонено лише дублювання інформації та створення нових документів для вже описаних підсистем (див. AGENTS.md, «Knowledge Base — живий документ»).
 
@@ -1945,11 +1945,18 @@ Phase 3.7 (Security Hardening) — ✅ SEC-12 + SEC-11 completed (REVOKE EXECUTE
 
 263. **Backup Schemas DROPPED — ✅ IMPL (production).** `DROP SCHEMA backup_pre_1_0_0_1 CASCADE` + `DROP SCHEMA backup_pre_phase3a CASCADE`. Разом: 23 таблиці, ~488 KB, 0 залежностей, 0 продюсерів, 0 споживачів. Усунуло ~36 "No Primary Key" warnings з Performance Advisor. KB §3.2.1 оновлено.
 
-## 14.37. Release v1.0.2.3 Stable (2026-07-14) — ✅ IMPL
+## 14.37. Release v1.0.2.3 Stable (2026-07-14) — ✅ IMPL (ЗНЯТО З LATEST)
 
 264. **Version Update: 1.0.2.2 → 1.0.2.3.** Змінено 3 рядки у `SCLOCVerse.csproj` (`<Version>`, `<AssemblyVersion>`, `<FileVersion>` → `1.0.2.3`). Release-білд: 0 warnings, 0 errors. Інсталятор `SCLOC-Verse_Setup.exe` (10.4 МБ, SHA256 `2b8bc9a83d3168b780c775846b7a53d4b269cdc0ee586fc24a45bcc7cb1eaa1e`). Git tag `v1.0.2.3` → коміт `6011648`. GitHub Release: https://github.com/Vova-Bob/SCLOC-Verse/releases/tag/v1.0.2.3.
 265. **Release scope v1.0.2.3.** 3 коміти після v1.0.2.2 (`2a72268`): RC-401 defense-in-depth (C+D+D++F), SEC-12 fix (REVOKE EXECUTE), SEC-11 (2 функції search_path), Performance Advisor (RLS init plan + FK indexes + backup schema DROP), KB Synchronization. Жодних breaking changes (additive-only, Settings мігрують автоматично). Release Notes: `Installer/Release-Notes-v1.0.2.3.md`.
-266. **Release v1.0.2.3 PUBLISHED.** GitHub Release: https://github.com/Vova-Bob/SCLOC-Verse/releases/tag/v1.0.2.3 (Latest, не Draft/Pre-release). Asset `SCLOC-Verse_Setup.exe` (10.4 МБ, SHA256 `2b8bc9a83d3168b780c775846b7a53d4b269cdc0ee586fc24a45bcc7cb1eaa1e`) прикріплений. Release notes українською.
+266. **Release v1.0.2.3 PUBLISHED.** GitHub Release: https://github.com/Vova-Bob/SCLOC-Verse/releases/tag/v1.0.2.3 (був Latest, не Draft/Pre-release). Asset `SCLOC-Verse_Setup.exe` (10.4 МБ, SHA256 `2b8bc9a83d3168b780c775846b7a53d4b269cdc0ee586fc24a45bcc7cb1eaa1e`) прикріплений. Release notes українською.
+267. **REGRESSION:** Інсталятор v1.0.2.3 виявився **framework-dependent** замість self-contained. При запуску на машинах без глобально встановленого .NET 9 з'являлося вікно "You must install or update .NET" (Microsoft.NETCore.App 9.0.0). Причина: stale publish-директорія — `dotnet publish` не очистив файли попереднього Debug/framework-dependent білду, і `SelfContained=true` не застосувався коректно. Розмір 10.4 МБ підтвердив framework-dependent публікацію (норма для self-contained WPF .NET 9 — 60–150 МБ). Фікс в v1.0.2.4: очистка publish-директорії + явний `-p:SelfContained=true` у `build-installer.ps1`.
+
+## 14.37a. Release v1.0.2.4 Stable (2026-07-14) — ✅ IMPL (LATEST)
+
+268. **Version Update: 1.0.2.3 → 1.0.2.4.** Змінено 3 рядки у `SCLOCVerse.csproj` (`<Version>`, `<AssemblyVersion>`, `<FileVersion>` → `1.0.2.4`). Оновлено `Installer/build-installer.ps1`: очистка `publish` директорії перед `dotnet publish` + явний `-p:SelfContained=true`. Release-білд: 0 warnings (1 ISCC warning про `GetFileVersion` → `GetVersionNumbersString`, косметичний).
+269. **Release scope v1.0.2.4.** (a) Hotfix self-contained regression (Framework-dependent → Self-contained). (b) Спрощений вигляд overlay Hangar Timer (EX-Hangar compact badge) — перенесено з Backlog §17.7 у Implemented (див. §14.38). Build: 0 errors, Mojibake: 0. Інсталятор: 68.4 МБ, ProductVersion=1.0.2.4, SHA256 згенеровано. Release Notes: `Installer/Release-Notes-v1.0.2.4.md`.
+270. **Release v1.0.2.4 PUBLISHED.** Git tag `v1.0.2.4` → коміт (HEAD після hotfix). GitHub Release: https://github.com/Vova-Bob/SCLOC-Verse/releases/tag/v1.0.2.4 (Latest, не Draft/Pre-release). Asset `SCLOC-Verse_Setup.exe` (68.4 МБ, SHA256 у `.sha256`) прикріплений. Release notes українською.
 
 ## 14.38. Спрощений скін overlay Hangar Timer (2026-07-14) — ✅ IMPL
 
