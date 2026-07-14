@@ -686,13 +686,8 @@ namespace SCLOCVerse.Controls.SettingsHub
 
             _settings.SetOverlayMode(mode);
 
-            // Live-preview: застосувати до відкритого overlay.
-            if (_overlay?.IsOpen == true)
-            {
-                var window = _overlay.GetWindow();
-                if (window is HangarOverlayWindow hangar)
-                    hangar.ApplyMode(mode);
-            }
+            // Live-preview: застосувати до відкритого overlay (рекреація вікна).
+            _overlay?.ApplyOverlayMode(mode);
         }
 
         // ============ Reset ============
@@ -744,8 +739,7 @@ namespace SCLOCVerse.Controls.SettingsHub
                         _isModeSyncing = false;
                     }
 
-                    if (_overlay?.IsOpen == true && _overlay.GetWindow() is HangarOverlayWindow hangar)
-                        hangar.ApplyMode(HangarOverlayMode.Classic);
+                    _overlay?.ApplyOverlayMode(HangarOverlayMode.Classic);
                 }
                 finally
                 {

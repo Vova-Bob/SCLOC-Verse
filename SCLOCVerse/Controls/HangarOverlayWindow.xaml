@@ -26,138 +26,88 @@
     </Window.Resources>
 
     <Viewbox Stretch="Fill">
-        <Grid Width="820" Height="280">
+        <Canvas Width="820" Height="280">
 
-            <!-- ===== Класичний вигляд ===== -->
-            <Canvas x:Name="ClassicPanel" Width="820" Height="280">
+            <!-- Декоративна card -->
+            <Border Canvas.Left="12"
+                   Canvas.Top="12"
+                   Width="796"
+                   Height="256"
+                   CornerRadius="14"
+                   Background="{Binding Phase, Converter={StaticResource PhaseToBackground}}"
+                   BorderBrush="{Binding Phase, Converter={StaticResource PhaseToBorder}}"
+                   BorderThickness="1"/>
 
-                <!-- Декоративна card -->
-                <Border Canvas.Left="12"
-                       Canvas.Top="12"
-                       Width="796"
-                       Height="256"
-                       CornerRadius="14"
-                       Background="{Binding Phase, Converter={StaticResource PhaseToBackground}}"
-                       BorderBrush="{Binding Phase, Converter={StaticResource PhaseToBorder}}"
-                       BorderThickness="1"/>
+            <!-- Статус -->
+            <TextBlock Canvas.Left="0"
+                       Canvas.Top="28"
+                       Width="820"
+                       Height="36"
+                       Text="{Binding StatusMessage}"
+                       FontFamily="Segoe UI Semibold"
+                       FontSize="28"
+                       Foreground="{Binding Phase, Converter={StaticResource PhaseToText}}"
+                       TextAlignment="Center"
+                       VerticalAlignment="Top"/>
 
-                <!-- Статус -->
-                <TextBlock Canvas.Left="0"
-                           Canvas.Top="28"
-                           Width="820"
-                           Height="36"
-                           Text="{Binding StatusMessage}"
-                           FontFamily="Segoe UI Semibold"
-                           FontSize="28"
-                           Foreground="{Binding Phase, Converter={StaticResource PhaseToText}}"
-                           TextAlignment="Center"
-                           VerticalAlignment="Top"/>
+            <!-- Таймер -->
+            <TextBlock Canvas.Left="0"
+                        Canvas.Top="82"
+                        Width="820"
+                        Height="40"
+                        Text="{Binding StatusLine}"
+                        FontFamily="Consolas"
+                        FontSize="36"
+                        FontWeight="Bold"
+                       Foreground="#FFFFFFFF"
+                       TextAlignment="Center"
+                       VerticalAlignment="Top"/>
 
-                <!-- Таймер -->
-                <TextBlock Canvas.Left="0"
-                            Canvas.Top="82"
-                            Width="820"
-                            Height="40"
-                            Text="{Binding StatusLine}"
-                            FontFamily="Consolas"
-                            FontSize="36"
-                            FontWeight="Bold"
-                           Foreground="#FFFFFFFF"
-                           TextAlignment="Center"
-                           VerticalAlignment="Top"/>
+            <!-- LED індикатори -->
+            <ItemsControl ItemsSource="{Binding Lights}">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <Canvas/>
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
 
-                <!-- LED індикатори -->
-                <ItemsControl ItemsSource="{Binding Lights}">
-                    <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate>
-                            <Canvas/>
-                        </ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate DataType="{x:Type hm:HangarLightViewModel}">
+                        <Canvas>
+                            <Ellipse Canvas.Left="{Binding Left}"
+                                    Canvas.Top="{Binding Top}"
+                                     Width="32"
+                                     Height="32"
+                                    Fill="{Binding State, Converter={StaticResource LightStateToBrush}}"
+                                     Stroke="#B47A7A7A"
+                                    StrokeThickness="1"/>
+                            <TextBlock Canvas.Left="{Binding LabelLeft}"
+                                       Canvas.Top="190"
+                                       Width="60"
+                                       Height="24"
+                                       Text="{Binding Label}"
+                                       FontFamily="Consolas"
+                                       FontSize="16"
+                                       Foreground="#FFFFFFFF"
+                                      TextAlignment="Center"
+                                      VerticalAlignment="Top"
+                                      Visibility="{Binding Label, Converter={StaticResource EmptyToVisibility}}"/>
+                        </Canvas>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
 
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate DataType="{x:Type hm:HangarLightViewModel}">
-                            <Canvas>
-                                <Ellipse Canvas.Left="{Binding Left}"
-                                        Canvas.Top="{Binding Top}"
-                                         Width="32"
-                                         Height="32"
-                                        Fill="{Binding State, Converter={StaticResource LightStateToBrush}}"
-                                         Stroke="#B47A7A7A"
-                                        StrokeThickness="1"/>
-                                <TextBlock Canvas.Left="{Binding LabelLeft}"
-                                           Canvas.Top="190"
-                                           Width="60"
-                                           Height="24"
-                                           Text="{Binding Label}"
-                                           FontFamily="Consolas"
-                                           FontSize="16"
-                                           Foreground="#FFFFFFFF"
-                                          TextAlignment="Center"
-                                          VerticalAlignment="Top"
-                                          Visibility="{Binding Label, Converter={StaticResource EmptyToVisibility}}"/>
-                            </Canvas>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
+            <!-- Підказка гарячих клавіш (будується динамічно з IHotkeyService) -->
+            <TextBlock x:Name="HotkeyHintText"
+                       Canvas.Left="16"
+                       Canvas.Top="256"
+                       FontFamily="Segoe UI"
+                       FontSize="10"
+                       Foreground="#78C8C8C8"
+                       TextWrapping="Wrap"
+                       Width="788"/>
 
-                <!-- Підказка гарячих клавіш (будується динамічно з IHotkeyService) -->
-                <TextBlock x:Name="HotkeyHintText"
-                           Canvas.Left="16"
-                           Canvas.Top="256"
-                           FontFamily="Segoe UI"
-                           FontSize="10"
-                           Foreground="#78C8C8C8"
-                           TextWrapping="Wrap"
-                           Width="788"/>
-
-            </Canvas>
-
-            <!-- ===== Спрощений вигляд (бейдж) ===== -->
-            <!-- Розміри підібрані так, щоб при масштабі 1.0 бейдж був читабельним.
-                 Viewbox + Grid 820x280 масштабує бейдж як і класику. -->
-            <Border x:Name="CompactBadge"
-                    Visibility="Collapsed"
-                    Background="#CC0A1D29"
-                    BorderBrush="#2A5A78"
-                    BorderThickness="2"
-                    CornerRadius="18"
-                    Padding="24,14"
-                    HorizontalAlignment="Center"
-                    VerticalAlignment="Center"
-                    UseLayoutRounding="True">
-                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-
-                    <!-- 5 LED-індикаторів -->
-                    <ItemsControl ItemsSource="{Binding Lights}">
-                        <ItemsControl.ItemsPanel>
-                            <ItemsPanelTemplate>
-                                <StackPanel Orientation="Horizontal"/>
-                            </ItemsPanelTemplate>
-                        </ItemsControl.ItemsPanel>
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate DataType="{x:Type hm:HangarLightViewModel}">
-                                <Ellipse Width="22"
-                                         Height="22"
-                                         Margin="0,0,14,0"
-                                         Fill="{Binding State, Converter={StaticResource LightStateToBrush}}"
-                                         Stroke="#557A7A7A"
-                                         StrokeThickness="1"/>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-
-                    <!-- Таймер -->
-                    <TextBlock Text="{Binding TimerText}"
-                               FontFamily="Consolas"
-                               FontSize="30"
-                               FontWeight="Bold"
-                               Foreground="#E0E8F0"
-                               VerticalAlignment="Center"
-                               Margin="16,0,0,0"/>
-                </StackPanel>
-            </Border>
-
-        </Grid>
+        </Canvas>
     </Viewbox>
 
 </Window>

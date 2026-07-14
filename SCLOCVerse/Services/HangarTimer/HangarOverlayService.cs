@@ -32,7 +32,8 @@ namespace SCLOCVerse.Services.HangarTimer
         private readonly DispatcherTimer _timer;
         private readonly HangarTimerState _state;
 
-        private HangarOverlayWindow? _window;
+        private Window? _window;
+        private IHangarOverlayWindow? _overlayWindow;
         private long _cycleStartMs;
         private bool _disposed;
 
@@ -69,20 +70,75 @@ namespace SCLOCVerse.Services.HangarTimer
 
             if (_window != null)
             {
-                _window.SetHotkeyHint(BuildHotkeyHint());
+                _overlayWindow?.SetHotkeyHint(BuildHotkeyHint());
                 _window.Activate();
                 return;
             }
 
             _cycleStartMs = cycleStartMs;
 
-            _window = new HangarOverlayWindow(_state, _settingsService, OnWindowClosed);
-            // Підписка на переміщення вікна → транслиція в PositionChanged.
-            _window.LocationChanged += OnWindowLocationChanged;
-            _window.SetHotkeyHint(BuildHotkeyHint());
+            CreateWindow();
+            _window!.LocationChanged += OnWindowLocationChanged;
+            _overlayWindow?.SetHotkeyHint(BuildHotkeyHint());
             _window.Show();
             _timer.Start();
             UpdateModel();
+        }
+
+        /// <summary>
+        /// Створює вікно overlay відповідно до поточного режиму (Classic / Simplified).
+        /// </summary>
+        private void CreateWindow()
+        {
+            var mode = _settingsService.GetOverlayMode();
+
+            if (mode == HangarOverlayMode.Simplified)
+            {
+                var compact = new HangarCompactOverlayWindow(_state, _settingsService, OnWindowClosed);
+                _window = compact;
+                _overlayWindow = compact;
+            }
+            else
+            {
+                var classic = new HangarOverlayWindow(_state, _settingsService, OnWindowClosed);
+                _window = classic;
+                _overlayWindow = classic;
+            }
+        }
+
+        /// <summary>
+        /// Перемикає режим відображення overlay (класичний / спрощений).
+        /// Якщо overlay відкритий — закриває старе вікно та створює нове (live-apply).
+        /// Персистить не тут — це робить Settings Hub через IHangarSettingsService.
+        /// </summary>
+        public void ApplyOverlayMode(HangarOverlayMode mode)
+        {
+            if (_disposed)
+                return;
+
+            // Якщо вікно не відкрите — режим застосується при наступному Show().
+            if (_window == null)
+                return;
+
+            // Зберегти поточну позицію перед закриттям (щоб нове вікно відкрилось там же).
+            var x = _window.Left;
+            var y = _window.Top;
+
+            var wasVisible = _window.IsVisible;
+            _window.LocationChanged -= OnWindowLocationChanged;
+            _window.Close();
+            _window = null;
+            _overlayWindow = null;
+
+            if (wasVisible)
+            {
+                CreateWindow();
+                _window!.Left = x;
+                _window.Top = y;
+                _window.LocationChanged += OnWindowLocationChanged;
+                _overlayWindow?.SetHotkeyHint(BuildHotkeyHint());
+                _window.Show();
+            }
         }
 
         /// <summary>
@@ -215,7 +271,7 @@ namespace SCLOCVerse.Services.HangarTimer
             if (_disposed)
                 throw new ObjectDisposedException(nameof(HangarOverlayService));
 
-            _window?.ToggleClickThrough();
+            _overlayWindow?.ToggleClickThrough();
         }
 
         public void BeginTemporaryDrag()
@@ -223,7 +279,7 @@ namespace SCLOCVerse.Services.HangarTimer
             if (_disposed)
                 throw new ObjectDisposedException(nameof(HangarOverlayService));
 
-            _window?.BeginTemporaryDragMode();
+            _overlayWindow?.BeginTemporaryDragMode();
         }
 
         public void ScaleDown()
@@ -313,6 +369,7 @@ namespace SCLOCVerse.Services.HangarTimer
             if (_window != null)
                 _window.LocationChanged -= OnWindowLocationChanged;
             _window = null;
+            _overlayWindow = null;
         }
 
         private void OnTimerTick(object? sender, EventArgs e)

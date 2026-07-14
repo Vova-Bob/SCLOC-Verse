@@ -4,36 +4,18 @@ using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Interop;
+using System.Windows.Media;
 
 namespace SCLOCVerse.Controls
 {
     /// <summary>
-    /// WPF overlay вікно Hangar Timer (класичний вигляд). Code-behind містить лише
-    /// WinAPI, drag, життєвий цикл вікна та координати/розміри, що відповідають
-    /// оригінальному WinForms Overlay.
+    /// Компактне overlay-вікно Hangar Timer (спрощений вигляд).
+    /// Самостійний бейдж: 5 LED + таймер, прозорий фон, SizeToContent.
+    /// Не має card-контейнера — лише тонка округла оболонка навколо бейджа.
+    /// Незалежний життєвий цикл, але ті ж налаштування (позиція/прозорість/масштаб).
     /// </summary>
-    public partial class HangarOverlayWindow : Window, IHangarOverlayWindow
+    public partial class HangarCompactOverlayWindow : Window, IHangarOverlayWindow
     {
-        // ---- Base canvas size (1:1 з оригінальним WinForms) ----
-        private const double BaseWidth = 820;
-        private const double BaseHeight = 280;
-        private const double CardMargin = 12;
-        private const double CardCornerRadius = 14;
-
-        // ---- LED ----
-        private const int LedCount = 5;
-        private const double LedDiameter = 32;
-        private const double LedSpacing = 30;
-        private const double LedTop = 146;
-        private const double LedLabelTop = 190;
-
-        // ---- Text positions ----
-        private const double StatusTop = 28;
-        private const double TimerTop = 82;
-        private const double HotkeysLeft = 16;
-        private const double HotkeysTop = 256;
-
-        // ---- Win32 ----
         private const int GwlExStyle = -20;
         private const int WsExLayered = 0x80000;
         private const int WsExTransparent = 0x20;
@@ -45,6 +27,7 @@ namespace SCLOCVerse.Controls
         private bool _clickThrough;
         private bool _clickThroughTemp;
         private Point? _dragStart;
+        private double _scale;
 
         [DllImport("user32.dll", EntryPoint = "GetWindowLong")]
         private static extern int GetWindowLong32(IntPtr hWnd, int nIndex);
@@ -69,7 +52,7 @@ namespace SCLOCVerse.Controls
                 SetWindowLong32(hWnd, nIndex, (int)value);
         }
 
-        public HangarOverlayWindow(HangarTimerState state, IHangarSettingsService settingsService, Action onClose)
+        public HangarCompactOverlayWindow(HangarTimerState state, IHangarSettingsService settingsService, Action onClose)
         {
             _state = state;
             _settingsService = settingsService;
@@ -88,33 +71,45 @@ namespace SCLOCVerse.Controls
             MouseLeftButtonUp += OnMouseLeftButtonUp;
 
             _state.PropertyChanged += OnStatePropertyChanged;
-
-            InitializeLedPositions();
         }
 
+        // ===== IHangarOverlayWindow (специфічні методи) =====
+
         /// <summary>
-        /// Встановлює текст підказки гарячих клавіш. Будується зовні (HangarOverlayService)
-        /// з IHotkeyService.GetDefinitions() — єдине джерело жестів та описів.
+        /// У компактному вигляді підказка гарячих клавіш не показується.
+        /// Метод існує для сумісності з контрактом.
         /// </summary>
         public void SetHotkeyHint(string text)
         {
-            HotkeyHintText.Text = text;
+            // Нічого не робимо — у спрощеному вигляді підказки немає.
         }
 
-        private void InitializeLedPositions()
+        public void ToggleClickThrough()
         {
-            double rowWidth = LedCount * LedDiameter + (LedCount - 1) * LedSpacing;
-            double startX = (BaseWidth - rowWidth) / 2;
+            _clickThrough = !_clickThrough;
+            _clickThroughTemp = false;
+            ApplyClickThrough(_clickThrough);
+        }
 
-            for (int i = 0; i < _state.Lights.Length; i++)
+        public void BeginTemporaryDragMode()
+        {
+            if (_clickThrough && !_clickThroughTemp)
             {
-                var light = _state.Lights[i];
-                double left = startX + i * (LedDiameter + LedSpacing);
-                light.Left = left;
-                light.Top = LedTop;
-                light.LabelLeft = left - 14;
+                _clickThroughTemp = true;
+                ApplyClickThrough(false);
             }
         }
+
+        public void EndTemporaryDragMode()
+        {
+            if (_clickThroughTemp)
+            {
+                _clickThroughTemp = false;
+                ApplyClickThrough(true);
+            }
+        }
+
+        // ===== Lifecycle =====
 
         private void OnSourceInitialized(object? sender, EventArgs e)
         {
@@ -130,10 +125,7 @@ namespace SCLOCVerse.Controls
 
         private void OnClosing(object? sender, System.ComponentModel.CancelEventArgs e)
         {
-            // Відписуємося від long-lived стану до того, як вікно стане недоступним.
-            // Інакше _state.PropertyChanged утримуватиме закрите вікно від посилання (витік).
             _state.PropertyChanged -= OnStatePropertyChanged;
-
             SavePersistedState();
             _onClose();
         }
@@ -153,7 +145,7 @@ namespace SCLOCVerse.Controls
                 Opacity = _state.Opacity;
 
             if (e.PropertyName == nameof(HangarTimerState.Scale))
-                ApplyWindowScale();
+                ApplyScale();
         }
 
         // ===== Drag =====
@@ -185,31 +177,6 @@ namespace SCLOCVerse.Controls
 
         // ===== Click-through =====
 
-        public void ToggleClickThrough()
-        {
-            _clickThrough = !_clickThrough;
-            _clickThroughTemp = false;
-            ApplyClickThrough(_clickThrough);
-        }
-
-        public void BeginTemporaryDragMode()
-        {
-            if (_clickThrough && !_clickThroughTemp)
-            {
-                _clickThroughTemp = true;
-                ApplyClickThrough(false);
-            }
-        }
-
-        public void EndTemporaryDragMode()
-        {
-            if (_clickThroughTemp)
-            {
-                _clickThroughTemp = false;
-                ApplyClickThrough(true);
-            }
-        }
-
         private void ApplyClickThrough(bool enabled)
         {
             var helper = new WindowInteropHelper(this);
@@ -226,21 +193,22 @@ namespace SCLOCVerse.Controls
             SetWindowLong(handle, GwlExStyle, exStyle);
         }
 
-        // ===== Persist =====
+        // ===== Persist + Scale =====
 
         private void LoadPersistedState()
         {
             var x = _settingsService.GetOverlayX();
             var y = _settingsService.GetOverlayY();
-            var scale = _settingsService.GetOverlayScale();
+            _scale = _settingsService.GetOverlayScale();
             var opacity = _settingsService.GetOverlayOpacity();
 
-            _state.Scale = scale;
+            _state.Scale = _scale;
             _state.Opacity = opacity;
 
             Left = x;
             Top = y;
-            ApplyWindowScale();
+            Opacity = opacity;
+            ApplyScale();
             ClampPosition();
         }
 
@@ -251,17 +219,23 @@ namespace SCLOCVerse.Controls
             _settingsService.SetOverlayOpacity(_state.Opacity);
         }
 
-        private void ApplyWindowScale()
+        /// <summary>
+        /// Масштабування компактного бейджа через LayoutTransform.
+        /// SizeToContent лишається коректним — бейдж підлаштовується під вміст,
+        /// а LayoutTransform масштабує вже зібраний бейдж.
+        /// </summary>
+        private void ApplyScale()
         {
-            Width = BaseWidth * _state.Scale;
-            Height = BaseHeight * _state.Scale;
+            _scale = _state.Scale;
+            Badge.LayoutTransform = new ScaleTransform(_scale, _scale);
+            ClampPosition();
         }
 
         private void ClampPosition()
         {
             var screen = SystemParameters.WorkArea;
-            Left = Math.Max(screen.Left, Math.Min(screen.Right - Width, Left));
-            Top = Math.Max(screen.Top, Math.Min(screen.Bottom - Height, Top));
+            Left = Math.Max(screen.Left, Math.Min(screen.Right - ActualWidth, Left));
+            Top = Math.Max(screen.Top, Math.Min(screen.Bottom - ActualHeight, Top));
         }
     }
 }
