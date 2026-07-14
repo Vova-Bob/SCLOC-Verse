@@ -1955,18 +1955,21 @@ Phase 3.7 (Security Hardening) — ✅ SEC-12 + SEC-11 completed (REVOKE EXECUTE
 
 > **Additive feature.** Компактний горизонтальний бейдж як альтернативний вигляд накладання Hangar Timer.
 > Перемикач у Settings Hub → Overlay. Концепт: `docs/images/concept-ex-hangar-overley.png`.
+> Прев'ю реалізованого бейджа: `docs/images/ex-hangar-compact-preview.png`.
 
 267. **`HangarOverlayMode` enum** (`Classic=0` / `Simplified=1`) — нова модель у `Models/HangarTimer/HangarOverlayMode.cs`. Default `Classic` (Zero Regression). Зберігається через `IHangarSettingsService.GetOverlayMode`/`SetOverlayMode` → `Settings.HangarOverlayMode` (int, default 0).
 
-268. **Візуальна реалізація — Visibility-перемикання у вже існуючому `HangarOverlayWindow`.** Замість архітектури `IOverlayRenderer` (занадто складної для простого скіну) — `Viewbox` містить `Grid` з двома панелями: `ClassicPanel` (існуючий Canvas) та `CompactBadge` (новий Border). Перемикання через `ApplyMode(HangarOverlayMode)`: Classic → `ClassicPanel.Visible` + `CompactBadge.Collapsed`; Simplified → навпаки. Drag/scale/opacity/click-through/Win32 не зачеплено — працюють для всього вікна.
+268. **`IHangarOverlayWindow` інтерфейс** — абстракція специфічних методів overlay-вікна (`SetHotkeyHint`, `ToggleClickThrough`, `BeginTemporaryDragMode`, `EndTemporaryDragMode`). Реалізується класичним (`HangarOverlayWindow`) та компактним (`HangarCompactOverlayWindow`) вікнами. Загальні Window-методи (Show/Hide/Close/Left/Top/LocationChanged) викликаються через базовий `Window`. `HangarOverlayService` працює через `Window? _window` + `IHangarOverlayWindow? _overlayWindow`.
 
-269. **Компактний бейдж:** горизонтальний `Border` (`Background=#CC0A1D29`, `BorderBrush=#2A5A78`, `BorderThickness=2`, `CornerRadius=18`, `Padding=24,14`) з `StackPanel Orientation=Horizontal`: 5 `Ellipse` 22×22 (LED, `LightStateToBrushConverter`, margin 14) + `TextBlock` з `TimerText` (Consolas 30px Bold, `#E0E8F0`). Без статусного тексту, підказок, лейблів LED — лише індикатори + таймер.
+269. **`HangarCompactOverlayWindow` — окреме компактне вікно** (не модифікація класичного). `SizeToContent="WidthAndHeight"`, `Background="Transparent"`, `Topmost`, `ShowActivated="False"`. Містить лише тонкий `Border`-бейдж (`Background=#CC0A1D29`, `BorderBrush=#2A5A78`, `BorderThickness=1.5`, `CornerRadius=16`, `Padding=16,8`) з `StackPanel Orientation=Horizontal`: 5 `Ellipse` 14×14 (LED, `LightStateToBrushConverter`, margin 10) + `TextBlock` з `TimerText` (Consolas 18px Bold, `#E0E8F0`). Без card-контейнера, без статусу, без підказок. Масштаб через `LayoutTransform` (ScaleTransform) — `SizeToContent` лишається коректним.
 
-270. **Settings Hub → Overlay — ComboBox «Вигляд»** (`HangarModeBox`) з варіантами «Класичний» (`Tag=Classic`) та «Спрощений» (`Tag=Simplified`). `OverlaySettingsPane.Bind` завантажує поточний режим; `HangarMode_Changed` персистить + live-apply через `HangarOverlayWindow.ApplyMode` (якщо overlay відкритий). Reset-кнопка скидає до Classic.
+270. **`HangarOverlayService.ApplyOverlayMode(HangarOverlayMode)`** — перемикає режим. Якщо overlay відкритий — закриває старе вікно, створює нове (Classic або Compact), відкриває на тій самій позиції. `CreateWindow()` вибирає тип за `_settingsService.GetOverlayMode()`. Якщо закритий — режим застосується при наступному `Show()`.
 
-271. **Zero Regression.** Класичний вигляд не змінено (лише перенесений з `Canvas` у `Grid`; layout ідентичний). `HangarOverlayService`, `HangarCycleCalculator`, `HangarTimerState` — без змін. Build: 0 warnings, 0 errors.
+271. **Settings Hub → Overlay — ComboBox «Вигляд»** (`HangarModeBox`) з варіантами «Класичний» / «Спрощений». `HangarMode_Changed` персистить + викликає `_overlay.ApplyOverlayMode(mode)` (рекреація вікна, live-apply). Reset-кнопка скидає до Classic.
 
-272. **Схема БД не зачеплена.** Суто UI-фічa (user.config persistence). Security Review не потрібне (UI/локалізація, не Auth/Installer/Network/SQL).
+272. **Zero Regression.** Класичне вікно `HangarOverlayWindow` відновлено до оригіналу (без змін XAML/layout). `HangarCycleCalculator`, `HangarTimerState`, хоткеї — без змін. Build: 0 warnings, 0 errors.
+
+273. **Схема БД не зачеплена.** Суто UI-фічa (user.config persistence). Security Review не потрібне (UI/локалізація, не Auth/Installer/Network/SQL).
 
 ---
 
