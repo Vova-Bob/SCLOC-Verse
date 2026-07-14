@@ -1965,6 +1965,8 @@ Phase 3.7 (Security Hardening) — ✅ SEC-12 + SEC-11 completed (REVOKE EXECUTE
 
 270. **`HangarOverlayService.ApplyOverlayMode(HangarOverlayMode)`** — перемикає режим. Якщо overlay відкритий — закриває старе вікно, створює нове (Classic або Compact), відкриває на тій самій позиції. `CreateWindow()` вибирає тип за `_settingsService.GetOverlayMode()`. Якщо закритий — режим застосується при наступному `Show()`.
 
+> **Bug fix (2026-07-14):** `ApplyOverlayMode` після рекреації вікна не викликав `_timer.Start()` + `UpdateModel()`. `_window.Close()` → `OnWindowClosed()` → `_timer.Stop()`, а після створення нового вікна timer залишався зупиненим → таймер «завмирав» після перемикання. Фікс: додано `_timer.Start()` + `UpdateModel()` після `_window.Show()` у `ApplyOverlayMode` (аналогічно `Show()`).
+
 271. **Settings Hub → Overlay — ComboBox «Вигляд»** (`HangarModeBox`) з варіантами «Класичний» / «Спрощений». `HangarMode_Changed` персистить + викликає `_overlay.ApplyOverlayMode(mode)` (рекреація вікна, live-apply). Reset-кнопка скидає до Classic.
 
 272. **Zero Regression.** Класичне вікно `HangarOverlayWindow` відновлено до оригіналу (без змін XAML/layout). `HangarCycleCalculator`, `HangarTimerState`, хоткеї — без змін. Build: 0 warnings, 0 errors.
