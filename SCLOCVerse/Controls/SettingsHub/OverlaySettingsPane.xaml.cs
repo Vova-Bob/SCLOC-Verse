@@ -36,6 +36,9 @@ namespace SCLOCVerse.Controls.SettingsHub
         /// <summary>true під час програмної зміни слайдерів (уникнення зациклення).</summary>
         private bool _isSyncing;
 
+        /// <summary>true під час програмної зміни ComboBox режиму (уникнення зациклення).</summary>
+        private bool _isModeSyncing;
+
         // ===== Anti-AFK =====
 
         private IAntiAfkService? _antiAfk;
@@ -93,6 +96,18 @@ namespace SCLOCVerse.Controls.SettingsHub
                 OpacityValue.Text = opacity.ToString("0.00");
                 PosXBox.Text = x.ToString("0");
                 PosYBox.Text = y.ToString("0");
+
+                // Режим відображення (класичний / спрощений).
+                _isModeSyncing = true;
+                try
+                {
+                    var mode = settings.GetOverlayMode();
+                    SelectComboBoxByTag(HangarModeBox, mode.ToString());
+                }
+                finally
+                {
+                    _isModeSyncing = false;
+                }
             }
             finally
             {
@@ -104,6 +119,8 @@ namespace SCLOCVerse.Controls.SettingsHub
             ScaleSlider.PreviewMouseLeftButtonDown += Slider_PreviewMouseLeftButtonDown;
             OpacitySlider.PreviewMouseLeftButtonDown += Slider_PreviewMouseLeftButtonDown;
             ResetButton.Click += ResetButton_Click;
+
+            HangarModeBox.SelectionChanged += HangarMode_Changed;
 
             PosXBox.LostFocus += PosBox_LostFocus;
             PosYBox.LostFocus += PosBox_LostFocus;
@@ -657,6 +674,27 @@ namespace SCLOCVerse.Controls.SettingsHub
             }
         }
 
+        // ============ Режим відображення (класичний / спрощений) ============
+
+        private void HangarMode_Changed(object sender, SelectionChangedEventArgs e)
+        {
+            if (_isModeSyncing || _settings is null || GetComboBoxTag(HangarModeBox) is not string tag)
+                return;
+
+            if (!Enum.TryParse<HangarOverlayMode>(tag, out var mode))
+                return;
+
+            _settings.SetOverlayMode(mode);
+
+            // Live-preview: застосувати до відкритого overlay.
+            if (_overlay?.IsOpen == true)
+            {
+                var window = _overlay.GetWindow();
+                if (window is HangarOverlayWindow hangar)
+                    hangar.ApplyMode(mode);
+            }
+        }
+
         // ============ Reset ============
 
         private void ResetButton_Click(object sender, RoutedEventArgs e)
@@ -693,6 +731,21 @@ namespace SCLOCVerse.Controls.SettingsHub
                             window.Top = DefaultPosY;
                         }
                     }
+
+                    // Скидання режиму відображення до класичного.
+                    _settings.SetOverlayMode(HangarOverlayMode.Classic);
+                    _isModeSyncing = true;
+                    try
+                    {
+                        SelectComboBoxByTag(HangarModeBox, HangarOverlayMode.Classic.ToString());
+                    }
+                    finally
+                    {
+                        _isModeSyncing = false;
+                    }
+
+                    if (_overlay?.IsOpen == true && _overlay.GetWindow() is HangarOverlayWindow hangar)
+                        hangar.ApplyMode(HangarOverlayMode.Classic);
                 }
                 finally
                 {

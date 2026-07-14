@@ -130,6 +130,18 @@ namespace SCLOCVerse {
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("0")]
+        public int HangarOverlayMode {
+            get {
+                return ((int)(this["HangarOverlayMode"]));
+            }
+            set {
+                this["HangarOverlayMode"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("0")]
         public long HangarCycleStartOverride {
             get {
                 return ((long)(this["HangarCycleStartOverride"]));

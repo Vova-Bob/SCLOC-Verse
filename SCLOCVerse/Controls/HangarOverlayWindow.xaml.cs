@@ -241,6 +241,23 @@ namespace SCLOCVerse.Controls
             Top = y;
             ApplyWindowScale();
             ClampPosition();
+
+            ApplyMode(_settingsService.GetOverlayMode());
+        }
+
+        /// <summary>
+        /// Перемикає візуальний режим overlay: Classic (повний) або Simplified (бейдж).
+        /// Викликається при завантаженні та зі Settings Hub (live-apply).
+        /// </summary>
+        public void ApplyMode(HangarOverlayMode mode)
+        {
+            bool simplified = mode == HangarOverlayMode.Simplified;
+
+            ClassicPanel.Visibility = simplified ? Visibility.Collapsed : Visibility.Visible;
+            CompactBadge.Visibility = simplified ? Visibility.Visible : Visibility.Collapsed;
+
+            // У спрощеному режимі підказка гарячих клавіш не показується.
+            HotkeyHintText.Visibility = simplified ? Visibility.Collapsed : Visibility.Visible;
         }
 
         private void SavePersistedState()

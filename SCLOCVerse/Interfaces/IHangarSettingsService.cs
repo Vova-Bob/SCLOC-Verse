@@ -1,3 +1,5 @@
+using SCLOCVerse.Models.HangarTimer;
+
 namespace SCLOCVerse.Interfaces
 {
     /// <summary>
@@ -14,6 +16,9 @@ namespace SCLOCVerse.Interfaces
 
         double GetOverlayOpacity();
         void SetOverlayOpacity(double opacity);
+
+        HangarOverlayMode GetOverlayMode();
+        void SetOverlayMode(HangarOverlayMode mode);
 
         bool HasCycleStartOverride();
         long GetCycleStartOverride();

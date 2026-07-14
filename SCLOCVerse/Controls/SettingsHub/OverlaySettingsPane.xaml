@@ -111,6 +111,22 @@
                         <TextBlock Text="· активний" FontFamily="Segoe UI" FontSize="11" Foreground="#5A7A8A" VerticalAlignment="Center" Margin="8,0,0,0"/>
                     </StackPanel>
 
+                    <!-- Режим відображення (combo рядок) -->
+                    <Grid Margin="0,2,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="120"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                            <TextBlock Style="{StaticResource HubFieldLabel}" Text="Вигляд"/>
+                            <TextBlock Style="{StaticResource HubFieldDesc}" Text="класичний / спрощений"/>
+                        </StackPanel>
+                        <ComboBox Grid.Column="1" x:Name="HangarModeBox" Style="{StaticResource HubComboBox}" VerticalAlignment="Center" Margin="0,0,0,0">
+                            <ComboBoxItem Content="Класичний" Tag="Classic"/>
+                            <ComboBoxItem Content="Спрощений" Tag="Simplified"/>
+                        </ComboBox>
+                    </Grid>
+
                     <!-- Масштаб -->
                     <Grid Margin="0,2">
                         <Grid.ColumnDefinitions>

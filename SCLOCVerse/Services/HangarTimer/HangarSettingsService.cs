@@ -1,4 +1,5 @@
 using SCLOCVerse.Interfaces;
+using SCLOCVerse.Models.HangarTimer;
 
 namespace SCLOCVerse.Services.HangarTimer
 {
@@ -47,6 +48,17 @@ namespace SCLOCVerse.Services.HangarTimer
         public void SetOverlayOpacity(double opacity)
         {
             Settings.Default.HangarOverlayOpacity = opacity;
+            Settings.Default.Save();
+        }
+
+        public HangarOverlayMode GetOverlayMode()
+        {
+            return (HangarOverlayMode)Settings.Default.HangarOverlayMode;
+        }
+
+        public void SetOverlayMode(HangarOverlayMode mode)
+        {
+            Settings.Default.HangarOverlayMode = (int)mode;
             Settings.Default.Save();
         }
 

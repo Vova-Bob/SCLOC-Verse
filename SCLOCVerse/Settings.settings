@@ -26,6 +26,9 @@
     <Setting Name="HangarOverlayOpacity" Type="System.Double" Scope="User">
       <Value Profile="(Default)">0.92</Value>
     </Setting>
+    <Setting Name="HangarOverlayMode" Type="System.Int32" Scope="User">
+      <Value Profile="(Default)">0</Value>
+    </Setting>
     <Setting Name="HangarCycleStartOverride" Type="System.Int64" Scope="User">
       <Value Profile="(Default)">0</Value>
     </Setting>
