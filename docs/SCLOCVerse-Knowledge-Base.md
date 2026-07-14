@@ -109,7 +109,7 @@
 
 | Тип | Кількість | Примітка |
 |---|---:|---|
-| Схеми (SCLOC-Verse) | 3 | `public`, `control_center`, `backup_pre_1_0_0_1` (резерв до 1.0.0.1 — див. §3.5) |
+| Схеми (SCLOC-Verse) | 2 | `public`, `control_center` (backup schemas DROPPED 2026-07-14) |
 | Базові таблиці | 15 (+12 backup) | 14 у `public` + 1 singleton у `control_center` + 12 у `backup_pre_1_0_0_1` |
 | Звичайні VIEW | 25 | 24 у `control_center` + `public.user_analytics` |
 | Materialized VIEW | 1 | `control_center.knowledge_coverage` |
@@ -139,9 +139,10 @@
 | `user_discord_guilds` | public | Синхронізація гільдій | вимкнений код | 🔴 reserved |
 | `pipeline_health_meta` | control_center | Singleton health | `refresh_knowledge_coverage()` | ✅ singleton |
 
-### 3.2.1. Резервна схема `backup_pre_1_0_0_1` (поза основним контрактом)
+### 3.2.1. ~~Резервна схема `backup_pre_1_0_0_1`~~ — DROPPED (2026-07-14)
 
-> Знахідка Phase 2 Database Cleanup Review (2026-07-07).
+> ~~Знахідка Phase 2 Database Cleanup Review (2026-07-07).~~
+> **DROPPED 2026-07-14.** Разом з `backup_pre_phase3a`. Обидві схеми мали 0 залежностей, 0 продюсерів, ~488 KB. Див. §14.36.
 
 Схема створена перед міграцією 1.0.0.1 як ручний backup основних таблиць. Містить 12 таблиць-дублів (структура копія `public`):
 
@@ -1933,6 +1934,16 @@ Phase 3.7 (Security Hardening) — ✅ SEC-12 + SEC-11 completed (REVOKE EXECUTE
 259. **Security Advisor audit: 63 → 1 warning — ✅ VER.** До фіксу: 60 × "SECURITY DEFINER Function callable by authenticated" + 2 × "Function Search Path Mutable" + 1 × "Leaked Password Protection". Після: 0 × SECURITY DEFINER + 0 × search_path + 1 × Leaked Password (косметичне — SCLOC-Verse OAuth-only, паролів немає).
 
 260. **SEC-11 доповнено: 2 пропущені функції — ✅ IMPL (production).** `set_knowledge_change_context(p_change_type text, p_change_reason text)` та `set_incident_code()` додано `SET search_path = public, pg_catalog`. SEC-11 (KB §16.5.3) був позначений COMPLETED для 28 функцій, але ці 2 були пропущені (обидві SECURITY INVOKER, додані пізніше).
+
+## 14.36. Performance Advisor Fix + Backup Schema Cleanup (2026-07-14) — ✅ IMPL
+
+> Performance Advisor audit після SEC-12 fix. 10 warnings + 43 info → виправлено 3 категорії.
+
+261. **RLS Init Plan Fix (10 policies) — ✅ IMPL (production).** Всі 10 RLS policies на `app_installations`, `telemetry_events`, `user_discord_guilds` переписані: `auth.uid()` → `(SELECT auth.uid())`. PostgreSQL тепер обчислює `auth.uid()` один раз на запит замість per-row. Верифіковано: `pg_policies` показує `( SELECT auth.uid() AS uid)`.
+
+262. **FK Indexes (7) — ✅ IMPL (production).** CREATE INDEX на 7 неіндексованих FK колонок: `incident_notes(incident_id)`, `incident_status_log(incident_id)`, `knowledge_version_history(knowledge_id)`, `telemetry_events(install_id)`, `telemetry_events(user_id)`, `telemetry_incidents(root_event_id)`, `telemetry_incidents(last_event_id)`. Прискорює DELETE CASCADE/SET NULL операції.
+
+263. **Backup Schemas DROPPED — ✅ IMPL (production).** `DROP SCHEMA backup_pre_1_0_0_1 CASCADE` + `DROP SCHEMA backup_pre_phase3a CASCADE`. Разом: 23 таблиці, ~488 KB, 0 залежностей, 0 продюсерів, 0 споживачів. Усунуло ~36 "No Primary Key" warnings з Performance Advisor. KB §3.2.1 оновлено.
 
 ---
 
