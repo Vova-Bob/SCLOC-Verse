@@ -155,6 +155,11 @@ namespace SCLOCVerse.Services.Auth
                 if (_telemetry is not null)
                     await _telemetry.FlushAsync(TimeSpan.FromSeconds(5), cancellationToken).ConfigureAwait(false);
 
+                // RC-401 hardening: зупиняємо телеметрію прямо в catch, бо finally
+                // ставить SignedOut, але OnAuthStateChanged(SignedOut) може не спрацювати
+                // синхронно — racer з flush-timer може встигнути відправити з stale токеном.
+                _telemetry?.Stop();
+
                 return new AuthResult.Failure($"Помилка входу: {ex.Message}");
             }
             finally
@@ -232,6 +237,13 @@ namespace SCLOCVerse.Services.Auth
                 // інакше при подальшому crash процесу (напр. у App.OnStartup) черга втрачається.
                 if (_telemetry is not null)
                     await _telemetry.FlushAsync(TimeSpan.FromSeconds(5), cancellationToken).ConfigureAwait(false);
+
+                // RC-401 hardening: SDK не завжди генерує SignedOut event при SetSession
+                // failure (напр. refresh_token_already_used). Без цього Stop() телеметрія
+                // продовжує відправляти з stale CurrentSession → 401 storm.
+                // Фікс D покладається на OnAuthStateChanged(SignedOut), але цей path
+                // може не спрацювати — тому зупиняємо телеметрію прямо тут.
+                _telemetry?.Stop();
 
                 SetState(AuthState.Error);
                 return false;
