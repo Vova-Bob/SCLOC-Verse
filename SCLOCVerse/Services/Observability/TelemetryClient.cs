@@ -40,6 +40,11 @@ namespace SCLOCVerse.Services.Observability
         // Єдиний споживач AdvancedDiagnostics (KB §14.19 #122).
         private Func<bool>? _diagnosticGate;
 
+        // RC-401: при втраті авторизації (SignedOut) зупиняємо фонову відправку.
+        // Track() продовжує працювати (кладе в чергу), але flush-timer мовчить.
+        // Resume() — після повторної авторизації.
+        private volatile bool _authStopped;
+
         public TelemetryClient(BuildInfo buildInfo, bool enabled)
         {
             _buildInfo = buildInfo ?? throw new ArgumentNullException(nameof(buildInfo));
@@ -152,6 +157,20 @@ namespace SCLOCVerse.Services.Observability
             }
         }
 
+        /// <inheritdoc/>
+        public void Stop()
+        {
+            try { _authStopped = true; }
+            catch (Exception ex) { Debug.WriteLine($"[Telemetry] Stop failed: {ex.Message}"); }
+        }
+
+        /// <inheritdoc/>
+        public void Resume()
+        {
+            try { _authStopped = false; }
+            catch (Exception ex) { Debug.WriteLine($"[Telemetry] Resume failed: {ex.Message}"); }
+        }
+
         private TelemetryEvent BuildEvent(string component, string operation, string outcome, TelemetryContext? context)
         {
             return new TelemetryEvent
@@ -192,6 +211,9 @@ namespace SCLOCVerse.Services.Observability
 
         private void OnFlushTick(object? state)
         {
+            // RC-401: при втраті авторизації (SignedOut) — не відправляємо.
+            if (_authStopped) return;
+
             // Fire-and-forget: uploader серіалізує flush через SemaphoreSlim і ловить усе сам.
             _ = _uploader?.FlushAsync();
         }

@@ -1218,8 +1218,8 @@ PKCE, HTML-encoding на callback, SignOut = global revoke, **без `service_ro
 | SEC-8 | OAuth `state` не валідується (PKCE-only) | 🟠 |
 | SEC-9 | TOCTOU verify→install | 🟠 |
 | SEC-10 | SHA256 = byte-equality, не Authenticode publisher identity | 🟠 |
-| SEC-11 | `SECURITY DEFINER` без `SET search_path` (~20 функцій) | ✅ COMPLETED (2026-07-08, Phase 2.2 C2) |
-| SEC-12 | `cc_readonly` фактично write-capable через definer-функції | 🟠 |
+| SEC-11 | `SECURITY DEFINER` без `SET search_path` (~20 функцій) | ✅ COMPLETED (2026-07-08 + 2026-07-14: 28 + 2 функцій) |
+| SEC-12 | `cc_readonly` фактично write-capable через definer-функції | ✅ COMPLETED (2026-07-14, REVOKE EXECUTE FROM PUBLIC) |
 
 ## 10.6. Права користувача
 
@@ -1675,7 +1675,7 @@ Phase 3.5.1 (Mandatory Event Optimization) — ✅ **Implemented as Zero Noise P
 Phase 4 (Data Presentation Layer) — ⏸
 Phase 5.1 (Retention Pipeline — telemetry_events) — ✅ **Implemented** (2026-07-11, pg_cron + SECURITY DEFINER)
 Phase 5.2+ (Retention — notification_queue, notification_attempts, incidents) — Backlog (додати рядки у dispatcher)
-Phase 3.7 (Security Hardening) — Backlog (DEFAULT PRIVILEGES); SEC-11 — ✅ COMPLETED
+Phase 3.7 (Security Hardening) — ✅ SEC-12 + SEC-11 completed (REVOKE EXECUTE + search_path); DEFAULT PRIVILEGES — Backlog
 ```
 
 ## 14.18. UI: Кастомний ToolTip для CheckBox (2026-07-07) — ✅ IMPL
@@ -1891,6 +1891,48 @@ Phase 3.7 (Security Hardening) — Backlog (DEFAULT PRIVILEGES); SEC-11 — ✅ 
 245. **RC-401 SDK Root Cause — 🟡 PROBABLE (не остаточно доведено).** `Supabase.Gotrue 6.0.3` — `TokenRefresh.HandleRefreshTimerTick` ковтає exception від `RefreshToken()` без очищення сесії. `GetInterval()` не клампує negative values → `new Timer(negative)` → `ArgumentOutOfRangeException` → caught/swallowed → timer помирає. Доказ: декомпільований SDK код + `auth.refresh_tokens` data (13 успішних refreshes 15:29–17:45 UTC, потім 0 — timer зупинився). НЕ доведено: чи був виклик `RefreshToken()` о ~18:33 UTC (Scenario A) чи timer не спрацював (Scenario B). Backlog: `docs/backlog/rc-401-sdk-refresh-bug.md`. Для остаточного підтвердження: Supabase Dashboard → Log Explorer → Auth → пошук `POST /auth/v1/token` о ~18:33 UTC 2026-07-12.
 
 246. **RC-401 Audit: інших джерел 401 storm не існує — ✅ VER.** Повний аудит кодобази: єдиний timer-driven Supabase API caller — `TelemetryClient._flushTimer` (30с) → `TelemetryUploader` (FIXED). Інші Supabase API callers (`InstallationService`, `DiscordGuildSyncService`, `AuthService`) — event-driven, без timer, без retry, без loop. SDK `TokenRefresh` — 1 запит/48хв (не storm). Всі інші timers (`BackgroundUpdateMonitor`, `AntiAfkService`, `AutoKeyService`, `HangarOverlayService`) — не звертаються до Supabase API.
+
+## 14.33. RC-401 Root Cause Investigation + Defense-in-Depth (2026-07-14)
+
+> Форензик 401 storm: джерела, версійний розподіл, SDK audit, BackgroundUpdateMonitor investigation.
+
+247. **Storm активний, створюють СТАРІ версії — ✅ VER.** API логи: ~100× `POST /rest/v1/telemetry_events → 401` за 5 сек = ~20 req/sec. 0 успішних інсертів telemetry за 20+ год. Патерн 100 запитів/batch = один flush-цикл одного користувача (BatchSize=100, foreach Insert). Storm від старих версій (v1.0.0.0–v1.0.2.1, 61 з 73 інсталяцій = 84%) з requeue loop (без RC-401 фіксу). Топ-9 підозрюваних (сесії мертві 19–27 год): romanshevtsov, acnedark, skorskiy.d.i, akva_tor, fargusriba, bohdan_58551, olegkuper., baro_ua, brv87.
+
+248. **v1.0.2.2 НЕ доведено як джерело storm — 🔵 HYP.** Поточні 12 v1.0.2.2 юзерів мають свіжі `app_installations.last_seen` (під час останньої sync JWT був валідний — НЕ доведено що валідний зараз). Фікс v1.0.2.2 верифікований для andriu86 (KB #244). Storm rate (100/batch) відповідає requeue loop (старий код), не drop pattern (v1.0.2.2). Коректне формулювання: «під час останніх sync ці клієнти успішно автентифікувалися», а не «мають валідний JWT зараз».
+
+249. **SDK audit (E): Supabase.Gotrue 6.0.3 — остання версія, баг не виправлений upstream — ✅ VER.** NuGet: 6.0.3 (26 липня 2024) — остання. Новіших релізів немає. GitHub tags зупинились на v4.0.2 (5.x/6.x не мають тегів). Master TokenRefresh.cs відрізняється від декомпільованого 6.0.3 (має DestroySession у RefreshToken catch), але це невипущений код. SDK upgrade неможливий. Fork — надто інвазивно (порушення KISS/Minimal Change).
+
+250. **BackgroundUpdateMonitor (B): повністю незалежний від auth — ✅ VER.** `BackgroundUpdateMonitor` (DispatcherTimer 1 год) → `ApplicationUpdateService.CheckForUpdatesAsync` → GitHub REST API (не Supabase). `UpdateDownloader`/`UpdateVerifier`/`InstallUpdateAsync` — GitHub + локально. Pipeline не падає при втраті сесії. Проте оновлення **потребує ручної дії користувача** (toast → клік "Оновити"). Немає auto-download, auto-install, forced gate, або повторного нагадування (toast dedup по версії).
+
+251. **Парадокс оновлення: неможливо доставити фікс на старі версії без ручного оновлення — ✅ VER.** Будь-яке покращення update UX (repeat reminders, forced gate, auto-download) потребує реалізації в НОВІЙ версії. Стара версія цей код не має і ніколи не матиме. Для stuck-юзерів (stale CurrentSession у працюючому процесі) — технічного шляху з сервера немає. Storm — тимчасовий (~4% Free Tier ліміту, 0 даних у БД), згасне природньо при перезапусках.
+
+252. **A (auth.sessions cleanup) — знято.** Видалення рядків з `auth.sessions` не впливає на stale `CurrentSession` у працюючому процесі (SDK тримає стан in-memory). Експеримент без гарантії.
+
+## 14.34. RC-401 Defense-in-Depth: C+D+F (2026-07-14) — ✅ IMPL
+
+> Превентивні фікси для наступного релізу. Не вирішують поточний storm від старих версій,
+> але запобігають майбутнім storm-ам коли v1.0.2.2+ юзер зіткнеться з протухлим JWT.
+> Build: 0 warnings, 0 errors.
+
+253. **C — JWT expiry check у TelemetryUploader (✅ IMPL).** `TelemetryUploader.FlushAsync` перевіряє не лише `CurrentSession != null`, а й валідність JWT через `JwtSecurityTokenHandler.ReadJwtToken(accessToken).ValidTo <= UtcNow+30s`. Якщо токен protух — return ДО відправки запитів. Запобігає 401 на корені, не покладається на exception matching після факту. +30с tolerance на розинхронізацію годинника.
+
+254. **D — Stop/Resume телеметрії за auth-статом (✅ IMPL).** `ITelemetryService` розширено additive методами `Stop()`/`Resume()`. `TelemetryClient` має `_authStopped` flag — `OnFlushTick` пропускає відправку. `AuthService.OnAuthStateChanged`: `SignedOut` → `_telemetry?.Stop()`, `SignedIn` → `_telemetry?.Resume()`. Track() продовжує працювати (кладе в чергу), але flush-timer мовчить до повторної авторизації. Defense-in-depth: навіть якщо SDK bug залишає stale CurrentSession, `SignedOut` event зупиняє відправку.
+
+255. **F — Batch insert замість foreach (✅ IMPL).** `TelemetryUploader.FlushAsync` відправляє до 100 подій одним HTTP запитом через `Insert(ICollection<TelemetryEvent>)` з `QueryOptions { OnConflict = "client_event_id", DuplicateResolution = IgnoreDuplicates, Returning = Minimal }`. 1 запит замість N (до 100× менше навантаження). Idempotent через `resolution=ignore-duplicates` (Стаття 6). Прибрано старий `IsDuplicate` helper (більше не потрібен — дублікати обробляються на рівні PostgREST). 401 drop (RC-401 fix) збережено як safety net.
+
+256. **BackgroundUpdateMonitor (B) — ✅ VER: GitHub API, незалежно від auth.** `ApplicationUpdateService.CheckForUpdatesAsync` → `IGitHubReleaseClient.GetReleasesAsync` (GitHub REST). `UpdateDownloader`/`Verifier`/`Installer` — GitHub + локально. Жодного звернення до Supabase у pipeline оновлення. Timer (DispatcherTimer 1 год) продовжує працювати при втраті сесії. Оновлення потребує ручної дії (toast → клік).
+
+## 14.35. SEC-12 Production Fix: REVOKE EXECUTE (2026-07-14) — ✅ IMPL
+
+> Критичний security fix, застосований напряму на production. Security Advisor: 63 warnings → 1.
+
+257. **SEC-12 FIXED — ✅ IMPL (production).** `REVOKE EXECUTE ON ALL FUNCTIONS IN SCHEMA public FROM PUBLIC;` + `GRANT EXECUTE ... TO cc_readonly, cc_notifier;`. Будь-який `authenticated` користувач більше не може викликати admin-функції (`purge_old_telemetry_events`, `transition_incident`, `create_knowledge_from_incident` тощо) через `POST /rest/v1/rpc/...`. Раніше 56 залогінених Discord-юзерів мали неявний доступ до ВСІХ SECURITY DEFINER функцій через PostgreSQL дефолтний `GRANT EXECUTE TO PUBLIC`. Клієнт SCLOC-Verse не викликає ЖОДНОЇ rpc-функції (grep `.Rpc(` = 0) — використовує лише table INSERT/SELECT/UPDATE під RLS.
+
+258. **REVOKE EXECUTE не ламає клієнт — ✅ VER (production).** Через 10 хв після REVOKE, v1.0.2.2 юзер успішно синхронізував `app_installations` (last_seen оновлено, country=UA — тригер `set_country_from_cf` спрацював). Причина безпеки: (1) table INSERT/SELECT/UPDATE регулюються RLS, не EXECUTE; (2) тригери викликаються системою PostgreSQL (EXECUTE не перевіряється при fire); (3) всі тригер-функції SECURITY DEFINER (виконуються як postgres). `has_function_privilege('authenticated', ...) = false` для всіх public-функцій.
+
+259. **Security Advisor audit: 63 → 1 warning — ✅ VER.** До фіксу: 60 × "SECURITY DEFINER Function callable by authenticated" + 2 × "Function Search Path Mutable" + 1 × "Leaked Password Protection". Після: 0 × SECURITY DEFINER + 0 × search_path + 1 × Leaked Password (косметичне — SCLOC-Verse OAuth-only, паролів немає).
+
+260. **SEC-11 доповнено: 2 пропущені функції — ✅ IMPL (production).** `set_knowledge_change_context(p_change_type text, p_change_reason text)` та `set_incident_code()` додано `SET search_path = public, pg_catalog`. SEC-11 (KB §16.5.3) був позначений COMPLETED для 28 функцій, але ці 2 були пропущені (обидві SECURITY INVOKER, додані пізніше).
 
 ---
 
@@ -2197,14 +2239,13 @@ auth.users (TABLE, 35 columns)  +  public.app_installations (TABLE)
 4. **auth.identities.email — GENERATED column** у Supabase PG17 (з `identity_data->>'email'`). Не можна INSERT напряму.
 5. **DEFAULT PRIVILEGES drift** — §16.7 оновлено (VER: production manually hardened, replica = Supabase baseline).
 
-## 16.10. Phase 3.7 — Security Hardening (Backlog)
+## 16.10. Phase 3.7 — Security Hardening
 
-> Окрема фаза, відокремлена від імпорту даних (Phase 3.6).
+> ~~Окрема фаза, відокремлена від імпорту даних (Phase 3.6).~~ SEC-11 + SEC-12 completed 2026-07-14.
 
-- **Replica:** REVOKE DML з DEFAULT PRIVILEGES для `postgres` у `public` (привести до production-стану `Dxtm`).
-- **Production:** задокументувати існуючий manual hardening у міграції (audit trail — чому production Dxtm, не arwdDxtm).
-- **SEC-11:** `SET search_path = public, pg_catalog` у 26 SECURITY DEFINER функцій (additive, Approved #81).
-- Не блокує Production Deployment (RLS блокує доступ в обох БД; over-granting — лише defense-in-depth gap).
+- **~~SEC-11~~:** ✅ COMPLETED (2026-07-08 + 2026-07-14: 28 + 2 функцій мають `SET search_path`).
+- **~~SEC-12~~:** ✅ COMPLETED (2026-07-14: `REVOKE EXECUTE ON ALL FUNCTIONS IN SCHEMA public FROM PUBLIC`).
+- **DEFAULT PRIVILEGES:** ⏸ Backlog — Production = `Dxtm` (manually hardened), не в міграціях. RLS блокує доступ в обох БД; over-granting — defense-in-depth gap. Див. §16.7.
 
 ## 16.11. Phase 3A Production Deployment Report (2026-07-07)
 

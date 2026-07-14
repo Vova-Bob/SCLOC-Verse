@@ -46,5 +46,17 @@ namespace SCLOCVerse.Interfaces
         /// <param name="cancellationToken">Токен скасування.</param>
         /// <returns>Task, що завершується після відправки або таймауту (завжди без винятків).</returns>
         Task FlushAsync(TimeSpan timeout, CancellationToken cancellationToken = default);
+
+        /// <summary>
+        /// Зупинити фонову відправку телеметрії (RC-401: при втраті авторизації SDK
+        /// залишає stale CurrentSession → безперервні 401). Track() продовжує працювати
+        /// (кладе в чергу), але flush-timer не відправляє. Сервіс можна відновити через <see cref="Resume"/>.
+        /// </summary>
+        void Stop();
+
+        /// <summary>
+        /// Відновити фонову відправку телеметрії після <see cref="Stop"/> (повторна авторизація).
+        /// </summary>
+        void Resume();
     }
 }

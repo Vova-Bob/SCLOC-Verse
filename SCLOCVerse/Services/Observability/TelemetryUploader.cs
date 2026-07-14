@@ -1,8 +1,11 @@
 using SCLOCVerse.Interfaces;
 using SCLOCVerse.Models.Observability;
+using Supabase.Postgrest;
 using Supabase.Postgrest.Exceptions;
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
+using System.IdentityModel.Tokens.Jwt;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -13,9 +16,9 @@ namespace SCLOCVerse.Services.Observability
     /// (Конституція, Стаття 6 — idempotent; Стаття 12 — ingestion contract).
     /// </summary>
     /// <remarks>
-    /// Slice 1: інсерт події-за-подією через Postgrest (idempotent через client_event_id +
-    /// UNIQUE). Батч-інсерт та Edge Function — Phase 5. Pre-auth події залишаються в черзі
-    /// до появи JWT (RLS вимагає user_id = auth.uid()).
+    /// Batch insert (до 100 подій за 1 HTTP) з idempotency через client_event_id UNIQUE +
+    /// resolution=ignore-duplicates (Стаття 6). Pre-auth події залишаються в черзі до появи
+    /// валідного JWT (RLS вимагає user_id = auth.uid()).
     /// </remarks>
     public sealed class TelemetryUploader : IDisposable
     {
@@ -47,51 +50,56 @@ namespace SCLOCVerse.Services.Observability
             {
                 var client = _clientFactory.CreateClient();
 
-                // Pre-auth події чекають на JWT (RLS: user_id = auth.uid()).
-                var currentUser = client.Auth.CurrentUser;
-                if (currentUser == null)
+                // RC-401 root cause fix (C): перевіряємо валідність сесії, а не лише CurrentUser.
+                // SDK bug (Supabase.Gotrue 6.0.3): після failed token refresh CurrentSession
+                // залишається non-null з expired JWT → PostgREST відправляє expired токен →
+                // 401 → нескінченний requeue loop. Перевірка JWT expiry зупиняє storm на корені.
+                var session = client.Auth.CurrentSession;
+                if (session == null || string.IsNullOrEmpty(session.AccessToken))
                     return;
 
-                if (!Guid.TryParse(currentUser.Id?.ToString(), out var userId))
+                if (IsTokenExpired(session.AccessToken))
+                    return;
+
+                if (!Guid.TryParse(session.User?.Id?.ToString(), out var userId))
                     return;
 
                 var batch = _queue.Drain(BatchSize);
                 if (batch.Count == 0)
                     return;
 
-                var failed = new System.Collections.Generic.List<TelemetryEvent>();
-
+                // Встановлюємо UserId для RLS (user_id = auth.uid()).
                 foreach (var evt in batch)
+                    evt.UserId = userId;
+
+                try
                 {
-                    evt.UserId = userId; // обовʼязково для RLS.
-
-                    try
-                    {
-                        await client
-                            .From<TelemetryEvent>()
-                            .Insert(evt)
-                            .ConfigureAwait(false);
-                    }
-                    catch (Exception ex) when (IsDuplicate(ex))
-                    {
-                        // Вже вставлено раніше (повторна відправка) — вважаємо успіхом (Стаття 6).
-                    }
-                    catch (Exception ex)
-                    {
-                        Debug.WriteLine($"[Telemetry] Помилка відправки події: {ex.Message}");
-
-                        // RC-401: 401 Unauthorized — сесія недійсна (expired JWT після failed refresh).
-                        // Requeue створить нескінченний цикл 401. Подія втрачається (Стаття 1 — best-effort).
-                        if (ex is PostgrestException { StatusCode: 401 } ||
-                            ex.InnerException is PostgrestException { StatusCode: 401 })
-                            continue;
-
-                        failed.Add(evt);
-                    }
+                    // F: batch insert — 1 HTTP запит замість N окремих (до 100× менше навантаження).
+                    // IgnoreDuplicates + OnConflict=client_event_id → idempotent (Стаття 6).
+                    // Returning=Minimal — відповідь без тіла (елементи нам не потрібні).
+                    await client
+                        .From<TelemetryEvent>()
+                        .Insert(batch, new QueryOptions
+                        {
+                            OnConflict = "client_event_id",
+                            DuplicateResolution = QueryOptions.DuplicateResolutionType.IgnoreDuplicates,
+                            Returning = QueryOptions.ReturnType.Minimal
+                        })
+                        .ConfigureAwait(false);
                 }
+                catch (Exception ex)
+                {
+                    Debug.WriteLine($"[Telemetry] Помилка відправки батчу ({batch.Count} подій): {ex.Message}");
 
-                if (failed.Count > 0)
-                    _queue.Requeue(failed);
+                    // RC-401: 401 Unauthorized — сесія недійсна (expired JWT після failed refresh).
+                    // Drop всього батчу — Requeue створить нескінченний цикл 401 (Стаття 1 — best-effort).
+                    if (ex is PostgrestException { StatusCode: 401 } ||
+                        ex.InnerException is PostgrestException { StatusCode: 401 })
+                        return;
+
+                    // Тимчасова помилка (500, network, timeout) — requeue для повторної спроби.
+                    _queue.Requeue(batch);
+                }
             }
             catch (Exception ex)
             {
@@ -112,16 +120,28 @@ namespace SCLOCVerse.Services.Observability
             }
         }
 
-        // Унікальне порушення client_event_id (Postgres 23505 / HTTP 409).
-        private static bool IsDuplicate(Exception ex)
+        // RC-401 root cause fix (C): перевірка терміну дії JWT.
+        // SDK bug залишає stale CurrentSession з expired access token.
+        // Парсимо JWT напряму — це єдине авторитетне джерело дати експірації.
+        private static bool IsTokenExpired(string accessToken)
         {
-            var message = ex.Message ?? string.Empty;
-            var inner = ex.InnerException?.Message ?? string.Empty;
-            return message.Contains("23505", StringComparison.Ordinal)
-                || inner.Contains("23505", StringComparison.Ordinal)
-                || message.Contains("duplicate key", StringComparison.OrdinalIgnoreCase)
-                || message.Contains("409", StringComparison.Ordinal)
-                || inner.Contains("409", StringComparison.Ordinal);
+            try
+            {
+                var handler = new JwtSecurityTokenHandler();
+                if (!handler.CanReadToken(accessToken))
+                    return true;
+
+                var jwt = handler.ReadJwtToken(accessToken);
+
+                // Невичерпання ресурсів: jwt.ValidTo — це UTC.
+                // +30с tolerance — на випадок розинхронізації годинника.
+                return jwt.ValidTo <= DateTime.UtcNow.AddSeconds(30);
+            }
+            catch
+            {
+                // Не вдалось розібрати — вважаємо expired (conservative).
+                return true;
+            }
         }
 
         public void Dispose()

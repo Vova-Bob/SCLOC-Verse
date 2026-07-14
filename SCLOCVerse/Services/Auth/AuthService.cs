@@ -360,7 +360,18 @@ namespace SCLOCVerse.Services.Auth
             {
                 Profile = null;
                 _secureStorage.DeleteRefreshToken();
+
+                // RC-401 root cause fix: SDK bug залишає stale CurrentSession після
+                // failed token refresh → TelemetryUploader продовжує відправляти з
+                // expired JWT → 401 storm. Зупиняємо фонову відправку телеметрії.
+                _telemetry?.Stop();
+
                 SetState(AuthState.SignedOut);
+            }
+            else if (stateChanged == GotrueConstants.AuthState.SignedIn)
+            {
+                // RC-401: відновлюємо відправку після повторної авторизації.
+                _telemetry?.Resume();
             }
         }
 
