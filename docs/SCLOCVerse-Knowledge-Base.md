@@ -1896,6 +1896,7 @@ Phase 3.7 (Security Hardening) — ✅ SEC-12 + SEC-11 completed (REVOKE EXECUTE
 ## 14.33. RC-401 Root Cause Investigation + Defense-in-Depth (2026-07-14)
 
 > Форензик 401 storm: джерела, версійний розподіл, SDK audit, BackgroundUpdateMonitor investigation.
+> **Storm загас 2026-07-15 — див. #272.**
 
 247. **Storm активний, створюють СТАРІ версії — ✅ VER.** API логи: ~100× `POST /rest/v1/telemetry_events → 401` за 5 сек = ~20 req/sec. 0 успішних інсертів telemetry за 20+ год. Патерн 100 запитів/batch = один flush-цикл одного користувача (BatchSize=100, foreach Insert). Storm від старих версій (v1.0.0.0–v1.0.2.1, 61 з 73 інсталяцій = 84%) з requeue loop (без RC-401 фіксу). Топ-9 підозрюваних (сесії мертві 19–27 год): romanshevtsov, acnedark, skorskiy.d.i, akva_tor, fargusriba, bohdan_58551, olegkuper., baro_ua, brv87.
 
@@ -1911,8 +1912,9 @@ Phase 3.7 (Security Hardening) — ✅ SEC-12 + SEC-11 completed (REVOKE EXECUTE
 
 ## 14.34. RC-401 Defense-in-Depth: C+D+F (2026-07-14) — ✅ IMPL
 
-> Превентивні фікси для наступного релізу. Не вирішують поточний storm від старих версій,
+> Превентивні фікси для наступного релізу. ~~Не вирішують поточний storm від старих версій,~~
 > але запобігають майбутнім storm-ам коли v1.0.2.2+ юзер зіткнеться з протухлим JWT.
+> **Storm від старих версій ЗАГАС (2026-07-15) — див. #272.**
 > Build: 0 warnings, 0 errors.
 
 253. **C — JWT expiry check у TelemetryUploader (✅ IMPL).** `TelemetryUploader.FlushAsync` перевіряє не лише `CurrentSession != null`, а й валідність JWT через `JwtSecurityTokenHandler.ReadJwtToken(accessToken).ValidTo <= UtcNow+30s`. Якщо токен protух — return ДО відправки запитів. Запобігає 401 на корені, не покладається на exception matching після факту. +30с tolerance на розинхронізацію годинника.
@@ -1979,6 +1981,19 @@ Phase 3.7 (Security Hardening) — ✅ SEC-12 + SEC-11 completed (REVOKE EXECUTE
 272. **Zero Regression.** Класичне вікно `HangarOverlayWindow` відновлено до оригіналу (без змін XAML/layout). `HangarCycleCalculator`, `HangarTimerState`, хоткеї — без змін. Build: 0 warnings, 0 errors.
 
 273. **Схема БД не зачеплена.** Суто UI-фічa (user.config persistence). Security Review не потрібне (UI/локалізація, не Auth/Installer/Network/SQL).
+
+---
+
+## 14.39. RC-401 Storm Resolved (2026-07-15) — ✅ VER
+
+> 401 storm від старих версій, виявлений 2026-07-12 та досліджений 2026-07-14 (§14.33),
+> **припинився** 2026-07-15. Підтверджено користувачем.
+
+274. **401 storm від старих версій — ЗАГАС — ✅ VER.** Безперервний 401 storm на `POST /rest/v1/ telemetry_events` від клієнтів версій v1.0.0.0–v1.0.2.1 (requeue loop без RC-401 фіксу, §14.33 #247) припинився 2026-07-15. Storm був викликано stale JWT у працюючих процесах старих версій; згас природньо — користувачі перезапустили застосунок (JWT refresh) або оновилися до v1.0.2.2+ (drop замість requeue, #244). Гіпотеза §14.33 #251 («storm — тимчасовий, згасне природньо при перезапусках») — підтверджена.
+
+275. **Root Cause (підтверджено).** SDK `Supabase.Gotrue 6.0.3` `TokenRefresh.HandleRefreshTimerTick` (§14.33 #245): при `RefreshToken()` exception — session не очищується → stale `CurrentSession` → `TelemetryUploader.FlushAsync` → 401 → `Requeue` → ∞. Фікс v1.0.2.2 (#244): 401 → drop замість requeue. Defense-in-Depth v1.0.2.3+ (#253–255): JWT expiry check (C) + Stop/Resume за auth-статом (D/D+) + batch insert (F).
+
+276. **Наслідок.** RC-401 — закритий інцидент. Стадія: Incident → Mitigated → Resolved (природньо). Клієнти v1.0.2.3+ мають 4 шари захисту (drop + JWT-check + Stop/Resume + batch). Legacy-клієнти (<1.0.2.2) з часом оновлюються або перезапускаються — повторного storm не очікується.
 
 ---
 
