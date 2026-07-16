@@ -77,7 +77,7 @@
 `TelemetryClient.Dispose` (Timer stop + best-effort flush + Uploader dispose) → `BackgroundUpdateMonitor.Dispose` → `HangarOverlayService.Dispose` → `HangarTimerService.Dispose` → `AuthCompositionRoot.Dispose` (`AuthService.Shutdown` + `ClientFactory.Shutdown`).
 
 - **Жодного app-wide `CancellationTokenSource`.** Кожен сервіс зупиняє власні таймери; in-flight async не скасовується централізовано.
-- Таймери: telemetry flush **30с**; background update **30 хв**; overlay countdown **200мс**; hangar card **250мс**; home smooth scroll **16мс**.
+- Таймери: telemetry flush **30с**; background update **10 хв**; overlay countdown **200мс**; hangar card **250мс**; home smooth scroll **16мс**.
 
 ## 2.4. UI-координація
 
@@ -1994,6 +1994,23 @@ Phase 3.7 (Security Hardening) — ✅ SEC-12 + SEC-11 completed (REVOKE EXECUTE
 275. **Root Cause (підтверджено).** SDK `Supabase.Gotrue 6.0.3` `TokenRefresh.HandleRefreshTimerTick` (§14.33 #245): при `RefreshToken()` exception — session не очищується → stale `CurrentSession` → `TelemetryUploader.FlushAsync` → 401 → `Requeue` → ∞. Фікс v1.0.2.2 (#244): 401 → drop замість requeue. Defense-in-Depth v1.0.2.3+ (#253–255): JWT expiry check (C) + Stop/Resume за auth-статом (D/D+) + batch insert (F).
 
 276. **Наслідок.** RC-401 — закритий інцидент. Стадія: Incident → Mitigated → Resolved (природньо). Клієнти v1.0.2.3+ мають 4 шари захисту (drop + JWT-check + Stop/Resume + batch). Legacy-клієнти (<1.0.2.2) з часом оновлюються або перезапускаються — повторного storm не очікується.
+
+---
+
+## 14.40. Localization Auto-Update Notification Bug Fix + Interval Change (2026-07-16) — ✅ IMPL
+
+> **Bug fix + UX improvement.** Виявлено та виправлено причину, через яку toast-сповіщення про автооновлення локалізації ніколи не показувались.
+> Крім того, інтервал фонової перевірки зменшено з 60 хв до 10 хв для швидшої реакції на нові релізи.
+
+277. **Root Cause: `InstallAsync` не передавав `HasUpdate` — ✅ VER+IMPL.** `LocalizationInstallResult` — позиційний record з 7 параметрів (останній `HasUpdate = false`). `InstallAsync` повертав результат з 6 аргументами → `HasUpdate` завжди `false` (default). `BackgroundUpdateMonitor.CheckLocalizationAsync` перевіряє `if (result.HasUpdate)` перед додаванням результату до списку та перед телеметрією → при `HasUpdate=false` результат тихо відкидався. `NotificationRouter` отримував порожній список → 0 кандидатів → toast не показувався. **Телеметрія також не трекалась** (всередині того самого `if`). Порівняння: `CheckAsync` (AutoUpdate=OFF) передавав `HasUpdate: hasUpdate` явно → сповіщення працювали. Доказ з production: до ввімкнення AutoUpdate події `LocalizationCheck/Skipped` трекались (CheckAsync path); після ввімкнення AutoUpdate — жодної події (InstallAsync path, HasUpdate=false). Фікс: `LocalizationInstaller.cs:136` — додано `HasUpdate: localizationUpdated` + перехід на named params (anti-fragility).
+
+278. **Ланцюжок наслідків (доведено кодом).** `InstallAsync` → `HasUpdate=false` → `BackgroundUpdateMonitor` пропускає → `UpdateCycleResult.Localization` порожній → `NotificationRouter.BuildLocalizationCandidates` return (Count==0) → `NotificationsReady` не викликається → `MainWindow.OnNotificationsReady` не отримує кандидатів → toast не показується. Файл `global.ini` при цьому успішно оновлювався (`localizationUpdated=true`), metadata оновлювалась (`InstalledTag = release.TagName`). Тобто автооновлення працювало, але користувач не отримував жодного зворотного зв'язку.
+
+279. **Інтервал фонової перевірки: 60 хв → 10 хв — ✅ IMPL.** `UpdateConstants.BackgroundUpdateCheckInterval` змінено з `TimeSpan.FromHours(1)` на `TimeSpan.FromMinutes(10)`. Обґрунтування: 10-хвилинний інтервал зменшує latency виявлення нових релізів локалізації з ≤60 хв до ≤10 хв. GitHub API unauth rate limit = 60 req/год/IP; кожен цикл ≈3 HTTP-запити (App + Localization + LIA) → 6 циклів/год × 3 = 18 req/год, comfortably within limit. In-memory cache (`ReleasesTtl=5хв`) додатково зменшує запити: при 10-хв інтервалі кеш встигає expire між циклами → 1 fresh fetch/цикл.
+
+280. **Zero Regression.** `CheckAsync` (AutoUpdate=OFF) не змінено — вже передавав `HasUpdate` коректно. Коли `localizationUpdated=false` (304 Not Modified / SHA збіг) — `HasUpdate` залишається `false`, toast не показується (коректно). NotificationRouter dedup не зачіпається. Схема БД не зачіпається. Build: 0 warnings, 0 errors.
+
+281. **Self-Critique.** Простіше рішення не існує — це single-line fix (додати `HasUpdate: localizationUpdated`). Причина — пропущений позиційний аргумент при рефакторингу record з 6 на 7 полів (додавання `HasUpdate` для `CheckAsync` без оновлення `InstallAsync`). Перехід на named params у `InstallAsync` запобігає повторенню.
 
 ---
 

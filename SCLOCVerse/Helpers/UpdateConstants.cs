@@ -13,7 +13,7 @@ namespace SCLOCVerse.Helpers
 
         public static readonly TimeSpan CacheTtl = TimeSpan.FromMinutes(30);
 
-        public static readonly TimeSpan BackgroundUpdateCheckInterval = TimeSpan.FromHours(1);
+        public static readonly TimeSpan BackgroundUpdateCheckInterval = TimeSpan.FromMinutes(10);
         public static readonly TimeSpan StartupUpdateCheckDelay = TimeSpan.FromSeconds(1);
         public static readonly TimeSpan UpdatePanelAutoHideDelay = TimeSpan.FromSeconds(2.5);
 

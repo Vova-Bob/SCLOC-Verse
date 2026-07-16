@@ -16,7 +16,7 @@ namespace SCLOCVerse.Services.ApplicationUpdate
     /// <summary>
     /// Єдиний оркестратор фонових перевірок оновлень.
     ///
-    /// Один DispatcherTimer (UpdateConstants.BackgroundUpdateCheckInterval = 1 год),
+    /// Один DispatcherTimer (UpdateConstants.BackgroundUpdateCheckInterval = 10 хв),
     /// один цикл: послідовно App → Localization → LIA. SemaphoreSlim TryEnter guard
     /// проти накладання циклів (якщо попередній ще працює — тихо виходимо).
     ///

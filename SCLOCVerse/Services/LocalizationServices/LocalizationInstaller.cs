@@ -133,7 +133,19 @@ namespace SCLOCVerse.Services.LocalizationServices
             ProgressChanged?.Invoke(LocalizationProgressUpdate.Completed(localizationUpdated));
             NotificationRaised?.Invoke(LocalizationNotification.Completed(message, localizationUpdated));
 
-            return new LocalizationInstallResult(localizationUpdated, environmentName, globalIniPath, userCfgPathCreated, message, release.TagName);
+            // HasUpdate = localizationUpdated: BackgroundUpdateMonitor та NotificationRouter
+            // перевіряють саме HasUpdate (не Success) для вирішення «показувати toast чи ні».
+            // Раніше цей параметр не передавався → default false → toast при автооновленні
+            // ніколи не показувався (регресія після рефакторингу record на 7 полів).
+            // Named params — запобігає повторенню пропущеного позиційного аргументу.
+            return new LocalizationInstallResult(
+                Success: localizationUpdated,
+                EnvironmentName: environmentName,
+                GlobalIniPath: globalIniPath,
+                UserCfgPath: userCfgPathCreated,
+                Message: message,
+                Version: release.TagName,
+                HasUpdate: localizationUpdated);
         }
 
         /// <summary>
