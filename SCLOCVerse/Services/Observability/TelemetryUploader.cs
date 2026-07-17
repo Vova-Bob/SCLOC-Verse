@@ -97,12 +97,11 @@ namespace SCLOCVerse.Services.Observability
                         ex.InnerException is PostgrestException { StatusCode: 401 })
                         return;
 
-                    // Permanent data errors: CHECK (23514), UNIQUE (23505), NOT-NULL (23502),
-                    // FK (23503), data exception (22xxx). PostgREST мапить їх на HTTP 400/409.
+                    // Permanent data errors: SQL constraint violations (CHECK/UNIQUE/NOT-NULL/FK).
                     // Ці помилки НІКОЛИ не успішні при retry — дані не змінюються.
-                    // Drop батчу, щоб уникнути нескінченного retry loop (як RC-401, але для data errors).
-                    if (ex is PostgrestException { StatusCode: 400 or 409 } ||
-                        ex.InnerException is PostgrestException { StatusCode: 400 or 409 })
+                    // Точковіша перевірка за текстом помилки (не blanket 400/409 drop):
+                    // інші 400 (invalid JSON, schema mismatch) логуються і залишаються на requeue.
+                    if (IsPermanentConstraintViolation(ex))
                         return;
 
                     // Тимчасова помилка (500, network, timeout) — requeue для повторної спроби.
@@ -150,6 +149,24 @@ namespace SCLOCVerse.Services.Observability
                 // Не вдалось розібрати — вважаємо expired (conservative).
                 return true;
             }
+        }
+
+        /// <summary>
+        /// Визначає, чи є помилка PostgreSQL постійною (constraint violation).
+        /// Постійні помилки НІКОЛИ не успішні при retry — дані не змінюються.
+        /// Точковіша за blanket 400-drop: перевіряє конкретні фрази з PostgreSQL error message.
+        /// Інші 400 (invalid JSON, schema mismatch) — НЕ кидаються, залишаються на requeue.
+        /// </summary>
+        private static bool IsPermanentConstraintViolation(Exception ex)
+        {
+            var message = (ex.Message ?? string.Empty) + " " + (ex.InnerException?.Message ?? string.Empty);
+
+            return message.Contains("violates check constraint", StringComparison.OrdinalIgnoreCase)
+                || message.Contains("violates unique constraint", StringComparison.OrdinalIgnoreCase)
+                || message.Contains("violates foreign key constraint", StringComparison.OrdinalIgnoreCase)
+                || message.Contains("violates not-null constraint", StringComparison.OrdinalIgnoreCase)
+                || message.Contains("null value in column", StringComparison.OrdinalIgnoreCase)
+                || message.Contains("duplicate key value violates", StringComparison.OrdinalIgnoreCase);
         }
 
         public void Dispose()
