@@ -30,9 +30,11 @@ namespace SCLOCVerse.Services.Observability
 
             try
             {
+                // ErrorContextExtractor завжди заповнює Source + ExceptionType при non-null exception.
+                // Fallback (без exception) — обов'язковий signal для chk_telemetry_failed_has_signal.
                 TelemetryContext ctx = exception is not null
-                    ? ErrorContextExtractor.Extract(exception) ?? new TelemetryContext()
-                    : new TelemetryContext();
+                    ? ErrorContextExtractor.Extract(exception) ?? new TelemetryContext { Source = "CLR", ExceptionType = exception.GetType().Name }
+                    : new TelemetryContext { Source = "CLR", ExceptionType = "Condition" };
 
                 if (durationMs.HasValue)
                     ctx.DurationMs = (int)durationMs.Value;

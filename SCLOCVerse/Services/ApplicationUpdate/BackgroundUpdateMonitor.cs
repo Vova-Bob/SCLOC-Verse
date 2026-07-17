@@ -3,6 +3,7 @@ using SCLOCVerse.Interfaces;
 using SCLOCVerse.Models;
 using SCLOCVerse.Models.ApplicationUpdate;
 using SCLOCVerse.Models.Observability;
+using SCLOCVerse.Services.Observability;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -128,7 +129,7 @@ namespace SCLOCVerse.Services.ApplicationUpdate
             catch (Exception ex)
             {
                 Debug.WriteLine($"[Orchestrator] цикл failed: {ex}");
-                _telemetry.Track("Orchestrator", "Cycle", "Failed", new TelemetryContext { ErrorMessage = ex.Message });
+                _telemetry.Track("Orchestrator", "Cycle", "Failed", ErrorContextExtractor.Extract(ex));
                 _dispatcher.Invoke(() => CheckFailed?.Invoke(this, ex));
             }
             finally
@@ -150,7 +151,7 @@ namespace SCLOCVerse.Services.ApplicationUpdate
             }
             catch (Exception ex)
             {
-                _telemetry.Track("Orchestrator", "AppCheck", "Failed", new TelemetryContext { ErrorMessage = ex.Message });
+                _telemetry.Track("Orchestrator", "AppCheck", "Failed", ErrorContextExtractor.Extract(ex));
                 return null;
             }
         }
@@ -205,8 +206,13 @@ namespace SCLOCVerse.Services.ApplicationUpdate
                 }
                 catch (Exception ex)
                 {
-                    _telemetry.Track("Orchestrator", "LocalizationCheck", "Failed",
-                        new TelemetryContext { ErrorMessage = ex.Message, Detail = new() { { "environment", env } } });
+                    var ctx = ErrorContextExtractor.Extract(ex);
+                    if (ctx is not null)
+                    {
+                        ctx.Detail ??= new Dictionary<string, object?>();
+                        ctx.Detail["environment"] = env;
+                    }
+                    _telemetry.Track("Orchestrator", "LocalizationCheck", "Failed", ctx);
 #if DEBUG
                     Debug.WriteLine($"[Orchestrator] {env}: помилка — {ex.Message}");
 #endif
@@ -227,7 +233,7 @@ namespace SCLOCVerse.Services.ApplicationUpdate
             }
             catch (Exception ex)
             {
-                _telemetry.Track("Orchestrator", "LiaCheck", "Failed", new TelemetryContext { ErrorMessage = ex.Message });
+                _telemetry.Track("Orchestrator", "LiaCheck", "Failed", ErrorContextExtractor.Extract(ex));
                 return null;
             }
         }

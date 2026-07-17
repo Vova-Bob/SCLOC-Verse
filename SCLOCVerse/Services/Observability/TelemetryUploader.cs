@@ -97,6 +97,14 @@ namespace SCLOCVerse.Services.Observability
                         ex.InnerException is PostgrestException { StatusCode: 401 })
                         return;
 
+                    // Permanent data errors: CHECK (23514), UNIQUE (23505), NOT-NULL (23502),
+                    // FK (23503), data exception (22xxx). PostgREST мапить їх на HTTP 400/409.
+                    // Ці помилки НІКОЛИ не успішні при retry — дані не змінюються.
+                    // Drop батчу, щоб уникнути нескінченного retry loop (як RC-401, але для data errors).
+                    if (ex is PostgrestException { StatusCode: 400 or 409 } ||
+                        ex.InnerException is PostgrestException { StatusCode: 400 or 409 })
+                        return;
+
                     // Тимчасова помилка (500, network, timeout) — requeue для повторної спроби.
                     _queue.Requeue(batch);
                 }

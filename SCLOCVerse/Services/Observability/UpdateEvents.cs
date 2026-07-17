@@ -33,7 +33,9 @@ namespace SCLOCVerse.Services.Observability
 
                 if (durationMs.HasValue || phase != null)
                 {
-                    ctx ??= new TelemetryContext();
+                    // Signal fields обов'язкові для Failed (chk_telemetry_failed_has_signal).
+                    // phase — найінформативніший signal для Failed-без-exception (FileNotFound, ChecksumMismatch, ...).
+                    ctx ??= new TelemetryContext { Source = "CLR", ExceptionType = phase ?? "Condition" };
                     if (durationMs.HasValue)
                         ctx.DurationMs = (int)durationMs.Value;
                     if (phase != null)

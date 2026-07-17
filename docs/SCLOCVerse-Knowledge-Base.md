@@ -2014,6 +2014,22 @@ Phase 3.7 (Security Hardening) — ✅ SEC-12 + SEC-11 completed (REVOKE EXECUTE
 
 ---
 
+## 14.41. chk_telemetry_failed_has_signal Constraint Violation Fix (2026-07-17) — ✅ IMPL
+
+> **Bug fix (root cause + defense-in-depth).** Виявлено та виправлено масову помилку PostgreSQL `23514 (check_violation)` на `telemetry_events`, яка була активна в production та створювала нескінченний retry loop кожні 30 секунд.
+
+282. **Root Cause: 8 C# шляхів створюють Failed-події без signal-полів — ✅ VER+IMPL.** Constraint `chk_telemetry_failed_has_signal` (міграція 00009) вимагає: при `outcome='Failed'` → хоча б одне з (`source`, `hresult`, `supabase_code`, `http_status`, `exception_type`) NOT NULL. `error_message` **не входить** у COALESCE. **BackgroundUpdateMonitor** (4 шляхи) створював `new TelemetryContext { ErrorMessage = ex.Message }` замість `ErrorContextExtractor.Extract(ex)` → Source=NULL, ExceptionType=NULL. **UpdateEvents** (4 шляхи: FileNotFound, ChecksumMismatch, InstallerNotFound, LaunchFailed) викликався без exception → ctx без signal. Production доказ: 0 успішних вставок для `Orchestrator/Cycle/Failed`, `Orchestrator/AppCheck/Failed`, `Orchestrator/LiaCheck/Failed`, `Orchestrator/LocalizationCheck/Failed`, `Updater/Verify/Failed`, `Updater/Install/Failed` — усі відхилялись. Усі успішні Failed-події (Auth, LIA, Updater/Download) пройшли через `ErrorContextExtractor` → Source заповнено.
+
+283. **Batch retry loop — ✅ VER+IMPL.** `TelemetryUploader` використовує batch INSERT (до 100 подій, атомарний). Одна невалідна Failed-подія → весь батч відхиляється → `_queue.Requeue(batch)` → retry 30с → та ж помилка → ∞. Помилка активна в Postgres логах з інтервалом ~30 секунд. Фікс: `PostgrestException { StatusCode: 400 or 409 }` → drop (permanent data error, як RC-401 для 401). Тимчасові помилки (500, network) → як і раніше requeue.
+
+284. **Fix A — Root Cause (8 шляхів):** `BackgroundUpdateMonitor` — `ErrorContextExtractor.Extract(ex)` замість `new TelemetryContext { ErrorMessage = ex.Message }` (4 шляхи: Cycle, AppCheck, LocalizationCheck, LiaCheck). `UpdateEvents` — fallback ctx з `Source = "CLR", ExceptionType = phase ?? "Condition"` (4 шляхи). `LiaEvents` — fallback ctx з signal (defense-in-depth). `ErrorContextExtractor.Extract(ex)` завжди заповнює Source (мінімум "CLR") + ExceptionType → constraint PASS.
+
+285. **Fix B — Uploader defense:** `TelemetryUploader.FlushAsync` catch-block: 400 (CHECK/NOT-NULL/FK/data exception) + 409 (UNIQUE) → drop батчу. Аналогічно RC-401 fix для 401. Запобігає нескінченному retry для permanent data errors.
+
+286. **Impact.** До фіксу: повна сліпа зона для Orchestrator/Updater Failed-подій + incident pipeline (`trg_telemetry_failed_promote` не спрацьовує на відхилені події). Після: усі 8 категорій Failed-подій доходять до БД, створюють інциденти через trigger. Схема БД не зачіпається (constraint коректний). Build: 0 warnings, 0 errors.
+
+---
+
 # 15. Rejected Decisions (майстер-список)
 
 > Щоб більше ніхто не пропонував. Об'єднано архітектурні (18) + observability (54).
