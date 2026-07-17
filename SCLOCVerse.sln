@@ -11,6 +11,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SCLOCVerse.Notifications", 
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SCLOCVerse.Notifier", "SCLOCVerse.Notifier\SCLOCVerse.Notifier.csproj", "{BBA8982D-9FD9-453E-8A24-1B8C7638F6F6}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SCLOCVerse.Tests", "SCLOCVerse.Tests\SCLOCVerse.Tests.csproj", "{7450259F-8BF9-43A8-A731-43225E0A84EB}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -69,6 +71,18 @@ Global
 		{BBA8982D-9FD9-453E-8A24-1B8C7638F6F6}.Release|x64.Build.0 = Release|Any CPU
 		{BBA8982D-9FD9-453E-8A24-1B8C7638F6F6}.Release|x86.ActiveCfg = Release|Any CPU
 		{BBA8982D-9FD9-453E-8A24-1B8C7638F6F6}.Release|x86.Build.0 = Release|Any CPU
+		{7450259F-8BF9-43A8-A731-43225E0A84EB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7450259F-8BF9-43A8-A731-43225E0A84EB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7450259F-8BF9-43A8-A731-43225E0A84EB}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{7450259F-8BF9-43A8-A731-43225E0A84EB}.Debug|x64.Build.0 = Debug|Any CPU
+		{7450259F-8BF9-43A8-A731-43225E0A84EB}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{7450259F-8BF9-43A8-A731-43225E0A84EB}.Debug|x86.Build.0 = Debug|Any CPU
+		{7450259F-8BF9-43A8-A731-43225E0A84EB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7450259F-8BF9-43A8-A731-43225E0A84EB}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7450259F-8BF9-43A8-A731-43225E0A84EB}.Release|x64.ActiveCfg = Release|Any CPU
+		{7450259F-8BF9-43A8-A731-43225E0A84EB}.Release|x64.Build.0 = Release|Any CPU
+		{7450259F-8BF9-43A8-A731-43225E0A84EB}.Release|x86.ActiveCfg = Release|Any CPU
+		{7450259F-8BF9-43A8-A731-43225E0A84EB}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

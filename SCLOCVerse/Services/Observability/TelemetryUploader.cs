@@ -130,44 +130,19 @@ namespace SCLOCVerse.Services.Observability
         }
 
         /// <summary>
-        /// P1.4 — Бінарний поділ батчу для ізоляції poison event.
-        /// При constraint violation ділить батч навпіл і рекурсивно пробує кожну половину.
-        /// O(log n) додаткових HTTP-запитів замість O(n) індивідуальних вставок.
-        /// Похідні успішні вставки безпечні (idempotent через client_event_id UNIQUE).
+        /// P1.4 — Batch isolation через BatchIsolation.ExecuteAsync (Variant D: Try-First).
+        /// Делегує алгоритм бінарного поділу до testable generic методу.
         /// </summary>
         private async Task InsertWithIsolationAsync(Supabase.Client client, List<TelemetryEvent> events)
         {
-            if (events.Count == 0)
-                return;
-
-            if (events.Count == 1)
-            {
-                // Одиночна подія вже не пройшла — підтверджений poison. Drop.
-                var e = events[0];
-                Debug.WriteLine($"[Telemetry] Poison event dropped: {e.Component}/{e.Operation}/{e.Outcome} (source={e.Source}, exception_type={e.ExceptionType})");
-                return;
-            }
-
-            try
-            {
-                await client
-                    .From<TelemetryEvent>()
-                    .Insert(events, InsertOptions)
-                    .ConfigureAwait(false);
-            }
-            catch (Exception ex) when (IsPermanentConstraintViolation(ex))
-            {
-                // Ділимо навпіл і рекурсивно пробуємо кожну половину.
-                var mid = events.Count / 2;
-                await InsertWithIsolationAsync(client, events.GetRange(0, mid)).ConfigureAwait(false);
-                await InsertWithIsolationAsync(client, events.GetRange(mid, events.Count - mid)).ConfigureAwait(false);
-            }
-            catch (Exception ex)
-            {
-                // Non-permanent error під час isolation (network/500).
-                // Events вже дреновані з черги — best-effort, не requeue.
-                Debug.WriteLine($"[Telemetry] Isolation: non-permanent error, events втрачено: {ex.Message}");
-            }
+            await BatchIsolation.ExecuteAsync(
+                events,
+                batch => client.From<TelemetryEvent>().Insert(batch, InsertOptions),
+                IsPermanentConstraintViolation,
+                evt => Debug.WriteLine(
+                    $"[Telemetry] Poison event dropped: {evt.Component}/{evt.Operation}/{evt.Outcome} "
+                    + $"(source={evt.Source}, exception_type={evt.ExceptionType})")
+            ).ConfigureAwait(false);
         }
 
         // RC-401 root cause fix (C): перевірка терміну дії JWT.
