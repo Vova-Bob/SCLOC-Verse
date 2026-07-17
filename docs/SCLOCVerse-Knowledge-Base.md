@@ -2024,9 +2024,39 @@ Phase 3.7 (Security Hardening) — ✅ SEC-12 + SEC-11 completed (REVOKE EXECUTE
 
 284. **Fix A — Root Cause (8 шляхів):** `BackgroundUpdateMonitor` — `ErrorContextExtractor.Extract(ex)` замість `new TelemetryContext { ErrorMessage = ex.Message }` (4 шляхи: Cycle, AppCheck, LocalizationCheck, LiaCheck). `UpdateEvents` — fallback ctx з `Source = "CLR", ExceptionType = phase ?? "Condition"` (4 шляхи). `LiaEvents` — fallback ctx з signal (defense-in-depth). `ErrorContextExtractor.Extract(ex)` завжди заповнює Source (мінімум "CLR") + ExceptionType → constraint PASS.
 
-285. **Fix B — Uploader defense:** `TelemetryUploader.FlushAsync` catch-block: 400 (CHECK/NOT-NULL/FK/data exception) + 409 (UNIQUE) → drop батчу. Аналогічно RC-401 fix для 401. Запобігає нескінченному retry для permanent data errors.
+285. **Fix B — Uploader defense (revision 2):** Початковий фікс: blanket 400/409 drop. Ревізія 1 (commit `baf18ee`): `IsPermanentConstraintViolation(ex)` — точковіша перевірка за текстом PostgreSQL error message ("violates check constraint", "violates unique constraint" тощо). Ревізія 2 (commit `e2810f5`, §14.42): + binary split isolation для збереження валідних подій з отруєного батчу + retry counter з poison eviction.
 
 286. **Impact.** До фіксу: повна сліпа зона для Orchestrator/Updater Failed-подій + incident pipeline (`trg_telemetry_failed_promote` не спрацьовує на відхилені події). Після: усі 8 категорій Failed-подій доходять до БД, створюють інциденти через trigger. Схема БД не зачіпається (constraint коректний). Build: 0 warnings, 0 errors.
+
+---
+
+## 14.42. Telemetry Pipeline Hardening — 3-шарова захист (2026-07-17) — ✅ IMPL
+
+> **Architectural hardening.** Комплексна комплексна 재constructія телеметрії pipeline за результатами forensic аудиту (§14.41 + архітектурний аудит). 5 точок фіксу: 3-шарова захист від Failed-without-signal + poison eviction + batch isolation + 403 no-retry. Commit `e2810f5`. Build: 0 warnings, 0 errors.
+
+287. **P0.1 — Layer 1 (Source): усі шляхи створення Failed-event гарантують signal — ✅ IMPL.** Закрито всі 13 кодових шляхів, які могли створити `outcome='Failed'` без signal-полів.新增лено `ErrorContextExtractor.Create(source, exceptionType, errorMessage?)` — фабричний метод для ручних Failed-подій без exception (умовні перевірки). Виправлено: **AuthService** (4 шляхи: NullOAuthUri, OAuthError, MissingAuthorizationCode, NullSessionExchange → `ErrorContextExtractor.Create`), **AuthService.TrackAuth fallback** (line 305: `new TelemetryContext()` → `ErrorContextExtractor.Create("CLR", "AuthFailure")`), **InstallationService** (fallback: `new TelemetryContext()` → `ErrorContextExtractor.Create("CLR", "InstallationSync")`). Разом з §14.41 (BackgroundUpdateMonitor 4 шляхи + UpdateEvents 4 шляхи + LiaEvents defense) — **13 з 13 шляхів закрито**. Audit `grep "new TelemetryContext"` підтверджує: жодного unguarded Failed-створювача не залишилось.
+
+288. **P0.2 — Layer 2 (BuildEvent): централізована валідація — ✅ IMPL.** `TelemetryClient.BuildEvent()` перевіряє інваріант `outcome == "Failed" && !HasSignal(context)` ПЕРЕД постановкою в чергу. При порушенні — авто-доповнення `Source = "CLR"`, `ExceptionType = "MissingSignalAutoFix"` + Debug.WriteLine. Це **останній рубіж**: навіть якщо хтось у майбутньому пише `new TelemetryContext()` для Failed, подія не буде відхилена PostgreSQL. Метод `HasSignal(TelemetryContext?)` перевіряє 5 полів (Source, ExceptionType, Hresult, SupabaseCode, HttpStatus) — відповідає COALESCE у `chk_telemetry_failed_has_signal`.
+
+289. **P0.3 — Poison eviction: retry counter + max 3 — ✅ IMPL.** `TelemetryEventQueue` переписано з внутрішнім wrapper `QueuedEvent(Event, RetryCount)`. `Drain` повертає `List<QueuedEvent>`, `Requeue` інкрементує RetryCount і eviction-не події з RetryCount > MaxRetries (3). Лічильник `_poisonEvictedCount` + Debug.WriteLine. Це **усуває нескінченний requeue loop** — основний дефект інциденту. Транзитні помилки (500, network) ретраїться до 3 разів, потім скидаються. Permanent errors (CHECK/UNIQUE/401) — drop (без retry).
+
+290. **P1.4 — Batch isolation: binary split — ✅ IMPL.** `TelemetryUploader.InsertWithIsolationAsync` — рекурсивний бінарний поділ батчу при permanent constraint violation. Алгоритм: батч fail → поділити навпіл → спробувати кожну половину → рекурсія до одиночних events. Одиночний event що не пройшов = підтверджений poison → drop. O(log₂ n) додаткових HTTP-запитів (max 7 для batch=100) замість O(n) індивідуальних вставок. Ідемпотентність через `client_event_id` UNIQUE + IgnoreDuplicates гарантує безпеку повторних вставок (валідні події з отруєного батчу зберігаються).
+
+291. **P1.5 — HttpRetryHelper.ShouldRetry(403) = false — ✅ IMPL.** 403 вилучено зі списку retryable статусів. Причини: (a) GitHub primary rate limit (60 req/год unauth) — retry не змінює ліміт; (b) secondary rate limit — GitHub рекомендує почекати, а не спамити; (c) access forbidden — retry без зміни умов безглуздий. Раніше retry 403 створював **3× навантаження** на GitHub API (3 спроби замість 1). Тепер 403 повертається напряму → BackgroundUpdateMonitor catch → Failed-event (з signal через §14.41 Fix A) → наступний цикл (10 хв) спробує знову.
+
+292. **Тришарова архітектура захисту.**
+```
+Layer 1 (Source):    ErrorContextExtractor.Extract(ex) / Create(...)
+                     → 13 з 13 шляхів закрито
+Layer 2 (BuildEvent): HasSignal(context) check → auto-fix CLR/MissingSignalAutoFix
+                     → централізований invariant guard
+Layer 3 (Uploader):  IsPermanentConstraintViolation → binary split isolation
+                     + retry counter (max 3) → poison eviction
+                     + 401 drop → session expired
+```
+Жоден шар не є єдиним — кожен є backup для попереднього.即便 Layer 1 пропустить (новий код без Extract), Layer 2 зловить і авто-виправить.即便 Layer 2 пропустить (редагування BuildEvent), Layer 3 ізолює і не дасть poison блокувати чергу.
+
+293. **Zero Regression.** (a) TelemetryEventQueue API змінився (Drain/Requeue → QueuedEvent wrapper), але єдиний споживач — TelemetryUploader — адаптовано. (b) BuildEvent validation мутує context тільки для Failed без signal — не впливає на non-Failed events. (c) HttpRetryHelper 403 no-retry — BackgroundUpdateMonitor ловить exception як і раніше, але без 3× retry overhead. (d) AuthService 4 умовні paths — Telegraph контекст змінено з null на ErrorContextExtractor.Create — SemanticId не змінюється (component/operation/outcome ті самі). (e) Схема БД не зачеплена.
 
 ---
 
