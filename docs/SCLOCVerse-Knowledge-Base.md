@@ -2060,6 +2060,20 @@ Layer 3 (Uploader):  IsPermanentConstraintViolation → binary split isolation
 
 ---
 
+## 14.43. Production Readiness Audit + Variant D Fix (2026-07-18) — ✅ IMPL
+
+> **Independent audit + critical bug fix + automated tests.** Проведено повний незалежний аудит коду §14.42. Аудит виявив CRITICAL баг у binary split алгоритмі: `InsertWithIsolationAsync` скидав одиночні події (Count==1) без індивідуальної перевірки INSERT. Баг виправлено (Variant D), алгоритм екстраговано у testable class, написано 22 автоматизованих тести (всі pass). Commit `2d031d7`.
+
+294. **Audit: CRITICAL баг у binary split — ✅ VER (confirmed).** `InsertWithIsolationAsync` рядки 143-148 (оригінальний код §14.42): при `Count == 1` подія скидалась БЕЗ try INSERT. Коментар стверджував «Одиночна подія вже не пройшла — підтверджений poison» — це **хибне твердження** для подій, що досягли Count==1 через рекурсивний binary split. Доведено трасуванням: батч [v1,v2,v3,p1] → split → [v3,p1] → split → [v3] → Count==1 → DROP. v3 — валідна подія, НІКОЛИ не перевірена індивідуально INSERT, але дропнута як «підтверджений poison». Втрата: ~1 валідна подія на кожен poison event.
+
+295. **Variant D (Try-First) — ✅ IMPL.** Коректне рішення: перенести перевірку `Count == 1` з before-try до inside-catch-permanent. Інваріант D: DROP можливий ТІЛЬКИ після невдалого індивідуального INSERT. Доведення: у D, IA([v3]) виконує `try INSERT([v3])` → SUCCESS → v3 ЗБЕРЕЖЕНА. Тільки якщо INSERT впаде з permanent error → `Count==1` у catch → DROP (підтверджений poison). 16 атак проти D (data loss, duplicates, infinite recursion, FIFO, race, retry, stack overflow, multiple poison, transient, shutdown, concurrent enqueue) — жодна не знайшла контрприклад. 6 математичних теорем доведено формально.
+
+296. **BatchIsolation<T> extraction — ✅ IMPL.** Алгоритм binary split екстраговано з `TelemetryUploader` у generic internal static class `BatchIsolation.ExecuteAsync<T>(items, insertAsync, isPermanentError, onPoisonDrop)`. Переваги: (a) testable без Supabase/WPF залежностей — insertAsync делегат заміняється fake-функцією; (b) generic — працює для будь-якого типу; (c) single responsibility — алгоритм відокремлений від інфраструктури. `TelemetryUploader.InsertWithIsolationAsync` — тепер тонкий wrapper (3 рядки) що делегує до BatchIsolation.
+
+297. **Automated tests: 22 тести, всі pass — ✅ IMPL.** Створено `SCLOCVerse.Tests` проєкт (xUnit, .NET 9). Покрито: усі valid (1, 100, 1000), усі poison (10, 1000), 1 valid + 1 poison (reversed), 3 events + 1 poison, 100 valid + 1 poison, 1000 + 1, poison in middle, 2 poison + 2 valid, multiple poison (4+5), adjacent poisons, no duplicates, transient batch, transient single, **VariantD_Count1_AfterRecursion_ValidInsertNotDrop** (ключовий — перевіряє що v2 збережена, не дропнута), **VariantD_ValidEventInPoisonedHalf_SavedNotDropped** (первинний контрприклад аудиту). Build: 0 warnings, 0 errors. `dotnet test`: 22/22 Passed.
+
+---
+
 # 15. Rejected Decisions (майстер-список)
 
 > Щоб більше ніхто не пропонував. Об'єднано архітектурні (18) + observability (54).
