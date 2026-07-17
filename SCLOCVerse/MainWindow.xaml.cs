@@ -684,7 +684,6 @@ namespace SCLOCVerse
 
             using var cts = new CancellationTokenSource();
             var progressWindow = new AppUpdateProgressWindow { Owner = this };
-            progressWindow.CancelRequested += (_, _) => cts.Cancel();
             progressWindow.SetStage("Завантаження оновлення...");
             progressWindow.Show();
 
@@ -704,7 +703,7 @@ namespace SCLOCVerse
             catch (OperationCanceledException)
             {
                 await _updateHistoryService.AddEntryAsync(CreateHistoryEntry(UpdateOperation.Download, UpdateOperationResult.Failed, result, "Завантаження скасовано користувачем.")).ConfigureAwait(true);
-                progressWindow.Close();
+                progressWindow.AllowClose(); progressWindow.Close();
                 return;
             }
             catch (Exception ex)
@@ -713,7 +712,7 @@ namespace SCLOCVerse
                 CanvasHome.UpdateStatusTextControl.Text = "Помилка завантаження";
                 CanvasHome.UpdateStatusTextControl.Foreground = Brushes.Red;
                 await _toastService.ShowToastAsync($"Помилка завантаження: {ex.Message}").ConfigureAwait(true);
-                progressWindow.Close();
+                progressWindow.AllowClose(); progressWindow.Close();
                 return;
             }
 
@@ -738,7 +737,7 @@ namespace SCLOCVerse
                         CanvasHome.UpdateStatusTextControl.Text = "Помилка перевірки файлу";
                         CanvasHome.UpdateStatusTextControl.Foreground = Brushes.Red;
                         await _toastService.ShowToastAsync("Помилка перевірки файлу оновлення.").ConfigureAwait(true);
-                        progressWindow.Close();
+                        progressWindow.AllowClose(); progressWindow.Close();
                         return;
                     }
 
@@ -748,7 +747,7 @@ namespace SCLOCVerse
             catch (OperationCanceledException)
             {
                 await _updateHistoryService.AddEntryAsync(CreateHistoryEntry(UpdateOperation.Verify, UpdateOperationResult.Failed, result, "Перевірку скасовано користувачем.")).ConfigureAwait(true);
-                progressWindow.Close();
+                progressWindow.AllowClose(); progressWindow.Close();
                 return;
             }
             catch (Exception ex)
@@ -757,7 +756,7 @@ namespace SCLOCVerse
                 CanvasHome.UpdateStatusTextControl.Text = "Помилка перевірки файлу";
                 CanvasHome.UpdateStatusTextControl.Foreground = Brushes.Red;
                 await _toastService.ShowToastAsync($"Помилка перевірки файлу: {ex.Message}").ConfigureAwait(true);
-                progressWindow.Close();
+                progressWindow.AllowClose(); progressWindow.Close();
                 return;
             }
 
@@ -776,7 +775,8 @@ namespace SCLOCVerse
                 if (installStarted)
                 {
                     await _updateHistoryService.AddEntryAsync(CreateHistoryEntry(UpdateOperation.Install, UpdateOperationResult.Success, result)).ConfigureAwait(true);
-                    progressWindow.MarkCompleted("✓ Завантаження завершено\n✓ Перевірку завершено\nЗапуск інсталятора...");
+                    progressWindow.SetStage("✓ Завантаження завершено\n✓ Перевірку завершено\nЗапуск інсталятора...");
+                    progressWindow.AllowClose();
                     await _toastService.ShowToastAsync("Оновлення встановлюється. Додаток буде перезапущено.", 2000).ConfigureAwait(true);
                     await Task.Delay(800, cts.Token).ConfigureAwait(true);
                     Application.Current.Shutdown();
@@ -785,13 +785,13 @@ namespace SCLOCVerse
                 {
                     await _updateHistoryService.AddEntryAsync(CreateHistoryEntry(UpdateOperation.Install, UpdateOperationResult.Failed, result, "Не вдалося запустити процес встановлення.")).ConfigureAwait(true);
                     await _toastService.ShowToastAsync("Не вдалося запустити встановлення оновлення.").ConfigureAwait(true);
-                    progressWindow.Close();
+                    progressWindow.AllowClose(); progressWindow.Close();
                 }
             }
             catch (OperationCanceledException)
             {
                 await _updateHistoryService.AddEntryAsync(CreateHistoryEntry(UpdateOperation.Install, UpdateOperationResult.Failed, result, "Встановлення скасовано користувачем.")).ConfigureAwait(true);
-                progressWindow.Close();
+                progressWindow.AllowClose(); progressWindow.Close();
             }
             catch (Exception ex)
             {
@@ -799,7 +799,7 @@ namespace SCLOCVerse
                 CanvasHome.UpdateStatusTextControl.Text = "Помилка встановлення";
                 CanvasHome.UpdateStatusTextControl.Foreground = Brushes.Red;
                 await _toastService.ShowToastAsync($"Помилка встановлення: {ex.Message}").ConfigureAwait(true);
-                progressWindow.Close();
+                progressWindow.AllowClose(); progressWindow.Close();
             }
         }
 

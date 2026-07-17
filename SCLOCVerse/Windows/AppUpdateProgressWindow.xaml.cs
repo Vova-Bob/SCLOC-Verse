@@ -1,5 +1,4 @@
 using SCLOCVerse.Models.ApplicationUpdate;
-using System;
 using System.ComponentModel;
 using System.Globalization;
 using System.Windows;
@@ -8,12 +7,13 @@ using System.Windows.Media;
 
 namespace SCLOCVerse.Windows
 {
+    /// <summary>
+    /// Вікно прогресу оновлення. Не містить кнопок скасування —
+    /// після підтвердження "Встановити" процес повністю автоматичний.
+    /// </summary>
     public partial class AppUpdateProgressWindow : Window
     {
         private bool _allowClose;
-        private bool _isCancelled;
-
-        public event EventHandler? CancelRequested;
 
         public AppUpdateProgressWindow()
         {
@@ -33,7 +33,7 @@ namespace SCLOCVerse.Windows
                 : (double?)null;
 
             var percentageText = progress.TotalBytes.HasValue && progress.TotalBytes.Value > 0
-                ? $"{Math.Min(100, (double)progress.DownloadedBytes / progress.TotalBytes.Value * 100):F0}%"
+                ? $"{System.Math.Min(100, (double)progress.DownloadedBytes / progress.TotalBytes.Value * 100):F0}%"
                 : string.Empty;
 
             var sizeText = totalMb.HasValue
@@ -50,7 +50,7 @@ namespace SCLOCVerse.Windows
 
             if (progress.TotalBytes.HasValue && progress.TotalBytes.Value > 0)
             {
-                ProgressBar.Value = Math.Min(100, (double)progress.DownloadedBytes / progress.TotalBytes.Value * 100);
+                ProgressBar.Value = System.Math.Min(100, (double)progress.DownloadedBytes / progress.TotalBytes.Value * 100);
             }
 
             PercentageTextBlock.Text = percentageText;
@@ -59,74 +59,17 @@ namespace SCLOCVerse.Windows
             EtaTextBlock.Text = etaText;
         }
 
-        public void MarkCompleted(string stage)
+        /// <summary>Дозволяє програмне закриття вікна (після завершення або помилки).</summary>
+        public void AllowClose()
         {
-            SetStage(stage);
-            CancelButton.IsEnabled = false;
-            CancelButton.Content = "Закрити";
-            _allowClose = true;
-        }
-
-        public void MarkFailed(string stage)
-        {
-            SetStage(stage);
-            ProgressBar.Foreground = new SolidColorBrush(Color.FromRgb(0xFF, 0x4C, 0x4C));
-            CancelButton.IsEnabled = true;
-            CancelButton.Content = "Закрити";
             _allowClose = true;
         }
 
         private void Window_Closing(object sender, CancelEventArgs e)
         {
-            if (_allowClose)
-                return;
-
-            e.Cancel = true;
-            PromptCancel();
-        }
-
-        private void PromptCancel()
-        {
-            if (_isCancelled)
-                return;
-
-            var result = MessageBox.Show(
-                "Завантаження буде перервано. Скасувати встановлення оновлення?",
-                "Скасувати оновлення",
-                MessageBoxButton.YesNo,
-                MessageBoxImage.Question);
-
-            if (result != MessageBoxResult.Yes)
-                return;
-
-            _isCancelled = true;
-            CancelRequested?.Invoke(this, EventArgs.Empty);
-
-            CancelButton.IsEnabled = false;
-            CancelButton.Content = "Скасування...";
-            StageTextBlock.Text = "Скасування...";
-        }
-
-        private void WindowCloseButton_Click(object sender, RoutedEventArgs e)
-        {
-            if (_allowClose)
-            {
-                Close();
-                return;
-            }
-
-            PromptCancel();
-        }
-
-        private void CancelButton_Click(object sender, RoutedEventArgs e)
-        {
-            if (_allowClose)
-            {
-                Close();
-                return;
-            }
-
-            PromptCancel();
+            // Під час оновлення вікно не можна закрити — процес повністю автоматичний.
+            if (!_allowClose)
+                e.Cancel = true;
         }
 
         private void TitleBar_MouseDown(object sender, MouseButtonEventArgs e)
@@ -152,9 +95,9 @@ namespace SCLOCVerse.Windows
                 return "Залишилось менше секунди";
 
             if (remainingSeconds < 60)
-                return $"Залишилось приблизно {Math.Ceiling(remainingSeconds)} секунд";
+                return $"Залишилось приблизно {System.Math.Ceiling(remainingSeconds)} секунд";
 
-            var minutes = (int)Math.Ceiling(remainingSeconds / 60);
+            var minutes = (int)System.Math.Ceiling(remainingSeconds / 60);
             return minutes == 1
                 ? "Залишилось приблизно хвилина"
                 : $"Залишилось приблизно {minutes} хвилин";
