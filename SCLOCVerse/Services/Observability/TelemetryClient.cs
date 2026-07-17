@@ -173,6 +173,18 @@ namespace SCLOCVerse.Services.Observability
 
         private TelemetryEvent BuildEvent(string component, string operation, string outcome, TelemetryContext? context)
         {
+            // P0.2 — Останній рубіж: Failed обов'язково має signal (Стаття 13, chk_telemetry_failed_has_signal).
+            // Якщо emitter створив Failed без signal — доповнюємо мінімальним, щоб виконати CHECK.
+            // Це централізована гарантія: навіть якщо хтось пише new TelemetryContext() для Failed,
+            // подія не буде відхилена PostgreSQL.
+            if (outcome == "Failed" && !HasSignal(context))
+            {
+                context ??= new TelemetryContext();
+                context.Source = "CLR";
+                context.ExceptionType = "MissingSignalAutoFix";
+                Debug.WriteLine("[Telemetry] BuildEvent: Failed без signal — авто-доповнено CLR/MissingSignalAutoFix");
+            }
+
             return new TelemetryEvent
             {
                 Id = Guid.NewGuid(),
@@ -208,6 +220,19 @@ namespace SCLOCVerse.Services.Observability
             "Failed" => "Error",
             _ => "Info"
         };
+
+        /// <summary>
+        /// Перевіряє наявність signal-полів у контексті (Стаття 13: Failed обов'язково має signal).
+        /// Signal = хоча б одне з: Source, ExceptionType, Hresult, SupabaseCode, HttpStatus.
+        /// </summary>
+        private static bool HasSignal(TelemetryContext? ctx)
+        {
+            return !string.IsNullOrEmpty(ctx?.Source)
+                || !string.IsNullOrEmpty(ctx?.ExceptionType)
+                || !string.IsNullOrEmpty(ctx?.Hresult)
+                || !string.IsNullOrEmpty(ctx?.SupabaseCode)
+                || ctx?.HttpStatus.HasValue == true;
+        }
 
         private void OnFlushTick(object? state)
         {

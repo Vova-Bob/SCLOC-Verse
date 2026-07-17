@@ -80,7 +80,7 @@ namespace SCLOCVerse.Services.Auth
 
                 if (state?.Uri == null)
                 {
-                    TrackAuth("SignIn", "Failed");
+                    TrackAuth("SignIn", "Failed", ErrorContextExtractor.Create("Supabase.Gotrue", "NullOAuthUri", "Supabase повернув null OAuth URL"));
                     return new AuthResult.Failure("Не вдалося отримати URL для входу.");
                 }
 
@@ -110,13 +110,13 @@ namespace SCLOCVerse.Services.Auth
 
                 if (!string.IsNullOrWhiteSpace(errorCode) || !string.IsNullOrWhiteSpace(errorDescription))
                 {
-                    TrackAuth("SignIn", "Failed");
+                    TrackAuth("SignIn", "Failed", ErrorContextExtractor.Create("CLR", "OAuthError", errorDescription ?? errorCode ?? "Помилка авторизації"));
                     return new AuthResult.Failure(errorDescription ?? errorCode ?? "Помилка авторизації");
                 }
 
                 if (string.IsNullOrWhiteSpace(code))
                 {
-                    TrackAuth("SignIn", "Failed");
+                    TrackAuth("SignIn", "Failed", ErrorContextExtractor.Create("CLR", "MissingAuthorizationCode", "Авторизаційний код відсутній"));
                     return new AuthResult.Failure("Авторизаційний код відсутній.");
                 }
 
@@ -125,7 +125,7 @@ namespace SCLOCVerse.Services.Auth
 
                 if (session == null)
                 {
-                    TrackAuth("SignIn", "Failed");
+                    TrackAuth("SignIn", "Failed", ErrorContextExtractor.Create("Supabase.Gotrue", "NullSessionExchange", "Не вдалося обміняти код на сесію"));
                     return new AuthResult.Failure("Не вдалося обміняти код на сесію.");
                 }
 
@@ -302,7 +302,8 @@ namespace SCLOCVerse.Services.Auth
             {
                 if (durationMs.HasValue)
                 {
-                    error ??= new TelemetryContext();
+                    // Гарантуємо signal для Failed-контекстів без exception (Стаття 13).
+                    error ??= ErrorContextExtractor.Create("CLR", "AuthFailure");
                     error.DurationMs = (int)durationMs.Value;
                 }
 

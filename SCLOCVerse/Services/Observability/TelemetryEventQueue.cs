@@ -1,5 +1,6 @@
 using SCLOCVerse.Models.Observability;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Diagnostics;
 
 namespace SCLOCVerse.Services.Observability
@@ -11,6 +12,10 @@ namespace SCLOCVerse.Services.Observability
     /// Відповідно до розрізу Phase 1, JSONL-persistency для перечікування офлайн
     /// віднесено до Slice 2 («доставка при втраті Інтернету»). Тут — лише швидка,
     /// потокобезпечна, неблокуюча черга (Конституція, Стаття 2).
+    ///
+    /// P0.3 — Poison eviction: кожна подія має лічильник retry. Після MaxRetries
+    /// невдалих спроб подія скидається (drop), щоб один poison event не блокував
+    /// чергу безкінечно (усуває нескінченний requeue loop).
     /// </remarks>
     public sealed class TelemetryEventQueue
     {
@@ -18,8 +23,13 @@ namespace SCLOCVerse.Services.Observability
         // (захист від неконтрольованого росту в памʼяті).
         private const int MaxInMemory = 5000;
 
-        private readonly ConcurrentQueue<TelemetryEvent> _queue = new();
+        // P0.3 — Максимальна кількість retry для однієї події.
+        // Після перевищення — permanent drop (poison eviction).
+        private const int MaxRetries = 3;
+
+        private readonly ConcurrentQueue<QueuedEvent> _queue = new();
         private long _droppedCount;
+        private long _poisonEvictedCount;
 
         public int Count => _queue.Count;
 
@@ -32,7 +42,7 @@ namespace SCLOCVerse.Services.Observability
                 _droppedCount++;
             }
 
-            _queue.Enqueue(evt);
+            _queue.Enqueue(new QueuedEvent(evt, 0));
 
             if (_droppedCount > 0 && (_droppedCount % 100) == 0)
             {
@@ -41,22 +51,58 @@ namespace SCLOCVerse.Services.Observability
         }
 
         /// <summary>Атомарно вийняти до maxCount подій з черги.</summary>
-        public System.Collections.Generic.List<TelemetryEvent> Drain(int maxCount)
+        public List<QueuedEvent> Drain(int maxCount)
         {
-            var batch = new System.Collections.Generic.List<TelemetryEvent>(maxCount);
-            for (var i = 0; i < maxCount && _queue.TryDequeue(out var evt); i++)
+            var batch = new List<QueuedEvent>(maxCount);
+            for (var i = 0; i < maxCount && _queue.TryDequeue(out var qe); i++)
             {
-                batch.Add(evt);
+                batch.Add(qe);
             }
             return batch;
         }
 
-        /// <summary>Повернути події у чергу (наприклад, після невдалої відправки).</summary>
-        public void Requeue(System.Collections.Generic.IEnumerable<TelemetryEvent> events)
+        /// <summary>
+        /// Повернути події у чергу з інкрементованим лічильником retry.
+        /// Події, що вичерпали MaxRetries — скидаються (poison eviction).
+        /// </summary>
+        /// <returns>Кількість подій, eviction-нутих через перевищення MaxRetries.</returns>
+        public int Requeue(IEnumerable<QueuedEvent> items)
         {
-            foreach (var evt in events)
+            var evicted = 0;
+            foreach (var item in items)
             {
-                _queue.Enqueue(evt);
+                var newRetry = item.RetryCount + 1;
+                if (newRetry > MaxRetries)
+                {
+                    evicted++;
+                    _poisonEvictedCount++;
+                    continue;
+                }
+
+                _queue.Enqueue(new QueuedEvent(item.Event, newRetry));
+            }
+
+            if (evicted > 0)
+            {
+                Debug.WriteLine($"[Telemetry] Poison eviction: {evicted} подій скинуто після {MaxRetries} невдалих спроб (всього evicted: {_poisonEvictedCount})");
+            }
+
+            return evicted;
+        }
+
+        /// <summary>
+        /// Внутрішній wrapper: подія + лічильник retry.
+        /// RetryCount не мапиться у БД (внутрішній стан черги).
+        /// </summary>
+        public sealed class QueuedEvent
+        {
+            public TelemetryEvent Event { get; }
+            public int RetryCount { get; }
+
+            public QueuedEvent(TelemetryEvent evt, int retryCount)
+            {
+                Event = evt;
+                RetryCount = retryCount;
             }
         }
     }

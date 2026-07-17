@@ -11,7 +11,10 @@ namespace SCLOCVerse.Helpers
     /// Централізована політика HTTP-запитів до GitHub API:
     ///   - єдиний User-Agent у форматі GitHub-рекомендації
     ///     "SCLOC-Verse/&lt;version&gt; (+https://github.com/Vova-Bob/SCLOC-Verse)"
-    ///   - Retry з exponential backoff для тимчасових помилок (429/403 secondary/5xx)
+    ///   - Retry з exponential backoff для тимчасових помилок (429/5xx)
+    ///   - 403 NOT retried: rate limit (primary/secondary) або access forbidden —
+    ///     повторний запит не змінює умови, лише споживає ліміт.
+    ///     Наступний цикл Background Monitor (10 хв) спробує знову.
     ///   - Retry-After: ≤10с — дочекатись; >10с — завершити без retry (desktop-застосунок,
     ///     не сервер — не тримаємо асинхронну операцію "висячою" 120 секунд)
     ///   - Без Retry-After: exponential backoff 1с → 2с → 4с
@@ -99,13 +102,14 @@ namespace SCLOCVerse.Helpers
 
         /// <summary>
         /// Визначає, чи треба повторити запит за статус-кодом.
-        /// 429 Too Many Requests, 403 (secondary rate limit), 5xx Server Error.
+        /// 429 Too Many Requests, 5xx Server Error.
+        /// 403 — НЕ retry: rate limit (повтор не допоможе), access forbidden,
+        /// або secondary rate limit (GitHub рекомендує почекати, а не спамити).
         /// </summary>
         private static bool ShouldRetry(System.Net.Http.HttpResponseMessage response)
         {
             var code = (int)response.StatusCode;
             return code == 429
-                || code == 403
                 || (code >= 500 && code < 600);
         }
 

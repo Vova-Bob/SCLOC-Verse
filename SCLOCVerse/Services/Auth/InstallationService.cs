@@ -137,7 +137,7 @@ namespace SCLOCVerse.Services.Auth
             try
             {
                 TelemetryContext ctx = exception is not null
-                    ? ErrorContextExtractor.Extract(exception) ?? new TelemetryContext()
+                    ? ErrorContextExtractor.Extract(exception) ?? ErrorContextExtractor.Create("CLR", "InstallationSync")
                     : new TelemetryContext();
 
                 if (durationMs.HasValue)

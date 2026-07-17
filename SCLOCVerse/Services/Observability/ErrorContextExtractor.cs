@@ -31,6 +31,21 @@ namespace SCLOCVerse.Services.Observability
     /// </remarks>
     public static class ErrorContextExtractor
     {
+        /// <summary>
+        /// Створює гарантовано валідний контекст для ручних Failed-подій (без exception).
+        /// Для умовних перевірок, де виняток не кидається (напр. null OAuth URL, відсутній code).
+        /// Гарантує заповнення Source та ExceptionType (Стаття 13 — Failed обов'язково має signal).
+        /// </summary>
+        public static TelemetryContext Create(string source, string exceptionType, string? errorMessage = null)
+        {
+            return new TelemetryContext
+            {
+                Source = source,
+                ExceptionType = exceptionType,
+                ErrorMessage = errorMessage
+            };
+        }
+
         /// <summary>Будує структурований контекст помилки з винятку (з обходом inner-ланцюга).</summary>
         public static TelemetryContext? Extract(Exception? exception)
         {
