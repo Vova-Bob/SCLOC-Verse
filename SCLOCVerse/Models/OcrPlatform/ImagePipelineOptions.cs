@@ -38,6 +38,15 @@ namespace SCLOCVerse.Models.OcrPlatform
         public double AdaptiveC { get; init; } = 5.0;
 
         /// <summary>
+        /// Чи інвертувати бінаризацію для світлого тексту на темному фоні (типовий SC HUD).
+        /// <list type="bullet">
+        /// <item><c>true</c> (default): THRESH_BINARY_INV — цифри стають білими на чорному.</item>
+        /// <item><c>false</c>: THRESH_BINARY — темний текст на світлому фоні стає чорним на білому.</item>
+        /// </list>
+        /// </summary>
+        public bool InvertForDarkBackground { get; init; } = true;
+
+        /// <summary>
         /// Опції за замовчуванням для SC HUD digits (без модифікацій).
         /// </summary>
         public static ImagePipelineOptions DefaultForScHud { get; } = new();

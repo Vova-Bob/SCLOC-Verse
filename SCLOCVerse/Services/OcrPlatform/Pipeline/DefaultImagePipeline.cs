@@ -46,10 +46,44 @@ namespace SCLOCVerse.Services.OcrPlatform.Pipeline
                 current = resized;
             }
 
-            // Крок 3: Adaptive Threshold — буде додано в T3.3.
-            // Поки що залишаємо grayscale/resized Mat як фінальний результат.
+            // Крок 3: Adaptive Threshold (Gaussian). Стійка до змін освітлення бінаризація
+            // — критична для SC HUD (спалахи вибухів, сонячне освітлення, регуляція яскравості).
+            if (options.UseAdaptiveThreshold)
+            {
+                var blockSize = SanitizeBlockSize(options.AdaptiveBlockSize);
+                var thresholdType = options.InvertForDarkBackground
+                    ? ThresholdTypes.BinaryInv  // Світлий текст → білий, фон → чорний
+                    : ThresholdTypes.Binary;    // Темний текст → чорний, фон → білий
+
+                var binarized = new Mat();
+                Cv2.AdaptiveThreshold(
+                    src: current,
+                    dst: binarized,
+                    maxValue: 255,
+                    adaptiveMethod: AdaptiveThresholdTypes.GaussianC,
+                    thresholdType: thresholdType,
+                    blockSize: blockSize,
+                    c: options.AdaptiveC);
+
+                current.Dispose();
+                current = binarized;
+            }
 
             return current;
+        }
+
+        /// <summary>
+        /// Блок для Adaptive Threshold має бути непарним і ≥3.
+        /// Якщо парне — додаємо 1. Якщо менше 3 — встановлюємо 3.
+        /// </summary>
+        private static int SanitizeBlockSize(int requested)
+        {
+            if (requested < 3)
+            {
+                return 3;
+            }
+
+            return (requested % 2 == 0) ? requested + 1 : requested;
         }
 
         /// <summary>
