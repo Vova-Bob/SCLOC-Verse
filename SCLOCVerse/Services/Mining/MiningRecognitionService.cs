@@ -28,7 +28,6 @@ namespace SCLOCVerse.Services.Mining
         private readonly IOcrCoordinator _coordinator;
         private readonly IOcrRegionRegistry _regionRegistry;
         private readonly object _stateLock = new();
-        private bool _disposed;
 
         public MiningRecognitionService(
             IMiningSignatureDatabase database,
