@@ -1,0 +1,70 @@
+<UserControl x:Class="SCLOCVerse.Controls.SettingsHub.MiningSettingsPane"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Background="Transparent">
+
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/SCLOCVerse;component/Resources/SettingsHubKit.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </UserControl.Resources>
+
+    <StackPanel Orientation="Vertical" Margin="16,8">
+
+        <TextBlock Text="Mining Module"
+                   FontFamily="Segoe UI Semibold"
+                   FontSize="18"
+                   Foreground="#E8F3FF"
+                   Margin="0,0,0,12"/>
+
+        <!-- Toggle -->
+        <Border Background="#102A3A" BorderBrush="#2478A9" BorderThickness="1" CornerRadius="8" Padding="12,8" Margin="0,0,0,8">
+            <StackPanel Orientation="Horizontal">
+                <CheckBox x:Name="EnableMiningCheckBox"
+                          VerticalAlignment="Center"
+                          Checked="EnableMining_Changed"
+                          Unchecked="EnableMining_Changed"/>
+                <TextBlock Text="Увімкнути Mining Module (Ctrl+Shift+M)"
+                           FontFamily="Segoe UI"
+                           FontSize="13"
+                           Foreground="#E8F3FF"
+                           Margin="8,0,0,0"
+                           VerticalAlignment="Center"/>
+            </StackPanel>
+        </Border>
+
+        <!-- Cycle interval -->
+        <Border Background="#102A3A" BorderBrush="#2478A9" BorderThickness="1" CornerRadius="8" Padding="12,8" Margin="0,0,0,8">
+            <StackPanel Orientation="Vertical">
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+                    <TextBlock Text="Інтервал OCR cycle: "
+                               FontFamily="Segoe UI"
+                               FontSize="12"
+                               Foreground="#A7C6E7"
+                               VerticalAlignment="Center"/>
+                    <TextBlock x:Name="IntervalValue"
+                               Text="200 мс (5 Hz)"
+                               FontFamily="Segoe UI Semibold"
+                               FontSize="12"
+                               Foreground="#E8F3FF"
+                               VerticalAlignment="Center"/>
+                </StackPanel>
+                <Slider x:Name="IntervalSlider"
+                        Minimum="50"
+                        Maximum="1000"
+                        TickFrequency="50"
+                        IsSnapToTickEnabled="True"
+                        ValueChanged="Interval_Changed"
+                        Margin="0,4,0,0"/>
+                <TextBlock Text="Менше = частіше перевірка (більше CPU). Рекомендовано 200 мс."
+                           FontFamily="Segoe UI"
+                           FontSize="10"
+                           Foreground="#5F7E8A"
+                           Margin="0,4,0,0"/>
+            </StackPanel>
+        </Border>
+
+    </StackPanel>
+</UserControl>
