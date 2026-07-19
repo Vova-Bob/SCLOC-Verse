@@ -8,12 +8,17 @@ namespace SCLOCVerse.Services.OcrPlatform.Engines.Internal
     /// </summary>
     internal static class OcrPreprocessing
     {
-        // ImageNet normalization constants (стандарт PaddleOCR).
+        // ImageNet normalization constants для Detection (стандарт PaddleOCR det).
         // Mean = [0.485, 0.456, 0.406] × 255
-        private static readonly float[] MeanValues = { 0.485f * 255f, 0.456f * 255f, 0.406f * 255f };
+        private static readonly float[] DetMeanValues = { 0.485f * 255f, 0.456f * 255f, 0.406f * 255f };
         // Std = [0.229, 0.224, 0.225] → 1/(Std×255)
-        private static readonly float[] NormValues =
+        private static readonly float[] DetNormValues =
             { 1f / (0.229f * 255f), 1f / (0.224f * 255f), 1f / (0.225f * 255f) };
+
+        // PP-OCRv5 Recognition normalization: проста (x - 127.5) / 127.5.
+        // НЕ ImageNet! PaddleOCR rec використовує mean=0.5, std=0.5 (scale=1/255).
+        private static readonly float[] RecMeanValues = { 127.5f, 127.5f, 127.5f };
+        private static readonly float[] RecNormValues = { 1f / 127.5f, 1f / 127.5f, 1f / 127.5f };
 
         /// <summary>
         /// Resize зображення до target height × dynamic width (збереження пропорцій).
@@ -31,21 +36,22 @@ namespace SCLOCVerse.Services.OcrPlatform.Engines.Internal
         }
 
         /// <summary>
-        /// Нормалізація для Detection model (зберігає BGR порядок PaddleOCR).
-        /// Повертає NCHW tensor розміром [1, 3, H, W].
+        /// Нормалізація для Detection model.
+        /// PP-OCRv5 det використовує ImageNet mean/std. Зберігає BGR порядок.
         /// </summary>
         public static float[] NormalizeForDetection(Mat srcBgr)
         {
-            return SubtractMeanNormalize(srcBgr, MeanValues, NormValues, bgrToRgb: false);
+            return SubtractMeanNormalize(srcBgr, DetMeanValues, DetNormValues, bgrToRgb: false);
         }
 
         /// <summary>
         /// Нормалізація для Recognition model.
-        /// PP-OCRv5_rec очікує RGB порядок каналів (як усі ImageNet models).
+        /// PP-OCRv5 rec використовує mean=0.5, std=0.5 (НЕ ImageNet!).
+        /// Зберігає BGR порядок (не RGB swap, як було раніше — БАГ FIXED).
         /// </summary>
         public static float[] NormalizeForRecognition(Mat srcBgr)
         {
-            return SubtractMeanNormalize(srcBgr, MeanValues, NormValues, bgrToRgb: true);
+            return SubtractMeanNormalize(srcBgr, RecMeanValues, RecNormValues, bgrToRgb: false);
         }
 
         /// <summary>
