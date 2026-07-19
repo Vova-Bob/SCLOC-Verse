@@ -100,5 +100,15 @@ namespace SCLOCVerse.Interfaces
         /// <summary>Інтервал автоматичного натискання, мс (100–2000). Default: 1000.</summary>
         int GetAutoKeyIntervalMs();
         void SetAutoKeyIntervalMs(int value);
+
+        // --- Mining Module ---
+
+        /// <summary>Чи увімкнено Mining Module (OCR + overlay). Default: False.</summary>
+        bool GetMiningEnabled();
+        void SetMiningEnabled(bool value);
+
+        /// <summary>Інтервал OCR cycle, мс (50–1000). Default: 200 (5 Hz).</summary>
+        int GetMiningCycleIntervalMs();
+        void SetMiningCycleIntervalMs(int value);
     }
 }

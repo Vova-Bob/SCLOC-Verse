@@ -259,5 +259,30 @@ namespace SCLOCVerse.Services
             Settings.Default.AutoKeyIntervalMs = value;
             Settings.Default.Save();
         }
+
+        // --- Mining Module ---
+
+        public bool GetMiningEnabled()
+        {
+            return Settings.Default.MiningEnabled;
+        }
+
+        public void SetMiningEnabled(bool value)
+        {
+            Settings.Default.MiningEnabled = value;
+            Settings.Default.Save();
+        }
+
+        public int GetMiningCycleIntervalMs()
+        {
+            var value = Settings.Default.MiningCycleIntervalMs;
+            return value is >= 50 and <= 1000 ? value : 200;
+        }
+
+        public void SetMiningCycleIntervalMs(int value)
+        {
+            Settings.Default.MiningCycleIntervalMs = value;
+            Settings.Default.Save();
+        }
     }
 }

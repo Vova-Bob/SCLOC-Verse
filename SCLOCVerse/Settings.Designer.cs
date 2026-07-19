@@ -382,5 +382,29 @@ namespace SCLOCVerse {
                 this["AutoKeyIntervalMs"] = value;
             }
         }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool MiningEnabled {
+            get {
+                return ((bool)(this["MiningEnabled"]));
+            }
+            set {
+                this["MiningEnabled"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("200")]
+        public int MiningCycleIntervalMs {
+            get {
+                return ((int)(this["MiningCycleIntervalMs"]));
+            }
+            set {
+                this["MiningCycleIntervalMs"] = value;
+            }
+        }
     }
 }
