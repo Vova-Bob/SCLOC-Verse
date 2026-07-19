@@ -93,6 +93,7 @@
                     <Button x:Name="NavInterface"   Style="{StaticResource HubNavItem}" Content="Інтерфейс"        Tag="{x:Reference PaneInterface}"  Click="NavButton_Click"/>
                     <Button x:Name="NavHotkeys"     Style="{StaticResource HubNavItem}" Content="Гарячі клавіші"   Tag="{x:Reference PaneHotkeys}"    Click="NavButton_Click"/>
                     <Button x:Name="NavOverlay"     Style="{StaticResource HubNavItem}" Content="Накладання"        Tag="{x:Reference PaneOverlay}"    Click="NavButton_Click"/>
+                    <Button x:Name="NavMining"      Style="{StaticResource HubNavItem}" Content="Майнінг"         Tag="{x:Reference PaneMining}"     Click="NavButton_Click"/>
                     <Button x:Name="NavProfile"     Style="{StaticResource HubNavItem}" Content="Профіль"          Tag="{x:Reference PaneProfile}"    Click="NavButton_Click"/>
                     <Button x:Name="NavAbout"       Style="{StaticResource HubNavItem}" Content="Про програму"     Tag="{x:Reference PaneAbout}"      Click="NavButton_Click"/>
                 </StackPanel>
@@ -108,6 +109,7 @@
                     Icon="🖼" Message="Тема, мова застосунку та масштаб інтерфейсу з'являться тут пізніше."/>
                 <hub:HotkeysSettingsPane x:Name="PaneHotkeys" Visibility="Collapsed"/>
                 <hub:OverlaySettingsPane x:Name="PaneOverlay" Visibility="Collapsed"/>
+                <hub:MiningSettingsPane x:Name="PaneMining" Visibility="Collapsed"/>
                 <hub:SettingsPlaceholderPane x:Name="PaneProfile" Visibility="Collapsed" Title="Профіль"
                     Icon="☁" Message="Синхронізація налаштувань, резервне копіювання та експорт/імпорт з'являться тут пізніше."/>
                 <hub:SettingsPlaceholderPane x:Name="PaneAbout" Visibility="Collapsed" Title="Про програму"

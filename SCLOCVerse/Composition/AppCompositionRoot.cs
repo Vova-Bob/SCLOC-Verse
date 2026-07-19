@@ -395,7 +395,9 @@ namespace SCLOCVerse.Composition
                 _notificationRouter,
                 _toastNotificationService,
                 _antiAfkService,
-                _autoKeyService);
+                _autoKeyService,
+                _miningRecognition,
+                _miningOverlay);
         }
 
         private static string GetSupabaseUrl()

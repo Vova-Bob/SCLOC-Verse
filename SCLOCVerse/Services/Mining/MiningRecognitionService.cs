@@ -130,16 +130,18 @@ namespace SCLOCVerse.Services.Mining
 
         /// <summary>
         /// Зареєструвати стандартні регіони Mining Module.
-        /// Реальні координати — після Calibration (T9.x).
-        /// Зараз placeholder для pipeline тестування.
+        /// Координати визначаються через MiningRegionDefaults.GetForCurrentResolution()
+        /// — auto-detect за height екрана (1080p / 1440p / 4K).
         /// </summary>
         private void RegisterDefaultRegions()
         {
+            var (materialCode, clusterCount) = MiningRegionDefaults.GetForCurrentResolution();
+
             _regionRegistry.Register(new OcrRegion
             {
                 Id = MaterialAmountRegionId,
                 Name = "Mining Material Code",
-                ScreenRect = new System.Windows.Rect(100, 200, 80, 24),
+                ScreenRect = materialCode,
                 OcrOptions = OcrOptions.DigitsOnly
             });
 
@@ -147,7 +149,7 @@ namespace SCLOCVerse.Services.Mining
             {
                 Id = ClusterCountRegionId,
                 Name = "Mining Cluster Count",
-                ScreenRect = new System.Windows.Rect(100, 230, 60, 24),
+                ScreenRect = clusterCount,
                 OcrOptions = OcrOptions.DigitsOnly
             });
         }

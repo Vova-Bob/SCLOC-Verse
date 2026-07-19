@@ -37,13 +37,13 @@ namespace SCLOCVerse.Controls
             _panes = new FrameworkElement[]
             {
                 PaneGeneral, PaneLocalization, PaneInterface,
-                PaneHotkeys, PaneOverlay, PaneProfile, PaneAbout
+                PaneHotkeys, PaneOverlay, PaneMining, PaneProfile, PaneAbout
             };
 
             _navButtons = new Button[]
             {
                 NavGeneral, NavLocalization, NavInterface,
-                NavHotkeys, NavOverlay, NavProfile, NavAbout
+                NavHotkeys, NavOverlay, NavMining, NavProfile, NavAbout
             };
 
             // Типовий активний пункт — «Загальне».
@@ -109,6 +109,9 @@ namespace SCLOCVerse.Controls
 
         /// <summary>Доступ до панелі «Overlay».</summary>
         public OverlaySettingsPane? OverlayPane => PaneOverlay;
+
+        /// <summary>Доступ до панелі «Майнінг».</summary>
+        public MiningSettingsPane? MiningPane => PaneMining;
 
         /// <summary>Доступ до панелі «Локалізація» (плейсхолдер).</summary>
         public SettingsPlaceholderPane LocalizationPane => PaneLocalization;
