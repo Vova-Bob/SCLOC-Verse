@@ -136,7 +136,8 @@ namespace SCLOCVerse.Services.OcrPlatform.Engines.Internal
             }
 
             // Створюємо бінарну маску: pixel = 255 якщо pred ≥ boxThresh.
-            var cbufMat = new Mat(rows, cols, MatType.CV_8UC1);
+            // H1: using для deterministic Mat disposal (запобігає native memory accumulation).
+            using var cbufMat = new Mat(rows, cols, MatType.CV_8UC1);
             for (var y = 0; y < rows; y++)
             {
                 for (var x = 0; x < cols; x++)
@@ -147,7 +148,7 @@ namespace SCLOCVerse.Services.OcrPlatform.Engines.Internal
             }
 
             // Dilate для з'єднання близьких компонентів.
-            var dilateMat = new Mat();
+            using var dilateMat = new Mat();
             var element = Cv2.GetStructuringElement(MorphShapes.Rect, new Size(2, 2));
             Cv2.Dilate(cbufMat, dilateMat, element);
 

@@ -9,10 +9,13 @@ namespace SCLOCVerse.Services.Mining.Overlay
     /// Реалізація <see cref="IMiningOverlayService"/> — керує життєвим циклом
     /// <see cref="MiningOverlayWindow"/> та оновлює вміст з MiningState.
     /// UI-потік: усі операції з вікном виконуються через Application.Current.Dispatcher.
+    ///
+    /// H1: Реалізує IDisposable для коректного закриття вікна при shutdown.
     /// </summary>
-    public sealed class MiningOverlayService : IMiningOverlayService
+    public sealed class MiningOverlayService : IMiningOverlayService, IDisposable
     {
         private MiningOverlayWindow? _window;
+        private bool _disposed;
 
         /// <inheritdoc />
         public bool IsVisible => _window?.IsVisible ?? false;
@@ -67,6 +70,36 @@ namespace SCLOCVerse.Services.Mining.Overlay
             }
 
             _window?.UpdateState(state);
+        }
+
+        /// <summary>
+        /// H1: Коректне закриття overlay-вікна при shutdown.
+        /// Викликається з AppCompositionRoot.Dispose().
+        /// </summary>
+        public void Dispose()
+        {
+            if (_disposed) return;
+
+            var dispatcher = Application.Current?.Dispatcher;
+            if (dispatcher is not null)
+            {
+                if (!dispatcher.CheckAccess())
+                {
+                    dispatcher.Invoke(new Action(Dispose));
+                    return;
+                }
+            }
+
+            try
+            {
+                _window?.Close();
+                _window = null;
+            }
+            catch
+            {
+                // Вікно може бути вже закрито — ігноруємо.
+            }
+            _disposed = true;
         }
     }
 }

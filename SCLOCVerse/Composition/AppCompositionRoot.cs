@@ -270,6 +270,10 @@ namespace SCLOCVerse.Composition
 
             // OCR Coordinator — stop timer + dispose (після Mining disable).
             try { _miningRecognition?.Disable(); } catch { /* ignore */ }
+            if (_miningOverlay is IDisposable miningOverlayDisposable)
+            {
+                try { miningOverlayDisposable.Dispose(); } catch { /* ignore */ }
+            }
             try { _ocrCoordinator?.Dispose(); } catch { /* ignore */ }
 
             // Pipe-сервер єдиного екземпляра зупиняємо раніше за UI-ресурси:

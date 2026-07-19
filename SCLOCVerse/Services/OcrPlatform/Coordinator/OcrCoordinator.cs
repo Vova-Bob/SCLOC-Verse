@@ -136,6 +136,11 @@ namespace SCLOCVerse.Services.OcrPlatform.Coordinator
             using var preprocessed = _imagePipeline.Process(inputMat, region.PipelineOptions);
 
             // Крок 4: OCR Engine.
+            // H1 WARNING: preprocessed Mat передається в RecognizeAsync (Task.Run).
+            // Поточний код використовує .GetAwaiter().GetResult() (синхронне блокування),
+            // тому Mat НЕ звільниться до завершення OCR — використання безпечне.
+            // Якщо колись змінено на await — Mat буде disposed під час inference.
+            // У цьому випадку: скопіювати Mat перед передачею: using var ocrMat = preprocessed.Clone();
             var rawResult = _ocrEngine.RecognizeAsync(preprocessed, region.OcrOptions).GetAwaiter().GetResult();
 
             // Крок 5: Validate (Confidence + Consensus + Field Lock).

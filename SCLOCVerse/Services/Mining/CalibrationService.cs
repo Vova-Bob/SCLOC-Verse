@@ -111,9 +111,16 @@ namespace SCLOCVerse.Services.Mining
                 }
             };
 
-            window.Show();
-            done.Wait();
-            window.Close();
+            // H1: try/finally гарантує закриття вікна навіть при exception/interrupt.
+            try
+            {
+                window.Show();
+                done.Wait();
+            }
+            finally
+            {
+                window.Close();
+            }
 
             return selected;
         }
