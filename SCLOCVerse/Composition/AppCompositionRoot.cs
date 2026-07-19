@@ -14,6 +14,7 @@ using SCLOCVerse.Services.LiaServices;
 using SCLOCVerse.Services.LocalizationServices;
 using SCLOCVerse.Services.Notifications;
 using SCLOCVerse.Services.Observability;
+using SCLOCVerse.Services.OcrPlatform.Captures;
 using SCLOCVerse.Services.Tray;
 using SCLOCVerse.ViewModels;
 using System.Net.Http;
@@ -57,6 +58,10 @@ namespace SCLOCVerse.Composition
         private readonly IToastNotificationService _toastNotificationService;
         private readonly IAntiAfkService _antiAfkService;
         private readonly IAutoKeyService _autoKeyService;
+
+        // OCR Platform — Services/OcrPlatform/* (додається етапами в Epic 2-6).
+        // Наразі зареєстровано лише Screen Capture (Epic 2). Решта — в Epic 3-6.
+        private readonly IScreenCaptureService _screenCaptureService;
 
         public AppCompositionRoot()
         {
@@ -113,6 +118,11 @@ namespace SCLOCVerse.Composition
             // Auto Key: 2 залежності (хоткеї + налаштування). Stateless foreground-гейт,
             // повністю незалежний від Anti-AFK та Hangar Timer.
             _autoKeyService = new AutoKeyService(_hotkeyService, _preferencesService);
+
+            // OCR Platform — Screen Capture (Epic 2). GDI CopyFromScreen — default,
+            // працює з borderless fullscreen (типовий режим Star Citizen).
+            // WindowsGraphicsCaptureService (exclusive fullscreen) — future enhancement.
+            _screenCaptureService = new GdiScreenCaptureService();
 
             _applicationUpdateService = new ApplicationUpdateService(
                 "Vova-Bob",
@@ -237,6 +247,9 @@ namespace SCLOCVerse.Composition
         public IHotkeyService HotkeyService => _hotkeyService;
         public IAntiAfkService AntiAfkService => _antiAfkService;
         public IAutoKeyService AutoKeyService => _autoKeyService;
+
+        /// <summary>Сервіс захоплення екрана для OCR Platform.</summary>
+        public IScreenCaptureService ScreenCapture => _screenCaptureService;
 
         /// <summary>Tray-сервіс для зовнішнього використання (наприклад, App_OnExit).</summary>
         public ITrayService TrayService => _trayService;
