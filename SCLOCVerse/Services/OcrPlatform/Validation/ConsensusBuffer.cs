@@ -57,7 +57,9 @@ namespace SCLOCVerse.Services.OcrPlatform.Validation
                     .ToList();
 
                 var best = groups[0];
-                var required = (snapshot.Length + 1) / 2; // ceil((N+1)/2) — strict majority
+                // Strict majority за CAPACITY (напр. 5 кадрів потребують 3 однакових),
+                // навіть якщо buffer не заповнений (1 з 1 = INSUFFICIENT для capacity=5).
+                var required = (_capacity + 1) / 2;
                 if (best.Count < required) return null;
 
                 return best.Text;
