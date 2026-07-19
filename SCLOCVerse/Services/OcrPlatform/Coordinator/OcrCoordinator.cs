@@ -1,7 +1,9 @@
+using OpenCvSharp;
 using SCLOCVerse.Helpers;
 using SCLOCVerse.Interfaces;
 using SCLOCVerse.Models.OcrPlatform;
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 
 namespace SCLOCVerse.Services.OcrPlatform.Coordinator
 {
@@ -95,15 +97,105 @@ namespace SCLOCVerse.Services.OcrPlatform.Coordinator
                 var regions = _regionRegistry.GetActiveRegions();
                 if (regions.Count == 0) return;
 
-                // T6.3 — pipeline OCR для кожного регіону.
-                // T6.4 — publish event з результатами.
-                Debug.WriteLine("[OcrCoordinator] Cycle: {0} active regions", regions.Count);
+                // T6.3: Повний pipeline для кожного регіону (parallel).
+                // Увага: Capture + OCR — CPU/GPU-bound, не на UI thread.
+                Parallel.ForEach(regions, region =>
+                {
+                    try
+                    {
+                        ProcessRegion(region);
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.WriteLine("[OcrCoordinator] Region '{0}' failed: {1}", region.Id, ex.Message);
+                    }
+                });
             }
             catch (Exception ex)
             {
                 // Critical: Timer callback не повинен кидати назовні — це вбиває Timer.
                 Debug.WriteLine("[OcrCoordinator] Cycle exception: {0}", ex.Message);
             }
+        }
+
+        /// <summary>
+        /// Обробити один регіон: capture → preprocess → OCR → validate → publish event.
+        /// </summary>
+        private void ProcessRegion(OcrRegion region)
+        {
+            // Крок 1: Capture — BitmapSource → OpenCV Mat (BGRA → BGR).
+            // BitmapSource Frozen НЕ потребує Dispose (маркерований через .Freeze()).
+            var capturedBitmap = _screenCapture.CaptureRegionAsync(region.ScreenRect).GetAwaiter().GetResult();
+            using var inputMat = BitmapSourceToMat(capturedBitmap);
+
+            // Крок 2: Compute crop fingerprint (для Field Lock).
+            // Простий hash: сума байтів у підрядку для швидкості.
+            var fingerprint = ComputeFingerprint(inputMat);
+
+            // Крок 3: Preprocess — Greyscale → Resize → Adaptive Threshold.
+            using var preprocessed = _imagePipeline.Process(inputMat, region.PipelineOptions);
+
+            // Крок 4: OCR Engine.
+            var rawResult = _ocrEngine.RecognizeAsync(preprocessed, region.OcrOptions).GetAwaiter().GetResult();
+
+            // Крок 5: Validate (Confidence + Consensus + Field Lock).
+            var validated = _resultValidator.Validate(region.Id, rawResult, fingerprint, region.OcrOptions);
+
+            // Крок 6: Publish event з стабілізованим результатом.
+            var regionResult = new OcrRegionResult
+            {
+                RegionId = region.Id,
+                Result = validated,
+                CapturedAtUtc = DateTime.UtcNow
+            };
+            RaiseOcrRegionReady(regionResult);
+        }
+
+        /// <summary>
+        /// Конвертація BitmapSource (WPF) → OpenCvSharp Mat (BGRA → BGR).
+        /// Frozen BitmapSource → copy pixel data → wrap у Mat через unsafe pointer.
+        /// </summary>
+        private static Mat BitmapSourceToMat(System.Windows.Media.Imaging.BitmapSource bitmap)
+        {
+            var width = bitmap.PixelWidth;
+            var height = bitmap.PixelHeight;
+            var stride = width * (bitmap.Format.BitsPerPixel + 7) / 8;
+            var pixels = new byte[stride * height];
+            bitmap.CopyPixels(pixels, stride, 0);
+
+            // Створюємо Mat 8UC4 вручну з піксельних даних.
+            var bgraMat = new Mat(height, width, MatType.CV_8UC4);
+            Marshal.Copy(pixels, 0, bgraMat.Data, pixels.Length);
+
+            // Переводимо в BGR (відкидаємо alpha).
+            var bgr = new Mat();
+            Cv2.CvtColor(bgraMat, bgr, ColorConversionCodes.BGRA2BGR);
+            bgraMat.Dispose();
+            return bgr;
+        }
+
+        /// <summary>
+        /// Простий fingerprint для Field Lock: hash суми пікселів по block 8×8.
+        /// Lightweight (не повний NCC) — достатньо для виявлення змін.
+        /// </summary>
+        private static long ComputeFingerprint(Mat mat)
+        {
+            // Resize до 8×8 для стабільного hash.
+            using var thumb = new Mat();
+            Cv2.Resize(mat, thumb, new Size(8, 8), 0, 0, InterpolationFlags.Area);
+            using var gray = new Mat();
+            Cv2.CvtColor(thumb, gray, ColorConversionCodes.BGR2GRAY);
+
+            long hash = 0;
+            for (var y = 0; y < 8; y++)
+            {
+                for (var x = 0; x < 8; x++)
+                {
+                    var pixel = gray.At<byte>(y, x);
+                    hash = hash * 31 + pixel;
+                }
+            }
+            return Math.Abs(hash);
         }
 
         /// <summary>
