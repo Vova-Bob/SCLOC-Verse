@@ -15,6 +15,7 @@ using SCLOCVerse.Services.LocalizationServices;
 using SCLOCVerse.Services.Notifications;
 using SCLOCVerse.Services.Observability;
 using SCLOCVerse.Services.OcrPlatform.Captures;
+using SCLOCVerse.Services.OcrPlatform.Engines;
 using SCLOCVerse.Services.Tray;
 using SCLOCVerse.ViewModels;
 using System.Net.Http;
@@ -60,8 +61,10 @@ namespace SCLOCVerse.Composition
         private readonly IAutoKeyService _autoKeyService;
 
         // OCR Platform — Services/OcrPlatform/* (додається етапами в Epic 2-6).
-        // Наразі зареєстровано лише Screen Capture (Epic 2). Решта — в Epic 3-6.
+        // Наразі зареєстровано Screen Capture (Epic 2) + PaddleOcrEngine (Epic 4).
+        // Решта — в Epic 5-6.
         private readonly IScreenCaptureService _screenCaptureService;
+        private readonly IOcrEngine _ocrEngine;
 
         public AppCompositionRoot()
         {
@@ -123,6 +126,15 @@ namespace SCLOCVerse.Composition
             // працює з borderless fullscreen (типовий режим Star Citizen).
             // WindowsGraphicsCaptureService (exclusive fullscreen) — future enhancement.
             _screenCaptureService = new GdiScreenCaptureService();
+
+            // OCR Platform — PaddleOCR Engine (Epic 4).
+            // PP-OCRv5_mobile ONNX моделі через Direct ONNX Runtime.
+            // Моделі копіюються в output directory (див. csproj: Resources/OcrModels/).
+            var modelsDir = System.IO.Path.Combine(AppContext.BaseDirectory, "Resources", "OcrModels");
+            _ocrEngine = new PaddleOcrEngine(
+                detModelPath: System.IO.Path.Combine(modelsDir, "ch_PP-OCRv5_mobile_det.onnx"),
+                recModelPath: System.IO.Path.Combine(modelsDir, "ch_PP-OCRv5_rec_mobile_infer.onnx"),
+                dictPath: System.IO.Path.Combine(modelsDir, "ppocrv5_dict.txt"));
 
             _applicationUpdateService = new ApplicationUpdateService(
                 "Vova-Bob",
@@ -187,6 +199,12 @@ namespace SCLOCVerse.Composition
             // тож глушимо до dispose auth-композиції (reverse-order).
             try { _telemetryClient?.Dispose(); } catch { /* ignore */ }
 
+            // OCR Platform — dispose перед UI/auth залежностями (ONNX sessions важкі).
+            if (_ocrEngine is IDisposable ocrDisposable)
+            {
+                try { ocrDisposable.Dispose(); } catch { /* ignore */ }
+            }
+
             // Pipe-сервер єдиного екземпляра зупиняємо раніше за UI-ресурси:
             // інакше другий процес може підключитись у момент, коли UI вже
             // диспознуто, і отримати некоректну відповідь. IAsyncDisposable →
@@ -250,6 +268,9 @@ namespace SCLOCVerse.Composition
 
         /// <summary>Сервіс захоплення екрана для OCR Platform.</summary>
         public IScreenCaptureService ScreenCapture => _screenCaptureService;
+
+        /// <summary>OCR Engine (PaddleOCR PP-OCRv5 via ONNX Runtime) для OCR Platform.</summary>
+        public IOcrEngine OcrEngine => _ocrEngine;
 
         /// <summary>Tray-сервіс для зовнішнього використання (наприклад, App_OnExit).</summary>
         public ITrayService TrayService => _trayService;
