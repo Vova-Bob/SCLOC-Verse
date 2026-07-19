@@ -24,7 +24,7 @@ namespace SCLOCVerse.Services.OcrPlatform.Validation
         {
             get
             {
-                lock (_lock) return _lockedFingerprint.HasValue;
+                lock (_lock) return _cachedFingerprint.HasValue;
             }
         }
 
