@@ -65,9 +65,14 @@ namespace SCLOCVerse.Services.OcrPlatform.Coordinator
             ObjectDisposedException.ThrowIf(_disposed, this);
             if (Interlocked.Exchange(ref _isRunning, 1) == 1) return; // вже запущений
 
+            // H2: One-shot timer — period = Timeout.Infinite.
+            // Timer викликає OnCycleTick ОДИН раз через _cycleInterval, потім НЕ повторює.
+            // Re-arm виконується в кінці OnCycleTick після завершення Parallel.ForEach.
+            // Це запобігає re-entrant overlap: якщо cycle > interval — наступний cycle
+            // просто почекає завершення поточного, а не виконуватиметься паралельно.
             _cycleTimer?.Dispose();
-            _cycleTimer = new Timer(OnCycleTick, null, _cycleInterval, _cycleInterval);
-            Debug.WriteLine("[OcrCoordinator] Started — interval {0}ms", _cycleInterval.TotalMilliseconds);
+            _cycleTimer = new Timer(OnCycleTick, null, _cycleInterval, Timeout.InfiniteTimeSpan);
+            Debug.WriteLine("[OcrCoordinator] Started — interval {0}ms (one-shot)", _cycleInterval.TotalMilliseconds);
         }
 
         /// <inheritdoc />
@@ -115,6 +120,22 @@ namespace SCLOCVerse.Services.OcrPlatform.Coordinator
             {
                 // Critical: Timer callback не повинен кидати назовні — це вбиває Timer.
                 Debug.WriteLine("[OcrCoordinator] Cycle exception: {0}", ex.Message);
+            }
+            finally
+            {
+                // H2: Re-arm one-shot timer для наступного cycle.
+                // Якщо Stop() був викликаний під час cycle — не re-arm (IsRunning == false).
+                if (!_disposed && Interlocked.CompareExchange(ref _isRunning, 0, 0) == 1)
+                {
+                    try
+                    {
+                        _cycleTimer?.Change(_cycleInterval, Timeout.InfiniteTimeSpan);
+                    }
+                    catch (ObjectDisposedException)
+                    {
+                        // Timer disposed під час cycle — ignore.
+                    }
+                }
             }
         }
 
