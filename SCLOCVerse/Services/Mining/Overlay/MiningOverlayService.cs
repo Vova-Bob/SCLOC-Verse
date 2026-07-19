@@ -32,9 +32,23 @@ namespace SCLOCVerse.Services.Mining.Overlay
                 return;
             }
 
-            if (_window is null || !_window.IsVisible)
+            try
             {
-                _window ??= new MiningOverlayWindow();
+                // Якщо вікно закрите або null — створюємо нове (AutoKey pattern).
+                if (_window is null)
+                {
+                    _window = new MiningOverlayWindow();
+                }
+
+                if (!_window.IsVisible)
+                {
+                    _window.Show();
+                }
+            }
+            catch
+            {
+                // Вікно могло бути закрите зовні — пересоздаємо.
+                _window = new MiningOverlayWindow();
                 _window.Show();
             }
         }
@@ -92,8 +106,12 @@ namespace SCLOCVerse.Services.Mining.Overlay
 
             try
             {
-                _window?.Close();
-                _window = null;
+                if (_window is not null)
+                {
+                    _window.AllowClose();
+                    _window.Close();
+                    _window = null;
+                }
             }
             catch
             {

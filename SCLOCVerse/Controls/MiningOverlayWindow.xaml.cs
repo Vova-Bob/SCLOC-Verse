@@ -6,10 +6,15 @@ using System.Windows.Media;
 
 namespace SCLOCVerse.Controls
 {
+    using System.Diagnostics;
+
     /// <summary>
     /// Overlay-вікно для Mining Module: компактний badge з матеріалом + кластером,
     /// click-through (WS_EX_TRANSPARENT | WS_EX_LAYERED), Topmost.
     /// Незалежний життєвий цикл (як AutoKeyIndicatorWindow).
+    ///
+    /// Forensic: Closing handler запобігає закриттю через Alt+F4 або system message.
+    /// _allowClose flag дозволяє явне закриття тільки з Dispose().
     /// </summary>
     public partial class MiningOverlayWindow : Window
     {
@@ -18,6 +23,8 @@ namespace SCLOCVerse.Controls
         private const int GwlExStyle = -20;
         private const int WsExLayered = 0x80000;
         private const int WsExTransparent = 0x20;
+
+        private bool _allowClose;
 
         [DllImport("user32.dll", EntryPoint = "GetWindowLong")]
         private static extern int GetWindowLong32(IntPtr hWnd, int nIndex);
@@ -45,17 +52,35 @@ namespace SCLOCVerse.Controls
         public MiningOverlayWindow()
         {
             InitializeComponent();
-            Loaded += OnLoaded;
+            SourceInitialized += OnSourceInitialized;
+            Closing += OnClosing;
         }
 
-        private void OnLoaded(object sender, RoutedEventArgs e)
+        private void OnSourceInitialized(object? sender, EventArgs e)
         {
-            // TopRight позиція за замовчуванням (не перетинається з AutoKey TopLeft).
             var screen = SystemParameters.WorkArea;
             Left = screen.Width - Width - EdgeMargin;
             Top = EdgeMargin;
-
             EnableClickThrough();
+        }
+
+        /// <summary>
+        /// Forensic: запобігти закриттю через Alt+F4 або system close message.
+        /// Явне закриття — лише через AllowClose() + Close().
+        /// </summary>
+        private void OnClosing(object? sender, System.ComponentModel.CancelEventArgs e)
+        {
+            if (!_allowClose)
+            {
+                e.Cancel = true;
+                Debug.WriteLine("[MiningOverlayWindow] Closing cancelled (not allowed). Source: Alt+F4 or system?");
+            }
+        }
+
+        /// <summary>Дозволити явне закриття (викликається з MiningOverlayService.Dispose).</summary>
+        public void AllowClose()
+        {
+            _allowClose = true;
         }
 
         /// <summary>
