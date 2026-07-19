@@ -141,13 +141,18 @@ namespace SCLOCVerse.Services.OcrPlatform.Coordinator
 
         /// <summary>
         /// Обробити один регіон: capture → preprocess → OCR → validate → publish event.
+        /// H4: Stopwatch timing для кожного кроку (Debug.WriteLine).
         /// </summary>
         private void ProcessRegion(OcrRegion region)
         {
+            var sw = System.Diagnostics.Stopwatch.StartNew();
+            long tCapture, tPreprocess, tOcr, tValidate;
+
             // Крок 1: Capture — BitmapSource → OpenCV Mat (BGRA → BGR).
             // BitmapSource Frozen НЕ потребує Dispose (маркерований через .Freeze()).
             var capturedBitmap = _screenCapture.CaptureRegionAsync(region.ScreenRect).GetAwaiter().GetResult();
             using var inputMat = BitmapSourceToMat(capturedBitmap);
+            tCapture = sw.ElapsedMilliseconds;
 
             // Крок 2: Compute crop fingerprint (для Field Lock).
             // Простий hash: сума байтів у підрядку для швидкості.
@@ -155,17 +160,27 @@ namespace SCLOCVerse.Services.OcrPlatform.Coordinator
 
             // Крок 3: Preprocess — Greyscale → Resize → Adaptive Threshold.
             using var preprocessed = _imagePipeline.Process(inputMat, region.PipelineOptions);
+            tPreprocess = sw.ElapsedMilliseconds - tCapture;
 
             // Крок 4: OCR Engine.
-            // H1 WARNING: preprocessed Mat передається в RecognizeAsync (Task.Run).
+            // H1 Warning: preprocessed Mat передається в RecognizeAsync (Task.Run).
             // Поточний код використовує .GetAwaiter().GetResult() (синхронне блокування),
             // тому Mat НЕ звільниться до завершення OCR — використання безпечне.
             // Якщо колись змінено на await — Mat буде disposed під час inference.
             // У цьому випадку: скопіювати Mat перед передачею: using var ocrMat = preprocessed.Clone();
             var rawResult = _ocrEngine.RecognizeAsync(preprocessed, region.OcrOptions).GetAwaiter().GetResult();
+            tOcr = sw.ElapsedMilliseconds - tCapture - tPreprocess;
 
             // Крок 5: Validate (Confidence + Consensus + Field Lock).
             var validated = _resultValidator.Validate(region.Id, rawResult, fingerprint, region.OcrOptions);
+            tValidate = sw.ElapsedMilliseconds - tCapture - tPreprocess - tOcr;
+            sw.Stop();
+
+            // H4: Профілювання — вивід timing per region per cycle.
+            var total = tCapture + tPreprocess + tOcr + tValidate;
+            System.Diagnostics.Debug.WriteLine(
+                "[OcrCoordinator] '{0}': capture={1}ms preprocess={2}ms ocr={3}ms validate={4}ms total={5}ms",
+                region.Id, tCapture, tPreprocess, tOcr, tValidate, total);
 
             // Крок 6: Publish event з стабілізованим результатом.
             var regionResult = new OcrRegionResult
