@@ -1,7 +1,8 @@
 namespace SCLOCVerse.Services.InputSystem
 {
     /// <summary>
-    /// Ідентифікатори глобальних гарячих клавіш Hangar Timer.
+    /// Ідентифікатори глобальних гарячих клавіш SCLOC-Verse
+    /// (Hangar Timer, Anti-AFK, Auto Key, Mining).
     /// </summary>
     public static class HotkeyIds
     {
@@ -79,5 +80,10 @@ namespace SCLOCVerse.Services.InputSystem
         /// Увімкнути / Вимкнути Auto Key.
         /// </summary>
         public static HotkeyId AutoKeyToggle { get; } = new("AutoKey.Toggle");
+
+        /// <summary>
+        /// Увімкнути / Вимкнути Mining Module (overlay + OCR цикл).
+        /// </summary>
+        public static HotkeyId MiningToggle { get; } = new("Mining.Toggle");
     }
 }
