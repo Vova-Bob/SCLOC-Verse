@@ -12,10 +12,16 @@ using SCLOCVerse.Services.HangarTimer;
 using SCLOCVerse.Services.InputSystem;
 using SCLOCVerse.Services.LiaServices;
 using SCLOCVerse.Services.LocalizationServices;
+using SCLOCVerse.Services.Mining;
+using SCLOCVerse.Services.Mining.Overlay;
+using SCLOCVerse.Services.Mining.Signatures;
 using SCLOCVerse.Services.Notifications;
 using SCLOCVerse.Services.Observability;
 using SCLOCVerse.Services.OcrPlatform.Captures;
 using SCLOCVerse.Services.OcrPlatform.Engines;
+using SCLOCVerse.Services.OcrPlatform.Coordinator;
+using SCLOCVerse.Services.OcrPlatform.Pipeline;
+using SCLOCVerse.Services.OcrPlatform.Validation;
 using SCLOCVerse.Services.Tray;
 using SCLOCVerse.ViewModels;
 using System.Net.Http;
@@ -60,11 +66,20 @@ namespace SCLOCVerse.Composition
         private readonly IAntiAfkService _antiAfkService;
         private readonly IAutoKeyService _autoKeyService;
 
-        // OCR Platform — Services/OcrPlatform/* (додається етапами в Epic 2-6).
-        // Наразі зареєстровано Screen Capture (Epic 2) + PaddleOcrEngine (Epic 4).
-        // Решта — в Epic 5-6.
+        // OCR Platform — Services/OcrPlatform/* (Epic 2-6 завершено).
         private readonly IScreenCaptureService _screenCaptureService;
         private readonly IOcrEngine _ocrEngine;
+
+        // OCR Platform — Coordinator + Validation + Region Registry.
+        private readonly IOcrRegionRegistry _ocrRegionRegistry;
+        private readonly IImagePipeline _imagePipeline;
+        private readonly IResultValidator _resultValidator;
+        private readonly IOcrCoordinator _ocrCoordinator;
+
+        // Mining Module (Epic 7) — перший consumer OCR Platform.
+        private readonly IMiningSignatureDatabase _miningSignatures;
+        private readonly IMiningRecognitionService _miningRecognition;
+        private readonly IMiningOverlayService _miningOverlay;
 
         public AppCompositionRoot()
         {
@@ -136,6 +151,54 @@ namespace SCLOCVerse.Composition
                 recModelPath: System.IO.Path.Combine(modelsDir, "ch_PP-OCRv5_rec_mobile_infer.onnx"),
                 dictPath: System.IO.Path.Combine(modelsDir, "ppocrv5_dict.txt"));
 
+            // OCR Platform — Pipeline + Validation + Coordinator (Epic 3-6).
+            _imagePipeline = new DefaultImagePipeline();
+            _resultValidator = new ResultValidator();
+            _ocrRegionRegistry = new OcrRegionRegistry();
+            _ocrCoordinator = new OcrCoordinator(
+                _ocrRegionRegistry,
+                _screenCaptureService,
+                _imagePipeline,
+                _ocrEngine,
+                _resultValidator);
+
+            // Mining Module (Epic 7) — перший consumer OCR Platform.
+            _miningSignatures = new MiningSignatureDatabase();
+            _miningRecognition = new MiningRecognitionService(
+                _miningSignatures,
+                _ocrCoordinator,
+                _ocrRegionRegistry);
+            _miningOverlay = new MiningOverlayService();
+
+            // Wiring: MiningRecognition.StateChanged → MiningOverlay.UpdateState.
+            _miningRecognition.StateChanged += (sender, state) => _miningOverlay.UpdateState(state);
+
+            // Wiring: Mining hotkey toggle (Ctrl+Shift+M за замовчуванням).
+            // Вмикає/вимикає MiningRecognitionService + Overlay.
+            _hotkeyService.Register(new HotkeyDefinition
+            {
+                Id = HotkeyIds.MiningToggle,
+                DefaultGesture = new HotkeyGesture(HotkeyModifiers.Control | HotkeyModifiers.Shift, HotkeyKey.M),
+                Description = "Увімкнути/Вимкнути Mining Module",
+                Handler = _ =>
+                {
+                    if (_miningRecognition.IsEnabled)
+                    {
+                        _miningRecognition.Disable();
+                        _miningOverlay.Hide();
+                    }
+                    else
+                    {
+                        _miningRecognition.Enable();
+                        _miningOverlay.Show();
+                    }
+                    return ValueTask.CompletedTask;
+                }
+            });
+
+            // TODO T9.2: Зареєструвати actual SC HUD координати для регіонів (зараз placeholder).
+            // TODO T9.1: Calibration UI для вибору регіонів користувачем.
+
             _applicationUpdateService = new ApplicationUpdateService(
                 "Vova-Bob",
                 "SCLOC-Verse",
@@ -205,6 +268,10 @@ namespace SCLOCVerse.Composition
                 try { ocrDisposable.Dispose(); } catch { /* ignore */ }
             }
 
+            // OCR Coordinator — stop timer + dispose (після Mining disable).
+            try { _miningRecognition?.Disable(); } catch { /* ignore */ }
+            try { _ocrCoordinator?.Dispose(); } catch { /* ignore */ }
+
             // Pipe-сервер єдиного екземпляра зупиняємо раніше за UI-ресурси:
             // інакше другий процес може підключитись у момент, коли UI вже
             // диспознуто, і отримати некоректну відповідь. IAsyncDisposable →
@@ -271,6 +338,18 @@ namespace SCLOCVerse.Composition
 
         /// <summary>OCR Engine (PaddleOCR PP-OCRv5 via ONNX Runtime) для OCR Platform.</summary>
         public IOcrEngine OcrEngine => _ocrEngine;
+
+        /// <summary>Координатор OCR циклу (timer-driven, foreground-gated).</summary>
+        public IOcrCoordinator OcrCoordinator => _ocrCoordinator;
+
+        /// <summary>Реєстр регіонів екрана для OCR.</summary>
+        public IOcrRegionRegistry OcrRegionRegistry => _ocrRegionRegistry;
+
+        /// <summary>Mining recognition service (перший consumer OCR Platform).</summary>
+        public IMiningRecognitionService MiningRecognition => _miningRecognition;
+
+        /// <summary>Mining overlay service (UI badge).</summary>
+        public IMiningOverlayService MiningOverlay => _miningOverlay;
 
         /// <summary>Tray-сервіс для зовнішнього використання (наприклад, App_OnExit).</summary>
         public ITrayService TrayService => _trayService;
