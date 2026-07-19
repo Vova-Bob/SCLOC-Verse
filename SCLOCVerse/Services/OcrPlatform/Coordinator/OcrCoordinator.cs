@@ -1,5 +1,6 @@
 using SCLOCVerse.Helpers;
 using SCLOCVerse.Interfaces;
+using SCLOCVerse.Models.OcrPlatform;
 using System.Diagnostics;
 
 namespace SCLOCVerse.Services.OcrPlatform.Coordinator
