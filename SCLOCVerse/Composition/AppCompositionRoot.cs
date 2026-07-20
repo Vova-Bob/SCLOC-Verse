@@ -146,13 +146,13 @@ namespace SCLOCVerse.Composition
             _screenCaptureService = new GdiScreenCaptureService();
 
             // OCR Platform — PaddleOCR Engine (Epic 4).
-            // PP-OCRv5_mobile ONNX моделі через Direct ONNX Runtime.
-            // Моделі копіюються в output directory (див. csproj: Resources/OcrModels/).
+            // PP-OCRv6_small ONNX моделі через Direct ONNX Runtime.
+            // v6: покращене розпізнавання цифрових дисплеїв, 50 мов, швидший inference.
             var modelsDir = System.IO.Path.Combine(AppContext.BaseDirectory, "Resources", "OcrModels");
             _ocrEngine = new PaddleOcrEngine(
-                detModelPath: System.IO.Path.Combine(modelsDir, "ch_PP-OCRv5_mobile_det.onnx"),
-                recModelPath: System.IO.Path.Combine(modelsDir, "ch_PP-OCRv5_rec_mobile_infer.onnx"),
-                dictPath: System.IO.Path.Combine(modelsDir, "ppocrv5_dict.txt"));
+                detModelPath: System.IO.Path.Combine(modelsDir, "ch_PP-OCRv6_det_small.onnx"),
+                recModelPath: System.IO.Path.Combine(modelsDir, "ch_PP-OCRv6_rec_small.onnx"),
+                dictPath: System.IO.Path.Combine(modelsDir, "ppocrv6_dict.txt"));
 
             // OCR Platform — Pipeline + Validation + Coordinator (Epic 3-6).
             _imagePipeline = new DefaultImagePipeline();
