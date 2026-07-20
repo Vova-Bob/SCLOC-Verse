@@ -108,7 +108,7 @@ namespace SCLOCVerse.Services.OcrPlatform.Engines
                 ct.ThrowIfCancellationRequested();
 
                 // Крок 2: Detection.
-                var boxes = _detector.Detect(
+                var boxes = _detector!.Detect(
                     padded,
                     maxSideLen: options.MaxSideLen,
                     boxScoreThresh: options.BoxScoreThresh,
@@ -156,7 +156,7 @@ namespace SCLOCVerse.Services.OcrPlatform.Engines
                         }
 
                         using var crop = new Mat(padded, cropRect);
-                        var recognized = _recognizer.Recognize(crop);
+                        var recognized = _recognizer!.Recognize(crop);
 
                         // Скидаємо padding offset (повертаємо координати до оригіналу).
                         var originalRect = new Rect(
