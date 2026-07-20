@@ -5,98 +5,70 @@ using Xunit.Abstractions;
 namespace SCLOCVerse.Tests.OcrPlatform
 {
     /// <summary>
-    /// Тестова матриця: реальні сигнатури Star Citizen (Riccite).
-    ///
-    /// Цей тест перевіряє DATABASE LOOKUP — що кожна сигнатура
-    /// правильно мапиться на Material + Cluster Size.
-    ///
-    /// Він НЕ перевіряє OCR (для цього потрібні реальні скріншоти SC HUD).
-    /// OCR тестування вимагає запуску у грі.
+    /// Тести математичної сигнатурної бази.
+    /// Принцип: signature = base × cluster. Відома лише база (1 камінь).
     /// </summary>
     public class RicciteSignatureMatrix
     {
         private readonly ITestOutputHelper _output;
-
         public RicciteSignatureMatrix(ITestOutputHelper output) => _output = output;
 
-        /// <summary>
-        /// Реальні сигнатури Riccite з гри.
-        /// signature = 3385 × clusterSize.
-        /// </summary>
-        public static readonly (int Cluster, string Signature)[] RicciteData =
-        {
-            (1,  "3385"),
-            (2,  "6770"),
-            (3,  "10155"),
-            (4,  "13540"),
-            (5,  "16925"),
-            (6,  "20310"),
-            (7,  "23695"),
-            (8,  "27080"),
-            (9,  "30465"),
-            (10, "33850"),
-        };
-
         [Fact]
-        public void Riccite_AllSignatures_LookupCorrect()
+        public void AllMaterials_HudAndLegacy_LookupCorrect()
         {
             var db = new MiningSignatureDatabase(overrideFilePath: null);
+            var cases = BuildTestCases();
+            var pass = 0;
 
-            _output.WriteLine("═══════════════════════════════════════════════════════");
-            _output.WriteLine("RICCITE SIGNATURE MATRIX — Database Lookup Test");
-            _output.WriteLine("Material: Riccite | Base: 3385 | Value: 66 000 aUEC");
-            _output.WriteLine("═══════════════════════════════════════════════════════");
-            _output.WriteLine("");
-            _output.WriteLine($"{"SIG",-8} {"PARSED",-8} {"MATERIAL",-10} {"CLUSTER",-8} {"PASS",-5}");
-            _output.WriteLine(new string('─', 45));
+            _output.WriteLine($"{"RAW",-8} {"HUD",-10} {"MATERIAL",-15} {"CLUSTER",-20} PASS");
+            _output.WriteLine(new string('─', 65));
 
-            var allPass = true;
-
-            foreach (var (cluster, signature) in RicciteData)
+            foreach (var (raw, name, cluster) in cases)
             {
-                var material = db.Lookup(signature);
+                var hud = raw.ToString("N0", System.Globalization.CultureInfo.InvariantCulture);
+                var legacy = raw.ToString();
 
-                var parsed = signature;
-                var matName = material?.Name ?? "NOT FOUND";
-                var clusterStr = material?.ClusterFormat ?? "—";
-                var pass = material is not null
-                    && material.Name == "Riccite"
-                    && material.ClusterFormat == $"Cluster: {cluster} Rocks";
+                // Перевірити HUD-формат
+                var m = db.Lookup(hud);
+                var ok = m is not null && m.Name == name && m.ClusterFormat == $"Cluster: {cluster} Rocks";
+                if (!ok) _output.WriteLine($"HUD FAIL: {hud} → {m?.Name ?? "null"}");
 
-                if (!pass) allPass = false;
+                // Перевірити Legacy-формат
+                var m2 = db.Lookup(legacy);
+                var ok2 = m2 is not null && m2.Name == name && m2.ClusterFormat == $"Cluster: {cluster} Rocks";
+                if (!ok2) _output.WriteLine($"LEGACY FAIL: {legacy} → {m2?.Name ?? "null"}");
 
-                _output.WriteLine($"{signature,-8} {parsed,-8} {matName,-10} {clusterStr,-8} {(pass ? "✅" : "❌")}");
+                if (ok && ok2) pass++;
+                _output.WriteLine($"{raw,-8} {hud,-10} {m?.Name ?? "NOT FOUND",-15} {m?.ClusterFormat ?? "—",-20} {(ok && ok2 ? "✅" : "❌")}");
             }
 
-            _output.WriteLine(new string('─', 45));
-            _output.WriteLine($"Result: {(allPass ? "✅ ALL PASS" : "❌ SOME FAILED")}");
-            _output.WriteLine("");
-            _output.WriteLine("ПРИМІТКА: Цей тест перевіряє Database Lookup.");
-            _output.WriteLine("OCR (захоплення з екрана → текст) вимагає тестування у грі.");
-
-            Assert.True(allPass, "Not all Riccite signatures resolved correctly");
+            _output.WriteLine(new string('─', 65));
+            _output.WriteLine($"Passed: {pass}/{cases.Count}");
+            Assert.True(pass == cases.Count, $"{cases.Count - pass} lookups failed");
         }
 
-        [Theory]
-        [InlineData("3385",  "Riccite", 1)]
-        [InlineData("6770",  "Riccite", 2)]
-        [InlineData("10155", "Riccite", 3)]
-        [InlineData("13540", "Riccite", 4)]
-        [InlineData("16925", "Riccite", 5)]
-        [InlineData("20310", "Riccite", 6)]
-        [InlineData("23695", "Riccite", 7)]
-        [InlineData("27080", "Riccite", 8)]
-        [InlineData("30465", "Riccite", 9)]
-        [InlineData("33850", "Riccite", 10)]
-        public void Lookup_Signature_ReturnsCorrectMaterialAndCluster(
-            string signature, string expectedMaterial, int expectedCluster)
+        [Fact]
+        public void GenericCategories_LookupCorrect()
         {
             var db = new MiningSignatureDatabase(overrideFilePath: null);
-            var result = db.Lookup(signature);
 
-            Assert.NotNull(result);
-            Assert.Equal(expectedMaterial, result!.Name);
-            Assert.Equal($"Cluster: {expectedCluster} Rocks", result.ClusterFormat);
+            // ROC
+            var roc = db.Lookup("4,000");
+            Assert.NotNull(roc);
+            Assert.Equal("ROC Mineable", roc!.Name);
+            Assert.Equal("ROC", roc.Category);
+
+            // FPS
+            var fps = db.Lookup("3,000");
+            Assert.NotNull(fps);
+            Assert.Equal("FPS Mineable", fps!.Name);
+
+            // Salvage
+            var sal = db.Lookup("2,000");
+            Assert.NotNull(sal);
+            Assert.Equal("Salvage", sal!.Name);
+
+            _output.WriteLine("✅ ROC + FPS + Salvage categories lookup correct");
         }
 
         [Fact]
@@ -106,6 +78,54 @@ namespace SCLOCVerse.Tests.OcrPlatform
             Assert.Null(db.Lookup("99999"));
             Assert.Null(db.Lookup("1234"));
             Assert.Null(db.Lookup(""));
+        }
+
+        /// <summary>
+        /// Тест-кейси: (raw, назва, cluster).
+        /// Обчислюються з базових сигнатур (base × cluster).
+        /// </summary>
+        private static List<(int Raw, string Name, int Cluster)> BuildTestCases()
+        {
+            var list = new List<(int, string, int)>();
+            var bases = new (string Name, int Base, int Max)[]
+            {
+                ("Quantainium",   3170, 2),
+                ("Stileron",      3185, 2),
+                ("Savrilium",     3200, 2),
+                ("Uratite",       3370, 3),
+                ("Riccite",       3385, 3),
+                ("Lindinium",     3400, 3),
+                ("Beryl",         3540, 4),
+                ("Taranite",      3555, 4),
+                ("Borase",        3570, 4),
+                ("Gold",          3585, 4),
+                ("Bexalite",      3600, 4),
+                ("Laranite",      3825, 5),
+                ("Astatine",      3840, 5),
+                ("Titanium",      3855, 5),
+                ("Tungsten",      3870, 5),
+                ("Agricium",      3885, 5),
+                ("Torite",        3900, 5),
+                ("Hephaestanite", 4180, 6),
+                ("Tin",           4195, 6),
+                ("Quartz",        4210, 6),
+                ("Corundum",      4225, 6),
+                ("Copper",        4240, 6),
+                ("Silicon",       4255, 6),
+                ("Iron",          4270, 6),
+                ("Aluminium",     4285, 6),
+                ("Ice",           4300, 6),
+            };
+
+            foreach (var (name, baseSig, max) in bases)
+            {
+                for (var c = 1; c <= max; c++)
+                {
+                    list.Add((baseSig * c, name, c));
+                }
+            }
+
+            return list;
         }
     }
 }

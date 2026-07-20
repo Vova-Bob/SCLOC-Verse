@@ -1,4 +1,5 @@
 using SCLOCVerse.Models.Mining;
+using System.Windows;
 
 namespace SCLOCVerse.Interfaces
 {
@@ -23,5 +24,17 @@ namespace SCLOCVerse.Interfaces
 
         /// <summary>Вимкнути модуль (відписується, скидає state).</summary>
         void Disable();
+
+        /// <summary>
+        /// Вручну встановити ROI для Signature Scanner (Manual Calibration).
+        /// Система переходить у Tracking mode з вказаною областю — БЕЗ Discovery.
+        /// </summary>
+        /// <param name="roi">Прямокутник у пікселях екрана (X, Y, Width, Height).</param>
+        void SetManualRoi(Rect roi);
+
+        /// <summary>
+        /// Скинути Manual ROI → повернутись до автоматичного режиму (Discovery).
+        /// </summary>
+        void ResetManualRoi();
     }
 }

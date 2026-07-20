@@ -1,21 +1,33 @@
 using SCLOCVerse.Controls;
+using SCLOCVerse.Helpers;
 using SCLOCVerse.Interfaces;
 using SCLOCVerse.Models.Mining;
 using System.Windows;
+using System.Windows.Threading;
 
 namespace SCLOCVerse.Services.Mining.Overlay
 {
     /// <summary>
     /// Реалізація <see cref="IMiningOverlayService"/> — керує життєвим циклом
-    /// <see cref="MiningOverlayWindow"/> та оновлює вміст з MiningState.
-    /// UI-потік: усі операції з вікном виконуються через Application.Current.Dispatcher.
+    /// <see cref="SignatureScannerOverlayWindow"/>.
     ///
-    /// H1: Реалізує IDisposable для коректного закриття вікна при shutdown.
+    /// Особливості:
+    /// - Foreground gate: overlay показується лише коли Star Citizen активний.
+    /// - Position persistence: позиція/розмір/прозорість зберігаються у Settings.
+    /// - НЕ слідкує за HUD — стоїть там, де користувач поставив.
     /// </summary>
     public sealed class MiningOverlayService : IMiningOverlayService, IDisposable
     {
-        private MiningOverlayWindow? _window;
+        private SignatureScannerOverlayWindow? _window;
+        private readonly IPreferencesService _preferences;
+        private DispatcherTimer? _foregroundTimer;
         private bool _disposed;
+        private bool _shouldBeVisible;
+
+        public MiningOverlayService(IPreferencesService preferences)
+        {
+            _preferences = preferences;
+        }
 
         /// <inheritdoc />
         public bool IsVisible => _window?.IsVisible ?? false;
@@ -32,24 +44,32 @@ namespace SCLOCVerse.Services.Mining.Overlay
                 return;
             }
 
+            _shouldBeVisible = true;
+
             try
             {
-                // Якщо вікно закрите або null — створюємо нове (AutoKey pattern).
                 if (_window is null)
                 {
-                    _window = new MiningOverlayWindow();
+                    _window = new SignatureScannerOverlayWindow();
+                    RestoreWindowSettings();
+                    _window.PositionChanged += OnPositionChanged;
                 }
 
-                if (!_window.IsVisible)
+                // Foreground gate — перевіряємо перед показом.
+                if (StarCitizenForeground.IsStarCitizenForeground())
                 {
-                    _window.Show();
+                    if (!_window.IsVisible) _window.Show();
                 }
+
+                StartForegroundTimer();
             }
             catch
             {
-                // Вікно могло бути закрите зовні — пересоздаємо.
-                _window = new MiningOverlayWindow();
-                _window.Show();
+                _window = new SignatureScannerOverlayWindow();
+                RestoreWindowSettings();
+                _window.PositionChanged += OnPositionChanged;
+                if (StarCitizenForeground.IsStarCitizenForeground()) _window.Show();
+                StartForegroundTimer();
             }
         }
 
@@ -64,6 +84,9 @@ namespace SCLOCVerse.Services.Mining.Overlay
                 dispatcher.BeginInvoke(new Action(Hide));
                 return;
             }
+
+            _shouldBeVisible = false;
+            StopForegroundTimer();
 
             if (_window is not null && _window.IsVisible)
             {
@@ -86,13 +109,136 @@ namespace SCLOCVerse.Services.Mining.Overlay
             _window?.UpdateState(state);
         }
 
+        /// <inheritdoc />
+        public void SetPosition(double hudBoundsX, double hudBoundsBottom)
+        {
+            // НЕ використовується — overlay не слідкує за HUD.
+        }
+
         /// <summary>
-        /// H1: Коректне закриття overlay-вікна при shutdown.
-        /// Викликається з AppCompositionRoot.Dispose().
+        /// Увімкнути тимчасовий режим перетягування overlay.
         /// </summary>
+        public void BeginDrag()
+        {
+            var dispatcher = Application.Current?.Dispatcher;
+            if (dispatcher is null) return;
+            if (!dispatcher.CheckAccess())
+            {
+                dispatcher.BeginInvoke(new Action(BeginDrag));
+                return;
+            }
+            _window?.BeginTemporaryDragMode();
+        }
+
+        /// <summary>
+        /// Збільшити прозорість overlay.
+        /// </summary>
+        public void IncreaseOpacity()
+        {
+            var dispatcher = Application.Current?.Dispatcher;
+            if (dispatcher is null) return;
+            if (!dispatcher.CheckAccess())
+            {
+                dispatcher.BeginInvoke(new Action(IncreaseOpacity));
+                return;
+            }
+            _window?.IncreaseOpacity();
+        }
+
+        /// <summary>
+        /// Зменшити прозорість overlay.
+        /// </summary>
+        public void DecreaseOpacity()
+        {
+            var dispatcher = Application.Current?.Dispatcher;
+            if (dispatcher is null) return;
+            if (!dispatcher.CheckAccess())
+            {
+                dispatcher.BeginInvoke(new Action(DecreaseOpacity));
+                return;
+            }
+            _window?.DecreaseOpacity();
+        }
+
+        /// <summary>
+        /// Foreground timer — перевіряє кожні 500мс чи Star Citizen активний.
+        /// Якщо SC втратив фокус — overlay ховається. Якщо отримав — показується.
+        /// </summary>
+        private void StartForegroundTimer()
+        {
+            if (_foregroundTimer is not null) return;
+
+            _foregroundTimer = new DispatcherTimer(DispatcherPriority.Background)
+            {
+                Interval = TimeSpan.FromMilliseconds(500)
+            };
+            _foregroundTimer.Tick += OnForegroundTick;
+            _foregroundTimer.Start();
+        }
+
+        private void StopForegroundTimer()
+        {
+            if (_foregroundTimer is null) return;
+            _foregroundTimer.Stop();
+            _foregroundTimer = null;
+        }
+
+        private void OnForegroundTick(object? sender, EventArgs e)
+        {
+            if (_window is null || _disposed) return;
+
+            var isSc = StarCitizenForeground.IsStarCitizenForeground();
+
+            if (_shouldBeVisible && isSc && !_window.IsVisible)
+            {
+                _window.Show();
+            }
+            else if (_shouldBeVisible && !isSc && _window.IsVisible)
+            {
+                _window.Hide();
+            }
+        }
+
+        private void OnPositionChanged(object? sender, Rect pos)
+        {
+            // Зберегти позицію/розмір/прозорість у Settings.
+            _preferences.SetMiningOverlayX(pos.X);
+            _preferences.SetMiningOverlayY(pos.Y);
+            _preferences.SetMiningOverlayWidth(pos.Width);
+            _preferences.SetMiningOverlayHeight(pos.Height);
+            if (_window is not null)
+            {
+                _preferences.SetMiningOverlayOpacity(_window.SavedOpacity);
+            }
+        }
+
+        private void RestoreWindowSettings()
+        {
+            if (_window is null) return;
+
+            var x = _preferences.GetMiningOverlayX();
+            var y = _preferences.GetMiningOverlayY();
+            var w = _preferences.GetMiningOverlayWidth();
+            var h = _preferences.GetMiningOverlayHeight();
+            var opacity = _preferences.GetMiningOverlayOpacity();
+
+            if (w > 0 && h > 0)
+            {
+                _window.Left = x;
+                _window.Top = y;
+                _window.Width = w;
+                _window.Height = h;
+            }
+
+            _window.SavedOpacity = opacity > 0 ? opacity : 0.9;
+        }
+
         public void Dispose()
         {
             if (_disposed) return;
+            _disposed = true;
+
+            StopForegroundTimer();
 
             var dispatcher = Application.Current?.Dispatcher;
             if (dispatcher is not null)
@@ -113,11 +259,7 @@ namespace SCLOCVerse.Services.Mining.Overlay
                     _window = null;
                 }
             }
-            catch
-            {
-                // Вікно може бути вже закрито — ігноруємо.
-            }
-            _disposed = true;
+            catch { }
         }
     }
 }

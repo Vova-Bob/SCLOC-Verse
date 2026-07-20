@@ -47,6 +47,15 @@ namespace SCLOCVerse.Services.OcrPlatform.Coordinator
         }
 
         /// <inheritdoc />
+        public void UpdateScreenRect(string regionId, System.Windows.Rect screenRect)
+        {
+            if (_regions.TryGetValue(regionId, out var region))
+            {
+                _regions[regionId] = region with { ScreenRect = screenRect };
+            }
+        }
+
+        /// <inheritdoc />
         public void Clear()
         {
             _regions.Clear();

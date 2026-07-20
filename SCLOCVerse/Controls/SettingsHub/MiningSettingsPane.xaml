@@ -13,7 +13,7 @@
 
     <StackPanel Orientation="Vertical" Margin="16,8">
 
-        <TextBlock Text="Mining Module"
+        <TextBlock Text="Signature Scanner"
                    FontFamily="Segoe UI Semibold"
                    FontSize="18"
                    Foreground="#E8F3FF"
@@ -26,12 +26,67 @@
                           VerticalAlignment="Center"
                           Checked="EnableMining_Changed"
                           Unchecked="EnableMining_Changed"/>
-                <TextBlock Text="Увімкнути Mining Module (Ctrl+Shift+M)"
+                <TextBlock Text="Увімкнути Signature Scanner (Ctrl+Shift+V)"
                            FontFamily="Segoe UI"
                            FontSize="13"
                            Foreground="#E8F3FF"
                            Margin="8,0,0,0"
                            VerticalAlignment="Center"/>
+            </StackPanel>
+        </Border>
+
+        <!-- Manual ROI -->
+        <Border Background="#102A3A" BorderBrush="#2478A9" BorderThickness="1" CornerRadius="8" Padding="12,8" Margin="0,0,0,8">
+            <StackPanel Orientation="Vertical">
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                    <CheckBox x:Name="ManualRoiCheckBox"
+                              VerticalAlignment="Center"
+                              Checked="ManualRoi_Changed"
+                              Unchecked="ManualRoi_Changed"/>
+                    <TextBlock Text="Ручне калібрування ROI"
+                               FontFamily="Segoe UI"
+                               FontSize="13"
+                               Foreground="#E8F3FF"
+                               Margin="8,0,0,0"
+                               VerticalAlignment="Center"/>
+                </StackPanel>
+
+                <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
+                    <Button x:Name="ConfigureRoiBtn"
+                            Content="Налаштувати ROI..."
+                            Click="ConfigureRoi_Click"
+                            Padding="12,4"
+                            FontFamily="Segoe UI"
+                            FontSize="12"
+                            Background="#2478A9"
+                            Foreground="White"
+                            BorderThickness="0"
+                            Cursor="Hand"/>
+                    <Button x:Name="ResetRoiBtn"
+                            Content="Скинути ROI"
+                            Click="ResetRoi_Click"
+                            Padding="12,4"
+                            Margin="8,0,0,0"
+                            FontFamily="Segoe UI"
+                            FontSize="12"
+                            Background="#3A3A3A"
+                            Foreground="#E8F3FF"
+                            BorderThickness="0"
+                            Cursor="Hand"/>
+                </StackPanel>
+
+                <StackPanel Orientation="Horizontal">
+                    <CheckBox x:Name="ShowRoiDebugCheckBox"
+                              VerticalAlignment="Center"
+                              Checked="ShowRoiDebug_Changed"
+                              Unchecked="ShowRoiDebug_Changed"/>
+                    <TextBlock Text="Показувати ROI (Debug)"
+                               FontFamily="Segoe UI"
+                               FontSize="13"
+                               Foreground="#A7C6E7"
+                               Margin="8,0,0,0"
+                               VerticalAlignment="Center"/>
+                </StackPanel>
             </StackPanel>
         </Border>
 

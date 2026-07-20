@@ -406,5 +406,117 @@ namespace SCLOCVerse {
                 this["MiningCycleIntervalMs"] = value;
             }
         }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool MiningManualRoiEnabled {
+            get {
+                return ((bool)(this["MiningManualRoiEnabled"]));
+            }
+            set {
+                this["MiningManualRoiEnabled"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("0")]
+        public double MiningRoiX {
+            get {
+                return ((double)(this["MiningRoiX"]));
+            }
+            set {
+                this["MiningRoiX"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("0")]
+        public double MiningRoiY {
+            get {
+                return ((double)(this["MiningRoiY"]));
+            }
+            set {
+                this["MiningRoiY"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("0")]
+        public double MiningRoiWidth {
+            get {
+                return ((double)(this["MiningRoiWidth"]));
+            }
+            set {
+                this["MiningRoiWidth"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("0")]
+        public double MiningRoiHeight {
+            get {
+                return ((double)(this["MiningRoiHeight"]));
+            }
+            set {
+                this["MiningRoiHeight"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("False")]
+        public bool MiningShowRoiDebug {
+            get {
+                return ((bool)(this["MiningShowRoiDebug"]));
+            }
+            set {
+                this["MiningShowRoiDebug"] = value;
+            }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("0")]
+        public double MiningOverlayX {
+            get { return ((double)(this["MiningOverlayX"])); }
+            set { this["MiningOverlayX"] = value; }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("0")]
+        public double MiningOverlayY {
+            get { return ((double)(this["MiningOverlayY"])); }
+            set { this["MiningOverlayY"] = value; }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("0")]
+        public double MiningOverlayWidth {
+            get { return ((double)(this["MiningOverlayWidth"])); }
+            set { this["MiningOverlayWidth"] = value; }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("0")]
+        public double MiningOverlayHeight {
+            get { return ((double)(this["MiningOverlayHeight"])); }
+            set { this["MiningOverlayHeight"] = value; }
+        }
+
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("0.9")]
+        public double MiningOverlayOpacity {
+            get { return ((double)(this["MiningOverlayOpacity"])); }
+            set { this["MiningOverlayOpacity"] = value; }
+        }
     }
 }

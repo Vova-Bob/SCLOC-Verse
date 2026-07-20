@@ -190,7 +190,7 @@ namespace SCLOCVerse.Services.OcrPlatform.Coordinator
 
         /// <summary>
         /// Конвертація BitmapSource (WPF) → OpenCvSharp Mat (BGRA → BGR).
-        /// Frozen BitmapSource → copy pixel data → wrap у Mat через unsafe pointer.
+        /// Безпечно: fixed pointer + Mat з вказанням stride (без Marshal.Copy).
         /// </summary>
         private static Mat BitmapSourceToMat(System.Windows.Media.Imaging.BitmapSource bitmap)
         {
@@ -200,15 +200,19 @@ namespace SCLOCVerse.Services.OcrPlatform.Coordinator
             var pixels = new byte[stride * height];
             bitmap.CopyPixels(pixels, stride, 0);
 
-            // Створюємо Mat 8UC4 вручну з піксельних даних.
-            var bgraMat = new Mat(height, width, MatType.CV_8UC4);
-            Marshal.Copy(pixels, 0, bgraMat.Data, pixels.Length);
-
-            // Переводимо в BGR (відкидаємо alpha).
-            var bgr = new Mat();
-            Cv2.CvtColor(bgraMat, bgr, ColorConversionCodes.BGRA2BGR);
-            bgraMat.Dispose();
-            return bgr;
+            // fixed блокує GC від руху масиву — OpenCV читає напряму.
+            // Mat з IntPtr + step=stride — обгортає масив без копіювання.
+            // CvtColor робить глибоку копію у bgr Mat (власна пам'ять OpenCV).
+            unsafe
+            {
+                fixed (byte* ptr = pixels)
+                {
+                    using var bgraMat = Mat.FromPixelData(height, width, MatType.CV_8UC4, (IntPtr)ptr, stride);
+                    var bgr = new Mat();
+                    Cv2.CvtColor(bgraMat, bgr, ColorConversionCodes.BGRA2BGR);
+                    return bgr;
+                }
+            }
         }
 
         /// <summary>

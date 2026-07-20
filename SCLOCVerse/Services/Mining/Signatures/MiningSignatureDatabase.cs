@@ -6,23 +6,28 @@ using System.IO;
 namespace SCLOCVerse.Services.Mining.Signatures
 {
     /// <summary>
-    /// Гібридна реалізація <see cref="IMiningSignatureDatabase"/>:
-    /// built-in DefaultMiningSignatures + JSON override з %LocalAppData%\SCLOCVerse\mining-signatures.json.
+    /// Математична реалізація <see cref="IMiningSignatureDatabase"/>.
     ///
-    /// JSON override дозволяє користувачеві додавати/змінювати матеріали без перекомпіляції
-    /// (актуально при виході оновлень Star Citizen).
+    /// Принцип: signature = base × cluster.
+    /// Відома лише сигнатура 1 камінця (base). Усі інші обчислюються:
+    /// cluster = raw / base. Якщо raw ділиться на base без залишку — знайдено матеріал.
+    ///
+    /// Переваги:
+    /// - Немає словника попередньо обчислених значень (мінімум пам'яті).
+    /// - Підтримує будь-яку кількість кластерів (обчислення, а не lookup).
+    /// - Новий матеріал = 1 рядок у Materials таблиці.
+    ///
+    /// JSON override: %LocalAppData%\SCLOCVerse\mining-signatures.json
+    /// (дозволяє додавати матеріали без перекомпіляції).
     /// </summary>
     public sealed class MiningSignatureDatabase : IMiningSignatureDatabase
     {
-        private readonly Dictionary<string, MiningMaterial> _materials;
         private readonly string? _overrideFilePath;
+        private (string Name, string Category, int Base)[]? _overrides;
 
         public MiningSignatureDatabase(string? overrideFilePath = null)
         {
             _overrideFilePath = overrideFilePath ?? GetDefaultOverridePath();
-            _materials = new Dictionary<string, MiningMaterial>(DefaultMiningSignatures.Defaults);
-
-            // Apply JSON overrides if file exists.
             TryLoadOverrides();
         }
 
@@ -30,23 +35,114 @@ namespace SCLOCVerse.Services.Mining.Signatures
         public MiningMaterial? Lookup(string code)
         {
             if (string.IsNullOrEmpty(code)) return null;
-            return _materials.TryGetValue(code, out var material) ? material : null;
+
+            // Нормалізувати: прибрати коми/пробіли → "3385".
+            var normalized = code.Replace(",", "").Replace(" ", "").Replace(".", "");
+            if (!int.TryParse(normalized, out var raw) || raw <= 0) return null;
+
+            // 1. Спробувати матеріали (base × cluster).
+            foreach (var (name, category, baseSig) in DefaultMiningSignatures.Materials)
+            {
+                if (raw % baseSig == 0)
+                {
+                    var cluster = raw / baseSig;
+                    if (cluster is >= 1 and <= 20) // розумна межа
+                    {
+                        return new MiningMaterial
+                        {
+                            Code = raw.ToString(),
+                            Name = name,
+                            Category = category,
+                            ClusterFormat = $"Cluster: {cluster} Rocks",
+                            IsRefineryInput = true
+                        };
+                    }
+                }
+            }
+
+            // 2. Спробувати overrides (JSON).
+            if (_overrides is not null)
+            {
+                foreach (var (name, category, baseSig) in _overrides)
+                {
+                    if (raw % baseSig == 0)
+                    {
+                        var cluster = raw / baseSig;
+                        if (cluster is >= 1 and <= 20)
+                        {
+                            return new MiningMaterial
+                            {
+                                Code = raw.ToString(),
+                                Name = name,
+                                Category = category,
+                                ClusterFormat = $"Cluster: {cluster} Rocks",
+                                IsRefineryInput = true
+                            };
+                        }
+                    }
+                }
+            }
+
+            // 3. Спробувати ROC/FPS/Salvage (фіксовані значення).
+            return LookupGeneric(raw);
         }
 
         /// <inheritdoc />
-        public int Count => _materials.Count;
+        public int Count => DefaultMiningSignatures.Materials.Length + 3; // 26 + 3 generic
 
         /// <summary>
-        /// Скинути на defaults + reload override (future use — Settings Hub button).
+        /// Скинути + reload override (future use — Settings Hub button).
         /// </summary>
         public void Reload()
         {
-            _materials.Clear();
-            foreach (var (k, v) in DefaultMiningSignatures.Defaults)
-            {
-                _materials[k] = v;
-            }
             TryLoadOverrides();
+        }
+
+        private MiningMaterial? LookupGeneric(int raw)
+        {
+            // ROC
+            var idx = System.Array.IndexOf(DefaultMiningSignatures.RocSignatures, raw);
+            if (idx >= 0)
+            {
+                return new MiningMaterial
+                {
+                    Code = raw.ToString(),
+                    Name = "ROC Mineable",
+                    Category = "ROC",
+                    ClusterFormat = $"Tier {idx + 1}",
+                    IsRefineryInput = false
+                };
+            }
+
+            // FPS
+            idx = System.Array.IndexOf(DefaultMiningSignatures.FpsSignatures, raw);
+            if (idx >= 0)
+            {
+                return new MiningMaterial
+                {
+                    Code = raw.ToString(),
+                    Name = "FPS Mineable",
+                    Category = "FPS",
+                    ClusterFormat = $"Tier {idx + 1}",
+                    IsRefineryInput = false
+                };
+            }
+
+            // Salvage
+            idx = System.Array.IndexOf(DefaultMiningSignatures.SalvageSignatures, raw);
+            if (idx >= 0)
+            {
+                return new MiningMaterial
+                {
+                    Code = raw.ToString(),
+                    Name = "Salvage",
+                    Category = "Salvage",
+                    ClusterFormat = $"Tier {idx + 1}",
+                    IsRefineryInput = false
+                };
+            }
+
+            return null;
         }
 
         private void TryLoadOverrides()
@@ -59,13 +155,8 @@ namespace SCLOCVerse.Services.Mining.Signatures
                 }
 
                 var json = File.ReadAllText(_overrideFilePath);
-                var overrides = JsonConvert.DeserializeObject<Dictionary<string, MiningMaterial>>(json);
-                if (overrides is null) return;
-
-                foreach (var (code, material) in overrides)
-                {
-                    _materials[code] = material with { Code = code }; // гарантовано код
-                }
+                var overrides = JsonConvert.DeserializeObject<(string Name, string Category, int Base)[]>(json);
+                _overrides = overrides;
             }
             catch
             {

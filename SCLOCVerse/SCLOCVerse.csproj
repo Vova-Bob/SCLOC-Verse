@@ -21,6 +21,8 @@
     <FileVersion>1.0.2.5</FileVersion>
     <SelfContained>true</SelfContained>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <LangVersion>latest</LangVersion>
   </PropertyGroup>
 
   <!-- Debug: framework-dependent — швидка збірка без копіювання .NET runtime (~150 DLL) -->

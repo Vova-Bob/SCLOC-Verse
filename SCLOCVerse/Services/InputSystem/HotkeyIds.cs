@@ -85,5 +85,20 @@ namespace SCLOCVerse.Services.InputSystem
         /// Увімкнути / Вимкнути Mining Module (overlay + OCR цикл).
         /// </summary>
         public static HotkeyId MiningToggle { get; } = new("Mining.Toggle");
+
+        /// <summary>
+        /// Тимчасово перетягувати Mining overlay (вимикає click-through на час drag).
+        /// </summary>
+        public static HotkeyId MiningBeginDrag { get; } = new("Mining.BeginDrag");
+
+        /// <summary>
+        /// Зменшити прозорість Mining overlay.
+        /// </summary>
+        public static HotkeyId MiningOpacityDown { get; } = new("Mining.OpacityDown");
+
+        /// <summary>
+        /// Збільшити прозорість Mining overlay.
+        /// </summary>
+        public static HotkeyId MiningOpacityUp { get; } = new("Mining.OpacityUp");
     }
 }

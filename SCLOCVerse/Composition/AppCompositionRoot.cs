@@ -13,6 +13,7 @@ using SCLOCVerse.Services.InputSystem;
 using SCLOCVerse.Services.LiaServices;
 using SCLOCVerse.Services.LocalizationServices;
 using SCLOCVerse.Services.Mining;
+using SCLOCVerse.Services.Mining.Locators;
 using SCLOCVerse.Services.Mining.Overlay;
 using SCLOCVerse.Services.Mining.Signatures;
 using SCLOCVerse.Services.Notifications;
@@ -78,6 +79,8 @@ namespace SCLOCVerse.Composition
 
         // Mining Module (Epic 7) — перший consumer OCR Platform.
         private readonly IMiningSignatureDatabase _miningSignatures;
+        private readonly IMiningRoiResolver _miningRoiResolver;
+        private readonly IMiningHudLocatorStrategy _miningHudLocator;
         private readonly IMiningRecognitionService _miningRecognition;
         private readonly IMiningOverlayService _miningOverlay;
 
@@ -164,11 +167,21 @@ namespace SCLOCVerse.Composition
 
             // Mining Module (Epic 7) — перший consumer OCR Platform.
             _miningSignatures = new MiningSignatureDatabase();
+            _miningRoiResolver = new MiningRoiResolver();
+            // HUD Locator — робоча стратегія: повноекранний OCR + DB lookup.
+            // Не залежить від кольору/resolution/DPI — лише від змісту (сигнатури матеріалів).
+            // Discovery: повноекранний OCR → знайти відому сигнатуру → повернути bounds.
+            // Після локалізації → Tracking (ROI) → швидкий OCR всередині HUD.
+            _miningHudLocator = new OcrFullScanLocator(_ocrEngine, _miningSignatures);
+            _miningOverlay = new MiningOverlayService(_preferencesService);
             _miningRecognition = new MiningRecognitionService(
                 _miningSignatures,
                 _ocrCoordinator,
-                _ocrRegionRegistry);
-            _miningOverlay = new MiningOverlayService();
+                _ocrRegionRegistry,
+                _miningRoiResolver,
+                _miningHudLocator,
+                _screenCaptureService,
+                _miningOverlay);
 
             // Wiring: MiningRecognition.StateChanged → MiningOverlay.UpdateState.
             _miningRecognition.StateChanged += (sender, state) => _miningOverlay.UpdateState(state);
@@ -178,7 +191,7 @@ namespace SCLOCVerse.Composition
             _hotkeyService.Register(new HotkeyDefinition
             {
                 Id = HotkeyIds.MiningToggle,
-                DefaultGesture = new HotkeyGesture(HotkeyModifiers.Control | HotkeyModifiers.Shift, HotkeyKey.M),
+                DefaultGesture = new HotkeyGesture(HotkeyModifiers.Control | HotkeyModifiers.Shift, HotkeyKey.F10),
                 Description = "Увімкнути/Вимкнути Mining Module",
                 Handler = _ =>
                 {
@@ -196,8 +209,47 @@ namespace SCLOCVerse.Composition
                 }
             });
 
-            // TODO T9.2: Зареєструвати actual SC HUD координати для регіонів (зараз placeholder).
-            // TODO T9.1: Calibration UI для вибору регіонів користувачем.
+            // Mining overlay: Temporary Drag Mode (Ctrl+Alt+\).
+            // Патерн як Hangar Overlay: hotkey → click-through OFF → ЛКМ drag → відпусти → click-through ON.
+            _hotkeyService.Register(new HotkeyDefinition
+            {
+                Id = HotkeyIds.MiningBeginDrag,
+                DefaultGesture = new HotkeyGesture(HotkeyModifiers.Control | HotkeyModifiers.Alt, HotkeyKey.Oem5),
+                Description = "Перетягнути SC Scan overlay",
+                Handler = _ =>
+                {
+                    _miningOverlay.BeginDrag();
+                    return ValueTask.CompletedTask;
+                }
+            });
+
+            // Mining overlay: прозорість вниз (Ctrl+Alt+[).
+            _hotkeyService.Register(new HotkeyDefinition
+            {
+                Id = HotkeyIds.MiningOpacityDown,
+                DefaultGesture = new HotkeyGesture(HotkeyModifiers.Control | HotkeyModifiers.Alt, HotkeyKey.Oem4),
+                Description = "SC Scan: менш прозорий",
+                Handler = _ =>
+                {
+                    _miningOverlay.DecreaseOpacity();
+                    return ValueTask.CompletedTask;
+                }
+            });
+
+            // Mining overlay: прозорість вверх (Ctrl+Alt+]).
+            _hotkeyService.Register(new HotkeyDefinition
+            {
+                Id = HotkeyIds.MiningOpacityUp,
+                DefaultGesture = new HotkeyGesture(HotkeyModifiers.Control | HotkeyModifiers.Alt, HotkeyKey.Oem6),
+                Description = "SC Scan: більш прозорий",
+                Handler = _ =>
+                {
+                    _miningOverlay.IncreaseOpacity();
+                    return ValueTask.CompletedTask;
+                }
+            });
+
+            // TODO T9.1: Calibration UI для ручного вибору регіону (SetManualBounds).
 
             _applicationUpdateService = new ApplicationUpdateService(
                 "Vova-Bob",
@@ -397,7 +449,9 @@ namespace SCLOCVerse.Composition
                 _antiAfkService,
                 _autoKeyService,
                 _miningRecognition,
-                _miningOverlay);
+                _miningOverlay,
+                _ocrEngine,
+                _screenCaptureService);
         }
 
         private static string GetSupabaseUrl()

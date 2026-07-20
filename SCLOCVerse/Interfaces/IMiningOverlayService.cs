@@ -19,5 +19,22 @@ namespace SCLOCVerse.Interfaces
 
         /// <summary>Оновити вміст з нового MiningState.</summary>
         void UpdateState(MiningState state);
+
+        /// <summary>
+        /// Розташувати overlay під областю сканування (під HUD bounds).
+        /// Викликається при кожному успішному розпізнаванні — overlay слідкує за HUD.
+        /// </summary>
+        /// <param name="hudBoundsX">X координата HUD bounds (пікселі екрана).</param>
+        /// <param name="hudBoundsBottom">Y координата нижнього краю HUD bounds.</param>
+        void SetPosition(double hudBoundsX, double hudBoundsBottom);
+
+        /// <summary>Увімкнути тимчасовий режим перетягування (вимкне click-through).</summary>
+        void BeginDrag();
+
+        /// <summary>Збільшити прозорість overlay (+0.1, max 1.0).</summary>
+        void IncreaseOpacity();
+
+        /// <summary>Зменшити прозорість overlay (-0.1, min 0.2).</summary>
+        void DecreaseOpacity();
     }
 }

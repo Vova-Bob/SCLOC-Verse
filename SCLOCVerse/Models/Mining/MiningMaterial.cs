@@ -5,7 +5,9 @@ namespace SCLOCVerse.Models.Mining
     /// </summary>
     public sealed record MiningMaterial
     {
-        /// <summary>Код-сигнатура матеріалу (зчитується з HUD через OCR, напр. "21425").</summary>
+        /// <summary>Код-сигнатура матеріалу (raw, без роздільників; напр. "3385").
+        /// Lookup-ключі в базі — HUD-формат з комою ("3,385") + legacy без роздільника ("3385").
+        /// Code зберігається як внутрішній ідентифікатор (raw number).</summary>
         public required string Code { get; init; }
 
         /// <summary>Локалізоване ім'я матеріалу (напр. "Aluminium").</summary>

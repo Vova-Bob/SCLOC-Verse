@@ -110,5 +110,31 @@ namespace SCLOCVerse.Interfaces
         /// <summary>Інтервал OCR cycle, мс (50–1000). Default: 200 (5 Hz).</summary>
         int GetMiningCycleIntervalMs();
         void SetMiningCycleIntervalMs(int value);
+
+        /// <summary>Чи увімкнено ручний ROI (Manual Calibration). Default: False.</summary>
+        bool GetMiningManualRoiEnabled();
+        void SetMiningManualRoiEnabled(bool value);
+
+        /// <summary>Координати Manual ROI (X, Y, Width, Height у пікселях екрана).</summary>
+        System.Windows.Rect GetMiningRoi();
+        void SetMiningRoi(System.Windows.Rect roi);
+
+        /// <summary>Чи показувати debug-рамку ROI. Default: False.</summary>
+        bool GetMiningShowRoiDebug();
+        void SetMiningShowRoiDebug(bool value);
+
+        /// <summary>Позиція overlay (X, Y, Width, Height). Default: 0 (auto).</summary>
+        double GetMiningOverlayX();
+        void SetMiningOverlayX(double value);
+        double GetMiningOverlayY();
+        void SetMiningOverlayY(double value);
+        double GetMiningOverlayWidth();
+        void SetMiningOverlayWidth(double value);
+        double GetMiningOverlayHeight();
+        void SetMiningOverlayHeight(double value);
+
+        /// <summary>Прозорість overlay (0.2–1.0). Default: 0.9.</summary>
+        double GetMiningOverlayOpacity();
+        void SetMiningOverlayOpacity(double value);
     }
 }

@@ -63,6 +63,8 @@ namespace SCLOCVerse
         private readonly IAutoKeyService _autoKeyService;
         private readonly IMiningRecognitionService _miningRecognitionService;
         private readonly IMiningOverlayService _miningOverlayService;
+        private readonly IOcrEngine _ocrEngine;
+        private readonly IScreenCaptureService _screenCaptureService;
         private IHotkeyMessageSource? _hotkeyMessageSource;
         private bool _showGameFolderToast = true;
         private DateTime? _suppressStartupUpdateCheckUntil;
@@ -109,7 +111,7 @@ namespace SCLOCVerse
         private readonly UpdateCheckerService _updateCheckerService;
         private readonly CleanupController _cacheCleanupController;
 
-        public MainWindow(MainWindowViewModel viewModel, IWindowHelper windowHelper, ILocalizationInstaller localizationInstaller, IReadmeService readmeService,     IUpdater updater, UpdateCheckerService updateCheckerService, IApplicationUpdateService applicationUpdateService, IBackgroundUpdateMonitor backgroundUpdateMonitor, IUpdateChannelService updateChannelService, IApplicationVersionProvider applicationVersionProvider, IUpdateDownloader updateDownloader, IUpdateInstaller updateInstaller, IUpdateHistoryService updateHistoryService, IUpdateVerifier updateVerifier, IGitHubReleaseClient gitHubReleaseClient, IDialogService dialogService, IAuthService authService, IAuthStatusProvider authStatusProvider, IHangarTimerService hangarTimerService, IHotkeyService hotkeyService, ITrayService trayService, IApplicationInstanceService applicationInstanceService, IAutostartService autostartService, IUiInteractionPolicy uiPolicy, IPreferencesService preferencesService, INotificationRouter notificationRouter, IToastNotificationService toastNotificationService, IAntiAfkService antiAfkService, IAutoKeyService autoKeyService, IMiningRecognitionService miningRecognitionService, IMiningOverlayService miningOverlayService)
+        public MainWindow(MainWindowViewModel viewModel, IWindowHelper windowHelper, ILocalizationInstaller localizationInstaller, IReadmeService readmeService,     IUpdater updater, UpdateCheckerService updateCheckerService, IApplicationUpdateService applicationUpdateService, IBackgroundUpdateMonitor backgroundUpdateMonitor, IUpdateChannelService updateChannelService, IApplicationVersionProvider applicationVersionProvider, IUpdateDownloader updateDownloader, IUpdateInstaller updateInstaller, IUpdateHistoryService updateHistoryService, IUpdateVerifier updateVerifier, IGitHubReleaseClient gitHubReleaseClient, IDialogService dialogService, IAuthService authService, IAuthStatusProvider authStatusProvider, IHangarTimerService hangarTimerService, IHotkeyService hotkeyService, ITrayService trayService, IApplicationInstanceService applicationInstanceService, IAutostartService autostartService, IUiInteractionPolicy uiPolicy, IPreferencesService preferencesService, INotificationRouter notificationRouter, IToastNotificationService toastNotificationService, IAntiAfkService antiAfkService, IAutoKeyService autoKeyService, IMiningRecognitionService miningRecognitionService, IMiningOverlayService miningOverlayService, IOcrEngine ocrEngine, IScreenCaptureService screenCaptureService)
         {
             InitializeComponent();
 
@@ -144,6 +146,8 @@ namespace SCLOCVerse
             _autoKeyService = autoKeyService;
             _miningRecognitionService = miningRecognitionService;
             _miningOverlayService = miningOverlayService;
+            _ocrEngine = ocrEngine;
+            _screenCaptureService = screenCaptureService;
 
             _toastService = new ToastService(AppToast.ToastBorder, AppToast.ToastText);
             _linkService = new LinkService(_toastService);
@@ -209,7 +213,7 @@ namespace SCLOCVerse
             CanvasSettings.OverlayPane?.BindAutoKey(_autoKeyService, _preferencesService);
 
             // «Майнінг» → Mining Module: тогл + cycle interval.
-            CanvasSettings.MiningPane?.BindMining(_miningRecognitionService, _miningOverlayService, _preferencesService);
+            CanvasSettings.MiningPane?.BindMining(_miningRecognitionService, _miningOverlayService, _preferencesService, _ocrEngine, _screenCaptureService);
 
             // Стан зарезервованих категорій у cat-head (P0 — центр керування показує стан).
             CanvasSettings.ProfilePane.Subtitle = "не налаштовано";

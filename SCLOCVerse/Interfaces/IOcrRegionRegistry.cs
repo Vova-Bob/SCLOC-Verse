@@ -23,6 +23,13 @@ namespace SCLOCVerse.Interfaces
         /// <summary>Активувати/деактивувати регіон без видалення (зручно для toggle в UI).</summary>
         void SetEnabled(string regionId, bool enabled);
 
+        /// <summary>
+        /// Оновити ScreenRect для регіону (динамічний ROI).
+        /// Використовується MiningRoiResolver для перемикання Discovery ↔ Tracking.
+        /// Якщо регіон не знайдено — no-op.
+        /// </summary>
+        void UpdateScreenRect(string regionId, System.Windows.Rect screenRect);
+
         /// <summary>Очищення реєстру (використовується при Shutdown або reset).</summary>
         void Clear();
     }

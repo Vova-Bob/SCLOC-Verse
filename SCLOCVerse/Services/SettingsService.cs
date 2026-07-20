@@ -284,5 +284,62 @@ namespace SCLOCVerse.Services
             Settings.Default.MiningCycleIntervalMs = value;
             Settings.Default.Save();
         }
+
+        public bool GetMiningManualRoiEnabled()
+        {
+            return Settings.Default.MiningManualRoiEnabled;
+        }
+
+        public void SetMiningManualRoiEnabled(bool value)
+        {
+            Settings.Default.MiningManualRoiEnabled = value;
+            Settings.Default.Save();
+        }
+
+        public System.Windows.Rect GetMiningRoi()
+        {
+            return new System.Windows.Rect(
+                Settings.Default.MiningRoiX,
+                Settings.Default.MiningRoiY,
+                Settings.Default.MiningRoiWidth,
+                Settings.Default.MiningRoiHeight);
+        }
+
+        public void SetMiningRoi(System.Windows.Rect roi)
+        {
+            Settings.Default.MiningRoiX = roi.X;
+            Settings.Default.MiningRoiY = roi.Y;
+            Settings.Default.MiningRoiWidth = roi.Width;
+            Settings.Default.MiningRoiHeight = roi.Height;
+            Settings.Default.Save();
+        }
+
+        public bool GetMiningShowRoiDebug()
+        {
+            return Settings.Default.MiningShowRoiDebug;
+        }
+
+        public void SetMiningShowRoiDebug(bool value)
+        {
+            Settings.Default.MiningShowRoiDebug = value;
+            Settings.Default.Save();
+        }
+
+        // --- Mining Overlay Position ---
+
+        public double GetMiningOverlayX() => Settings.Default.MiningOverlayX;
+        public void SetMiningOverlayX(double value) { Settings.Default.MiningOverlayX = value; Settings.Default.Save(); }
+
+        public double GetMiningOverlayY() => Settings.Default.MiningOverlayY;
+        public void SetMiningOverlayY(double value) { Settings.Default.MiningOverlayY = value; Settings.Default.Save(); }
+
+        public double GetMiningOverlayWidth() => Settings.Default.MiningOverlayWidth;
+        public void SetMiningOverlayWidth(double value) { Settings.Default.MiningOverlayWidth = value; Settings.Default.Save(); }
+
+        public double GetMiningOverlayHeight() => Settings.Default.MiningOverlayHeight;
+        public void SetMiningOverlayHeight(double value) { Settings.Default.MiningOverlayHeight = value; Settings.Default.Save(); }
+
+        public double GetMiningOverlayOpacity() => Settings.Default.MiningOverlayOpacity;
+        public void SetMiningOverlayOpacity(double value) { Settings.Default.MiningOverlayOpacity = value; Settings.Default.Save(); }
     }
 }

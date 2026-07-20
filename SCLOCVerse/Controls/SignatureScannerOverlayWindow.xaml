@@ -1,7 +1,7 @@
-<Window x:Class="SCLOCVerse.Controls.MiningOverlayWindow"
+<Window x:Class="SCLOCVerse.Controls.SignatureScannerOverlayWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="MiningOverlay"
+        Title="SignatureScanner"
         WindowStyle="None"
         AllowsTransparency="True"
         Background="Transparent"
@@ -17,8 +17,15 @@
             CornerRadius="10"
             Padding="12,8">
         <StackPanel Orientation="Vertical">
+            <TextBlock x:Name="TitleLabel"
+                       Text="SC SCAN"
+                       FontFamily="Segoe UI Semibold"
+                       FontSize="10"
+                       Foreground="#5F7E8A"
+                       HorizontalAlignment="Left"
+                       Margin="0,0,0,2"/>
             <TextBlock x:Name="MaterialName"
-                       Text="Mining..."
+                       Text="Сканування..."
                        FontFamily="Segoe UI Semibold"
                        FontSize="14"
                        Foreground="#E8F3FF"
@@ -31,7 +38,7 @@
                        Margin="0,4,0,0"
                        HorizontalAlignment="Left"/>
             <TextBlock x:Name="Confidence"
-                       Text="confidence: —"
+                       Text="—"
                        FontFamily="Consolas"
                        FontSize="9"
                        Foreground="#5F7E8A"
