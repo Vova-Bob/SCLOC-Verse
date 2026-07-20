@@ -112,13 +112,13 @@
   <!-- OCR Platform: PaddleOCR PP-OCRv5 ONNX models (Apache 2.0, RapidAI conversion).
        Копіюються в output directory для завантаження через ONNX Runtime. -->
   <ItemGroup>
-    <None Include="Resources\OcrModels\ch_PP-OCRv5_mobile_det.onnx">
+    <None Include="Resources\OcrModels\ch_PP-OCRv6_det_small.onnx">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Include="Resources\OcrModels\ch_PP-OCRv5_rec_mobile_infer.onnx">
+    <None Include="Resources\OcrModels\ch_PP-OCRv6_rec_small.onnx">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
-    <None Include="Resources\OcrModels\ppocrv5_dict.txt">
+    <None Include="Resources\OcrModels\ppocrv6_dict.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>
