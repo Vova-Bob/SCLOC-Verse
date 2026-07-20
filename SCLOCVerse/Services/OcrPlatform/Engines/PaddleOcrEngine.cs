@@ -24,7 +24,7 @@ namespace SCLOCVerse.Services.OcrPlatform.Engines
         private readonly string _detModelPath;
         private readonly string _recModelPath;
         private readonly string _dictPath;
-        private readonly object _loadLock = new();
+        private readonly Lock _loadLock = new();
         private PaddleDetector? _detector;
         private PaddleRecognizer? _recognizer;
         private bool _disposed;
@@ -126,7 +126,7 @@ namespace SCLOCVerse.Services.OcrPlatform.Engines
                 // SC HUD signature: горизонтальний текст цифр, ratio 2:1..15:1.
                 // Це зменшує кількість recognition викликів у 5-10 разів.
                 var filteredBoxes = options.AllowedCharacters is not null
-                    ? boxes.Where(b => IsLikelyDigitBox(b.BoundingRect)).ToList()
+                    ? [.. boxes.Where(b => IsLikelyDigitBox(b.BoundingRect))]
                     : boxes;
 
                 if (filteredBoxes.Count == 0)
@@ -188,7 +188,7 @@ namespace SCLOCVerse.Services.OcrPlatform.Engines
 
             if (!string.IsNullOrEmpty(options.AllowedCharacters))
             {
-                var filteredText = new string(text.Where(c => options.AllowedCharacters.Contains(c)).ToArray());
+                var filteredText = new string([.. text.Where(c => options.AllowedCharacters.Contains(c))]);
                 filtered = filteredText != text;
                 text = filteredText;
             }
