@@ -15,14 +15,14 @@ namespace SCLOCVerse.Services.OcrPlatform.Engines.Internal
         private static readonly float[] DetNormValues =
             { 1f / (0.229f * 255f), 1f / (0.224f * 255f), 1f / (0.225f * 255f) };
 
-        // PP-OCRv5 Recognition normalization: проста (x - 127.5) / 127.5.
+        // PP-OCRv6 Recognition normalization: проста (x - 127.5) / 127.5.
         // НЕ ImageNet! PaddleOCR rec використовує mean=0.5, std=0.5 (scale=1/255).
         private static readonly float[] RecMeanValues = { 127.5f, 127.5f, 127.5f };
         private static readonly float[] RecNormValues = { 1f / 127.5f, 1f / 127.5f, 1f / 127.5f };
 
         /// <summary>
         /// Resize зображення до target height × dynamic width (збереження пропорцій).
-        /// Для CRNN recognizer — height фіксований (48 для PP-OCRv5_mobile_rec).
+        /// Для CRNN recognizer — height фіксований (48 для PP-OCRv6_rec).
         /// </summary>
         public static Mat ResizeForRecognition(Mat input, int targetHeight)
         {
@@ -37,7 +37,7 @@ namespace SCLOCVerse.Services.OcrPlatform.Engines.Internal
 
         /// <summary>
         /// Нормалізація для Detection model.
-        /// PP-OCRv5 det використовує ImageNet mean/std. Зберігає BGR порядок.
+        /// PP-OCRv6 det використовує ImageNet mean/std. Зберігає BGR порядок.
         /// </summary>
         public static float[] NormalizeForDetection(Mat srcBgr)
         {
@@ -46,7 +46,7 @@ namespace SCLOCVerse.Services.OcrPlatform.Engines.Internal
 
         /// <summary>
         /// Нормалізація для Recognition model.
-        /// PP-OCRv5 rec використовує mean=0.5, std=0.5 (НЕ ImageNet!).
+        /// PP-OCRv6 rec використовує mean=0.5, std=0.5 (НЕ ImageNet!).
         /// Зберігає BGR порядок (не RGB swap, як було раніше — БАГ FIXED).
         /// </summary>
         public static float[] NormalizeForRecognition(Mat srcBgr)

@@ -393,7 +393,7 @@ namespace SCLOCVerse.Composition
         /// <summary>Сервіс захоплення екрана для OCR Platform.</summary>
         public IScreenCaptureService ScreenCapture => _screenCaptureService;
 
-        /// <summary>OCR Engine (PaddleOCR PP-OCRv5 via ONNX Runtime) для OCR Platform.</summary>
+        /// <summary>OCR Engine (PaddleOCR PP-OCRv6 via ONNX Runtime) для OCR Platform.</summary>
         public IOcrEngine OcrEngine => _ocrEngine;
 
         /// <summary>Координатор OCR циклу (timer-driven, foreground-gated).</summary>

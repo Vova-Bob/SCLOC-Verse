@@ -8,12 +8,12 @@ using System.Text;
 namespace SCLOCVerse.Services.OcrPlatform.Engines.Internal
 {
     /// <summary>
-    /// Text Recognition model (CRNN) для PaddleOCR PP-OCRv5/v6.
+    /// Text Recognition model (CRNN) для PaddleOCR PP-OCRv6.
     /// Приймає crop text region (через getPerspectiveTransform → warp),
     /// повертає розпізнаний текст + confidence.
     ///
     /// Pipeline:
-    /// 1. Crop + perspective transform → horizontal rectangle (height=48 для PP-OCRv5_mobile_rec)
+    /// 1. Crop + perspective transform → horizontal rectangle (height=48 для PP-OCRv6_rec)
     /// 2. Normalize (ImageNet mean/std → NCHW tensor, BGR→RGB)
     /// 3. InferenceSession.Run → output [W, num_classes] (де W = часові кроки)
     /// 4. Greedy CTC decode → argmax per timestep → collapse repeats
@@ -26,7 +26,7 @@ namespace SCLOCVerse.Services.OcrPlatform.Engines.Internal
         private readonly IReadOnlyList<string> _dictionary;
         private readonly int _recImageHeight;
 
-        // PP-OCRv5_mobile_rec використовує height=48.
+        // PP-OCRv6_rec використовує height=48.
         private const int DefaultRecImageHeight = 48;
 
         public PaddleRecognizer(string modelPath, string dictionaryPath, int recImageHeight = DefaultRecImageHeight)

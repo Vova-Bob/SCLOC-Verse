@@ -10,7 +10,7 @@ namespace SCLOCVerse.Interfaces
     ///
     /// Реалізації:
     /// <list type="bullet">
-    /// <item><c>PaddleOcrEngine</c> — PaddleOCR PP-OCRv5/v6 через ONNX Runtime (primary).</item>
+    /// <item><c>PaddleOcrEngine</c> — PaddleOCR PP-OCRv6 через ONNX Runtime (primary).</item>
     /// <item>Future: <c>CustomTrainedEngine</c> — fine-tuned модель під SC HUD.</item>
     /// </list>
     /// </summary>

@@ -8,7 +8,7 @@ namespace SCLOCVerse.Services.OcrPlatform.Engines
 {
     /// <summary>
     /// Реалізація <see cref="IOcrEngine"/> через прямий ONNX Runtime inference
-    /// PaddleOCR PP-OCRv5/v6 моделей (Detection + Recognition).
+    /// PaddleOCR PP-OCRv6 моделей (Detection + Recognition).
     ///
     /// Skip AngleNet — SC HUD текст завжди вертикальний (0°).
     ///

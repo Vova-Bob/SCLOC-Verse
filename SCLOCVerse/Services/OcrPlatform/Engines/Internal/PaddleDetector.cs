@@ -6,7 +6,7 @@ using SCLOCVerse.Services.OcrPlatform.Engines.Internal;
 namespace SCLOCVerse.Services.OcrPlatform.Engines.Internal
 {
     /// <summary>
-    /// Text Detection model (DB — Differentiable Binarization) для PaddleOCR PP-OCRv5/v6.
+    /// Text Detection model (DB — Differentiable Binarization) для PaddleOCR PP-OCRv6.
     /// Повертає список текстових регіонів (TextBoxes) у координатах оригінального зображення.
     ///
     /// Pipeline:
@@ -102,7 +102,7 @@ namespace SCLOCVerse.Services.OcrPlatform.Engines.Internal
                 targetW = (int)(src.Cols * ratio);
             }
 
-            // PP-OCRv5_mobile_det очікує розміри кратні 32.
+            // PP-OCRv6_det очікує розміри кратні 32.
             targetH = RoundUpToMultiple(targetH, 32);
             targetW = RoundUpToMultiple(targetW, 32);
 

@@ -109,7 +109,7 @@
     </None>
   </ItemGroup>
 
-  <!-- OCR Platform: PaddleOCR PP-OCRv5 ONNX models (Apache 2.0, RapidAI conversion).
+  <!-- OCR Platform: PaddleOCR PP-OCRv6 ONNX models (Apache 2.0, RapidAI conversion).
        Копіюються в output directory для завантаження через ONNX Runtime. -->
   <ItemGroup>
     <None Include="Resources\OcrModels\ch_PP-OCRv6_det_small.onnx">
