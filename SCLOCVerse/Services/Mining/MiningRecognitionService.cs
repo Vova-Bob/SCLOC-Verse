@@ -3,6 +3,7 @@ using SCLOCVerse.Helpers;
 using SCLOCVerse.Interfaces;
 using SCLOCVerse.Models.Mining;
 using SCLOCVerse.Models.OcrPlatform;
+using SCLOCVerse.Services.OcrPlatform.Engines;
 using System.Diagnostics;
 using System.Windows.Media.Imaging;
 
@@ -31,6 +32,7 @@ namespace SCLOCVerse.Services.Mining
         private readonly IMiningHudLocatorStrategy _locatorStrategy;
         private readonly IScreenCaptureService _screenCapture;
         private readonly IMiningOverlayService _overlay;
+        private readonly IOcrEngine _ocrEngine;
         private readonly object _stateLock = new();
 
         /// <summary>Discovery timer interval (повільніший за Coordinator — 2с).</summary>
@@ -46,7 +48,8 @@ namespace SCLOCVerse.Services.Mining
             IMiningRoiResolver roiResolver,
             IMiningHudLocatorStrategy locatorStrategy,
             IScreenCaptureService screenCapture,
-            IMiningOverlayService overlay)
+            IMiningOverlayService overlay,
+            IOcrEngine ocrEngine)
         {
             ArgumentNullException.ThrowIfNull(database);
             ArgumentNullException.ThrowIfNull(coordinator);
@@ -55,6 +58,7 @@ namespace SCLOCVerse.Services.Mining
             ArgumentNullException.ThrowIfNull(locatorStrategy);
             ArgumentNullException.ThrowIfNull(screenCapture);
             ArgumentNullException.ThrowIfNull(overlay);
+            ArgumentNullException.ThrowIfNull(ocrEngine);
 
             _database = database;
             _coordinator = coordinator;
@@ -63,6 +67,7 @@ namespace SCLOCVerse.Services.Mining
             _locatorStrategy = locatorStrategy;
             _screenCapture = screenCapture;
             _overlay = overlay;
+            _ocrEngine = ocrEngine;
         }
 
         /// <inheritdoc />
@@ -101,6 +106,13 @@ namespace SCLOCVerse.Services.Mining
             }
             IsEnabled = false;
             StateChanged?.Invoke(this, CurrentState);
+
+            // Lazy ONNX: вивантажити моделі → звільнити ~500МБ.
+            if (_ocrEngine is PaddleOcrEngine paddle)
+            {
+                paddle.UnloadModels();
+                Debug.WriteLine("[MiningRecognition] ONNX models unloaded (lazy)");
+            }
         }
 
         /// <inheritdoc />

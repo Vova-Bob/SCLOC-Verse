@@ -181,7 +181,8 @@ namespace SCLOCVerse.Composition
                 _miningRoiResolver,
                 _miningHudLocator,
                 _screenCaptureService,
-                _miningOverlay);
+                _miningOverlay,
+                _ocrEngine);
 
             // Wiring: MiningRecognition.StateChanged → MiningOverlay.UpdateState.
             _miningRecognition.StateChanged += (sender, state) => _miningOverlay.UpdateState(state);

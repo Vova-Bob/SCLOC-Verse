@@ -26,6 +26,12 @@ namespace SCLOCVerse.Services.OcrPlatform.Coordinator
         private int _isRunning; // 0=stopped, 1=running (Interlocked)
 
         /// <summary>
+        /// Кеш останніх fingerprint per region — для skip OCR якщо екран не змінився.
+        /// Key = regionId, Value = fingerprint hash.
+        /// </summary>
+        private readonly System.Collections.Concurrent.ConcurrentDictionary<string, long> _lastFingerprints = new();
+
+        /// <summary>
         /// Створити OcrCoordinator з інжектованими залежностями.
         /// Усі залежності — вже реалізовані сервіси з Composition Root.
         /// </summary>
@@ -154,8 +160,16 @@ namespace SCLOCVerse.Services.OcrPlatform.Coordinator
             using var inputMat = BitmapSourceToMat(capturedBitmap);
             tCapture = sw.ElapsedMilliseconds;
 
-            // Крок 2: Compute crop fingerprint (для Field Lock).
+            // Крок 2: Compute crop fingerprint (для Field Lock + skip-if-unchanged).
             var fingerprint = ComputeFingerprint(inputMat);
+
+            // Opt 3: Skip OCR якщо екран не змінився — економія CPU коли HUD статичний.
+            if (_lastFingerprints.TryGetValue(region.Id, out var lastFp) && fingerprint == lastFp)
+            {
+                Debug.WriteLine("[OcrCoordinator] '{0}': SKIP (fingerprint unchanged)", region.Id);
+                return;
+            }
+            _lastFingerprints[region.Id] = fingerprint;
 
             // Крок 3: OCR Engine — ПЕРЕДАЄМО ОРИГІНАЛЬНИЙ BGR.
             // Forensic Audit виявив: DefaultImagePipeline бінаризував зображення

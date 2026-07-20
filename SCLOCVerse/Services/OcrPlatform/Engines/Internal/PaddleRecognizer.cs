@@ -33,7 +33,9 @@ namespace SCLOCVerse.Services.OcrPlatform.Engines.Internal
         {
             var options = new SessionOptions
             {
-                GraphOptimizationLevel = GraphOptimizationLevel.ORT_ENABLE_EXTENDED
+                GraphOptimizationLevel = GraphOptimizationLevel.ORT_ENABLE_ALL,
+                InterOpNumThreads = 1,
+                IntraOpNumThreads = Math.Min(4, Environment.ProcessorCount)
             };
             _session = new InferenceSession(modelPath, options);
             _inputName = _session.InputMetadata.Keys.First();
