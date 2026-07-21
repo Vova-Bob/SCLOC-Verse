@@ -33,18 +33,26 @@ namespace SCLOCVerse.Services.Mining.Signatures
 
         /// <inheritdoc />
         public MiningMaterial? Lookup(string code)
+            => LookupAll(code).FirstOrDefault();
+
+        /// <inheritdoc />
+        public IReadOnlyList<MiningMaterial> LookupAll(string code)
         {
-            if (string.IsNullOrEmpty(code)) return null;
+            if (string.IsNullOrEmpty(code)) return System.Array.Empty<MiningMaterial>();
 
             // Нормалізувати: прибрати коми/пробіли → "3385".
             var normalized = code.Replace(",", "").Replace(" ", "").Replace(".", "");
-            if (!int.TryParse(normalized, out var raw) || raw <= 0) return null;
+            if (!int.TryParse(normalized, out var raw) || raw <= 0) return System.Array.Empty<MiningMaterial>();
 
-            // 1. Спробувати матеріали (base × cluster).
+            // Capacity 4 = material (1) + max 3 generic (ROC + FPS + Salvage).
+            var result = new List<MiningMaterial>(4);
+
+            // 1. Звичайні materials (base × cluster).
             // MaxCluster — per-rarity ліміт з Source of Truth Star Citizen
             // (MiningRarityRegistry: Legendary=2, Epic=3, Rare=4, Uncommon=5, Common=6).
             // Якщо cluster перевищує max для цього матеріалу — кандидат відхиляється,
-            // цикл продовжується (можливий перехід до LookupGeneric для ROC/FPS/Salvage).
+            // цикл продовжується (можливий перехід до generics для ROC/FPS/Salvage).
+            // FIFO: перший валідний material збіг (не збираємо всі — логіку materials не змінюємо).
             foreach (var (name, category, baseSig) in DefaultMiningSignatures.Materials)
             {
                 if (raw % baseSig == 0)
@@ -53,21 +61,21 @@ namespace SCLOCVerse.Services.Mining.Signatures
                     var maxCluster = GetMaxClusterOrFallback(name);
                     if (cluster >= 1 && cluster <= maxCluster)
                     {
-                        return new MiningMaterial
+                        result.Add(new MiningMaterial
                         {
                             Code = raw.ToString(),
                             Name = name,
                             Category = category,
                             ClusterFormat = $"Cluster: {cluster} Rocks",
                             IsRefineryInput = true
-                        };
+                        });
+                        break; // FIFO — перший валідний material, як у старій логіці.
                     }
                 }
             }
 
-            // 2. Спробувати overrides (JSON).
-            // Для невідомих матеріалів (не в MiningRarityRegistry) зберігається
-            // стара поведінка з межею 20 (fallback).
+            // 2. Overrides (JSON). Для невідомих матеріалів (не в MiningRarityRegistry)
+            // зберігається стара поведінка з межею 20 (fallback). FIFO аналогічно.
             if (_overrides is not null)
             {
                 foreach (var (name, category, baseSig) in _overrides)
@@ -78,21 +86,26 @@ namespace SCLOCVerse.Services.Mining.Signatures
                         var maxCluster = GetMaxClusterOrFallback(name);
                         if (cluster >= 1 && cluster <= maxCluster)
                         {
-                            return new MiningMaterial
+                            result.Add(new MiningMaterial
                             {
                                 Code = raw.ToString(),
                                 Name = name,
                                 Category = category,
                                 ClusterFormat = $"Cluster: {cluster} Rocks",
                                 IsRefineryInput = true
-                            };
+                            });
+                            break;
                         }
                     }
                 }
             }
 
-            // 3. Спробувати ROC/FPS/Salvage (фіксовані значення).
-            return LookupGeneric(raw);
+            // 3. ROC/FPS/Salvage — всі кандидати (гібридний підхід).
+            // Неколізійний випадок (1 кандидат) повертається як і раніше.
+            // Колізійний (2-3) — повертається список усіх варіантів.
+            result.AddRange(LookupGenericAll(raw));
+
+            return result;
         }
 
         /// <summary>
@@ -125,51 +138,68 @@ namespace SCLOCVerse.Services.Mining.Signatures
             TryLoadOverrides();
         }
 
-        private MiningMaterial? LookupGeneric(int raw)
+        /// <summary>
+        /// Пошук УСІХ generic-кандидатів (ROC/FPS/Salvage) для сигнатури.
+        ///
+        /// <para><b>Гібридний підхід:</b> на відміну від попереднього <c>LookupGeneric</c>,
+        /// що повертав <b>перший</b> збіг (ROC → FPS → Salvage), цей метод повертає
+        /// <b>всі</b> кандидати. Неколізійні сигнатури (1 кандидат) повертаються як
+        /// єдиний елемент списку — поведінка сумісна зі старою.</para>
+        ///
+        /// <para>Колізійні сигнатури (напр. 12000 = ROC Tier 3 = FPS Tier 5 = Salvage Tier 6)
+        /// повертаються як 2-3 елементи, що дозволяє користувачу/викликанцю побачити
+        /// всі можливі інтерпретації.</para>
+        ///
+        /// <para>Порядок у списку стабільний: ROC → FPS → Salvage.</para>
+        /// </summary>
+        private static List<MiningMaterial> LookupGenericAll(int raw)
         {
-            // ROC
+            // Capacity 3 = максимум (ROC + FPS + Salvage).
+            var list = new List<MiningMaterial>(3);
+
+            // ROC (Range Ore Collector) — кратні 4000.
             var idx = System.Array.IndexOf(DefaultMiningSignatures.RocSignatures, raw);
             if (idx >= 0)
             {
-                return new MiningMaterial
+                list.Add(new MiningMaterial
                 {
                     Code = raw.ToString(),
                     Name = "ROC Mineable",
                     Category = "ROC",
                     ClusterFormat = $"Tier {idx + 1}",
                     IsRefineryInput = false
-                };
+                });
             }
 
-            // FPS
+            // FPS (Hand Mining) — кратні 3000.
             idx = System.Array.IndexOf(DefaultMiningSignatures.FpsSignatures, raw);
             if (idx >= 0)
             {
-                return new MiningMaterial
+                list.Add(new MiningMaterial
                 {
                     Code = raw.ToString(),
                     Name = "FPS Mineable",
                     Category = "FPS",
                     ClusterFormat = $"Tier {idx + 1}",
                     IsRefineryInput = false
-                };
+                });
             }
 
-            // Salvage
+            // Salvage — кратні 2000.
             idx = System.Array.IndexOf(DefaultMiningSignatures.SalvageSignatures, raw);
             if (idx >= 0)
             {
-                return new MiningMaterial
+                list.Add(new MiningMaterial
                 {
                     Code = raw.ToString(),
                     Name = "Salvage",
                     Category = "Salvage",
                     ClusterFormat = $"Tier {idx + 1}",
                     IsRefineryInput = false
-                };
+                });
             }
 
-            return null;
+            return list;
         }
 
         private void TryLoadOverrides()
