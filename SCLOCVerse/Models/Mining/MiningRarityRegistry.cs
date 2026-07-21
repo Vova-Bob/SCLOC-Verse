@@ -135,6 +135,11 @@ namespace SCLOCVerse.Models.Mining
         /// <summary>
         /// Мапа «Назва матеріалу → RarityInfo». Офіційна таблиця Star Citizen (26 матеріалів).
         /// Порядок = рідкість. Незмінна після ініціалізації.
+        ///
+        /// Дубльовані ключі (Uratite/Ouratite, Astatine/Aslarite) додані тому, що
+        /// <see cref="Services.Mining.Signatures.DefaultMiningSignatures"/> використовує
+        /// варіант «Uratite»/«Astatine», тоді як у грі/документації іноді трапляється
+        /// «Ouratite»/«Aslarite». Покриває обидва варіанти, щоб забарвлення точно спрацювало.
         /// </summary>
         private static readonly Dictionary<string, RarityInfo> ByName = new()
         {
@@ -144,8 +149,9 @@ namespace SCLOCVerse.Models.Mining
             ["Savrilium"]    = InfoLegendary,
 
             // 🟣 Epic (макс. 3×)
-            ["Ouratite"]  = InfoEpic,
-            ["Riccite"]   = InfoEpic,
+            ["Ouratite"] = InfoEpic,
+            ["Uratite"]  = InfoEpic, // варіант назви в DefaultMiningSignatures
+            ["Riccite"]  = InfoEpic,
             ["Lindinium"] = InfoEpic,
 
             // 🔵 Rare (макс. 4×)
@@ -158,6 +164,7 @@ namespace SCLOCVerse.Models.Mining
             // 🟢 Uncommon (макс. 5×)
             ["Laranite"]  = InfoUncommon,
             ["Aslarite"]  = InfoUncommon,
+            ["Astatine"]  = InfoUncommon, // варіант назви в DefaultMiningSignatures
             ["Titanium"]  = InfoUncommon,
             ["Tungsten"]  = InfoUncommon,
             ["Agricium"]  = InfoUncommon,
@@ -184,6 +191,32 @@ namespace SCLOCVerse.Models.Mining
         {
             if (string.IsNullOrWhiteSpace(materialName)) return InfoUnknown;
             return ByName.TryGetValue(materialName, out var info) ? info : InfoUnknown;
+        }
+
+        /// <summary>
+        /// Повертає базову сигнатуру матеріалу (1 камінь) за назвою.
+        ///
+        /// Читає <see cref="Services.Mining.Signatures.DefaultMiningSignatures.Materials"/>
+        /// — НЕ дублює логіку визначення ресурсу (<see cref="Services.Mining.Signatures.MiningSignatureDatabase"/>).
+        /// Використовується ТІЛЬКИ в UI Overlay Scanner для відображення реальної
+        /// сигнатури кластера (raw = base × cluster), коли <c>state.RawCode</c>
+        /// у Discovery mode містить базову сигнатуру, яку знайшов OcrFullScanLocator.
+        ///
+        /// Повертає null для невідомих матеріалів (ROC/FPS/Salvage) — для них
+        /// відображається <c>state.RawCode</c> як є.
+        /// </summary>
+        public static int? TryGetBaseSignature(string? materialName)
+        {
+            if (string.IsNullOrWhiteSpace(materialName)) return null;
+
+            foreach (var (name, _, baseSig) in
+                     Services.Mining.Signatures.DefaultMiningSignatures.Materials)
+            {
+                if (string.Equals(name, materialName, StringComparison.Ordinal))
+                    return baseSig;
+            }
+
+            return null;
         }
     }
 }

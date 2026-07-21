@@ -218,11 +218,31 @@ namespace SCLOCVerse.Controls
         // (MiningRarityRegistry — статичний довідник, не впливає на розпізнавання).
 
         /// <summary>
-        /// Конвертер hex-рядка ("#RRGGBB") → SolidColorBrush.Кешувати не потрібно:
-        /// confidence/rarity змінюються рідко (раз на нове розпізнавання).
+        /// Конвертер hex-рядка («#RRGGBB») → SolidColorBrush.
+        ///
+        /// Реалізація через <see cref="System.Windows.Media.Color.FromRgb"/> замість
+        /// <c>ColorConverter.ConvertFromString</c> — без винятків, без reflection,
+        /// швидше і надійніше у WPF-overlay з AllowsTransparency. Усі наші hex мають
+        /// формат 7 символів (#RRGGBB), перевірено статично.
         /// </summary>
         private static System.Windows.Media.SolidColorBrush BrushFromHex(string hex)
-            => new((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(hex));
+        {
+            if (hex is null || hex.Length != 7 || hex[0] != '#')
+                return System.Windows.Media.Brushes.White;
+
+            try
+            {
+                byte r = Convert.ToByte(hex.Substring(1, 2), 16);
+                byte g = Convert.ToByte(hex.Substring(3, 2), 16);
+                byte b = Convert.ToByte(hex.Substring(5, 2), 16);
+                return new System.Windows.Media.SolidColorBrush(
+                    System.Windows.Media.Color.FromRgb(r, g, b));
+            }
+            catch
+            {
+                return System.Windows.Media.Brushes.White;
+            }
+        }
 
         public void UpdateState(MiningState state)
         {
@@ -272,17 +292,92 @@ namespace SCLOCVerse.Controls
             StarsLabel.Text = rarity.Stars;
             StarsLabel.Foreground = BrushFromHex(rarity.ColorHex);
 
-            // 4. Кластер (логіка визначення не змінюється — лише візуалізація).
-            var cluster = string.IsNullOrEmpty(state.ClusterCount) ? "?" : state.ClusterCount;
-            ClusterInfo.Text = material.ClusterFormat?.Replace("{0}", cluster)
-                               ?? $"Cluster: {cluster}";
+            // 4. Кластер — обрізаємо «Cluster: » prefix з ClusterFormat.
+            //    У DB ClusterFormat створюється з ПІДСТАВЛЕНИМ значенням («Cluster: 2 Rocks»),
+            //    а не з шаблоном «{0}». Лейбл «Кластер:» вже у XAML — дублювання прибираємо.
+            //    Для ROC/FPS/Salvage («Tier N») — залишаємо як є.
+            ClusterInfo.Text = FormatClusterDisplay(material.ClusterFormat);
 
-            // 5. Сигнатура (raw code з OCR).
-            SignatureLabel.Text = state.RawCode ?? "—";
+            // 5. Сигнатура — реальна сігнатура кластера (raw = base × cluster),
+            //    НЕ базова сігнатура 1 каменя. Обчислення ТІЛЬКИ для UI-відображення;
+            //    бізнес-логіка визначення ресурсу/кластера не зачіпається.
+            //    У Discovery mode state.RawCode містить базову сигнатуру (що знайшов
+            //    OcrFullScanLocator), тому обчислюємо raw самостійно.
+            SignatureLabel.Text = FormatSignatureDisplay(material, state.RawCode);
 
             // 6. Confidence → progress bar.
             UpdateScanProgress(state.Confidence);
             Confidence.Text = $"conf: {state.Confidence:F2}";
+        }
+
+        /// <summary>
+        /// Форматування відображення кластера без дублювання «Cluster:».
+        ///
+        /// <para>Кейси:</para>
+        /// <list type="bullet">
+        /// <item>«Cluster: 2 Rocks» → «2 Rocks» (звичайні матеріали).</item>
+        /// <item>«Tier 3»           → «Tier 3» (ROC/FPS/Salvage, без змін).</item>
+        /// <item>null               → «—».</item>
+        /// </list>
+        /// </summary>
+        private static string FormatClusterDisplay(string? clusterFormat)
+        {
+            if (string.IsNullOrEmpty(clusterFormat)) return "—";
+
+            // Звичайні матеріали: «Cluster: N Rocks» → «N Rocks».
+            const string clusterPrefix = "Cluster: ";
+            if (clusterFormat.StartsWith(clusterPrefix, StringComparison.Ordinal))
+                return clusterFormat[clusterPrefix.Length..];
+
+            // ROC/FPS/Salvage: «Tier N» → без змін.
+            return clusterFormat;
+        }
+
+        /// <summary>
+        /// Форматування відображення сигнатури: реальна сигнатура кластера.
+        ///
+        /// <para>raw = base × cluster, де:</para>
+        /// <list type="bullet">
+        /// <item><c>base</c> — з <see cref="Services.Mining.Signatures.DefaultMiningSignatures.Materials"/>
+        ///     (базова сігнатура 1 каменя для матеріалу).</item>
+        /// <item><c>cluster</c> — витягнується з <see cref="MiningMaterial.ClusterFormat"/>
+        ///     (DB підставляє реальне значення у «Cluster: N Rocks»).</item>
+        /// </list>
+        ///
+        /// <para>Якщо base або cluster невідомі (ROC/FPS/Salvage, override) —
+        /// повертаємо <paramref name="rawCodeFallback"/> (state.RawCode) як є.</para>
+        ///
+        /// <para><b>Важливо:</b> це ТІЛЬКИ UI-обчислення. Логіка визначення
+        /// кластера (у <see cref="Services.Mining.Signatures.MiningSignatureDatabase"/>)
+        /// не зачіпається.</para>
+        /// </summary>
+        private static string FormatSignatureDisplay(MiningMaterial material, string? rawCodeFallback)
+        {
+            // Витягнути N з «Cluster: N Rocks» (або будь-якого формату з числом).
+            var clusterNumber = TryExtractClusterNumber(material.ClusterFormat);
+            var baseSig = MiningRarityRegistry.TryGetBaseSignature(material.Name);
+
+            if (clusterNumber.HasValue && baseSig.HasValue && clusterNumber.Value > 0)
+            {
+                var raw = baseSig.Value * clusterNumber.Value;
+                // Формат «16,960» (з роздільником тисяч) — як у HUD Star Citizen.
+                return raw.ToString("N0", System.Globalization.CultureInfo.InvariantCulture);
+            }
+
+            // Fallback: показати raw code з OCR, якщо є; інакше material.Code.
+            return rawCodeFallback ?? material.Code ?? "—";
+        }
+
+        /// <summary>
+        /// Витягнути число кластера з ClusterFormat (напр. «Cluster: 2 Rocks» → 2).
+        /// </summary>
+        private static int? TryExtractClusterNumber(string? clusterFormat)
+        {
+            if (string.IsNullOrEmpty(clusterFormat)) return null;
+
+            // Перша послідовність цифр у рядку.
+            var match = System.Text.RegularExpressions.Regex.Match(clusterFormat, @"\d+");
+            return match.Success && int.TryParse(match.Value, out var n) ? n : null;
         }
 
         /// <summary>
