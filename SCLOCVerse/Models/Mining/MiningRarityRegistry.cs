@@ -3,12 +3,18 @@ using System.Collections.Generic;
 namespace SCLOCVerse.Models.Mining
 {
     /// <summary>
-    /// Рівень рідкісності матеріалу Star Citizen (для UI Overlay Scanner).
+    /// Рівень рідкісності матеріалу Star Citizen.
     ///
-    /// ВАЖЛИВО: цей enum НЕ впливає на логіку визначення ресурсу
-    /// (<see cref="Services.Mining.Signatures.MiningSignatureDatabase"/>).
-    /// Використовується виключно для візуального відображення рідкісності
-    /// у Overlay (колір назви, рейтинг зірок, текстова мітка).
+    /// <para><b>Подвійна роль:</b></para>
+    /// <list type="bullet">
+    /// <item>UI (Overlay Scanner) — колір назви, рейтинг зірок, текстова мітка.</item>
+    /// <item>Бізнес-логіка — <see cref="Services.Mining.Signatures.MiningSignatureDatabase.Lookup"/>
+    ///     використовує <see cref="RarityInfo.MaxCluster"/> для відхилення
+    ///     фізично неможливих комбінацій (напр. Savrilium × 5).</item>
+    /// </list>
+    ///
+    /// <para>MaxCluster — Source of Truth Star Citizen: Legendary=2, Epic=3, Rare=4,
+    /// Uncommon=5, Common=6. Для невідомих матеріалів = 0 (Lookup використовує fallback=20).</para>
     /// </summary>
     public enum MaterialRarity
     {

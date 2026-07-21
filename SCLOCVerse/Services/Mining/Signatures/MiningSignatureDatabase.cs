@@ -41,12 +41,17 @@ namespace SCLOCVerse.Services.Mining.Signatures
             if (!int.TryParse(normalized, out var raw) || raw <= 0) return null;
 
             // 1. Спробувати матеріали (base × cluster).
+            // MaxCluster — per-rarity ліміт з Source of Truth Star Citizen
+            // (MiningRarityRegistry: Legendary=2, Epic=3, Rare=4, Uncommon=5, Common=6).
+            // Якщо cluster перевищує max для цього матеріалу — кандидат відхиляється,
+            // цикл продовжується (можливий перехід до LookupGeneric для ROC/FPS/Salvage).
             foreach (var (name, category, baseSig) in DefaultMiningSignatures.Materials)
             {
                 if (raw % baseSig == 0)
                 {
                     var cluster = raw / baseSig;
-                    if (cluster is >= 1 and <= 20) // розумна межа
+                    var maxCluster = GetMaxClusterOrFallback(name);
+                    if (cluster >= 1 && cluster <= maxCluster)
                     {
                         return new MiningMaterial
                         {
@@ -61,6 +66,8 @@ namespace SCLOCVerse.Services.Mining.Signatures
             }
 
             // 2. Спробувати overrides (JSON).
+            // Для невідомих матеріалів (не в MiningRarityRegistry) зберігається
+            // стара поведінка з межею 20 (fallback).
             if (_overrides is not null)
             {
                 foreach (var (name, category, baseSig) in _overrides)
@@ -68,7 +75,8 @@ namespace SCLOCVerse.Services.Mining.Signatures
                     if (raw % baseSig == 0)
                     {
                         var cluster = raw / baseSig;
-                        if (cluster is >= 1 and <= 20)
+                        var maxCluster = GetMaxClusterOrFallback(name);
+                        if (cluster >= 1 && cluster <= maxCluster)
                         {
                             return new MiningMaterial
                             {
@@ -85,6 +93,25 @@ namespace SCLOCVerse.Services.Mining.Signatures
 
             // 3. Спробувати ROC/FPS/Salvage (фіксовані значення).
             return LookupGeneric(raw);
+        }
+
+        /// <summary>
+        /// Повертає максимальний кластер для матеріалу (Source of Truth Star Citizen)
+        /// з fallback для невідомих матеріалів (ROC/FPS/Salvage, JSON overrides).
+        ///
+        /// <para><b>Контракт:</b></para>
+        /// <list type="bullet">
+        /// <item>Відомий матеріал (26 офіційних): per-rarity ліміт (2/3/4/5/6).</item>
+        /// <item>Невідомий матеріал: <paramref name="fallback"/> (за замовч. 20 — стара поведінка).</item>
+        /// </list>
+        ///
+        /// <para>Використовується <see cref="Models.Mining.MiningRarityRegistry"/> —
+        /// єдиним SSOT для per-rarity лімітів. Подвійного опису лімітів у коді немає.</para>
+        /// </summary>
+        private static int GetMaxClusterOrFallback(string? materialName, int fallback = 20)
+        {
+            var max = MiningRarityRegistry.Get(materialName).MaxCluster;
+            return max > 0 ? max : fallback;
         }
 
         /// <inheritdoc />
