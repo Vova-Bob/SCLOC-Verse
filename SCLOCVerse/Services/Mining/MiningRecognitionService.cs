@@ -98,7 +98,7 @@ namespace SCLOCVerse.Services.Mining
             _roiResolver.ResetToDiscovery();
             lock (_stateLock)
             {
-                CurrentState.Material = null;
+                CurrentState.AllCandidates = System.Array.Empty<MiningMaterial>();
                 CurrentState.RawCode = null;
                 CurrentState.ClusterCount = null;
                 CurrentState.Confidence = 0;
@@ -353,12 +353,17 @@ namespace SCLOCVerse.Services.Mining
 
         /// <summary>
         /// Оновити material у state — lookup у database.
+        ///
+        /// <para>Викликає <see cref="IMiningSignatureDatabase.LookupAll"/> для отримання
+        /// УСІХ кандидатів (гібридний підхід). При колізії ROC/FPS/Salvage список
+        /// містить 2-3 варіанти; <see cref="MiningState.Material"/> повертає перший
+        /// (зворотна сумісність), Overlay показує всі.</para>
         /// </summary>
         private void UpdateMaterial(string code, double confidence)
         {
-            var material = _database.Lookup(code);
+            var candidates = _database.LookupAll(code);
+            CurrentState.AllCandidates = candidates;
             CurrentState.RawCode = code;
-            CurrentState.Material = material;
             CurrentState.Confidence = confidence;
             CurrentState.LastUpdatedUtc = DateTime.UtcNow;
         }

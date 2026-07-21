@@ -252,24 +252,24 @@ namespace SCLOCVerse.Controls
                 return;
             }
 
-            if (state?.Material is null)
+            TitleLabel.Text = "SC SCAN";
+
+            var candidates = state?.AllCandidates ?? System.Array.Empty<MiningMaterial>();
+
+            if (candidates.Count == 0)
             {
                 // ── Сканування ще не завершено (або матеріал не розпізнано) ──
-                TitleLabel.Text = "SC SCAN";
+                ShowSingleCandidate();
                 MaterialName.Text = state?.RawCode ?? "Сканування...";
                 MaterialName.Foreground = BrushFromHex("#E8F3FF");
 
-                // Prefix «Рідкість:» залишається білим; лише значення — сіре.
                 RarityLabelValue.Text = "—";
                 RarityLabelValue.Foreground = BrushFromHex("#A7C6E7");
-
-                // Зірки: колір ЗАВЖДИ золотистий (фіксований у XAML), лише Text.
                 StarsLabel.Text = "☆☆☆☆☆";
 
                 ClusterInfo.Text = "—";
                 SignatureLabel.Text = "—";
 
-                // Confidence < 1 → частковий прогрес (показуємо статус сканування).
                 UpdateScanProgress(state?.Confidence ?? 0);
                 Confidence.Text = state is not null
                     ? $"conf: {state.Confidence:F2}"
@@ -277,11 +277,44 @@ namespace SCLOCVerse.Controls
                 return;
             }
 
-            // ── Матеріал розпізнано ──
-            var material = state.Material;
-            var rarity = MiningRarityRegistry.Get(material.Name);
+            if (candidates.Count == 1)
+            {
+                // ── Однозначний збіг (звичайний material) — single-candidate блок ──
+                ShowSingleCandidate();
+                RenderSingleCandidate(candidates[0], state!);
+            }
+            else
+            {
+                // ── Колізія (ROC/FPS/Salvage) — multi-candidate блок ──
+                ShowMultiCandidate();
+                RenderMultiCandidate(candidates, state!);
+            }
 
-            TitleLabel.Text = "SC SCAN";
+            UpdateScanProgress(state!.Confidence);
+            Confidence.Text = $"conf: {state.Confidence:F2}";
+        }
+
+        /// <summary>Показати single-candidate блок, приховати multi-candidate.</summary>
+        private void ShowSingleCandidate()
+        {
+            SingleCandidatePanel.Visibility = Visibility.Visible;
+            MultiCandidatePanel.Visibility = Visibility.Collapsed;
+        }
+
+        /// <summary>Показати multi-candidate блок, приховати single-candidate.</summary>
+        private void ShowMultiCandidate()
+        {
+            SingleCandidatePanel.Visibility = Visibility.Collapsed;
+            MultiCandidatePanel.Visibility = Visibility.Visible;
+        }
+
+        /// <summary>
+        /// Рендер single-candidate блоку (назва, рідкість, зірки, кластер, сігнатура).
+        /// Використовується як при Count == 1, так і при Count == 0 (з placeholder-значеннями).
+        /// </summary>
+        private void RenderSingleCandidate(MiningMaterial material, MiningState state)
+        {
+            var rarity = MiningRarityRegistry.Get(material.Name);
 
             // 1. Назва (кольорова за рідкістю).
             MaterialName.Text = material.Name;
@@ -308,10 +341,37 @@ namespace SCLOCVerse.Controls
             //    У Discovery mode state.RawCode містить базову сигнатуру (що знайшов
             //    OcrFullScanLocator), тому обчислюємо raw самостійно.
             SignatureLabel.Text = FormatSignatureDisplay(material, state.RawCode);
+        }
 
-            // 6. Confidence → progress bar.
-            UpdateScanProgress(state.Confidence);
-            Confidence.Text = $"conf: {state.Confidence:F2}";
+        /// <summary>
+        /// Рендер multi-candidate блоку при колізії (ROC/FPS/Salvage).
+        /// Показує сігнатуру + список усіх кандидатів + progress bar.
+        /// </summary>
+        private void RenderMultiCandidate(IReadOnlyList<MiningMaterial> candidates, MiningState state)
+        {
+            // Сигнатура як заголовок — обчислюємо з першого кандидата (для ROC/FPS/Salvage
+            // base немає, тому використовуємо state.RawCode якщо валідний, інакше material.Code).
+            var sig = FormatGenericSignature(candidates[0], state.RawCode);
+            MultiSignatureLabel.Text = sig;
+
+            MultiCountLabel.Text = candidates.Count == 2
+                ? "2 варіанти (колізія)"
+                : $"{candidates.Count} варіантів (колізія)";
+
+            // Прив'язка списку кандидатів (ROC → FPS → Salvage).
+            CandidatesList.ItemsSource = candidates;
+        }
+
+        /// <summary>
+        /// Форматування сігнатури для generic-кандидата (ROC/FPS/Salvage).
+        /// Generic не має base signature у DefaultMiningSignatures, тому використовуємо
+        /// material.Code (який = raw.ToString() у LookupGenericAll) або state.RawCode.
+        /// </summary>
+        private static string FormatGenericSignature(MiningMaterial material, string? rawCodeFallback)
+        {
+            // material.Code = raw.ToString() — встановлюється у LookupGenericAll.
+            if (!string.IsNullOrEmpty(material.Code)) return material.Code;
+            return rawCodeFallback ?? "—";
         }
 
         /// <summary>
@@ -387,6 +447,9 @@ namespace SCLOCVerse.Controls
         /// <summary>
         /// Перетворити confidence (0..1) на 10-сегментний progress bar + відсотки.
         /// 1.0 → «██████████ 100%», 0.85 → «████████░░ 85%».
+        ///
+        /// <para>Оновлює ОБИДВА progress bar-и (Single + Multi candidate),
+        /// бо активний лише один з них (Visibility), а другий просто не видний.</para>
         /// </summary>
         private void UpdateScanProgress(double confidence)
         {
@@ -395,12 +458,22 @@ namespace SCLOCVerse.Controls
             if (filled < 0) filled = 0;
             if (filled > 10) filled = 10;
 
-            ScanBar.Text = new string('█', filled) + new string('░', 10 - filled);
-            ScanPercent.Text = $"{pct}%";
+            var barText = new string('█', filled) + new string('░', 10 - filled);
+            var pctText = $"{pct}%";
 
             // Підфарбовування бару за рівнем довіри (green ≥0.9, cyan інакше).
             var barColor = confidence >= 0.9 ? "#3DD6A8" : "#5F9FE0";
-            ScanBar.Foreground = BrushFromHex(barColor);
+            var barBrush = BrushFromHex(barColor);
+
+            // Single-candidate bar.
+            ScanBar.Text = barText;
+            ScanBar.Foreground = barBrush;
+            ScanPercent.Text = pctText;
+
+            // Multi-candidate bar.
+            MultiScanBar.Text = barText;
+            MultiScanBar.Foreground = barBrush;
+            MultiScanPercent.Text = pctText;
         }
     }
 }

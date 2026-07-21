@@ -18,18 +18,29 @@
         ┌────────────────────────────┐
         │ SC SCAN                    │  ← Title (малий, приглушений)
         │                            │
-        │ RICCITE                    │  ← Назва (великий, колір = рідкість)
-        │ Рідкість: Epic             │  ← Текстова рідкість
-        │ ★★★★☆                      │  ← Рейтинг зірок
-        │ ─────────────────────      │  ← Роздільник
-        │ Кластер:    3 Rocks        │  ← Метрики (label:value, вирівняно)
-        │ Сигнатура:  10155          │
-        │ Сканування: ██████████ 100 │  ← Прогрес confidence
+        │ [Single candidate]:         │
+        │   RICCITE                   │  ← Назва (великий, колір = рідкість)
+        │   Рідкість: Epic            │
+        │   ★★★★☆                     │
+        │   ─────────────────────     │
+        │   Кластер:    3 Rocks       │
+        │   Сигнатура:  10155          │
+        │   Сканування: ██████████ 100 │
+        │                            │
+        │ [Multi candidate (колізія)]:│
+        │   12000                     │  ← Сигнатура (великий)
+        │   ─────────────────────     │
+        │   → ROC Mineable  Tier 3    │
+        │   → FPS Mineable  Tier 4    │
+        │   → Salvage       Tier 6    │
+        │   ─────────────────────     │
+        │   Сканування: ██████████ 100│
         └────────────────────────────┘
 
         Принципи:
         - Жодних змін у логіці розпізнавання.
-        - Роздільник створює візуальну групу "ідентифікація / метрики".
+        - Single-candidate блок Visible коли AllCandidates.Count <= 1.
+        - Multi-candidate блок Visible при колізії (Count > 1).
         - Колір назви ресурсу встановлюється з code-behind через MiningRarityRegistry.
     -->
     <Border Background="#CC0A1D29"
@@ -48,118 +59,232 @@
                        HorizontalAlignment="Left"
                        Margin="0,0,0,3"/>
 
-            <!-- ── Ідентифікація: назва ресурсу (кольорова за рідкістю) ── -->
-            <TextBlock x:Name="MaterialName"
-                       Text="Сканування..."
-                       FontFamily="Segoe UI Semibold"
-                       FontSize="15"
-                       Foreground="#E8F3FF"
-                       HorizontalAlignment="Left"
-                       Margin="0,0,0,1"/>
+            <!-- ════════════════════════════════════════════════════════════════
+                 БЛОК A: Single-candidate (Material, рідкість, зірки, метрики)
+                 Visible коли AllCandidates.Count <= 1.
+                 При колізії (Count > 1) приховується, замінюється Блоком B.
+            ════════════════════════════════════════════════════════════════ -->
+            <StackPanel x:Name="SingleCandidatePanel"
+                        Orientation="Vertical"
+                        Visibility="Visible">
 
-            <!--
-                Підпис рідкості (напр. «Рідкість: Epic»).
-                Розщеплено на два Run, щоб фарбувати лише значення:
-                  «Рідкість:» — завжди білий (#E8F3FF)
-                  «Epic»      — колір рідкісності (з code-behind)
-            -->
-            <TextBlock FontFamily="Segoe UI"
-                       FontSize="10"
-                       HorizontalAlignment="Left"
-                       Margin="0,0,0,1">
-                <Run x:Name="RarityLabelPrefix"
-                     Text="Рідкість: "
-                     Foreground="#E8F3FF"/>
-                <Run x:Name="RarityLabelValue"
-                     Text="—"
-                     Foreground="#A7C6E7"/>
-            </TextBlock>
-
-            <!--
-                Рейтинг зірок (★★★★☆).
-                Колір ЗАВЖДИ яскраво-золотистий (#FFD700), незалежно від рідкісності
-                ресурсу. Code-behind не змінює Foreground — лише Text.
-            -->
-            <TextBlock x:Name="StarsLabel"
-                       Text="☆☆☆☆☆"
-                       FontFamily="Segoe UI Symbol"
-                       FontSize="11"
-                       Foreground="#FFD700"
-                       HorizontalAlignment="Left"
-                       Margin="0,0,0,6"/>
-
-            <!-- ── Роздільник між ідентифікацією та метриками ── -->
-            <Border Height="1"
-                    Background="#2A5A78"
-                    Margin="0,0,0,6"/>
-
-            <!-- ── Метрики: Кластер / Сигнатура / Сканування (вирівняно через Grid) ── -->
-            <Grid HorizontalAlignment="Left"
-                  Margin="0,0,0,0">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                </Grid.RowDefinitions>
-
-                <!-- Кластер -->
-                <TextBlock Grid.Row="0" Grid.Column="0"
-                           Text="Кластер:"
-                           FontFamily="Segoe UI"
-                           FontSize="10"
-                           Foreground="#5F7E8A"
-                           Margin="0,0,8,1"/>
-                <TextBlock Grid.Row="0" Grid.Column="1"
-                           x:Name="ClusterInfo"
-                           Text="—"
+                <!-- ── Ідентифікація: назва ресурсу (кольорова за рідкістю) ── -->
+                <TextBlock x:Name="MaterialName"
+                           Text="Сканування..."
                            FontFamily="Segoe UI Semibold"
-                           FontSize="10"
+                           FontSize="15"
                            Foreground="#E8F3FF"
+                           HorizontalAlignment="Left"
                            Margin="0,0,0,1"/>
 
-                <!-- Сигнатура -->
-                <TextBlock Grid.Row="1" Grid.Column="0"
-                           Text="Сигнатура:"
-                           FontFamily="Segoe UI"
+                <!--
+                    Підпис рідкості (напр. «Рідкість: Epic»).
+                    Розщеплено на два Run, щоб фарбувати лише значення:
+                      «Рідкість:» — завжди білий (#E8F3FF)
+                      «Epic»      — колір рідкісності (з code-behind)
+                -->
+                <TextBlock FontFamily="Segoe UI"
                            FontSize="10"
-                           Foreground="#5F7E8A"
-                           Margin="0,0,8,1"/>
-                <TextBlock Grid.Row="1" Grid.Column="1"
-                           x:Name="SignatureLabel"
-                           Text="—"
-                           FontFamily="Consolas"
-                           FontSize="10"
-                           Foreground="#A7C6E7"
-                           Margin="0,0,0,1"/>
+                           HorizontalAlignment="Left"
+                           Margin="0,0,0,1">
+                    <Run x:Name="RarityLabelPrefix"
+                         Text="Рідкість: "
+                         Foreground="#E8F3FF"/>
+                    <Run x:Name="RarityLabelValue"
+                         Text="—"
+                         Foreground="#A7C6E7"/>
+                </TextBlock>
 
-                <!-- Сканування (progress bar + %) -->
-                <TextBlock Grid.Row="2" Grid.Column="0"
-                           Text="Сканування:"
-                           FontFamily="Segoe UI"
-                           FontSize="10"
-                           Foreground="#5F7E8A"
-                           Margin="0,0,8,0"/>
-                <StackPanel Grid.Row="2" Grid.Column="1"
-                            Orientation="Horizontal">
-                    <TextBlock x:Name="ScanBar"
-                               Text="░░░░░░░░░░"
-                               FontFamily="Consolas"
+                <!--
+                    Рейтинг зірок (★★★★☆).
+                    Колір ЗАВЖДИ яскраво-золотистий (#FFD700), незалежно від рідкісності
+                    ресурсу. Code-behind не змінює Foreground — лише Text.
+                -->
+                <TextBlock x:Name="StarsLabel"
+                           Text="☆☆☆☆☆"
+                           FontFamily="Segoe UI Symbol"
+                           FontSize="11"
+                           Foreground="#FFD700"
+                           HorizontalAlignment="Left"
+                           Margin="0,0,0,6"/>
+
+                <!-- ── Роздільник між ідентифікацією та метриками ── -->
+                <Border Height="1"
+                        Background="#2A5A78"
+                        Margin="0,0,0,6"/>
+
+                <!-- ── Метрики: Кластер / Сигнатура / Сканування (вирівняно через Grid) ── -->
+                <Grid HorizontalAlignment="Left"
+                      Margin="0,0,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- Кластер -->
+                    <TextBlock Grid.Row="0" Grid.Column="0"
+                               Text="Кластер:"
+                               FontFamily="Segoe UI"
                                FontSize="10"
-                               Foreground="#3DD6A8"
-                               Margin="0,0,4,0"/>
-                    <TextBlock x:Name="ScanPercent"
-                               Text="0%"
+                               Foreground="#5F7E8A"
+                               Margin="0,0,8,1"/>
+                    <TextBlock Grid.Row="0" Grid.Column="1"
+                               x:Name="ClusterInfo"
+                               Text="—"
                                FontFamily="Segoe UI Semibold"
                                FontSize="10"
-                               Foreground="#A7C6E7"/>
-                </StackPanel>
-            </Grid>
+                               Foreground="#E8F3FF"
+                               Margin="0,0,0,1"/>
 
-            <!-- ── Діагностика (低位, лише для дебагу) ── -->
+                    <!-- Сигнатура -->
+                    <TextBlock Grid.Row="1" Grid.Column="0"
+                               Text="Сигнатура:"
+                               FontFamily="Segoe UI"
+                               FontSize="10"
+                               Foreground="#5F7E8A"
+                               Margin="0,0,8,1"/>
+                    <TextBlock Grid.Row="1" Grid.Column="1"
+                               x:Name="SignatureLabel"
+                               Text="—"
+                               FontFamily="Consolas"
+                               FontSize="10"
+                               Foreground="#A7C6E7"
+                               Margin="0,0,0,1"/>
+
+                    <!-- Сканування (progress bar + %) -->
+                    <TextBlock Grid.Row="2" Grid.Column="0"
+                               Text="Сканування:"
+                               FontFamily="Segoe UI"
+                               FontSize="10"
+                               Foreground="#5F7E8A"
+                               Margin="0,0,8,0"/>
+                    <StackPanel Grid.Row="2" Grid.Column="1"
+                                Orientation="Horizontal">
+                        <TextBlock x:Name="ScanBar"
+                                   Text="░░░░░░░░░░"
+                                   FontFamily="Consolas"
+                                   FontSize="10"
+                                   Foreground="#3DD6A8"
+                                   Margin="0,0,4,0"/>
+                        <TextBlock x:Name="ScanPercent"
+                                   Text="0%"
+                                   FontFamily="Segoe UI Semibold"
+                                   FontSize="10"
+                                   Foreground="#A7C6E7"/>
+                    </StackPanel>
+                </Grid>
+            </StackPanel>
+
+            <!-- ════════════════════════════════════════════════════════════════
+                 БЛОК B: Multi-candidate (колізія ROC/FPS/Salvage)
+                 Visible коли AllCandidates.Count > 1.
+                 Показує сигнатуру + список усіх кандидатів + progress bar.
+            ════════════════════════════════════════════════════════════════ -->
+            <StackPanel x:Name="MultiCandidatePanel"
+                        Orientation="Vertical"
+                        Visibility="Collapsed">
+
+                <!-- Сигнатура як заголовок (великий, моноширинний) -->
+                <TextBlock x:Name="MultiSignatureLabel"
+                           Text="—"
+                           FontFamily="Consolas"
+                           FontSize="15"
+                           Foreground="#E8F3FF"
+                           HorizontalAlignment="Left"
+                           Margin="0,0,0,1"/>
+
+                <!-- Підзаголовок: кількість кандидатів -->
+                <TextBlock x:Name="MultiCountLabel"
+                           Text="—"
+                           FontFamily="Segoe UI"
+                           FontSize="9"
+                           Foreground="#5F7E8A"
+                           HorizontalAlignment="Left"
+                           Margin="0,0,0,4"/>
+
+                <!-- Роздільник перед списком кандидатів -->
+                <Border Height="1"
+                        Background="#2A5A78"
+                        Margin="0,0,0,4"/>
+
+                <!-- Список кандидатів (кожен рядок: → Name   Cluster/Tier) -->
+                <ItemsControl x:Name="CandidatesList">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Grid Margin="0,0,0,2">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <!-- Стрілка-маркер -->
+                                <TextBlock Grid.Column="0"
+                                           Text="→"
+                                           FontFamily="Segoe UI"
+                                           FontSize="10"
+                                           Foreground="#5F7E8A"
+                                           Margin="0,0,6,0"
+                                           VerticalAlignment="Center"/>
+                                <!-- Назва (моноширинна, біла) -->
+                                <TextBlock Grid.Column="1"
+                                           Text="{Binding Name}"
+                                           FontFamily="Segoe UI Semibold"
+                                           FontSize="10"
+                                           Foreground="#E8F3FF"
+                                           Margin="0,0,8,0"
+                                           VerticalAlignment="Center"/>
+                                <!-- Cluster/Tier (моноширинний, приглушений) -->
+                                <TextBlock Grid.Column="2"
+                                           Text="{Binding ClusterFormat}"
+                                           FontFamily="Consolas"
+                                           FontSize="10"
+                                           Foreground="#A7C6E7"
+                                           VerticalAlignment="Center"/>
+                            </Grid>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+
+                <!-- Роздільник після списку кандидатів -->
+                <Border Height="1"
+                        Background="#2A5A78"
+                        Margin="0,4,0,6"/>
+
+                <!-- Сканування (progress bar + %) — спільне для всіх кандидатів -->
+                <Grid HorizontalAlignment="Left">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0"
+                               Text="Сканування:"
+                               FontFamily="Segoe UI"
+                               FontSize="10"
+                               Foreground="#5F7E8A"
+                               Margin="0,0,8,0"/>
+                    <StackPanel Grid.Column="1"
+                                Orientation="Horizontal">
+                        <TextBlock x:Name="MultiScanBar"
+                                   Text="░░░░░░░░░░"
+                                   FontFamily="Consolas"
+                                   FontSize="10"
+                                   Foreground="#3DD6A8"
+                                   Margin="0,0,4,0"/>
+                        <TextBlock x:Name="MultiScanPercent"
+                                   Text="0%"
+                                   FontFamily="Segoe UI Semibold"
+                                   FontSize="10"
+                                   Foreground="#A7C6E7"/>
+                    </StackPanel>
+                </Grid>
+            </StackPanel>
+
+            <!-- ── Діагностика (низький, лише для дебагу) ── -->
             <TextBlock x:Name="Confidence"
                        Text="—"
                        FontFamily="Consolas"
