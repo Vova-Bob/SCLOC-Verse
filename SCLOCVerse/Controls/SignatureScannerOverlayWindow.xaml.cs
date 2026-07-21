@@ -259,9 +259,12 @@ namespace SCLOCVerse.Controls
                 MaterialName.Text = state?.RawCode ?? "Сканування...";
                 MaterialName.Foreground = BrushFromHex("#E8F3FF");
 
-                RarityLabel.Text = "Рідкість: —";
+                // Prefix «Рідкість:» залишається білим; лише значення — сіре.
+                RarityLabelValue.Text = "—";
+                RarityLabelValue.Foreground = BrushFromHex("#A7C6E7");
+
+                // Зірки: колір ЗАВЖДИ золотистий (фіксований у XAML), лише Text.
                 StarsLabel.Text = "☆☆☆☆☆";
-                StarsLabel.Foreground = BrushFromHex("#5F7E8A");
 
                 ClusterInfo.Text = "—";
                 SignatureLabel.Text = "—";
@@ -285,12 +288,13 @@ namespace SCLOCVerse.Controls
             MaterialName.Foreground = BrushFromHex(rarity.ColorHex);
 
             // 2. Текстова рідкість.
-            RarityLabel.Text = $"Рідкість: {rarity.DisplayName}";
-            RarityLabel.Foreground = BrushFromHex(rarity.ColorHex);
+            //    «Рідкість:» — білий (фіксований у XAML через RarityLabelPrefix).
+            //    Значення (напр. «Epic») — колір рідкісності.
+            RarityLabelValue.Text = rarity.DisplayName;
+            RarityLabelValue.Foreground = BrushFromHex(rarity.ColorHex);
 
-            // 3. Зірки.
+            // 3. Зірки: текст оновлюємо, колір ЗАВЖДИ золотистий (фіксований у XAML).
             StarsLabel.Text = rarity.Stars;
-            StarsLabel.Foreground = BrushFromHex(rarity.ColorHex);
 
             // 4. Кластер — обрізаємо «Cluster: » prefix з ClusterFormat.
             //    У DB ClusterFormat створюється з ПІДСТАВЛЕНИМ значенням («Cluster: 2 Rocks»),

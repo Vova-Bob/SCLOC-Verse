@@ -57,21 +57,34 @@
                        HorizontalAlignment="Left"
                        Margin="0,0,0,1"/>
 
-            <!-- Підпис рідкості (напр. "Рідкість: Epic") -->
-            <TextBlock x:Name="RarityLabel"
-                       Text="Рідкість: —"
-                       FontFamily="Segoe UI"
+            <!--
+                Підпис рідкості (напр. «Рідкість: Epic»).
+                Розщеплено на два Run, щоб фарбувати лише значення:
+                  «Рідкість:» — завжди білий (#E8F3FF)
+                  «Epic»      — колір рідкісності (з code-behind)
+            -->
+            <TextBlock FontFamily="Segoe UI"
                        FontSize="10"
-                       Foreground="#A7C6E7"
                        HorizontalAlignment="Left"
-                       Margin="0,0,0,1"/>
+                       Margin="0,0,0,1">
+                <Run x:Name="RarityLabelPrefix"
+                     Text="Рідкість: "
+                     Foreground="#E8F3FF"/>
+                <Run x:Name="RarityLabelValue"
+                     Text="—"
+                     Foreground="#A7C6E7"/>
+            </TextBlock>
 
-            <!-- Рейтинг зірок (★★★★☆) -->
+            <!--
+                Рейтинг зірок (★★★★☆).
+                Колір ЗАВЖДИ яскраво-золотистий (#FFD700), незалежно від рідкісності
+                ресурсу. Code-behind не змінює Foreground — лише Text.
+            -->
             <TextBlock x:Name="StarsLabel"
                        Text="☆☆☆☆☆"
                        FontFamily="Segoe UI Symbol"
                        FontSize="11"
-                       Foreground="#E8F3FF"
+                       Foreground="#FFD700"
                        HorizontalAlignment="Left"
                        Margin="0,0,0,6"/>
 
