@@ -211,6 +211,18 @@ namespace SCLOCVerse.Controls
         public void AllowClose() => _allowClose = true;
 
         // ── State update ──
+        //
+        // Лише ВІЗУАЛІЗАЦІЯ. Бізнес-логіка (визначення ресурсу, кластера, confidence)
+        // залишається в MiningRecognitionService / MiningSignatureDatabase без змін.
+        // Overlay лише мапить MiningState на нову ієрархічну структуру з рідкістю
+        // (MiningRarityRegistry — статичний довідник, не впливає на розпізнавання).
+
+        /// <summary>
+        /// Конвертер hex-рядка ("#RRGGBB") → SolidColorBrush.Кешувати не потрібно:
+        /// confidence/rarity змінюються рідко (раз на нове розпізнавання).
+        /// </summary>
+        private static System.Windows.Media.SolidColorBrush BrushFromHex(string hex)
+            => new((System.Windows.Media.Color)System.Windows.Media.ColorConverter.ConvertFromString(hex));
 
         public void UpdateState(MiningState state)
         {
@@ -222,22 +234,74 @@ namespace SCLOCVerse.Controls
 
             if (state?.Material is null)
             {
+                // ── Сканування ще не завершено (або матеріал не розпізнано) ──
                 TitleLabel.Text = "SC SCAN";
                 MaterialName.Text = state?.RawCode ?? "Сканування...";
+                MaterialName.Foreground = BrushFromHex("#E8F3FF");
+
+                RarityLabel.Text = "Рідкість: —";
+                StarsLabel.Text = "☆☆☆☆☆";
+                StarsLabel.Foreground = BrushFromHex("#5F7E8A");
+
                 ClusterInfo.Text = "—";
-                Confidence.Text = "—";
-            }
-            else
-            {
-                TitleLabel.Text = "SC SCAN";
-                MaterialName.Text = state.Material.Name;
+                SignatureLabel.Text = "—";
 
-                var cluster = string.IsNullOrEmpty(state.ClusterCount) ? "?" : state.ClusterCount;
-                ClusterInfo.Text = state.Material.ClusterFormat?.Replace("{0}", cluster)
-                                   ?? $"Cluster: {cluster}";
-
-                Confidence.Text = $"conf: {state.Confidence:F2} | sig: {state.RawCode}";
+                // Confidence < 1 → частковий прогрес (показуємо статус сканування).
+                UpdateScanProgress(state?.Confidence ?? 0);
+                Confidence.Text = state is not null
+                    ? $"conf: {state.Confidence:F2}"
+                    : "—";
+                return;
             }
+
+            // ── Матеріал розпізнано ──
+            var material = state.Material;
+            var rarity = MiningRarityRegistry.Get(material.Name);
+
+            TitleLabel.Text = "SC SCAN";
+
+            // 1. Назва (кольорова за рідкістю).
+            MaterialName.Text = material.Name;
+            MaterialName.Foreground = BrushFromHex(rarity.ColorHex);
+
+            // 2. Текстова рідкість.
+            RarityLabel.Text = $"Рідкість: {rarity.DisplayName}";
+            RarityLabel.Foreground = BrushFromHex(rarity.ColorHex);
+
+            // 3. Зірки.
+            StarsLabel.Text = rarity.Stars;
+            StarsLabel.Foreground = BrushFromHex(rarity.ColorHex);
+
+            // 4. Кластер (логіка визначення не змінюється — лише візуалізація).
+            var cluster = string.IsNullOrEmpty(state.ClusterCount) ? "?" : state.ClusterCount;
+            ClusterInfo.Text = material.ClusterFormat?.Replace("{0}", cluster)
+                               ?? $"Cluster: {cluster}";
+
+            // 5. Сигнатура (raw code з OCR).
+            SignatureLabel.Text = state.RawCode ?? "—";
+
+            // 6. Confidence → progress bar.
+            UpdateScanProgress(state.Confidence);
+            Confidence.Text = $"conf: {state.Confidence:F2}";
+        }
+
+        /// <summary>
+        /// Перетворити confidence (0..1) на 10-сегментний progress bar + відсотки.
+        /// 1.0 → «██████████ 100%», 0.85 → «████████░░ 85%».
+        /// </summary>
+        private void UpdateScanProgress(double confidence)
+        {
+            var pct = (int)Math.Round(Math.Clamp(confidence, 0.0, 1.0) * 100);
+            var filled = (int)Math.Round(confidence * 10);
+            if (filled < 0) filled = 0;
+            if (filled > 10) filled = 10;
+
+            ScanBar.Text = new string('█', filled) + new string('░', 10 - filled);
+            ScanPercent.Text = $"{pct}%";
+
+            // Підфарбовування бару за рівнем довіри (green ≥0.9, cyan інакше).
+            var barColor = confidence >= 0.9 ? "#3DD6A8" : "#5F9FE0";
+            ScanBar.Foreground = BrushFromHex(barColor);
         }
     }
 }

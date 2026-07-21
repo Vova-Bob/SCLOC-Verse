@@ -11,39 +11,150 @@
         SizeToContent="WidthAndHeight"
         ShowActivated="False">
 
+    <!--
+        Overlay "SC SCAN" — результат розпізнавання сигнатури Star Citizen.
+
+        Структура (зверху вниз):
+        ┌────────────────────────────┐
+        │ SC SCAN                    │  ← Title (малий, приглушений)
+        │                            │
+        │ RICCITE                    │  ← Назва (великий, колір = рідкість)
+        │ Рідкість: Epic             │  ← Текстова рідкість
+        │ ★★★★☆                      │  ← Рейтинг зірок
+        │ ─────────────────────      │  ← Роздільник
+        │ Кластер:    3 Rocks        │  ← Метрики (label:value, вирівняно)
+        │ Сигнатура:  10155          │
+        │ Сканування: ██████████ 100 │  ← Прогрес confidence
+        └────────────────────────────┘
+
+        Принципи:
+        - Жодних змін у логіці розпізнавання.
+        - Роздільник створює візуальну групу "ідентифікація / метрики".
+        - Колір назви ресурсу встановлюється з code-behind через MiningRarityRegistry.
+    -->
     <Border Background="#CC0A1D29"
             BorderBrush="#2A5A78"
             BorderThickness="1.5"
             CornerRadius="10"
-            Padding="12,8">
+            Padding="14,9">
         <StackPanel Orientation="Vertical">
+
+            <!-- ── Шапка: заголовок сканера ── -->
             <TextBlock x:Name="TitleLabel"
                        Text="SC SCAN"
                        FontFamily="Segoe UI Semibold"
-                       FontSize="10"
+                       FontSize="9"
                        Foreground="#5F7E8A"
                        HorizontalAlignment="Left"
-                       Margin="0,0,0,2"/>
+                       Margin="0,0,0,3"/>
+
+            <!-- ── Ідентифікація: назва ресурсу (кольорова за рідкістю) ── -->
             <TextBlock x:Name="MaterialName"
                        Text="Сканування..."
                        FontFamily="Segoe UI Semibold"
-                       FontSize="14"
+                       FontSize="15"
                        Foreground="#E8F3FF"
-                       HorizontalAlignment="Left"/>
-            <TextBlock x:Name="ClusterInfo"
-                       Text="—"
+                       HorizontalAlignment="Left"
+                       Margin="0,0,0,1"/>
+
+            <!-- Підпис рідкості (напр. "Рідкість: Epic") -->
+            <TextBlock x:Name="RarityLabel"
+                       Text="Рідкість: —"
                        FontFamily="Segoe UI"
-                       FontSize="11"
+                       FontSize="10"
                        Foreground="#A7C6E7"
-                       Margin="0,4,0,0"
-                       HorizontalAlignment="Left"/>
+                       HorizontalAlignment="Left"
+                       Margin="0,0,0,1"/>
+
+            <!-- Рейтинг зірок (★★★★☆) -->
+            <TextBlock x:Name="StarsLabel"
+                       Text="☆☆☆☆☆"
+                       FontFamily="Segoe UI Symbol"
+                       FontSize="11"
+                       Foreground="#E8F3FF"
+                       HorizontalAlignment="Left"
+                       Margin="0,0,0,6"/>
+
+            <!-- ── Роздільник між ідентифікацією та метриками ── -->
+            <Border Height="1"
+                    Background="#2A5A78"
+                    Margin="0,0,0,6"/>
+
+            <!-- ── Метрики: Кластер / Сигнатура / Сканування (вирівняно через Grid) ── -->
+            <Grid HorizontalAlignment="Left"
+                  Margin="0,0,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <!-- Кластер -->
+                <TextBlock Grid.Row="0" Grid.Column="0"
+                           Text="Кластер:"
+                           FontFamily="Segoe UI"
+                           FontSize="10"
+                           Foreground="#5F7E8A"
+                           Margin="0,0,8,1"/>
+                <TextBlock Grid.Row="0" Grid.Column="1"
+                           x:Name="ClusterInfo"
+                           Text="—"
+                           FontFamily="Segoe UI Semibold"
+                           FontSize="10"
+                           Foreground="#E8F3FF"
+                           Margin="0,0,0,1"/>
+
+                <!-- Сигнатура -->
+                <TextBlock Grid.Row="1" Grid.Column="0"
+                           Text="Сигнатура:"
+                           FontFamily="Segoe UI"
+                           FontSize="10"
+                           Foreground="#5F7E8A"
+                           Margin="0,0,8,1"/>
+                <TextBlock Grid.Row="1" Grid.Column="1"
+                           x:Name="SignatureLabel"
+                           Text="—"
+                           FontFamily="Consolas"
+                           FontSize="10"
+                           Foreground="#A7C6E7"
+                           Margin="0,0,0,1"/>
+
+                <!-- Сканування (progress bar + %) -->
+                <TextBlock Grid.Row="2" Grid.Column="0"
+                           Text="Сканування:"
+                           FontFamily="Segoe UI"
+                           FontSize="10"
+                           Foreground="#5F7E8A"
+                           Margin="0,0,8,0"/>
+                <StackPanel Grid.Row="2" Grid.Column="1"
+                            Orientation="Horizontal">
+                    <TextBlock x:Name="ScanBar"
+                               Text="░░░░░░░░░░"
+                               FontFamily="Consolas"
+                               FontSize="10"
+                               Foreground="#3DD6A8"
+                               Margin="0,0,4,0"/>
+                    <TextBlock x:Name="ScanPercent"
+                               Text="0%"
+                               FontFamily="Segoe UI Semibold"
+                               FontSize="10"
+                               Foreground="#A7C6E7"/>
+                </StackPanel>
+            </Grid>
+
+            <!-- ── Діагностика (低位, лише для дебагу) ── -->
             <TextBlock x:Name="Confidence"
                        Text="—"
                        FontFamily="Consolas"
-                       FontSize="9"
-                       Foreground="#5F7E8A"
-                       Margin="0,2,0,0"
+                       FontSize="8"
+                       Foreground="#3D5560"
+                       Margin="0,4,0,0"
                        HorizontalAlignment="Left"/>
+
         </StackPanel>
     </Border>
 </Window>
