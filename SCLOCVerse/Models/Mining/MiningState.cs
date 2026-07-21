@@ -38,8 +38,20 @@ namespace SCLOCVerse.Models.Mining
         /// <summary>Кількість кластерів (якщо вдалося розпізнати, напр. "5").</summary>
         public string? ClusterCount { get; set; }
 
-        /// <summary>UTC timestamp останнього оновлення.</summary>
+        /// <summary>UTC timestamp останнього оновлення (успішного або скидання).</summary>
         public DateTime LastUpdatedUtc { get; set; }
+
+        /// <summary>
+        /// UTC timestamp останнього УСПІШНОГО розпізнавання (AllCandidates непорожній).
+        ///
+        /// <para>Використовується для Result Age: <c>age = DateTime.UtcNow - LastGoodResultUtc</c>.
+        /// Якщо age > <see cref="Models.Mining.MiningHudLayout.ResultAgeTimeoutMs"/> —
+        /// результат вважається застарілим і підлягає очищенню.</para>
+        ///
+        /// <para>Встановлюється в <see cref="Services.Mining.MiningRecognitionService.UpdateMaterial"/>
+        /// при кожному успішному LookupAll. НЕ оновлюється при скиданні.</para>
+        /// </summary>
+        public DateTime? LastGoodResultUtc { get; set; }
 
         /// <summary>Confidence матеріалу (з ResultValidator, 0..1).</summary>
         public double Confidence { get; set; }

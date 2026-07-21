@@ -99,6 +99,7 @@ namespace SCLOCVerse.Services.Mining
             lock (_stateLock)
             {
                 CurrentState.AllCandidates = System.Array.Empty<MiningMaterial>();
+                CurrentState.LastGoodResultUtc = null;
                 CurrentState.RawCode = null;
                 CurrentState.ClusterCount = null;
                 CurrentState.Confidence = 0;
@@ -335,14 +336,28 @@ namespace SCLOCVerse.Services.Mining
                 }
 
                 // DB lookup для signature region.
-                if (regionName == MiningHudRegionNames.Signature && !string.IsNullOrEmpty(text))
+                if (regionName == MiningHudRegionNames.Signature)
                 {
-                    lock (_stateLock)
+                    if (!string.IsNullOrEmpty(text))
                     {
-                        UpdateMaterial(text, confidence);
+                        // ── Успішний OCR — оновити результат ──
+                        lock (_stateLock)
+                        {
+                            UpdateMaterial(text, confidence);
+                        }
+                        StateChanged?.Invoke(this, CurrentState);
                     }
-                    StateChanged?.Invoke(this, CurrentState);
-                    // Overlay НЕ слідкує за HUD — стоїть де користувач поставив.
+                    else
+                    {
+                        // ── OCR промахнувся або pre-filter skip ──
+                        // Result Age: не очищати миттєво, дати шанс відновитись.
+                        // Якщо age > timeout → очистити AllCandidates ("Сигнал втрачено").
+                        var cleared = TryExpireOldResult();
+                        if (cleared)
+                        {
+                            StateChanged?.Invoke(this, CurrentState);
+                        }
+                    }
                 }
             }
             catch (Exception ex)
@@ -358,6 +373,11 @@ namespace SCLOCVerse.Services.Mining
         /// УСІХ кандидатів (гібридний підхід). При колізії ROC/FPS/Salvage список
         /// містить 2-3 варіанти; <see cref="MiningState.Material"/> повертає перший
         /// (зворотна сумісність), Overlay показує всі.</para>
+        ///
+        /// <para><b>Result Age:</b> встановлює <see cref="MiningState.LastGoodResultUtc"/>
+        /// для відстеження віку результату. При втраті сигналу результат утримується
+        /// протягом <see cref="MiningHudLayout.ResultAgeTimeoutMs"/> (800мс) перед
+        /// очищенням — це запобігає миганню при одноразових промахах OCR.</para>
         /// </summary>
         private void UpdateMaterial(string code, double confidence)
         {
@@ -366,6 +386,50 @@ namespace SCLOCVerse.Services.Mining
             CurrentState.RawCode = code;
             CurrentState.Confidence = confidence;
             CurrentState.LastUpdatedUtc = DateTime.UtcNow;
+
+            // Запам'ятати timestamp успішного розпізнавання для Result Age.
+            // Тільки якщо знайдено хоча б одного кандидата.
+            if (candidates.Count > 0)
+            {
+                CurrentState.LastGoodResultUtc = DateTime.UtcNow;
+            }
+        }
+
+        /// <summary>
+        /// Result Age: перевірити, чи застарів останній успішний результат.
+        ///
+        /// <para>Якщо з часу останнього успішного OCR (<see cref="MiningState.LastGoodResultUtc"/>)
+        /// минуло більше ніж <see cref="MiningHudLayout.ResultAgeTimeoutMs"/> (800мс) —
+        /// очистити <see cref="MiningState.AllCandidates"/> ("Сигнал втрачено").</para>
+        ///
+        /// <para>Якщо результат ще "свіжий" (age &lt; timeout) — нічого не робити
+        /// (Overlay продовжує показувати останню сигнатуру без мигання).</para>
+        ///
+        /// <para>Потрібен виклик під <c>_stateLock</c>.</para>
+        /// </summary>
+        /// <returns>True якщо результат був очищений (StateChanged required); False якщо залишено.</returns>
+        private bool TryExpireOldResult()
+        {
+            lock (_stateLock)
+            {
+                // Немає попереднього результату — нічого очищати.
+                if (CurrentState.AllCandidates.Count == 0) return false;
+                if (CurrentState.LastGoodResultUtc is null) return false;
+
+                var ageMs = (DateTime.UtcNow - CurrentState.LastGoodResultUtc.Value).TotalMilliseconds;
+                if (ageMs < MiningHudLayout.ResultAgeTimeoutMs) return false;
+
+                // Результат застарів — очистити.
+                Debug.WriteLine("[MiningRecognition] Result expired (age={0:F0}ms > {1}ms) → clear",
+                    ageMs, MiningHudLayout.ResultAgeTimeoutMs);
+
+                CurrentState.AllCandidates = System.Array.Empty<MiningMaterial>();
+                CurrentState.LastGoodResultUtc = null;
+                CurrentState.LastUpdatedUtc = DateTime.UtcNow;
+                // RawCode залишаємо як індикатор для Overlay ("Сигнал втрачено" визначається
+                // за AllCandidates.Count == 0 + LastGoodResultUtc == null).
+                return true;
+            }
         }
 
         // ── Helpers ──

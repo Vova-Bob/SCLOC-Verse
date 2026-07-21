@@ -258,10 +258,21 @@ namespace SCLOCVerse.Controls
 
             if (candidates.Count == 0)
             {
-                // ── Сканування ще не завершено (або матеріал не розпізнано) ──
+                // ── Сигнатура не розпізнано ──
+                // Розрізняємо два стани:
+                //   1. "Сигнал втрачено" — раніше був результат (LastGoodResultUtc != null),
+                //      але OCR його більше не бачить і ResultAge timeout минув.
+                //   2. "Сканування..." — результату ще не було (початковий стан / Discovery).
                 ShowSingleCandidate();
-                MaterialName.Text = state?.RawCode ?? "Сканування...";
-                MaterialName.Foreground = BrushFromHex("#E8F3FF");
+
+                var wasLost = state?.LastGoodResultUtc is null
+                              && !string.IsNullOrEmpty(state?.RawCode)
+                              && state?.Confidence > 0;
+
+                MaterialName.Text = wasLost ? "Сигнал втрачено" : (state?.RawCode ?? "Сканування...");
+                MaterialName.Foreground = wasLost
+                    ? BrushFromHex("#FF6B6B")    // червонуватий для "втрачено"
+                    : BrushFromHex("#E8F3FF");   // нейтральний білий
 
                 RarityLabelValue.Text = "—";
                 RarityLabelValue.Foreground = BrushFromHex("#A7C6E7");
@@ -270,7 +281,7 @@ namespace SCLOCVerse.Controls
                 ClusterInfo.Text = "—";
                 SignatureLabel.Text = "—";
 
-                UpdateScanProgress(state?.Confidence ?? 0);
+                UpdateScanProgress(0);
                 Confidence.Text = state is not null
                     ? $"conf: {state.Confidence:F2}"
                     : "—";

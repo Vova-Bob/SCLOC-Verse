@@ -47,6 +47,20 @@ namespace SCLOCVerse.Models.Mining
         /// <summary>Кількість consecutive null results перед Discovery (повна втрата сигналу).</summary>
         public const int MaxConsecutiveNulls = 5;
 
+        /// <summary>
+        /// Result Age timeout (мс) — скільки часу після останнього успішного OCR
+        /// продовжувати показувати стару сигнатуру перед очищенням.
+        ///
+        /// <para>Призначення: запобігає миганню Overlay при одноразових промахах OCR
+        /// (шум, блюр, рух HUD). Якщо OCR не бачить сигнатуру менше ніж цей timeout —
+        /// Overlay продовжує показувати останній результат. Після timeout —
+        /// результат очищається ("Сигнал втрачено").</para>
+        ///
+        /// <para>800мс = ~4 цикли OCR (200мс кожен). Достатньо для:
+        /// 1-2 промахів поспіль (шум) + 1-2 кадрів відновлення.</para>
+        /// </summary>
+        public const int ResultAgeTimeoutMs = 800;
+
         // ── Per-region tracking ──
 
         /// <summary>Лічильник consecutive low-confidence cycles (для soft threshold).</summary>
