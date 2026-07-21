@@ -171,6 +171,25 @@ namespace SCLOCVerse.Services.OcrPlatform.Coordinator
             }
             _lastFingerprints[region.Id] = fingerprint;
 
+            // Pre-filter: не запускати OCR якщо область очевидно порожня.
+            // SC HUD сигнатура — білі/бірюзові цифри на темному фоні.
+            // Якщо яскравих пікселів < minFraction — пропускаємо OCR, повертаємо Empty.
+            // Це зменшує навантаження на ~90% коли Scan HUD не активний (режим V закритий).
+            if (!HasContent(inputMat))
+            {
+                Debug.WriteLine("[OcrCoordinator] '{0}': SKIP (no content — empty region)", region.Id);
+                // Публікуємо порожній результат, щоб підписники (MiningRecognitionService)
+                // отримали сигнал "сигнатура не виявлена" для переходу в Lost/Discovery.
+                var emptyResult = new OcrRegionResult
+                {
+                    RegionId = region.Id,
+                    Result = OcrResult.Empty,
+                    CapturedAtUtc = DateTime.UtcNow
+                };
+                RaiseOcrRegionReady(emptyResult);
+                return;
+            }
+
             // Крок 3: OCR Engine — ПЕРЕДАЄМО ОРИГІНАЛЬНИЙ BGR.
             // Forensic Audit виявив: DefaultImagePipeline бінаризував зображення
             // ПЕРЕД детектором. PaddleOCR DB детектор очікує природнє BGR
@@ -252,6 +271,59 @@ namespace SCLOCVerse.Services.OcrPlatform.Coordinator
             }
             return Math.Abs(hash);
         }
+
+        /// <summary>
+        /// Pre-filter: перевіряє, чи містить crop достатньо яскравих пікселів
+        /// для потенційного тексту (SC HUD сигнатура — білі/бірюзові цифри
+        /// на темному фоні).
+        ///
+        /// <para><b>Принцип:</b> SC HUD цифри мають яскравість ~180-255 (білі/бірюзові).
+        /// Темний фон — ~0-60. Якщо частка яскравих пікселів (&gt; <see cref="ContentBrightnessThreshold"/>)
+        /// менша за <see cref="ContentMinFraction"/> — область вважається порожньою,
+        /// OCR не запускається.</para>
+        ///
+        /// <para><b>Thresholds:</b></para>
+        /// <list type="bullet">
+        /// <item>Brightness &gt; 120 — відсікає темний фон (0-60) та напівтемний (60-120).</item>
+        /// <item>Fraction ≥ 0.5% — мінімум 0.5% пікселів мають бути яскравими.
+        /// Цифри займають ~1-5% площі HUD регіону; 0.5% — консервативний мінімум.</item>
+        /// </list>
+        ///
+        /// <para><b>Продуктивність:</b> resize до 32×32 → grayscale → підрахунок.
+        /// ~0.1мс на Mat 100×30. Набагато дешевше за OCR (~20-50мс).</para>
+        ///
+        /// <para><b>Тестування:</b> internal static для прямого виклику з
+        /// <c>SCLOCVerse.Tests</c> (InternalsVisibleTo).</para>
+        /// </summary>
+        /// <returns>True якщо область містить потенційний текст; False якщо порожня.</returns>
+        internal static bool HasContent(Mat mat)
+        {
+            // Resize до 32×32 — достатньо для оцінки заповненості, швидко.
+            using var thumb = new Mat();
+            Cv2.Resize(mat, thumb, new Size(32, 32), 0, 0, InterpolationFlags.Area);
+            using var gray = new Mat();
+            Cv2.CvtColor(thumb, gray, ColorConversionCodes.BGR2GRAY);
+
+            var brightCount = 0;
+            var totalPixels = 32 * 32;
+            for (var y = 0; y < 32; y++)
+            {
+                for (var x = 0; x < 32; x++)
+                {
+                    if (gray.At<byte>(y, x) > ContentBrightnessThreshold)
+                        brightCount++;
+                }
+            }
+
+            var fraction = (double)brightCount / totalPixels;
+            return fraction >= ContentMinFraction;
+        }
+
+        /// <summary>Яскравість пікселя (0-255), вище якої він вважається "яскравим" (можливий текст).</summary>
+        internal const int ContentBrightnessThreshold = 120;
+
+        /// <summary>Мінімальна частка яскравих пікселів (0.005 = 0.5%) для визнання області непорожньою.</summary>
+        internal const double ContentMinFraction = 0.005;
 
         /// <summary>
         /// Викликати подію OcrRegionReady (використовується в T6.4).
