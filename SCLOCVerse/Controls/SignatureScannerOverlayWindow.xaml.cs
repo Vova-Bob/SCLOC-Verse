@@ -67,16 +67,14 @@ namespace SCLOCVerse.Controls
         private const int BlipMaxAttempts = 50;
         private const double BlipHalfSize = 1.5; // Ellipse 3×3 — зміщення для центрування
 
-        // ── PPI Sweep: 3 шари (Beam + Mid + Afterglow) ──
-        // Геометрія та градієнти генеруються математично від цих параметрів.
-        // Легко скоригувати візуально: змінити константу → перебудова при Loaded.
+        // ── Sweep: 1 Path + 1 Brush ──
+        // Геометрія та градієнт генеруються математично від цих параметрів.
+        // 1 annular sector + 1 linear gradient з багатьма stops = єдине світлове тіло.
         private const double SweepCenterX = 70.0;
         private const double SweepCenterY = 70.0;
-        private const double SweepInnerR = 6.0;            // малий — щоб світіння починалось від центру
+        private const double SweepInnerR = 4.0;             // майже від центру
         private const double SweepOuterR = 68.0;
-        private const double SweepBeamAngleDeg = 11.0;       // 8-12° — яскравий leading промінь
-        private const double SweepMidAngleDeg = 28.0;        // 25-30° — свіже післясвітіння
-        private const double SweepAfterglowAngleDeg = 55.0;  // 50-60° — широкий тьмяний хвіст
+        private const double SweepAngleDeg = 50.0;           // широкий sweep
 
         public double SavedOpacity { get; set; } = 0.9;
         public event EventHandler<Rect>? PositionChanged;
@@ -628,44 +626,27 @@ namespace SCLOCVerse.Controls
         // ═══════════════════════════════════════════════════════════════
         //  PPI Sweep: генерація 3 шарів (Beam + Mid + Afterglow)
         // ═══════════════════════════════════════════════════════════════
-        // Геометрія: annular sector з InnerRadius..OuterRadius, кут SweepXxxAngleDeg.
-        // Fill: linear gradient по куту (від leading edge до хвоста).
-        // Асиметрія α: усі шари мають α=max на leading (різкий край),
-        // плавно падять до 0 на trailing. Сума 3 шарів зливається в 1 промінь.
+        //  Sweep: 1 Path + 1 Brush — єдине світлове тіло
+        // ═══════════════════════════════════════════════════════════════
+        // 1 annular sector + 1 linear gradient з 10 stops.
+        // Асиметрія: α=peak на leading (різкий край), плавна експонента до 0 (хвіст).
+        // Жодних меж між шарами — бо шар один.
 
         private void BuildSweepCone()
         {
-            // Beam (найяскравіший, вузький) — trailing α=5% маскує перехід до Mid
-            SweepBeam.Data = BuildAnnularSector(SweepBeamAngleDeg);
-            SweepBeam.Fill = BuildAngularGradient(SweepBeamAngleDeg, new[]
+            SweepCone.Data = BuildAnnularSector(SweepAngleDeg);
+            SweepCone.Fill = BuildAngularGradient(SweepAngleDeg, new[]
             {
-                (0.00, 0.75),  // leading edge — різкий край
-                (0.25, 0.60),
-                (0.55, 0.40),
-                (0.80, 0.18),
-                (1.00, 0.05)   // trailing — мала α для плавного переходу до Mid
-            });
-
-            // Mid (середній, післясвітіння) — trailing α=5% маскує перехід до Afterglow
-            SweepMid.Data = BuildAnnularSector(SweepMidAngleDeg);
-            SweepMid.Fill = BuildAngularGradient(SweepMidAngleDeg, new[]
-            {
-                (0.00, 0.55),
-                (0.25, 0.45),
-                (0.55, 0.32),
-                (0.80, 0.18),
-                (1.00, 0.05)
-            });
-
-            // Afterglow (тьмяний, широкий хвіст) — завершує плавне згасання до 0
-            SweepAfterglow.Data = BuildAnnularSector(SweepAfterglowAngleDeg);
-            SweepAfterglow.Fill = BuildAngularGradient(SweepAfterglowAngleDeg, new[]
-            {
-                (0.00, 0.30),
-                (0.20, 0.22),
-                (0.45, 0.15),
-                (0.75, 0.08),
-                (1.00, 0.00)
+                (0.00, 0.80),  //  0°  — leading edge, різкий яскравий край
+                (0.06, 0.72),  //  3°
+                (0.12, 0.62),  //  6°
+                (0.20, 0.50),  // 10°
+                (0.30, 0.38),  // 15°
+                (0.40, 0.28),  // 20°
+                (0.52, 0.18),  // 26°
+                (0.65, 0.10),  // 32.5°
+                (0.80, 0.04),  // 40°
+                (1.00, 0.00)   // 50° — хвіст, повністю прозорий
             });
         }
 

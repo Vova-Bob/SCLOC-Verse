@@ -189,10 +189,9 @@
                                 VerticalAlignment="Center"
                                 ClipToBounds="True">
 
-                            <!-- ═══ PPI Sweep: 3 шари (Beam + Mid + Afterglow) ═══
-                                 Геометрія та Fill генеруються в C# (BuildSweepCone) від
-                                 параметрів: center, innerR, outerR, beamAngle, midAngle, afterglowAngle.
-                                 Спільний Grid.RenderTransform зі Storyboard (SweepRotate 0→360/2с/Forever). -->
+                            <!-- ═══ Sweep: 1 Path + 1 Brush (генеруються в C#) ═══
+                                 Спільний Grid.RenderTransform зі Storyboard
+                                 (SweepRotate 0→360/2с/Forever — без змін). -->
                             <Grid Width="140" Height="140">
                                 <Grid.RenderTransform>
                                     <RotateTransform x:Name="SweepRotate" Angle="0" CenterX="70" CenterY="70"/>
@@ -212,14 +211,8 @@
                                     </EventTrigger>
                                 </Grid.Triggers>
 
-                                <!-- Шар 1: Afterglow ( widest, тьмяний хвіст) -->
-                                <Path x:Name="SweepAfterglow"/>
-
-                                <!-- Шар 2: Mid (свіже післясвітіння) -->
-                                <Path x:Name="SweepMid"/>
-
-                                <!-- Шар 3: Beam (яскравий вузький leading промінь) -->
-                                <Path x:Name="SweepBeam"/>
+                                <!-- Єдиний світловий промінь — Data + Fill генеруються в C# -->
+                                <Path x:Name="SweepCone"/>
                             </Grid>
 
                             <!-- Яскрава передня грань (leading edge) -->
