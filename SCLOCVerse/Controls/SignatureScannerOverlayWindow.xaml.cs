@@ -678,7 +678,7 @@ namespace SCLOCVerse.Controls
                     {
                         Point = outerTrailing,
                         Size = new Size(SweepOuterR, SweepOuterR),
-                        SweepDirection = SweepDirection.Clockwise,
+                        SweepDirection = SweepDirection.Counterclockwise,
                         IsLargeArc = false
                     },
                     new LineSegment(innerTrailing, isStroked: true),
@@ -686,7 +686,7 @@ namespace SCLOCVerse.Controls
                     {
                         Point = innerLeading,
                         Size = new Size(SweepInnerR, SweepInnerR),
-                        SweepDirection = SweepDirection.Counterclockwise,
+                        SweepDirection = SweepDirection.Clockwise,
                         IsLargeArc = false
                     }
                 }
