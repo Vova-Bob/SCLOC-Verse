@@ -189,28 +189,14 @@
                                 VerticalAlignment="Center"
                                 ClipToBounds="True">
 
-                            <!-- Echo blips: синхронно з проходженням sweep -->
-                            <!-- Sweep cone: сектор 50° з центру (70,70) -->
-                            <Path x:Name="SweepCone">
-                                <Path.Data>
-                                    <PathGeometry Figures="M70,70 L138,70 A68,68,0,0,1,113.7,17.9 z"/>
-                                </Path.Data>
-                                <Path.Fill>
-                                    <RadialGradientBrush
-                                        Center="0.93,0.5"
-                                        RadiusX="0.5"
-                                        RadiusY="0.5"
-                                        GradientOrigin="0.93,0.5">
-                                        <GradientStop Offset="0.0" Color="#663DD6A8"/>
-                                        <GradientStop Offset="0.15" Color="#403DD6A8"/>
-                                        <GradientStop Offset="0.5" Color="#183DD6A8"/>
-                                        <GradientStop Offset="1.0" Color="#003DD6A8"/>
-                                    </RadialGradientBrush>
-                                </Path.Fill>
-                                <Path.RenderTransform>
+                            <!-- ═══ PPI Sweep: Halo (soft edges) + Base annular sector ═══
+                                 Обидва Path обертаються через спільний Grid.RenderTransform
+                                 зі Storyboard (ім'я SweepRotate збережено, поведінка 0→360/2с/Forever без змін). -->
+                            <Grid Width="140" Height="140">
+                                <Grid.RenderTransform>
                                     <RotateTransform x:Name="SweepRotate" Angle="0" CenterX="70" CenterY="70"/>
-                                </Path.RenderTransform>
-                                <Path.Triggers>
+                                </Grid.RenderTransform>
+                                <Grid.Triggers>
                                     <EventTrigger RoutedEvent="FrameworkElement.Loaded">
                                         <BeginStoryboard>
                                             <Storyboard>
@@ -223,8 +209,42 @@
                                             </Storyboard>
                                         </BeginStoryboard>
                                     </EventTrigger>
-                                </Path.Triggers>
-                            </Path>
+                                </Grid.Triggers>
+
+                                <!-- Halo: сектор на 3° ширше з обох боків (від -3° до -53°),
+                                     низька α для soft edges без BlurEffect -->
+                                <Path x:Name="SweepConeHalo">
+                                    <Path.Data>
+                                        <PathGeometry Figures="M80,69.5 L137.9,66.4 A68,68,0,0,1,110.9,15.7 L76,62 A10,10,0,0,0,80,69.5 z"/>
+                                    </Path.Data>
+                                    <Path.Fill>
+                                        <LinearGradientBrush StartPoint="137.9,66.4" EndPoint="110.9,15.7"
+                                                             MappingMode="Absolute">
+                                            <GradientStop Offset="0.00" Color="#283DD6A8"/>
+                                            <GradientStop Offset="0.30" Color="#1A3DD6A8"/>
+                                            <GradientStop Offset="0.70" Color="#083DD6A8"/>
+                                            <GradientStop Offset="1.00" Color="#003DD6A8"/>
+                                        </LinearGradientBrush>
+                                    </Path.Fill>
+                                </Path>
+
+                                <!-- Base: annular sector 50°, InnerRadius=10, OuterRadius=68.
+                                     Прибрано "гостру вершину" в центрі (як у реального PPI). -->
+                                <Path x:Name="SweepCone">
+                                    <Path.Data>
+                                        <PathGeometry Figures="M80,70 L138,70 A68,68,0,0,1,113.7,17.9 L76.4,62.3 A10,10,0,0,0,80,70 z"/>
+                                    </Path.Data>
+                                    <Path.Fill>
+                                        <LinearGradientBrush StartPoint="138,70" EndPoint="113.7,17.9"
+                                                             MappingMode="Absolute">
+                                            <GradientStop Offset="0.00" Color="#A03DD6A8"/>
+                                            <GradientStop Offset="0.30" Color="#603DD6A8"/>
+                                            <GradientStop Offset="0.70" Color="#203DD6A8"/>
+                                            <GradientStop Offset="1.00" Color="#003DD6A8"/>
+                                        </LinearGradientBrush>
+                                    </Path.Fill>
+                                </Path>
+                            </Grid>
 
                             <!-- Яскрава передня грань (leading edge) -->
                             <Line x:Name="SweepLeadingEdge"
