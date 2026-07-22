@@ -259,18 +259,16 @@ namespace SCLOCVerse.Controls
             if (candidates.Count == 0)
             {
                 // ── Сигнатура не розпізнано ──
-                // Розрізняємо два стани:
-                //   1. "Сигнал втрачено" — раніше був результат (LastGoodResultUtc != null),
-                //      але OCR його більше не бачить і ResultAge timeout минув.
-                //   2. "Сканування..." — результату ще не було (початковий стан / Discovery).
+                // State Machine визначає відображення:
+                //   Lost → "Сигнал втрачено" (#FF6B6B).
+                //   Scanning/Idle → "Сканування..." (#E8F3FF).
                 ShowSingleCandidate();
 
-                var wasLost = state?.LastGoodResultUtc is null
-                              && !string.IsNullOrEmpty(state?.RawCode)
-                              && state?.Confidence > 0;
+                var scanState = state?.ScanState ?? MiningScanState.Idle;
+                var isLost = scanState == MiningScanState.Lost;
 
-                MaterialName.Text = wasLost ? "Сигнал втрачено" : (state?.RawCode ?? "Сканування...");
-                MaterialName.Foreground = wasLost
+                MaterialName.Text = isLost ? "Сигнал втрачено" : (state?.RawCode ?? "Сканування...");
+                MaterialName.Foreground = isLost
                     ? BrushFromHex("#FF6B6B")    // червонуватий для "втрачено"
                     : BrushFromHex("#E8F3FF");   // нейтральний білий
 

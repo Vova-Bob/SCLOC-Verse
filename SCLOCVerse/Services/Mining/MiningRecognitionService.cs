@@ -85,6 +85,7 @@ namespace SCLOCVerse.Services.Mining
             if (IsEnabled) return;
             _coordinator.OcrRegionReady += OnOcrRegionReady;
             IsEnabled = true;
+            lock (_stateLock) { TransitionTo(MiningScanState.Scanning); }
             StartDiscoveryMode();
         }
 
@@ -104,6 +105,7 @@ namespace SCLOCVerse.Services.Mining
                 CurrentState.ClusterCount = null;
                 CurrentState.Confidence = 0;
                 CurrentState.LastUpdatedUtc = DateTime.UtcNow;
+                TransitionTo(MiningScanState.Idle);
             }
             IsEnabled = false;
             StateChanged?.Invoke(this, CurrentState);
@@ -211,9 +213,16 @@ namespace SCLOCVerse.Services.Mining
                     lock (_stateLock)
                     {
                         UpdateMaterial(signatureText, location.Confidence);
+                        TransitionTo(MiningScanState.Detected);
                     }
                     StateChanged?.Invoke(this, CurrentState);
                     // Overlay НЕ слідкує за HUD — стоїть де користувач поставив.
+                }
+                else
+                {
+                    // HUD знайдено, але сигнатура не розпізнана — продовжуємо Tracking.
+                    lock (_stateLock) { TransitionTo(MiningScanState.Scanning); }
+                    StateChanged?.Invoke(this, CurrentState);
                 }
 
                 TransitionToTracking();
@@ -331,6 +340,20 @@ namespace SCLOCVerse.Services.Mining
                     Debug.WriteLine("[MiningRecognition] Resolver → Discovery (HUD lost)");
                     if (_coordinator.IsRunning) _coordinator.Stop();
                     UnregisterAllRegions();
+
+                    // State Machine: → Scanning (Discovery знову шукає HUD).
+                    // Скидаємо старий результат щоб Overlay не зависав.
+                    lock (_stateLock)
+                    {
+                        if (CurrentState.AllCandidates.Count > 0)
+                        {
+                            CurrentState.AllCandidates = System.Array.Empty<MiningMaterial>();
+                            CurrentState.LastGoodResultUtc = null;
+                        }
+                        TransitionTo(MiningScanState.Scanning);
+                    }
+                    StateChanged?.Invoke(this, CurrentState);
+
                     StartDiscoveryMode();
                     return;
                 }
@@ -344,6 +367,8 @@ namespace SCLOCVerse.Services.Mining
                         lock (_stateLock)
                         {
                             UpdateMaterial(text, confidence);
+                            // State Machine: → Detected (з будь-якого стану).
+                            TransitionTo(MiningScanState.Detected);
                         }
                         StateChanged?.Invoke(this, CurrentState);
                     }
@@ -351,11 +376,25 @@ namespace SCLOCVerse.Services.Mining
                     {
                         // ── OCR промахнувся або pre-filter skip ──
                         // Result Age: не очищати миттєво, дати шанс відновитись.
-                        // Якщо age > timeout → очистити AllCandidates ("Сигнал втрачено").
                         var cleared = TryExpireOldResult();
                         if (cleared)
                         {
+                            // State Machine: → Lost (ResultAge timeout минув).
+                            TransitionTo(MiningScanState.Lost);
                             StateChanged?.Invoke(this, CurrentState);
+                        }
+                        else
+                        {
+                            // State Machine: → Weak (результат утримується, OCR промах).
+                            lock (_stateLock)
+                            {
+                                if (CurrentState.AllCandidates.Count > 0
+                                    && CurrentState.ScanState == MiningScanState.Detected)
+                                {
+                                    TransitionTo(MiningScanState.Weak);
+                                    StateChanged?.Invoke(this, CurrentState);
+                                }
+                            }
                         }
                     }
                 }
@@ -433,6 +472,32 @@ namespace SCLOCVerse.Services.Mining
         }
 
         // ── Helpers ──
+
+        /// <summary>
+        /// State Machine transition — встановити новий стан з логуванням.
+        ///
+        /// <para><b>Допустимі переходи:</b></para>
+        /// <list type="bullet">
+        /// <item>Idle → Scanning (Enable або Discovery знайшов HUD).</item>
+        /// <item>Scanning → Detected (успішний OCR).</item>
+        /// <item>Detected → Weak (OCR промах, grace period).</item>
+        /// <item>Weak → Detected (OCR відновився).</item>
+        /// <item>Weak → Lost (age > timeout).</item>
+        /// <item>Detected → Scanning (Resolver → Discovery, HUD втрачено).</item>
+        /// <item>Lost → Scanning (Discovery знайшов новий HUD).</item>
+        /// <item>Any → Idle (Disable).</item>
+        /// </list>
+        ///
+        /// <para>Потрібен виклик під <c>_stateLock</c>.</para>
+        /// </summary>
+        private void TransitionTo(MiningScanState newState)
+        {
+            var oldState = CurrentState.ScanState;
+            if (oldState == newState) return;
+
+            CurrentState.ScanState = newState;
+            Debug.WriteLine("[MiningRecognition] State: {0} → {1}", oldState, newState);
+        }
 
         private void StopDiscoveryTimer()
         {

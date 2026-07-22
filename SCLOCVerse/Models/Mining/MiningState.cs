@@ -7,6 +7,12 @@ namespace SCLOCVerse.Models.Mining
     public sealed class MiningState
     {
         /// <summary>
+        /// Поточний стан State Machine сканування (Idle/Scanning/Detected/Weak/Lost).
+        /// Управляється MiningRecognitionService. Overlay використовує для відображення.
+        /// </summary>
+        public MiningScanState ScanState { get; set; } = MiningScanState.Idle;
+
+        /// <summary>
         /// Список УСІХ кандидатів для поточної сигнатури.
         ///
         /// <para><b>Семантика:</b></para>
