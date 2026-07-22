@@ -523,11 +523,13 @@ namespace SCLOCVerse.Controls
         private void UpdateScanProgress(double confidence)
         {
             var pct = (int)Math.Round(Math.Clamp(confidence, 0.0, 1.0) * 100);
-            var filled = (int)Math.Round(confidence * 10);
-            if (filled < 0) filled = 0;
-            if (filled > 10) filled = 10;
 
-            var barText = new string('█', filled) + new string('░', 10 - filled);
+            // 9 символів замість 10: остання позиція не малюється впритул до відсотка.
+            var filled = (int)Math.Round(confidence * 9);
+            if (filled < 0) filled = 0;
+            if (filled > 9) filled = 9;
+
+            var barText = new string('█', filled) + new string('░', 9 - filled);
             var pctText = $"{pct}%";
 
             // Підфарбовування бару за рівнем довіри (green ≥0.9, cyan інакше).
