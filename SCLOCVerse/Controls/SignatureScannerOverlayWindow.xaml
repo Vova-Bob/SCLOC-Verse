@@ -9,7 +9,7 @@
         Topmost="True"
         ResizeMode="NoResize"
         Width="244"
-        Height="254"
+        SizeToContent="Height"
         ShowActivated="False">
 
     <!--
