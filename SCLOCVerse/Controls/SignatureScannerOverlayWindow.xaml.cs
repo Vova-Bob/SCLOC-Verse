@@ -244,6 +244,9 @@ namespace SCLOCVerse.Controls
             }
         }
 
+        /// <summary>Тривалість fade transition (мс) — swap між Scanning та Result.</summary>
+        private const int FadeMs = 200;
+
         public void UpdateState(MiningState state)
         {
             if (!Dispatcher.CheckAccess())
@@ -255,46 +258,50 @@ namespace SCLOCVerse.Controls
             TitleLabel.Text = "SC SCAN";
 
             var candidates = state?.AllCandidates ?? System.Array.Empty<MiningMaterial>();
+            var scanState = state?.ScanState ?? MiningScanState.Idle;
 
             if (candidates.Count == 0)
             {
                 // ── Сигнатура не розпізнано ──
-                // State Machine визначає відображення:
-                //   Lost → "Сигнал втрачено" (#FF6B6B).
-                //   Scanning/Idle → "Сканування..." (#E8F3FF).
-                ShowSingleCandidate();
-
-                var scanState = state?.ScanState ?? MiningScanState.Idle;
+                // ScanState визначає відображення:
+                //   Lost → "Сигнал втрачено" (#FF6B6B) у single-candidate блоку.
+                //   Scanning/Idle → Holographic Radar (Блок S, "Пошук сигнатур...").
                 var isLost = scanState == MiningScanState.Lost;
 
-                MaterialName.Text = isLost ? "Сигнал втрачено" : (state?.RawCode ?? "Сканування...");
-                MaterialName.Foreground = isLost
-                    ? BrushFromHex("#FF6B6B")    // червонуватий для "втрачено"
-                    : BrushFromHex("#E8F3FF");   // нейтральний білий
+                if (isLost)
+                {
+                    // Сигнал втрачено — показати в single-candidate блоці (не радар).
+                    ShowSingleCandidate();
 
-                RarityLabelValue.Text = "—";
-                RarityLabelValue.Foreground = BrushFromHex("#A7C6E7");
-                StarsLabel.Text = "☆☆☆☆☆";
+                    MaterialName.Text = "Сигнал втрачено";
+                    MaterialName.Foreground = BrushFromHex("#FF6B6B");
+                    RarityLabelValue.Text = "—";
+                    RarityLabelValue.Foreground = BrushFromHex("#A7C6E7");
+                    StarsLabel.Text = "☆☆☆☆☆";
+                    ClusterInfo.Text = "—";
+                    SignatureLabel.Text = "—";
+                    UpdateScanProgress(0);
+                }
+                else
+                {
+                    // Пошук сигнатур — показати радар.
+                    ShowScanningRadar();
+                }
 
-                ClusterInfo.Text = "—";
-                SignatureLabel.Text = "—";
-
-                UpdateScanProgress(0);
                 Confidence.Text = state is not null
                     ? $"conf: {state.Confidence:F2}"
                     : "—";
                 return;
             }
 
+            // ── Сигнатура знайдена — приховати радар, показати картку ──
             if (candidates.Count == 1)
             {
-                // ── Однозначний збіг (звичайний material) — single-candidate блок ──
                 ShowSingleCandidate();
                 RenderSingleCandidate(candidates[0], state!);
             }
             else
             {
-                // ── Колізія (ROC/FPS/Salvage) — multi-candidate блок ──
                 ShowMultiCandidate();
                 RenderMultiCandidate(candidates, state!);
             }
@@ -303,18 +310,71 @@ namespace SCLOCVerse.Controls
             Confidence.Text = $"conf: {state.Confidence:F2}";
         }
 
-        /// <summary>Показати single-candidate блок, приховати multi-candidate.</summary>
-        private void ShowSingleCandidate()
+        /// <summary>
+        /// Показати Scanning Radar (Блок S), приховати результати.
+        /// Fade-out результат, fade-in радар (200мс).
+        /// </summary>
+        private void ShowScanningRadar()
         {
-            SingleCandidatePanel.Visibility = Visibility.Visible;
+            if (ScanningPanel.Visibility == Visibility.Visible
+                && SingleCandidatePanel.Visibility == Visibility.Collapsed
+                && MultiCandidatePanel.Visibility == Visibility.Collapsed)
+                return; // вже активний
+
+            ScanningPanel.Visibility = Visibility.Visible;
+            ScanningPanel.Opacity = 0;
+            SingleCandidatePanel.Visibility = Visibility.Collapsed;
             MultiCandidatePanel.Visibility = Visibility.Collapsed;
+
+            // Fade-in радар.
+            var fade = new System.Windows.Media.Animation.DoubleAnimation
+            {
+                From = 0, To = 1,
+                Duration = TimeSpan.FromMilliseconds(FadeMs)
+            };
+            ScanningPanel.BeginAnimation(OpacityProperty, fade);
         }
 
-        /// <summary>Показати multi-candidate блок, приховати single-candidate.</summary>
+        /// <summary>Показати single-candidate блок, приховати радар та multi-candidate.</summary>
+        private void ShowSingleCandidate()
+        {
+            var wasScanning = ScanningPanel.Visibility == Visibility.Visible;
+
+            ScanningPanel.Visibility = Visibility.Collapsed;
+            MultiCandidatePanel.Visibility = Visibility.Collapsed;
+            SingleCandidatePanel.Visibility = Visibility.Visible;
+
+            if (wasScanning)
+            {
+                SingleCandidatePanel.Opacity = 0;
+                var fade = new System.Windows.Media.Animation.DoubleAnimation
+                {
+                    From = 0, To = 1,
+                    Duration = TimeSpan.FromMilliseconds(FadeMs)
+                };
+                SingleCandidatePanel.BeginAnimation(OpacityProperty, fade);
+            }
+        }
+
+        /// <summary>Показати multi-candidate блок, приховати радар та single-candidate.</summary>
         private void ShowMultiCandidate()
         {
+            var wasScanning = ScanningPanel.Visibility == Visibility.Visible;
+
+            ScanningPanel.Visibility = Visibility.Collapsed;
             SingleCandidatePanel.Visibility = Visibility.Collapsed;
             MultiCandidatePanel.Visibility = Visibility.Visible;
+
+            if (wasScanning)
+            {
+                MultiCandidatePanel.Opacity = 0;
+                var fade = new System.Windows.Media.Animation.DoubleAnimation
+                {
+                    From = 0, To = 1,
+                    Duration = TimeSpan.FromMilliseconds(FadeMs)
+                };
+                MultiCandidatePanel.BeginAnimation(OpacityProperty, fade);
+            }
         }
 
         /// <summary>

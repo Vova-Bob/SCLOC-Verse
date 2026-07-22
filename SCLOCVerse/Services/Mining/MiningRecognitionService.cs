@@ -87,6 +87,7 @@ namespace SCLOCVerse.Services.Mining
             IsEnabled = true;
             lock (_stateLock) { TransitionTo(MiningScanState.Scanning); }
             StartDiscoveryMode();
+            StateChanged?.Invoke(this, CurrentState);
         }
 
         /// <inheritdoc />
@@ -179,11 +180,9 @@ namespace SCLOCVerse.Services.Mining
                 // Foreground gate — SC не активний, skip.
                 if (!StarCitizenForeground.IsStarCitizenForeground())
                 {
-                    UpdateOverlayStatus("Discovery: SC не активний");
+                    NotifyOverlay();
                     return;
                 }
-
-                UpdateOverlayStatus("Discovery: сканування екрана...");
 
                 // Захопити повний екран.
                 var fullScreenRect = _roiResolver.CurrentCaptureRect;
@@ -192,26 +191,23 @@ namespace SCLOCVerse.Services.Mining
 
                 // Scan HUD detection (Hint, НЕ Gate):
                 // HasCyanContent перевіряє наявність бірюзових пікселів (характерний колір SC HUD).
-                // Якщо false — це лише підказка для статусного повідомлення.
-                // Locator виконується ЗАВЖДИ — остаточне рішення приймає тільки Locator.
+                // Якщо false — це лише підказка (логування). Locator виконується ЗАВЖДИ.
                 // Це запобігає зависанню Discovery при хибнонегативах HasCyanContent
                 // (resize 64×36 розчиняє малі HUD елементи у темному фоні).
                 var hasCyan = Services.OcrPlatform.Coordinator.OcrCoordinator.HasCyanContent(screenshotMat);
                 if (!hasCyan)
                 {
-                    UpdateOverlayStatus("Discovery: Scan HUD не виявлено (пошук триває)...");
+                    Debug.WriteLine("[MiningRecognition] Discovery: Scan HUD не виявлено (пошук триває)");
                 }
 
                 // Локалізувати HUD через стратегію (повноекранний OCR + DB lookup).
                 var location = _locatorStrategy.Locate(screenshotMat);
                 if (location is null)
                 {
-                    UpdateOverlayStatus("Discovery: сигнатуру не знайдено");
+                    // HUD не знайдено — Overlay показує радар (ScanState = Scanning).
+                    NotifyOverlay();
                     return;
                 }
-
-                // HUD знайдено → негайно показати результат.
-                UpdateOverlayStatus($"Discovery: HUD знайдено! {location.Details}");
 
                 _roiResolver.OnHudLocated(location);
 
@@ -242,7 +238,7 @@ namespace SCLOCVerse.Services.Mining
             catch (Exception ex)
             {
                 Debug.WriteLine("[MiningRecognition] Discovery exception: {0}", ex.Message);
-                UpdateOverlayStatus($"Discovery: помилка — {ex.Message}");
+                NotifyOverlay();
             }
             finally
             {
@@ -276,18 +272,12 @@ namespace SCLOCVerse.Services.Mining
         }
 
         /// <summary>
-        /// Оновити overlay статусним текстом (для діагностики Discovery mode).
+        /// Повідомити Overlay про зміну стану (без технічних повідомлень).
+        /// Overlay сам визначає що показувати (радар, картка, "Сигнал втрачено")
+        /// на основі AllCandidates.Count та ScanState.
         /// </summary>
-        private void UpdateOverlayStatus(string status)
+        private void NotifyOverlay()
         {
-            // Оновлюємо RawCode щоб overlay показав статус.
-            lock (_stateLock)
-            {
-                if (CurrentState.Material is null)
-                {
-                    CurrentState.RawCode = status;
-                }
-            }
             StateChanged?.Invoke(this, CurrentState);
         }
 
