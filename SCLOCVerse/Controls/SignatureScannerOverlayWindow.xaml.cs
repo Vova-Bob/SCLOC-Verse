@@ -87,6 +87,13 @@ namespace SCLOCVerse.Controls
         private const double OpacityMin = 0.2;
         private const double OpacityMax = 1.0;
 
+        /// <summary>
+        /// Чи перебуває overlay у режимі взаємодії з користувачем
+        /// (тимчасово вимкнено click-through — перетягування або підготовка до нього).
+        /// Foreground gate не повинен ховати overlay у цьому режимі.
+        /// </summary>
+        public bool IsInInteractionMode => _clickThroughTemp || _dragStart.HasValue;
+
         public SignatureScannerOverlayWindow()
         {
             InitializeComponent();

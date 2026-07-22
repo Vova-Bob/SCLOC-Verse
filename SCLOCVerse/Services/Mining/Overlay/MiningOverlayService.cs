@@ -193,7 +193,7 @@ namespace SCLOCVerse.Services.Mining.Overlay
             {
                 _window.Show();
             }
-            else if (_shouldBeVisible && !isSc && _window.IsVisible)
+            else if (_shouldBeVisible && !isSc && _window.IsVisible && !_window.IsInInteractionMode)
             {
                 _window.Hide();
             }
