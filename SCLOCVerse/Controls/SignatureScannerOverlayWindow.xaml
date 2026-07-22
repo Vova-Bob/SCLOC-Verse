@@ -8,7 +8,7 @@
         ShowInTaskbar="False"
         Topmost="True"
         ResizeMode="NoResize"
-        Width="244"
+        Width="225"
         SizeToContent="Height"
         ShowActivated="False">
 
@@ -572,7 +572,7 @@
 
                 <!-- ── Ідентифікація: назва ресурсу (кольорова за рідкістю) ── -->
                 <TextBlock x:Name="MaterialName"
-                           Text="Сканування..."
+                           Text="Сигнал..."
                            FontFamily="Segoe UI Semibold"
                            FontSize="15"
                            Foreground="#E8F3FF"
@@ -655,7 +655,7 @@
                                FontFamily="Consolas"
                                FontSize="10"
                                Foreground="#A7C6E7"
-                               Margin="0,0,0,4"/>
+                                Margin="0,0,0,4"/>
                 </Grid>
 
                 <!-- ── Роздільник перед блоком сканування ── -->
@@ -663,27 +663,28 @@
                         Background="#2A5A78"
                         Margin="0,0,0,8"/>
 
-                <!-- ── Блок сканування (окремий, повна ширина) ── -->
-                <StackPanel Orientation="Vertical"
+                <!-- ── Блок сканування ── -->
+                <StackPanel Orientation="Horizontal"
                             Margin="0,0,0,4">
-                    <TextBlock Text="Сканування:"
+                    <TextBlock Text="Сигнал:"
                                FontFamily="Segoe UI"
                                FontSize="10"
                                Foreground="#5F7E8A"
-                               Margin="0,0,0,4"/>
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock x:Name="ScanBar"
-                                   Text="░░░░░░░░░"
-                                   FontFamily="Consolas"
-                                   FontSize="11"
-                                   Foreground="#3DD6A8"
-                                   Margin="0,0,12,0"/>
-                        <TextBlock x:Name="ScanPercent"
-                                   Text="0%"
-                                   FontFamily="Segoe UI Semibold"
-                                   FontSize="11"
-                                   Foreground="#A7C6E7"/>
-                    </StackPanel>
+                               VerticalAlignment="Center"
+                               Margin="0,0,8,0"/>
+                    <TextBlock x:Name="ScanBar"
+                               Text="░░░░░░░░░"
+                               FontFamily="Consolas"
+                               FontSize="11"
+                               Foreground="#3DD6A8"
+                               VerticalAlignment="Center"
+                               Margin="0,0,12,0"/>
+                    <TextBlock x:Name="ScanPercent"
+                               Text="0%"
+                               FontFamily="Segoe UI Semibold"
+                               FontSize="11"
+                               Foreground="#A7C6E7"
+                               VerticalAlignment="Center"/>
                 </StackPanel>
             </StackPanel>
 
@@ -762,33 +763,29 @@
                         Background="#2A5A78"
                         Margin="0,4,0,6"/>
 
-                <!-- Сканування (progress bar + %) — спільне для всіх кандидатів -->
-                <Grid HorizontalAlignment="Left">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
-                    <TextBlock Grid.Column="0"
-                               Text="Сканування:"
+                <!-- Сигнал (progress bar + %) — спільне для всіх кандидатів -->
+                <StackPanel Orientation="Horizontal"
+                            Margin="0,0,0,0">
+                    <TextBlock Text="Сигнал:"
                                FontFamily="Segoe UI"
                                FontSize="10"
                                Foreground="#5F7E8A"
+                               VerticalAlignment="Center"
                                Margin="0,0,8,0"/>
-                    <StackPanel Grid.Column="1"
-                                Orientation="Horizontal">
-                        <TextBlock x:Name="MultiScanBar"
-                                   Text="░░░░░░░░░"
-                                   FontFamily="Consolas"
-                                   FontSize="10"
-                                   Foreground="#3DD6A8"
-                                   Margin="0,0,4,0"/>
-                        <TextBlock x:Name="MultiScanPercent"
-                                   Text="0%"
-                                   FontFamily="Segoe UI Semibold"
-                                   FontSize="10"
-                                   Foreground="#A7C6E7"/>
-                    </StackPanel>
-                </Grid>
+                    <TextBlock x:Name="MultiScanBar"
+                               Text="░░░░░░░░░"
+                               FontFamily="Consolas"
+                               FontSize="10"
+                               Foreground="#3DD6A8"
+                               VerticalAlignment="Center"
+                               Margin="0,0,8,0"/>
+                    <TextBlock x:Name="MultiScanPercent"
+                               Text="0%"
+                               FontFamily="Segoe UI Semibold"
+                               FontSize="10"
+                               Foreground="#A7C6E7"
+                               VerticalAlignment="Center"/>
+                </StackPanel>
             </StackPanel>
 
             <!-- ── Діагностика (низький, лише для дебагу) ── -->
