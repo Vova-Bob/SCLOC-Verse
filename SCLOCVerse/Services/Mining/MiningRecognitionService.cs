@@ -111,11 +111,35 @@ namespace SCLOCVerse.Services.Mining
             IsEnabled = false;
             StateChanged?.Invoke(this, CurrentState);
 
-            // Lazy ONNX: вивантажити моделі → звільнити ~500МБ.
+            // Lazy ONNX: відкладене вивантаження моделей → звільнити ~500МБ.
+            // НЕ миттєво — даємо активним розпізнаванням завершитись (race condition fix).
+            // Фонова задача чекає, поки _activeRecognitions = 0, потім вивантажує.
+            // Якщо користувач увімкне сканер знову до вивантаження — перевірка
+            // IsEnabled скасує вивантаження (моделі ще потрібні).
             if (_ocrEngine is PaddleOcrEngine paddle)
             {
-                paddle.UnloadModels();
-                Debug.WriteLine("[MiningRecognition] ONNX models unloaded (lazy)");
+                _ = Task.Run(async () =>
+                {
+                    // Опитування каждні 100мс, поки є активні розпізнавання.
+                    // Максимум 5 секунд — потім вивантажити примусово (захист від зависання).
+                    var deadline = DateTime.UtcNow.AddSeconds(5);
+                    while (DateTime.UtcNow < deadline)
+                    {
+                        if (IsEnabled) return; // сканер знову увімкнено — моделі потрібні
+                        if (paddle.UnloadModelsIfIdle())
+                        {
+                            Debug.WriteLine("[MiningRecognition] ONNX models unloaded (deferred)");
+                            return;
+                        }
+                        await Task.Delay(100).ConfigureAwait(false);
+                    }
+                    // Тімайаут — примусове вивантаження (розпізнавання зависло).
+                    if (!IsEnabled)
+                    {
+                        paddle.UnloadModels();
+                        Debug.WriteLine("[MiningRecognition] ONNX models unloaded (timeout forced)");
+                    }
+                });
             }
         }
 

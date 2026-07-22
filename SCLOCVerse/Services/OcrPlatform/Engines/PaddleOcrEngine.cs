@@ -30,6 +30,12 @@ namespace SCLOCVerse.Services.OcrPlatform.Engines
         private bool _disposed;
 
         /// <summary>
+        /// Лічильник активних розпізнавань. UnloadModelsIfIdle не вивантажує
+        /// моделі, поки лічильник > 0 (розпізнавання ще триває).
+        /// </summary>
+        private int _activeRecognitions;
+
+        /// <summary>
         /// Створити PaddleOcrEngine з конкретними шляхами до моделей.
         /// Моделі завантажуються LAZY — при першому RecognizeAsync, не в конструкторі.
         /// Це економить ~500МБ пам'яті коли сканер вимкнено.
@@ -71,15 +77,38 @@ namespace SCLOCVerse.Services.OcrPlatform.Engines
         /// <summary>
         /// Вивантажити ONNX моделі (звільнити ~500МБ).
         /// Наступний RecognizeAsync завантажить їх знову.
+        /// НЕ викликати під час активного розпізнавання — використовувати
+        /// <see cref="UnloadModelsIfIdle"/> для безпечного відкладеного вивантаження.
         /// </summary>
         public void UnloadModels()
         {
             lock (_loadLock)
             {
+                if (_disposed) return;
                 _detector?.Dispose();
                 _recognizer?.Dispose();
                 _detector = null;
                 _recognizer = null;
+            }
+        }
+
+        /// <summary>
+        /// Вивантажити моделі, лише якщо немає активних розпізнавань.
+        /// Повертає true, якщо вивантажено; false, якщо ще є активні розпізнавання.
+        /// Безпечно викликати з будь-якого потоку.
+        /// </summary>
+        public bool UnloadModelsIfIdle()
+        {
+            lock (_loadLock)
+            {
+                if (_disposed) return false;
+                if (_activeRecognitions > 0) return false;
+
+                _detector?.Dispose();
+                _recognizer?.Dispose();
+                _detector = null;
+                _recognizer = null;
+                return true;
             }
         }
 
@@ -97,9 +126,24 @@ namespace SCLOCVerse.Services.OcrPlatform.Engines
             {
                 ct.ThrowIfCancellationRequested();
 
-                // Lazy load ONNX моделей при першому використанні.
-                EnsureModelsLoaded();
+                // Lazy load + захопити локальні references під lock.
+                // Локальні refs захищають від race з UnloadModels: навіть якщо
+                // UnloadModels обнулить fields, локальні refs залишаються валідними.
+                PaddleDetector detector;
+                PaddleRecognizer recognizer;
+                lock (_loadLock)
+                {
+                    if (_disposed)
+                        throw new ObjectDisposedException(nameof(PaddleOcrEngine));
 
+                    EnsureModelsLoaded();
+                    detector = _detector!;
+                    recognizer = _recognizer!;
+                    _activeRecognitions++;
+                }
+
+                try
+                {
                 // Крок 1: Padding — додаємо border для кращої детекції тексту біля країв.
                 using var padded = options.Padding > 0
                     ? OcrPreprocessing.MakePadding(input, options.Padding)
@@ -108,7 +152,7 @@ namespace SCLOCVerse.Services.OcrPlatform.Engines
                 ct.ThrowIfCancellationRequested();
 
                 // Крок 2: Detection.
-                var boxes = _detector!.Detect(
+                var boxes = detector.Detect(
                     padded,
                     maxSideLen: options.MaxSideLen,
                     boxScoreThresh: options.BoxScoreThresh,
@@ -156,7 +200,7 @@ namespace SCLOCVerse.Services.OcrPlatform.Engines
                         }
 
                         using var crop = new Mat(padded, cropRect);
-                        var recognized = _recognizer!.Recognize(crop);
+                        var recognized = recognizer.Recognize(crop);
 
                         // Скидаємо padding offset (повертаємо координати до оригіналу).
                         var originalRect = new Rect(
@@ -175,6 +219,15 @@ namespace SCLOCVerse.Services.OcrPlatform.Engines
                     .ToList();
 
                 return new OcrResult { Matches = matches };
+                }
+                finally
+                {
+                    // Зменшити лічильник — дозволити UnloadModelsIfIdle.
+                    lock (_loadLock)
+                    {
+                        _activeRecognitions--;
+                    }
+                }
             }, ct);
         }
 
@@ -219,9 +272,15 @@ namespace SCLOCVerse.Services.OcrPlatform.Engines
 
         public void Dispose()
         {
-            if (_disposed) return;
-            UnloadModels();
-            _disposed = true;
+            lock (_loadLock)
+            {
+                if (_disposed) return;
+                _disposed = true;
+                _detector?.Dispose();
+                _recognizer?.Dispose();
+                _detector = null;
+                _recognizer = null;
+            }
         }
     }
 }
