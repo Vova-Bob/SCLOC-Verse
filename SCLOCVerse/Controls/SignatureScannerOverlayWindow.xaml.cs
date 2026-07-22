@@ -5,6 +5,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Interop;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 
 namespace SCLOCVerse.Controls
 {
@@ -67,14 +68,16 @@ namespace SCLOCVerse.Controls
         private const int BlipMaxAttempts = 50;
         private const double BlipHalfSize = 1.5; // Ellipse 3×3 — зміщення для центрування
 
-        // ── Sweep: 1 Path + 1 Brush ──
-        // Геометрія та градієнт генеруються математично від цих параметрів.
-        // 1 annular sector + 1 linear gradient з багатьма stops = єдине світлове тіло.
+        // ── Sweep: WriteableBitmap з кутовим градієнтом ──
+        // Bitmap генерується pixel-by-pixel: α = f(θ) для кожного пікселя.
+        // Плавне експоненційне згасання по всьому колу + різкий leading edge.
+        private const int SweepBitmapSize = 140;
         private const double SweepCenterX = 70.0;
         private const double SweepCenterY = 70.0;
-        private const double SweepInnerR = 4.0;             // майже від центру
+        private const double SweepInnerR = 4.0;
         private const double SweepOuterR = 68.0;
-        private const double SweepAngleDeg = 90.0;           // повний квадрант
+        private const double SweepPeakAlpha = 0.80;       // яскравість на leading edge
+        private const double SweepDecayRad = 70.0 * Math.PI / 180.0; // експонента згасання
 
         public double SavedOpacity { get; set; } = 0.9;
         public event EventHandler<Rect>? PositionChanged;
@@ -624,103 +627,84 @@ namespace SCLOCVerse.Controls
         }
 
         // ═══════════════════════════════════════════════════════════════
-        //  PPI Sweep: генерація 3 шарів (Beam + Mid + Afterglow)
+        //  Sweep: WriteableBitmap з кутовим градієнтом (360°)
         // ═══════════════════════════════════════════════════════════════
-        //  Sweep: 1 Path + 1 Brush — єдине світлове тіло
-        // ═══════════════════════════════════════════════════════════════
-        // 1 annular sector + 1 linear gradient з 10 stops.
-        // Асиметрія: α=peak на leading (різкий край), плавна експонента до 0 (хвіст).
-        // Жодних меж між шарами — бо шар один.
+        // Bitmap генерується pixel-by-pixel: для кожного пікселя обчислюється
+        // кут θ = atan2(dy, dx) та α = peak · exp(−θ / decay).
+        // Плавне згасання по всьому колу + різкий leading edge при 359°→0°.
+        // 1 раз при Loaded, 0 GC pressure під час анімації.
 
         private void BuildSweepCone()
         {
-            SweepCone.Data = BuildAnnularSector(SweepAngleDeg);
-            SweepCone.Fill = BuildAngularGradient(SweepAngleDeg, new[]
-            {
-                (0.00, 0.80),  //  0°  — leading edge, різкий яскравий край
-                (0.06, 0.72),  //  3°
-                (0.12, 0.62),  //  6°
-                (0.20, 0.50),  // 10°
-                (0.30, 0.38),  // 15°
-                (0.40, 0.28),  // 20°
-                (0.52, 0.18),  // 26°
-                (0.65, 0.10),  // 32.5°
-                (0.80, 0.04),  // 40°
-                (1.00, 0.00)   // 50° — хвіст, повністю прозорий
-            });
+            SweepCone.Source = GenerateSweepBitmap();
         }
 
         /// <summary>
-        /// Побудова annular sector (кільцевий сектор) як PathGeometry.
-        /// Сектор від leading edge (кут 0°) до -angleDeg (проти напрямку sweep).
-        /// InnerRadius..OuterRadius — радіуси кільця.
+        /// Генерація WriteableBitmap 140×140 з кутовим градієнтом кільця.
+        /// Pbgra32 (premultiplied BGRA). α = f(θ) — експоненційне згасання.
         /// </summary>
-        private static PathGeometry BuildAnnularSector(double angleDeg)
+        private static WriteableBitmap GenerateSweepBitmap()
         {
-            var rad = angleDeg * Math.PI / 180.0;
-            var cosA = Math.Cos(rad);
-            var sinA = Math.Sin(rad);
+            var bitmap = new WriteableBitmap(
+                SweepBitmapSize, SweepBitmapSize,
+                96.0, 96.0,
+                PixelFormats.Pbgra32, null);
 
-            // У screen coords (Y down): trailing точка має Y МЕНШИЙ за центр (вгору).
-            Point innerLeading = new(SweepCenterX + SweepInnerR, SweepCenterY);
-            Point outerLeading = new(SweepCenterX + SweepOuterR, SweepCenterY);
-            Point outerTrailing = new(SweepCenterX + SweepOuterR * cosA, SweepCenterY - SweepOuterR * sinA);
-            Point innerTrailing = new(SweepCenterX + SweepInnerR * cosA, SweepCenterY - SweepInnerR * sinA);
-
-            var figure = new PathFigure
+            bitmap.Lock();
+            try
             {
-                StartPoint = innerLeading,
-                IsClosed = true,
-                Segments = new PathSegmentCollection
+                unsafe
                 {
-                    new LineSegment(outerLeading, isStroked: true),
-                    new ArcSegment
+                    var pixels = (uint*)bitmap.BackBuffer;
+                    var stride = bitmap.BackBufferStride / 4;
+
+                    for (var y = 0; y < SweepBitmapSize; y++)
                     {
-                        Point = outerTrailing,
-                        Size = new Size(SweepOuterR, SweepOuterR),
-                        SweepDirection = SweepDirection.Counterclockwise,
-                        IsLargeArc = false
-                    },
-                    new LineSegment(innerTrailing, isStroked: true),
-                    new ArcSegment
-                    {
-                        Point = innerLeading,
-                        Size = new Size(SweepInnerR, SweepInnerR),
-                        SweepDirection = SweepDirection.Clockwise,
-                        IsLargeArc = false
+                        for (var x = 0; x < SweepBitmapSize; x++)
+                        {
+                            var dx = x - SweepCenterX;
+                            var dy = y - SweepCenterY;
+                            var r = Math.Sqrt(dx * dx + dy * dy);
+
+                            // Поза кільцем — прозорий.
+                            if (r < SweepInnerR || r > SweepOuterR)
+                            {
+                                pixels[y * stride + x] = 0;
+                                continue;
+                            }
+
+                            // Кут [0, 2π). У screen coords (Y down) atan2 повертає
+                            // [−π, π], нормалізуємо до [0, 2π).
+                            var theta = Math.Atan2(dy, dx);
+                            if (theta < 0)
+                                theta += 2.0 * Math.PI;
+
+                            // Експоненційне згасання від leading edge (θ=0).
+                            var alpha = SweepPeakAlpha * Math.Exp(-theta / SweepDecayRad);
+
+                            // Колір #3DD6A8 з премультиплікованою альфою (Pbgra32).
+                            var a = (byte)Math.Round(Math.Clamp(alpha, 0.0, 1.0) * 255.0);
+                            const byte rCol = 0x3D, gCol = 0xD6, bCol = 0xA8;
+
+                            // Premultiplied: channel = color * alpha / 255.
+                            var pr = (byte)(rCol * a / 255);
+                            var pg = (byte)(gCol * a / 255);
+                            var pb = (byte)(bCol * a / 255);
+
+                            // Pbgra32 layout: B G R A (little-endian uint = AABBGGRR).
+                            pixels[y * stride + x] = (uint)(a << 24) | (uint)(pr << 16) | (uint)(pg << 8) | pb;
+                        }
                     }
                 }
-            };
 
-            return new PathGeometry(new[] { figure });
-        }
-
-        /// <summary>
-        /// Linear gradient по куту сектора: StartPoint на leading edge (outer),
-        /// EndPoint на trailing edge (outer). α (opacity) змінюється вздовж кута.
-        /// MappingMode=Absolute — координати обчислюються від center + outerR.
-        /// </summary>
-        private static LinearGradientBrush BuildAngularGradient(double angleDeg,
-            IReadOnlyList<(double Offset, double Alpha)> stops)
-        {
-            var rad = angleDeg * Math.PI / 180.0;
-            Point leading = new(SweepCenterX + SweepOuterR, SweepCenterY);
-            Point trailing = new(SweepCenterX + SweepOuterR * Math.Cos(rad),
-                                 SweepCenterY - SweepOuterR * Math.Sin(rad));
-
-            // Колір радара: #3DD6A8 з альфою з stops.
-            const byte r = 0x3D, g = 0xD6, b = 0xA8;
-            var gradientStops = new GradientStopCollection();
-            foreach (var (offset, alpha) in stops)
+                bitmap.AddDirtyRect(new Int32Rect(0, 0, SweepBitmapSize, SweepBitmapSize));
+            }
+            finally
             {
-                var a = (byte)Math.Round(Math.Clamp(alpha, 0.0, 1.0) * 255.0);
-                gradientStops.Add(new GradientStop(Color.FromArgb(a, r, g, b), offset));
+                bitmap.Unlock();
             }
 
-            return new LinearGradientBrush(gradientStops, leading, trailing)
-            {
-                MappingMode = BrushMappingMode.Absolute
-            };
+            return bitmap;
         }
     }
 }
