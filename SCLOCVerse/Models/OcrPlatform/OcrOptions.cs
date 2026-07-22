@@ -82,15 +82,15 @@ namespace SCLOCVerse.Models.OcrPlatform
 
         /// <summary>
         /// Опції для Discovery Mode — повноекранний пошук сигнатур.
-        /// MaxSideLen=2560 — повна роздільність для виявлення дрібного тексту.
+        /// MaxSideLen=1920 — баланс швидкості та якості (було 2560, прискорено у 1.8×).
         /// Оптимізація: pre-filter + fingerprint skip зменшують навантаження.
         /// </summary>
         public static OcrOptions DiscoveryScan { get; } = new()
         {
             AllowedCharacters = "0123456789,.",
             MinConfidence = 0.5,
-            MaxResults = 50,
-            MaxSideLen = 2560,
+            MaxResults = 20,
+            MaxSideLen = 1920,
             BoxScoreThresh = 0.3f,
             BoxThresh = 0.2f,
             Padding = 0

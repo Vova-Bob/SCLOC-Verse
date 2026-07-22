@@ -75,6 +75,16 @@ namespace SCLOCVerse.Services.OcrPlatform.Engines
         }
 
         /// <summary>
+        /// Прогріти моделі у фоні — завантажити ДО першого OCR виклику.
+        /// Безпечно викликати з будь-якого потоку. Idempotent.
+        /// Викликається при Enable() сканера, щоб усунути 3-5с lazy load затримку.
+        /// </summary>
+        public void PreloadModels()
+        {
+            EnsureModelsLoaded();
+        }
+
+        /// <summary>
         /// Вивантажити ONNX моделі (звільнити ~500МБ).
         /// Наступний RecognizeAsync завантажить їх знову.
         /// НЕ викликати під час активного розпізнавання — використовувати

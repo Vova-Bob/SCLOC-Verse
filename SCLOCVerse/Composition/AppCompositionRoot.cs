@@ -205,6 +205,17 @@ namespace SCLOCVerse.Composition
                     {
                         _miningRecognition.Enable();
                         _miningOverlay.Show();
+
+                        // Manual ROI: якщо користувач калібрував область — одразу Tracking,
+                        // skip Discovery (повноекранний OCR 10-27с → 0.2с).
+                        if (_preferencesService.GetMiningManualRoiEnabled())
+                        {
+                            var roi = _preferencesService.GetMiningRoi();
+                            if (roi.Width > 0 && roi.Height > 0)
+                            {
+                                _miningRecognition.SetManualRoi(roi);
+                            }
+                        }
                     }
                     return ValueTask.CompletedTask;
                 }

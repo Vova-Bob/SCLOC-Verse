@@ -35,8 +35,8 @@ namespace SCLOCVerse.Services.Mining
         private readonly IOcrEngine _ocrEngine;
         private readonly object _stateLock = new();
 
-        /// <summary>Discovery timer interval (повільніший за Coordinator — 2с).</summary>
-        private const int DiscoveryIntervalMs = 2000;
+        /// <summary>Discovery timer interval (швидкий старт — 500мс замість 2с).</summary>
+        private const int DiscoveryIntervalMs = 500;
 
         private Timer? _discoveryTimer;
         private bool _disposed;
@@ -88,6 +88,13 @@ namespace SCLOCVerse.Services.Mining
             lock (_stateLock) { TransitionTo(MiningScanState.Scanning); }
             StartDiscoveryMode();
             StateChanged?.Invoke(this, CurrentState);
+
+            // Прогрів ONNX моделей у фоні — усунути 3-5с lazy load затримку
+            // при першому OCR. До моменту Discovery tick (500мс) моделі вже в пам'яті.
+            if (_ocrEngine is PaddleOcrEngine paddle)
+            {
+                _ = Task.Run(() => paddle.PreloadModels());
+            }
         }
 
         /// <inheritdoc />
