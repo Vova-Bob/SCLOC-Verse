@@ -8,7 +8,8 @@
         ShowInTaskbar="False"
         Topmost="True"
         ResizeMode="NoResize"
-        SizeToContent="WidthAndHeight"
+        Width="244"
+        Height="254"
         ShowActivated="False">
 
     <!--
