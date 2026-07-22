@@ -74,7 +74,7 @@ namespace SCLOCVerse.Controls
         private const double SweepCenterY = 70.0;
         private const double SweepInnerR = 4.0;             // майже від центру
         private const double SweepOuterR = 68.0;
-        private const double SweepAngleDeg = 50.0;           // широкий sweep
+        private const double SweepAngleDeg = 90.0;           // повний квадрант
 
         public double SavedOpacity { get; set; } = 0.9;
         public event EventHandler<Rect>? PositionChanged;
