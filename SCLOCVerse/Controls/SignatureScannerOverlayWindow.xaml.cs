@@ -72,11 +72,11 @@ namespace SCLOCVerse.Controls
         // Легко скоригувати візуально: змінити константу → перебудова при Loaded.
         private const double SweepCenterX = 70.0;
         private const double SweepCenterY = 70.0;
-        private const double SweepInnerR = 10.0;
+        private const double SweepInnerR = 6.0;            // малий — щоб світіння починалось від центру
         private const double SweepOuterR = 68.0;
-        private const double SweepBeamAngleDeg = 8.0;       // 6-10° — яскравий вузький leading
-        private const double SweepMidAngleDeg = 20.0;       // 15-25° — свіже післясвітіння
-        private const double SweepAfterglowAngleDeg = 50.0; // 40-60° — широкий тьмяний хвіст
+        private const double SweepBeamAngleDeg = 11.0;       // 8-12° — яскравий leading промінь
+        private const double SweepMidAngleDeg = 28.0;        // 25-30° — свіже післясвітіння
+        private const double SweepAfterglowAngleDeg = 55.0;  // 50-60° — широкий тьмяний хвіст
 
         public double SavedOpacity { get; set; } = 0.9;
         public event EventHandler<Rect>? PositionChanged;
@@ -635,33 +635,36 @@ namespace SCLOCVerse.Controls
 
         private void BuildSweepCone()
         {
-            // Beam (найяскравіший, вузький)
+            // Beam (найяскравіший, вузький) — trailing α=5% маскує перехід до Mid
             SweepBeam.Data = BuildAnnularSector(SweepBeamAngleDeg);
             SweepBeam.Fill = BuildAngularGradient(SweepBeamAngleDeg, new[]
             {
-                (0.00, 0.70),  // leading edge — різкий край
-                (0.30, 0.55),
-                (0.70, 0.25),
-                (1.00, 0.00)   // trailing — плавне згасання
+                (0.00, 0.75),  // leading edge — різкий край
+                (0.25, 0.60),
+                (0.55, 0.40),
+                (0.80, 0.18),
+                (1.00, 0.05)   // trailing — мала α для плавного переходу до Mid
             });
 
-            // Mid (середній, післясвітіння)
+            // Mid (середній, післясвітіння) — trailing α=5% маскує перехід до Afterglow
             SweepMid.Data = BuildAnnularSector(SweepMidAngleDeg);
             SweepMid.Fill = BuildAngularGradient(SweepMidAngleDeg, new[]
             {
-                (0.00, 0.40),
-                (0.30, 0.30),
-                (0.70, 0.12),
-                (1.00, 0.00)
+                (0.00, 0.55),
+                (0.25, 0.45),
+                (0.55, 0.32),
+                (0.80, 0.18),
+                (1.00, 0.05)
             });
 
-            // Afterglow (тьмяний, широкий хвіст)
+            // Afterglow (тьмяний, широкий хвіст) — завершує плавне згасання до 0
             SweepAfterglow.Data = BuildAnnularSector(SweepAfterglowAngleDeg);
             SweepAfterglow.Fill = BuildAngularGradient(SweepAfterglowAngleDeg, new[]
             {
-                (0.00, 0.20),
-                (0.20, 0.12),
-                (0.60, 0.04),
+                (0.00, 0.30),
+                (0.20, 0.22),
+                (0.45, 0.15),
+                (0.75, 0.08),
                 (1.00, 0.00)
             });
         }
