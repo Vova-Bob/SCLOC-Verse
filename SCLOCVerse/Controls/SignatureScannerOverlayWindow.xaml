@@ -615,15 +615,14 @@
                         Background="#2A5A78"
                         Margin="0,0,0,10"/>
 
-                <!-- ── Метрики: Кластер / Сигнатура / Сканування (вирівняно через Grid) ── -->
+                <!-- ── Метрики: Кластер / Сигнатура (вирівняно через Grid) ── -->
                 <Grid HorizontalAlignment="Left"
-                      Margin="0,0,0,6">
+                      Margin="0,0,0,8">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
                     <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
@@ -657,29 +656,35 @@
                                FontSize="10"
                                Foreground="#A7C6E7"
                                Margin="0,0,0,4"/>
+                </Grid>
 
-                    <!-- Сканування (progress bar + %) -->
-                    <TextBlock Grid.Row="2" Grid.Column="0"
-                               Text="Сканування:"
+                <!-- ── Роздільник перед блоком сканування ── -->
+                <Border Height="1"
+                        Background="#2A5A78"
+                        Margin="0,0,0,8"/>
+
+                <!-- ── Блок сканування (окремий, повна ширина) ── -->
+                <StackPanel Orientation="Vertical"
+                            Margin="0,0,0,4">
+                    <TextBlock Text="Сканування:"
                                FontFamily="Segoe UI"
                                FontSize="10"
                                Foreground="#5F7E8A"
-                               Margin="0,0,8,2"/>
-                    <StackPanel Grid.Row="2" Grid.Column="1"
-                                Orientation="Horizontal">
+                               Margin="0,0,0,4"/>
+                    <StackPanel Orientation="Horizontal">
                         <TextBlock x:Name="ScanBar"
                                    Text="░░░░░░░░░░"
                                    FontFamily="Consolas"
                                    FontSize="11"
                                    Foreground="#3DD6A8"
-                                   Margin="0,0,4,0"/>
+                                   Margin="0,0,6,0"/>
                         <TextBlock x:Name="ScanPercent"
                                    Text="0%"
                                    FontFamily="Segoe UI Semibold"
                                    FontSize="11"
                                    Foreground="#A7C6E7"/>
                     </StackPanel>
-                </Grid>
+                </StackPanel>
             </StackPanel>
 
             <!-- ════════════════════════════════════════════════════════════════
