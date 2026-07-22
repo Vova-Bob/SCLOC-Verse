@@ -167,5 +167,92 @@ namespace SCLOCVerse.Tests.OcrPlatform
             _output.WriteLine($"Black {height}×{width} → HasContent = {result}");
             Assert.False(result, $"Чорний Mat {height}×{width} не повинен запускати OCR");
         }
+
+        // ════════════════════════════════════════════════════════════════
+        //  HasCyanContent — Scan HUD detection (Пріоритет 4)
+        // ════════════════════════════════════════════════════════════════
+
+        [Fact]
+        public void HasCyanContent_AllBlack_ReturnsFalse()
+        {
+            using var mat = new Mat(36, 64, MatType.CV_8UC3, Scalar.Black);
+            var result = OcrCoordinator.HasCyanContent(mat);
+            _output.WriteLine($"All-black → HasCyanContent = {result}");
+            Assert.False(result, "Чорний екран не має бірюзових пікселів — Scan HUD не активний");
+        }
+
+        [Fact]
+        public void HasCyanContent_CyanMat_ReturnsTrue()
+        {
+            // Бірюзовий = BGR(255, 255, 100) — B>150, G>150, R<120.
+            using var mat = new Mat(36, 64, MatType.CV_8UC3, new Scalar(255, 255, 100));
+            var result = OcrCoordinator.HasCyanContent(mat);
+            _output.WriteLine($"Cyan mat → HasCyanContent = {result}");
+            Assert.True(result, "Бірюзовий екран = Scan HUD активний");
+        }
+
+        [Fact]
+        public void HasCyanContent_RedMat_ReturnsFalse()
+        {
+            // Червоний = BGR(0, 0, 255) — B<150, G<150 — не бірюзовий.
+            using var mat = new Mat(36, 64, MatType.CV_8UC3, new Scalar(0, 0, 255));
+            var result = OcrCoordinator.HasCyanContent(mat);
+            _output.WriteLine($"Red mat → HasCyanContent = {result}");
+            Assert.False(result, "Червоний екран не бірюзовий");
+        }
+
+        [Fact]
+        public void HasCyanContent_WhiteMat_ReturnsFalse()
+        {
+            // Білий = BGR(255, 255, 255) — R=255 > 120 — не бірюзовий.
+            using var mat = new Mat(36, 64, MatType.CV_8UC3, Scalar.White);
+            var result = OcrCoordinator.HasCyanContent(mat);
+            _output.WriteLine($"White mat → HasCyanContent = {result}");
+            Assert.False(result, "Білий екран не бірюзовий (R=255 > 120)");
+        }
+
+        [Fact]
+        public void HasCyanContent_BlackWithFewCyanPixels_ReturnsTrue()
+        {
+            using var mat = new Mat(36, 64, MatType.CV_8UC3, Scalar.Black);
+            // Малюємо 10 бірюзових пікселів (симуляція HUD цифр).
+            for (var i = 0; i < 10; i++)
+                mat.Set(i, 0, new Vec3b(255, 255, 100)); // BGR: B=255, G=255, R=100.
+
+            var result = OcrCoordinator.HasCyanContent(mat);
+            _output.WriteLine($"Black with 10 cyan pixels → HasCyanContent = {result}");
+            Assert.True(result, "10 бірюзових пікселів ≥ 5 (CyanMinPixels) — Scan HUD активний");
+        }
+
+        [Fact]
+        public void HasCyanContent_BlackWithTooFewCyanPixels_ReturnsFalse()
+        {
+            using var mat = new Mat(36, 64, MatType.CV_8UC3, Scalar.Black);
+            // Тільки 2 бірюзових пікселі — менше за CyanMinPixels (5).
+            mat.Set(0, 0, new Vec3b(255, 255, 100));
+            mat.Set(1, 0, new Vec3b(255, 255, 100));
+
+            var result = OcrCoordinator.HasCyanContent(mat);
+            _output.WriteLine($"Black with 2 cyan pixels → HasCyanContent = {result}");
+            Assert.False(result, "2 бірюзових пікселі < 5 (CyanMinPixels) — занадто мало");
+        }
+
+        [Fact]
+        public void HasCyanContent_LightBlue_ReturnsTrue()
+        {
+            // Світло-блакитний = BGR(255, 220, 150) — B>150, G>150, R<120? R=150 > 120 — ні!
+            // Спробуємо BGR(255, 200, 100) — B>150, G>150, R<120.
+            using var mat = new Mat(36, 64, MatType.CV_8UC3, new Scalar(255, 200, 100));
+            var result = OcrCoordinator.HasCyanContent(mat);
+            _output.WriteLine($"Light blue BGR(255,200,100) → HasCyanContent = {result}");
+            Assert.True(result, "Світло-блакитний (B>150, G>150, R<120) = Scan HUD активний");
+        }
+
+        [Fact]
+        public void CyanMinPixels_IsFive()
+        {
+            _output.WriteLine($"CyanMinPixels = {OcrCoordinator.CyanMinPixels}");
+            Assert.Equal(5, OcrCoordinator.CyanMinPixels);
+        }
     }
 }

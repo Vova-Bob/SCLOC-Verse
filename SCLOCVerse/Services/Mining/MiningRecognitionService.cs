@@ -190,6 +190,16 @@ namespace SCLOCVerse.Services.Mining
                 var bitmap = _screenCapture.CaptureRegionAsync(fullScreenRect).GetAwaiter().GetResult();
                 using var screenshotMat = BitmapSourceToMat(bitmap);
 
+                // Scan HUD detection (Пріоритет 4): перевірити, чи є бірюзові пікселі
+                // на екрані (характерний колір SC HUD). Якщо немає — Scan HUD не активний
+                // (режим V закритий, або TAB Ping mode), Discovery skip.
+                if (!Services.OcrPlatform.Coordinator.OcrCoordinator.HasCyanContent(screenshotMat))
+                {
+                    UpdateOverlayStatus("Discovery: Scan HUD не активний");
+                    // State Machine: залишити Scanning (Discovery продовжує шукати).
+                    return;
+                }
+
                 // Локалізувати HUD через стратегію (повноекранний OCR + DB lookup).
                 var location = _locatorStrategy.Locate(screenshotMat);
                 if (location is null)
