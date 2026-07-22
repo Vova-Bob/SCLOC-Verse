@@ -577,7 +577,7 @@
                            FontSize="15"
                            Foreground="#E8F3FF"
                            HorizontalAlignment="Left"
-                           Margin="0,0,0,1"/>
+                           Margin="0,0,0,6"/>
 
                 <!--
                     Підпис рідкості (напр. «Рідкість: Epic»).
@@ -588,7 +588,7 @@
                 <TextBlock FontFamily="Segoe UI"
                            FontSize="10"
                            HorizontalAlignment="Left"
-                           Margin="0,0,0,1">
+                           Margin="0,0,0,5">
                     <Run x:Name="RarityLabelPrefix"
                          Text="Рідкість: "
                          Foreground="#E8F3FF"/>
@@ -608,16 +608,16 @@
                            FontSize="11"
                            Foreground="#FFD700"
                            HorizontalAlignment="Left"
-                           Margin="0,0,0,6"/>
+                           Margin="0,0,0,12"/>
 
                 <!-- ── Роздільник між ідентифікацією та метриками ── -->
                 <Border Height="1"
                         Background="#2A5A78"
-                        Margin="0,0,0,6"/>
+                        Margin="0,0,0,10"/>
 
                 <!-- ── Метрики: Кластер / Сигнатура / Сканування (вирівняно через Grid) ── -->
                 <Grid HorizontalAlignment="Left"
-                      Margin="0,0,0,0">
+                      Margin="0,0,0,6">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
@@ -634,14 +634,14 @@
                                FontFamily="Segoe UI"
                                FontSize="10"
                                Foreground="#5F7E8A"
-                               Margin="0,0,8,1"/>
+                               Margin="0,0,8,4"/>
                     <TextBlock Grid.Row="0" Grid.Column="1"
                                x:Name="ClusterInfo"
                                Text="—"
                                FontFamily="Segoe UI Semibold"
                                FontSize="10"
                                Foreground="#E8F3FF"
-                               Margin="0,0,0,1"/>
+                               Margin="0,0,0,4"/>
 
                     <!-- Сигнатура -->
                     <TextBlock Grid.Row="1" Grid.Column="0"
@@ -649,14 +649,14 @@
                                FontFamily="Segoe UI"
                                FontSize="10"
                                Foreground="#5F7E8A"
-                               Margin="0,0,8,1"/>
+                               Margin="0,0,8,4"/>
                     <TextBlock Grid.Row="1" Grid.Column="1"
                                x:Name="SignatureLabel"
                                Text="—"
                                FontFamily="Consolas"
                                FontSize="10"
                                Foreground="#A7C6E7"
-                               Margin="0,0,0,1"/>
+                               Margin="0,0,0,4"/>
 
                     <!-- Сканування (progress bar + %) -->
                     <TextBlock Grid.Row="2" Grid.Column="0"
@@ -664,19 +664,19 @@
                                FontFamily="Segoe UI"
                                FontSize="10"
                                Foreground="#5F7E8A"
-                               Margin="0,0,8,0"/>
+                               Margin="0,0,8,2"/>
                     <StackPanel Grid.Row="2" Grid.Column="1"
                                 Orientation="Horizontal">
                         <TextBlock x:Name="ScanBar"
                                    Text="░░░░░░░░░░"
                                    FontFamily="Consolas"
-                                   FontSize="10"
+                                   FontSize="11"
                                    Foreground="#3DD6A8"
                                    Margin="0,0,4,0"/>
                         <TextBlock x:Name="ScanPercent"
                                    Text="0%"
                                    FontFamily="Segoe UI Semibold"
-                                   FontSize="10"
+                                   FontSize="11"
                                    Foreground="#A7C6E7"/>
                     </StackPanel>
                 </Grid>
