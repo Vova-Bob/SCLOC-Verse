@@ -679,8 +679,10 @@ namespace SCLOCVerse.Controls
                             if (theta < 0)
                                 theta += 2.0 * Math.PI;
 
-                            // Експоненційне згасання від leading edge (θ=0).
-                            var alpha = SweepPeakAlpha * Math.Exp(-theta / SweepDecayRad);
+                            // Експоненційне згасання ПОЗА променем (проти напрямку обертання).
+                            // θ зростає за годинниковою (напрямок sweep), тому згасання йде
+                            // від θ=2π (одразу за leading edge) до θ=0 (перед leading edge).
+                            var alpha = SweepPeakAlpha * Math.Exp(-(2.0 * Math.PI - theta) / SweepDecayRad);
 
                             // Колір #3DD6A8 з премультиплікованою альфою (Pbgra32).
                             var a = (byte)Math.Round(Math.Clamp(alpha, 0.0, 1.0) * 255.0);
