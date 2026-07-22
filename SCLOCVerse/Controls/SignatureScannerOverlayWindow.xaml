@@ -597,12 +597,13 @@
                                Foreground="#5F7E8A"
                                Margin="0,0,8,4"/>
                                 <TextBlock Grid.Row="1" Grid.Column="1"
-                               x:Name="SignatureLabel"
-                               Text="—"
-                               FontFamily="Consolas"
-                               FontSize="10"
-                               Foreground="#A7C6E7"
-                                Margin="0,0,0,4"/>
+                                x:Name="SignatureLabel"
+                                Text="—"
+                                FontFamily="Consolas"
+                                FontSize="10"
+                                FontWeight="Bold"
+                                Foreground="#A7C6E7"
+                                 Margin="0,0,0,4"/>
                             </Grid>
 
                             <!-- ── Роздільник перед блоком сканування ── -->
