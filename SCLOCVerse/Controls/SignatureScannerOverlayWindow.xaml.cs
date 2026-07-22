@@ -4,6 +4,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Interop;
+using System.Windows.Media;
 
 namespace SCLOCVerse.Controls
 {
@@ -66,6 +67,17 @@ namespace SCLOCVerse.Controls
         private const int BlipMaxAttempts = 50;
         private const double BlipHalfSize = 1.5; // Ellipse 3×3 — зміщення для центрування
 
+        // ── PPI Sweep: 3 шари (Beam + Mid + Afterglow) ──
+        // Геометрія та градієнти генеруються математично від цих параметрів.
+        // Легко скоригувати візуально: змінити константу → перебудова при Loaded.
+        private const double SweepCenterX = 70.0;
+        private const double SweepCenterY = 70.0;
+        private const double SweepInnerR = 10.0;
+        private const double SweepOuterR = 68.0;
+        private const double SweepBeamAngleDeg = 8.0;       // 6-10° — яскравий вузький leading
+        private const double SweepMidAngleDeg = 20.0;       // 15-25° — свіже післясвітіння
+        private const double SweepAfterglowAngleDeg = 50.0; // 40-60° — широкий тьмяний хвіст
+
         public double SavedOpacity { get; set; } = 0.9;
         public event EventHandler<Rect>? PositionChanged;
 
@@ -79,10 +91,16 @@ namespace SCLOCVerse.Controls
             InitializeComponent();
             SourceInitialized += OnSourceInitialized;
             Closing += OnClosing;
+            Loaded += OnLoaded;
 
             MouseLeftButtonDown += OnMouseLeftButtonDown;
             MouseMove += OnMouseMove;
             MouseLeftButtonUp += OnMouseLeftButtonUp;
+        }
+
+        private void OnLoaded(object sender, RoutedEventArgs e)
+        {
+            BuildSweepCone();
         }
 
         private void OnSourceInitialized(object? sender, EventArgs e)
@@ -605,6 +623,120 @@ namespace SCLOCVerse.Controls
             MultiScanBarFill.Width = fillWidth;
             MultiScanBarFill.Fill = barBrush;
             MultiScanPercent.Text = pctText;
+        }
+
+        // ═══════════════════════════════════════════════════════════════
+        //  PPI Sweep: генерація 3 шарів (Beam + Mid + Afterglow)
+        // ═══════════════════════════════════════════════════════════════
+        // Геометрія: annular sector з InnerRadius..OuterRadius, кут SweepXxxAngleDeg.
+        // Fill: linear gradient по куту (від leading edge до хвоста).
+        // Асиметрія α: усі шари мають α=max на leading (різкий край),
+        // плавно падять до 0 на trailing. Сума 3 шарів зливається в 1 промінь.
+
+        private void BuildSweepCone()
+        {
+            // Beam (найяскравіший, вузький)
+            SweepBeam.Data = BuildAnnularSector(SweepBeamAngleDeg);
+            SweepBeam.Fill = BuildAngularGradient(SweepBeamAngleDeg, new[]
+            {
+                (0.00, 0.70),  // leading edge — різкий край
+                (0.30, 0.55),
+                (0.70, 0.25),
+                (1.00, 0.00)   // trailing — плавне згасання
+            });
+
+            // Mid (середній, післясвітіння)
+            SweepMid.Data = BuildAnnularSector(SweepMidAngleDeg);
+            SweepMid.Fill = BuildAngularGradient(SweepMidAngleDeg, new[]
+            {
+                (0.00, 0.40),
+                (0.30, 0.30),
+                (0.70, 0.12),
+                (1.00, 0.00)
+            });
+
+            // Afterglow (тьмяний, широкий хвіст)
+            SweepAfterglow.Data = BuildAnnularSector(SweepAfterglowAngleDeg);
+            SweepAfterglow.Fill = BuildAngularGradient(SweepAfterglowAngleDeg, new[]
+            {
+                (0.00, 0.20),
+                (0.20, 0.12),
+                (0.60, 0.04),
+                (1.00, 0.00)
+            });
+        }
+
+        /// <summary>
+        /// Побудова annular sector (кільцевий сектор) як PathGeometry.
+        /// Сектор від leading edge (кут 0°) до -angleDeg (проти напрямку sweep).
+        /// InnerRadius..OuterRadius — радіуси кільця.
+        /// </summary>
+        private static PathGeometry BuildAnnularSector(double angleDeg)
+        {
+            var rad = angleDeg * Math.PI / 180.0;
+            var cosA = Math.Cos(rad);
+            var sinA = Math.Sin(rad);
+
+            // У screen coords (Y down): trailing точка має Y МЕНШИЙ за центр (вгору).
+            Point innerLeading = new(SweepCenterX + SweepInnerR, SweepCenterY);
+            Point outerLeading = new(SweepCenterX + SweepOuterR, SweepCenterY);
+            Point outerTrailing = new(SweepCenterX + SweepOuterR * cosA, SweepCenterY - SweepOuterR * sinA);
+            Point innerTrailing = new(SweepCenterX + SweepInnerR * cosA, SweepCenterY - SweepInnerR * sinA);
+
+            var figure = new PathFigure
+            {
+                StartPoint = innerLeading,
+                IsClosed = true,
+                Segments = new PathSegmentCollection
+                {
+                    new LineSegment(outerLeading, isStroked: true),
+                    new ArcSegment
+                    {
+                        Point = outerTrailing,
+                        Size = new Size(SweepOuterR, SweepOuterR),
+                        SweepDirection = SweepDirection.Clockwise,
+                        IsLargeArc = false
+                    },
+                    new LineSegment(innerTrailing, isStroked: true),
+                    new ArcSegment
+                    {
+                        Point = innerLeading,
+                        Size = new Size(SweepInnerR, SweepInnerR),
+                        SweepDirection = SweepDirection.Counterclockwise,
+                        IsLargeArc = false
+                    }
+                }
+            };
+
+            return new PathGeometry(new[] { figure });
+        }
+
+        /// <summary>
+        /// Linear gradient по куту сектора: StartPoint на leading edge (outer),
+        /// EndPoint на trailing edge (outer). α (opacity) змінюється вздовж кута.
+        /// MappingMode=Absolute — координати обчислюються від center + outerR.
+        /// </summary>
+        private static LinearGradientBrush BuildAngularGradient(double angleDeg,
+            IReadOnlyList<(double Offset, double Alpha)> stops)
+        {
+            var rad = angleDeg * Math.PI / 180.0;
+            Point leading = new(SweepCenterX + SweepOuterR, SweepCenterY);
+            Point trailing = new(SweepCenterX + SweepOuterR * Math.Cos(rad),
+                                 SweepCenterY - SweepOuterR * Math.Sin(rad));
+
+            // Колір радара: #3DD6A8 з альфою з stops.
+            const byte r = 0x3D, g = 0xD6, b = 0xA8;
+            var gradientStops = new GradientStopCollection();
+            foreach (var (offset, alpha) in stops)
+            {
+                var a = (byte)Math.Round(Math.Clamp(alpha, 0.0, 1.0) * 255.0);
+                gradientStops.Add(new GradientStop(Color.FromArgb(a, r, g, b), offset));
+            }
+
+            return new LinearGradientBrush(gradientStops, leading, trailing)
+            {
+                MappingMode = BrushMappingMode.Absolute
+            };
         }
     }
 }
