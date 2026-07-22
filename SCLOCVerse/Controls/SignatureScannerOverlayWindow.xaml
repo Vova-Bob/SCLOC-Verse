@@ -251,8 +251,8 @@
                                 </Line.Triggers>
                             </Line>
 
-                            <!-- Blip 1: ~30° -->
-                            <Ellipse Width="3" Height="3"
+                            <!-- Blip 1: координати рандомізуються при вході в Scanning -->
+                            <Ellipse x:Name="Blip1" Width="3" Height="3"
                                      Canvas.Left="115" Canvas.Top="39"
                                      Fill="#3DD6A8"
                                      Opacity="0"
@@ -284,8 +284,8 @@
                                 </Ellipse.Triggers>
                             </Ellipse>
 
-                            <!-- Blip 2: ~120° -->
-                            <Ellipse Width="3" Height="3"
+                            <!-- Blip 2 -->
+                            <Ellipse x:Name="Blip2" Width="3" Height="3"
                                      Canvas.Left="46" Canvas.Top="11"
                                      Fill="#3DD6A8"
                                      Opacity="0"
@@ -317,8 +317,8 @@
                                 </Ellipse.Triggers>
                             </Ellipse>
 
-                            <!-- Blip 3: ~220° -->
-                            <Ellipse Width="3" Height="3"
+                            <!-- Blip 3 -->
+                            <Ellipse x:Name="Blip3" Width="3" Height="3"
                                      Canvas.Left="18" Canvas.Top="104"
                                      Fill="#5FAFE0"
                                      Opacity="0"
@@ -350,8 +350,8 @@
                                 </Ellipse.Triggers>
                             </Ellipse>
 
-                            <!-- Blip 4: ~300° -->
-                            <Ellipse Width="3" Height="3"
+                            <!-- Blip 4 -->
+                            <Ellipse x:Name="Blip4" Width="3" Height="3"
                                      Canvas.Left="104" Canvas.Top="122"
                                      Fill="#3DD6A8"
                                      Opacity="0"

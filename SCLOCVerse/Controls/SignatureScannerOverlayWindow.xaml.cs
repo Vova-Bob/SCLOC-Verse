@@ -1,6 +1,7 @@
 using SCLOCVerse.Models.Mining;
 using System.Runtime.InteropServices;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Interop;
 
@@ -53,6 +54,17 @@ namespace SCLOCVerse.Controls
         private bool _clickThrough = true;
         private bool _clickThroughTemp;
         private Point? _dragStart;
+
+        // Echo blips: рандомізація координат при кожному вході в режим Scanning.
+        // Радар Canvas 140×140, центр (70,70). r ∈ [15, 62] — безпечно всередині кільця.
+        private readonly Random _blipRng = new();
+        private const double BlipCenterX = 70.0;
+        private const double BlipCenterY = 70.0;
+        private const double BlipRadiusMin = 15.0;
+        private const double BlipRadiusMax = 62.0;
+        private const double BlipMinDistance = 12.0;
+        private const int BlipMaxAttempts = 50;
+        private const double BlipHalfSize = 1.5; // Ellipse 3×3 — зміщення для центрування
 
         public double SavedOpacity { get; set; } = 0.9;
         public event EventHandler<Rect>? PositionChanged;
@@ -320,12 +332,15 @@ namespace SCLOCVerse.Controls
             if (ScanningPanel.Visibility == Visibility.Visible
                 && SingleCandidatePanel.Visibility == Visibility.Collapsed
                 && MultiCandidatePanel.Visibility == Visibility.Collapsed)
-                return; // вже активний
+                return; // вже активний — не рандомізуємо, щоб точки не стрибали
 
             ScanningPanel.Visibility = Visibility.Visible;
             ScanningPanel.Opacity = 0;
             SingleCandidatePanel.Visibility = Visibility.Collapsed;
             MultiCandidatePanel.Visibility = Visibility.Collapsed;
+
+            // Нові випадкові координати для echo blips при кожному вході в Scanning.
+            RandomizeBlipPositions();
 
             // Fade-in радар.
             var fade = new System.Windows.Media.Animation.DoubleAnimation
@@ -335,6 +350,54 @@ namespace SCLOCVerse.Controls
             };
             ScanningPanel.BeginAnimation(OpacityProperty, fade);
         }
+
+        /// <summary>
+        /// Згенерувати нові випадкові координати для Blip1..Blip4.
+        /// Обмеження: r ∈ [BlipRadiusMin, BlipRadiusMax] від центру (70,70);
+        /// мінімальна відстань між точками ≥ BlipMinDistance.
+        /// Жодних змін Storyboard / BeginTime / Scale / Opacity-curve.
+        /// </summary>
+        private void RandomizeBlipPositions()
+        {
+            var blips = new[] { Blip1, Blip2, Blip3, Blip4 };
+            var placed = new (double X, double Y)[blips.Length];
+
+            for (int i = 0; i < blips.Length; i++)
+            {
+                double cx = 0, cy = 0;
+                int attempts = 0;
+                do
+                {
+                    var r = BlipRadiusMin + _blipRng.NextDouble() * (BlipRadiusMax - BlipRadiusMin);
+                    var a = _blipRng.NextDouble() * Math.PI * 2.0;
+                    cx = BlipCenterX + r * Math.Cos(a);
+                    cy = BlipCenterY + r * Math.Sin(a);
+                    attempts++;
+                }
+                while (attempts < BlipMaxAttempts && BlipTooClose(cx, cy, placed, i));
+
+                placed[i] = (cx, cy);
+                Canvas.SetLeft(blips[i], cx - BlipHalfSize);
+                Canvas.SetTop(blips[i], cy - BlipHalfSize);
+            }
+        }
+
+        /// <summary>
+        /// Перевірка мінімальної відстані від (x,y) до вже розміщених точок.
+        /// </summary>
+        private static bool BlipTooClose(double x, double y, (double X, double Y)[] placed, int count)
+        {
+            var minDistSq = BlipMinDistance * BlipMinDistance;
+            for (int i = 0; i < count; i++)
+            {
+                var dx = x - placed[i].X;
+                var dy = y - placed[i].Y;
+                if (dx * dx + dy * dy < minDistSq)
+                    return true;
+            }
+            return false;
+        }
+
 
         /// <summary>Показати single-candidate блок, приховати радар та multi-candidate.</summary>
         private void ShowSingleCandidate()
