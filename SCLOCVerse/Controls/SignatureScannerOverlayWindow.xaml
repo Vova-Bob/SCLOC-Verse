@@ -1,6 +1,7 @@
-<Window x:Class="SCLOCVerse.Controls.SignatureScannerOverlayWindow"
+<Window
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:av="http://schemas.microsoft.com/expression/blend/2008" xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" mc:Ignorable="av" x:Class="SCLOCVerse.Controls.SignatureScannerOverlayWindow"
         Title="SignatureScanner"
         WindowStyle="None"
         AllowsTransparency="True"
@@ -8,48 +9,24 @@
         ShowInTaskbar="False"
         Topmost="True"
         ResizeMode="NoResize"
-        Width="225"
+        Width="187"
         SizeToContent="Height"
-        ShowActivated="False">
+        ShowActivated="False" av:DesignHeight="193.415">
 
     <!--
-        Overlay "SC SCAN" — результат розпізнавання сигнатури Star Citizen.
-
-        Структура (зверху вниз):
-        ┌────────────────────────────┐
-        │ SC SCAN                    │  ← Title (малий, приглушений)
-        │                            │
-        │ [Single candidate]:         │
-        │   RICCITE                   │  ← Назва (великий, колір = рідкість)
-        │   Рідкість: Epic            │
-        │   ★★★★☆                     │
-        │   ─────────────────────     │
-        │   Кластер:    3 Rocks       │
-        │   Сигнатура:  10155          │
-        │   Сканування: ██████████ 100 │
-        │                            │
-        │ [Multi candidate (колізія)]:│
-        │   12000                     │  ← Сигнатура (великий)
-        │   ─────────────────────     │
-        │   → ROC Mineable  Tier 3    │
-        │   → FPS Mineable  Tier 4    │
-        │   → Salvage       Tier 6    │
-        │   ─────────────────────     │
-        │   Сканування: ██████████ 100│
-        └────────────────────────────┘
-
-        Принципи:
-        - Жодних змін у логіці розпізнавання.
-        - Single-candidate блок Visible коли AllCandidates.Count <= 1.
-        - Multi-candidate блок Visible при колізії (Count > 1).
-        - Колір назви ресурсу встановлюється з code-behind через MiningRarityRegistry.
+        Scanner Overlay — єдиний HUD-компонент.
+        Width=240 — компактний. Контентна зона 230px, картка 225px.
+        Усі 3 режими (Radar, Single, Multi) — у одному Grid, перекриваються.
+        Перемикання через Visibility (Collapsed/Visible) — без зміни Window.
     -->
     <Border Background="#CC0A1D29"
             BorderBrush="#2A5A78"
-            BorderThickness="1.5"
-            CornerRadius="10"
-            Padding="14,9">
+            BorderThickness="1"
+            CornerRadius="12"
+            Padding="4,6" HorizontalAlignment="Left" Width="187">
         <StackPanel Orientation="Vertical">
+
+            <!-- /ЄДИНИЙ КОНТЕЙНЕР -->
 
             <!-- ── Шапка: заголовок сканера ── -->
             <TextBlock x:Name="TitleLabel"
@@ -58,486 +35,450 @@
                         FontSize="9"
                         Foreground="#5F7E8A"
                         HorizontalAlignment="Left"
-                        Margin="0,0,0,3"/>
+                        Margin="0,0,0,4"/>
 
             <!-- ════════════════════════════════════════════════════════════════
-                 БЛОК S: Scanning Radar (стан очікування) — V2 Holographic
-                 Visible коли AllCandidates.Count == 0 AND ScanState ∈ {Idle, Scanning}.
-
-                 Елементи (SC HUD style):
-                 - Outer ring з radial gradient (глибина, glass UI)
-                 - 3 концентричні кільця з breathing (ScaleTransform 99→101%)
-                 - Sweep cone: радіальний градієнт від центру, яскрава голова → хвіст fade
-                 - Центральний emitter: inner core + outer glow, pulse (scale+opacity)
-                 - Echo blips: scale+opacity+glow, синхронізовані з sweep
-                 - Crosshair лінії (приглушені, holo)
-                 - Background disc з radial gradient (depth)
+                 ЄДИНИЙ КОНТЕЙНЕР: Grid з 3 режимами, що перекриваються.
             ════════════════════════════════════════════════════════════════ -->
-            <StackPanel x:Name="ScanningPanel"
+            <Grid>
+
+                <!-- ════════════════════════════════════════════════════════════════
+                 БЛОК S: Scanning Radar (стан очікування) — V2 Holographic
+            ════════════════════════════════════════════════════════════════ -->
+                <StackPanel x:Name="ScanningPanel"
                         Orientation="Vertical"
-                        HorizontalAlignment="Center"
                         Visibility="Visible"
                         Opacity="1">
 
-                <!-- ── Радар 140×140 ── -->
-                <Grid Width="140" Height="140"
+                    <!-- ── Радар 140×140 (Grid=Auto — не обрізає stroke кільця) ── -->
+                    <Grid Width="Auto"
                       HorizontalAlignment="Center"
                       Margin="0,2,0,0">
 
-                    <!-- ── Background disc: radial gradient (depth, glass) ── -->
-                    <Ellipse Width="140" Height="140"
-                             HorizontalAlignment="Center"
-                             VerticalAlignment="Center">
-                        <Ellipse.Fill>
-                            <RadialGradientBrush Center="0.5,0.5" RadiusX="0.5" RadiusY="0.5">
-                                <GradientStop Offset="0.0" Color="#10304030"/>
-                                <GradientStop Offset="0.7" Color="#08182820"/>
-                                <GradientStop Offset="1.0" Color="#00000000"/>
-                            </RadialGradientBrush>
-                        </Ellipse.Fill>
-                    </Ellipse>
+                        <!-- ── Background disc: radial gradient (depth, glass) ── -->
+                        <Ellipse Width="140" Height="140"
+                                 HorizontalAlignment="Center"
+                                 VerticalAlignment="Center">
+                            <Ellipse.Fill>
+                                <RadialGradientBrush Center="0.5,0.5" RadiusX="0.5" RadiusY="0.5">
+                                    <GradientStop Offset="0.0" Color="#10304030"/>
+                                    <GradientStop Offset="0.7" Color="#08182820"/>
+                                    <GradientStop Offset="1.0" Color="#00000000"/>
+                                </RadialGradientBrush>
+                            </Ellipse.Fill>
+                        </Ellipse>
 
-                    <!-- ── Outer ring з glow ── -->
-                    <Ellipse Width="138" Height="138"
+                        <!-- ── Outer ring з glow ── -->
+                        <Ellipse Width="138" Height="138"
                              Stroke="#2A5A78"
-                             StrokeThickness="1.2"
-                             Opacity="0.6"
+                             StrokeThickness="1.5"
+                             Opacity="0.85"
                              HorizontalAlignment="Center"
                              VerticalAlignment="Center"/>
-                    <Ellipse Width="138" Height="138"
+                        <Ellipse Width="138" Height="138"
                              Stroke="#3DD6A8"
-                             StrokeThickness="0.4"
-                             Opacity="0.3"
+                             StrokeThickness="0.6"
+                             Opacity="0.5"
                              HorizontalAlignment="Center"
                              VerticalAlignment="Center"/>
 
-                    <!-- ══ Концентричні кільця з breathing (99→101%) ══ -->
-                    <Ellipse Width="100" Height="100"
+                        <!-- ══ Концентричні кільця з breathing (99→101%) ══ -->
+                        <Ellipse Width="100" Height="100"
                              Stroke="#3DD6A8"
-                             StrokeThickness="0.6"
-                             Opacity="0.35"
+                             StrokeThickness="0.8"
+                             Opacity="0.55"
                              HorizontalAlignment="Center"
                              VerticalAlignment="Center"
                              RenderTransformOrigin="0.5,0.5">
-                        <Ellipse.RenderTransform>
-                            <ScaleTransform x:Name="Ring1Breath" ScaleX="1" ScaleY="1"/>
-                        </Ellipse.RenderTransform>
-                        <Ellipse.Triggers>
-                            <EventTrigger RoutedEvent="FrameworkElement.Loaded">
-                                <BeginStoryboard>
-                                    <Storyboard>
-                                        <DoubleAnimation Storyboard.TargetName="Ring1Breath"
-                                            Storyboard.TargetProperty="ScaleX"
-                                            From="0.99" To="1.01" Duration="0:0:2.5"
-                                            AutoReverse="True" RepeatBehavior="Forever"/>
-                                        <DoubleAnimation Storyboard.TargetName="Ring1Breath"
-                                            Storyboard.TargetProperty="ScaleY"
-                                            From="0.99" To="1.01" Duration="0:0:2.5"
-                                            AutoReverse="True" RepeatBehavior="Forever"/>
-                                    </Storyboard>
-                                </BeginStoryboard>
-                            </EventTrigger>
-                        </Ellipse.Triggers>
-                    </Ellipse>
-                    <Ellipse Width="66" Height="66"
+                            <Ellipse.RenderTransform>
+                                <ScaleTransform x:Name="Ring1Breath" ScaleX="1" ScaleY="1"/>
+                            </Ellipse.RenderTransform>
+                            <Ellipse.Triggers>
+                                <EventTrigger RoutedEvent="FrameworkElement.Loaded">
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="Ring1Breath"
+                                                Storyboard.TargetProperty="ScaleX"
+                                                From="0.99" To="1.01" Duration="0:0:2.5"
+                                                AutoReverse="True" RepeatBehavior="Forever"/>
+                                            <DoubleAnimation Storyboard.TargetName="Ring1Breath"
+                                                Storyboard.TargetProperty="ScaleY"
+                                                From="0.99" To="1.01" Duration="0:0:2.5"
+                                                AutoReverse="True" RepeatBehavior="Forever"/>
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </EventTrigger>
+                            </Ellipse.Triggers>
+                        </Ellipse>
+                        <Ellipse Width="66" Height="66"
                              Stroke="#3DD6A8"
-                             StrokeThickness="0.6"
-                             Opacity="0.3"
+                             StrokeThickness="0.8"
+                             Opacity="0.5"
                              HorizontalAlignment="Center"
                              VerticalAlignment="Center"
                              RenderTransformOrigin="0.5,0.5">
-                        <Ellipse.RenderTransform>
-                            <ScaleTransform x:Name="Ring2Breath" ScaleX="1" ScaleY="1"/>
-                        </Ellipse.RenderTransform>
-                        <Ellipse.Triggers>
-                            <EventTrigger RoutedEvent="FrameworkElement.Loaded">
-                                <BeginStoryboard>
-                                    <Storyboard>
-                                        <DoubleAnimation Storyboard.TargetName="Ring2Breath"
-                                            Storyboard.TargetProperty="ScaleX"
-                                            From="0.99" To="1.01" Duration="0:0:2.0"
-                                            AutoReverse="True" RepeatBehavior="Forever"
-                                            BeginTime="0:0:0.3"/>
-                                        <DoubleAnimation Storyboard.TargetName="Ring2Breath"
-                                            Storyboard.TargetProperty="ScaleY"
-                                            From="0.99" To="1.01" Duration="0:0:2.0"
-                                            AutoReverse="True" RepeatBehavior="Forever"
-                                            BeginTime="0:0:0.3"/>
-                                    </Storyboard>
-                                </BeginStoryboard>
-                            </EventTrigger>
-                        </Ellipse.Triggers>
-                    </Ellipse>
-                    <Ellipse Width="34" Height="34"
+                            <Ellipse.RenderTransform>
+                                <ScaleTransform x:Name="Ring2Breath" ScaleX="1" ScaleY="1"/>
+                            </Ellipse.RenderTransform>
+                            <Ellipse.Triggers>
+                                <EventTrigger RoutedEvent="FrameworkElement.Loaded">
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="Ring2Breath"
+                                                Storyboard.TargetProperty="ScaleX"
+                                                From="0.99" To="1.01" Duration="0:0:2.0"
+                                                AutoReverse="True" RepeatBehavior="Forever"
+                                                BeginTime="0:0:0.3"/>
+                                            <DoubleAnimation Storyboard.TargetName="Ring2Breath"
+                                                Storyboard.TargetProperty="ScaleY"
+                                                From="0.99" To="1.01" Duration="0:0:2.0"
+                                                AutoReverse="True" RepeatBehavior="Forever"
+                                                BeginTime="0:0:0.3"/>
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </EventTrigger>
+                            </Ellipse.Triggers>
+                        </Ellipse>
+                        <Ellipse Width="34" Height="34"
                              Stroke="#3DD6A8"
-                             StrokeThickness="0.6"
-                             Opacity="0.25"
+                             StrokeThickness="0.8"
+                             Opacity="0.45"
                              HorizontalAlignment="Center"
                              VerticalAlignment="Center"
                              RenderTransformOrigin="0.5,0.5">
-                        <Ellipse.RenderTransform>
-                            <ScaleTransform x:Name="Ring3Breath" ScaleX="1" ScaleY="1"/>
-                        </Ellipse.RenderTransform>
-                        <Ellipse.Triggers>
-                            <EventTrigger RoutedEvent="FrameworkElement.Loaded">
-                                <BeginStoryboard>
-                                    <Storyboard>
-                                        <DoubleAnimation Storyboard.TargetName="Ring3Breath"
-                                            Storyboard.TargetProperty="ScaleX"
-                                            From="0.99" To="1.01" Duration="0:0:1.8"
-                                            AutoReverse="True" RepeatBehavior="Forever"
-                                            BeginTime="0:0:0.6"/>
-                                        <DoubleAnimation Storyboard.TargetName="Ring3Breath"
-                                            Storyboard.TargetProperty="ScaleY"
-                                            From="0.99" To="1.01" Duration="0:0:1.8"
-                                            AutoReverse="True" RepeatBehavior="Forever"
-                                            BeginTime="0:0:0.6"/>
-                                    </Storyboard>
-                                </BeginStoryboard>
-                            </EventTrigger>
-                        </Ellipse.Triggers>
-                    </Ellipse>
+                            <Ellipse.RenderTransform>
+                                <ScaleTransform x:Name="Ring3Breath" ScaleX="1" ScaleY="1"/>
+                            </Ellipse.RenderTransform>
+                            <Ellipse.Triggers>
+                                <EventTrigger RoutedEvent="FrameworkElement.Loaded">
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="Ring3Breath"
+                                                Storyboard.TargetProperty="ScaleX"
+                                                From="0.99" To="1.01" Duration="0:0:1.8"
+                                                AutoReverse="True" RepeatBehavior="Forever"
+                                                BeginTime="0:0:0.6"/>
+                                            <DoubleAnimation Storyboard.TargetName="Ring3Breath"
+                                                Storyboard.TargetProperty="ScaleY"
+                                                From="0.99" To="1.01" Duration="0:0:1.8"
+                                                AutoReverse="True" RepeatBehavior="Forever"
+                                                BeginTime="0:0:0.6"/>
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </EventTrigger>
+                            </Ellipse.Triggers>
+                        </Ellipse>
 
-                    <!-- ── Crosshair лінії (приглушені, holo) ── -->
-                    <Line X1="0" Y1="70" X2="140" Y2="70"
-                          Stroke="#3DD6A8"
-                          StrokeThickness="0.4"
-                          Opacity="0.12"/>
-                    <Line X1="70" Y1="0" X2="70" Y2="140"
-                          Stroke="#3DD6A8"
-                          StrokeThickness="0.4"
-                          Opacity="0.12"/>
+                        <!-- ── Crosshair лінії (приглушені, holo) ── -->
+                        <Line X1="0" Y1="70" X2="140" Y2="70"
+                              Stroke="#3DD6A8"
+                              StrokeThickness="0.5"
+                              Opacity="0.22"/>
+                        <Line X1="70" Y1="0" X2="70" Y2="140"
+                              Stroke="#3DD6A8"
+                              StrokeThickness="0.5"
+                              Opacity="0.22"/>
 
-                    <!-- ════════════════════════════════════════════════════════════════
-                         SWEEP CONE — радіальний holographic промінь з центру
-                         Вузький початок → плавне розширення → градієнтний хвіст
-                         Яскрава голова (leading edge) → поступовий fade до хвоста.
+                        <!-- ════════════════════════════════════════════════════════════════
+                             SWEEP CONE — радіальний holographic промінь з центру
+                             Canvas 140×140: абсолютні координати, без змін.
+                             (70,70) = центр Canvas = центр радара.
+                        ════════════════════════════════════════════════════════════════ -->
+                        <Canvas Width="140" Height="140"
+                                HorizontalAlignment="Center"
+                                VerticalAlignment="Center"
+                                ClipToBounds="True">
 
-                         Реалізація:
-                         - Canvas 140×140: абсолютні координати, без bounding box centering.
-                           (70,70) = центр Canvas = центр радара.
-                         - Path: сектор 50° з центру (70,70), радіус 68
-                         - Fill: RadialGradientBrush — яскрава голова, хвіст fade
-                         - Додатково: яскрава лінія (leading edge) з центру до краю
-                         - RotateTransform: 0→360° за 2с (RepeatBehavior.Forever)
-                         - RotateTransform CenterX/Y = 70,70 = точний центр Canvas
-                    ════════════════════════════════════════════════════════════════ -->
-                    <Canvas Width="140" Height="140"
-                            HorizontalAlignment="Center"
-                            VerticalAlignment="Center"
-                            ClipToBounds="True">
+                            <!-- Echo blips: синхронно з проходженням sweep -->
+                            <!-- Sweep cone: сектор 50° з центру (70,70) -->
+                            <Path x:Name="SweepCone">
+                                <Path.Data>
+                                    <PathGeometry Figures="M70,70 L138,70 A68,68,0,0,1,113.7,17.9 z"/>
+                                </Path.Data>
+                                <Path.Fill>
+                                    <RadialGradientBrush
+                                        Center="0.93,0.5"
+                                        RadiusX="0.5"
+                                        RadiusY="0.5"
+                                        GradientOrigin="0.93,0.5">
+                                        <GradientStop Offset="0.0" Color="#663DD6A8"/>
+                                        <GradientStop Offset="0.15" Color="#403DD6A8"/>
+                                        <GradientStop Offset="0.5" Color="#183DD6A8"/>
+                                        <GradientStop Offset="1.0" Color="#003DD6A8"/>
+                                    </RadialGradientBrush>
+                                </Path.Fill>
+                                <Path.RenderTransform>
+                                    <RotateTransform x:Name="SweepRotate" Angle="0" CenterX="70" CenterY="70"/>
+                                </Path.RenderTransform>
+                                <Path.Triggers>
+                                    <EventTrigger RoutedEvent="FrameworkElement.Loaded">
+                                        <BeginStoryboard>
+                                            <Storyboard>
+                                                <DoubleAnimation
+                                                    Storyboard.TargetName="SweepRotate"
+                                                    Storyboard.TargetProperty="Angle"
+                                                    From="0" To="360"
+                                                    Duration="0:0:2"
+                                                    RepeatBehavior="Forever"/>
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </EventTrigger>
+                                </Path.Triggers>
+                            </Path>
 
-                        <!-- Sweep cone: сектор 50° з центру (70,70) -->
-                        <Path x:Name="SweepCone">
-                            <!--
-                                Сектор 50°: центр (70,70), радіус 68.
-                                0°  (right): (138, 70)
-                                50° (upper-right): (113.7, 17.9)
-                            -->
-                            <Path.Data>
-                                <PathGeometry>
-                                    <PathFigure StartPoint="70,70" IsClosed="True">
-                                        <LineSegment Point="138,70"/>
-                                        <ArcSegment Point="113.7,17.9"
-                                                    Size="68,68"
-                                                    SweepDirection="Clockwise"
-                                                    IsLargeArc="False"/>
-                                    </PathFigure>
-                                </PathGeometry>
-                            </Path.Data>
-                            <!--
-                                Radial gradient: голова (правий край) яскрава,
-                                хвіст (верхній край) поступово зникає.
-                            -->
-                            <Path.Fill>
-                                <RadialGradientBrush
-                                    Center="0.93,0.5"
-                                    RadiusX="0.5"
-                                    RadiusY="0.5"
-                                    GradientOrigin="0.93,0.5">
-                                    <GradientStop Offset="0.0" Color="#663DD6A8"/>
-                                    <GradientStop Offset="0.15" Color="#403DD6A8"/>
-                                    <GradientStop Offset="0.5" Color="#183DD6A8"/>
+                            <!-- Яскрава передня грань (leading edge) -->
+                            <Line x:Name="SweepLeadingEdge"
+                                  X1="70" Y1="70" X2="138" Y2="70"
+                                  Stroke="#9FFFE0"
+                                  StrokeThickness="1.2"
+                                  Opacity="0.8">
+                                <Line.RenderTransform>
+                                    <RotateTransform x:Name="SweepLineRotate" Angle="0" CenterX="70" CenterY="70"/>
+                                </Line.RenderTransform>
+                                <Line.Triggers>
+                                    <EventTrigger RoutedEvent="FrameworkElement.Loaded">
+                                        <BeginStoryboard>
+                                            <Storyboard>
+                                                <DoubleAnimation
+                                                    Storyboard.TargetName="SweepLineRotate"
+                                                    Storyboard.TargetProperty="Angle"
+                                                    From="0" To="360"
+                                                    Duration="0:0:2"
+                                                    RepeatBehavior="Forever"/>
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </EventTrigger>
+                                </Line.Triggers>
+                            </Line>
+
+                            <!-- Blip 1: ~30° -->
+                            <Ellipse Width="3" Height="3"
+                                     Canvas.Left="115" Canvas.Top="39"
+                                     Fill="#3DD6A8"
+                                     Opacity="0"
+                                     RenderTransformOrigin="0.5,0.5">
+                                <Ellipse.RenderTransform>
+                                    <ScaleTransform x:Name="Blip1Scale" ScaleX="0.3" ScaleY="0.3"/>
+                                </Ellipse.RenderTransform>
+                                <Ellipse.Triggers>
+                                    <EventTrigger RoutedEvent="FrameworkElement.Loaded">
+                                        <BeginStoryboard>
+                                            <Storyboard>
+                                                <DoubleAnimation Storyboard.TargetName="Blip1Scale"
+                                                    Storyboard.TargetProperty="ScaleX"
+                                                    From="0.3" To="1.8" Duration="0:0:0.4"
+                                                    AutoReverse="True" RepeatBehavior="Forever"
+                                                    BeginTime="0:0:0.17"/>
+                                                <DoubleAnimation Storyboard.TargetName="Blip1Scale"
+                                                    Storyboard.TargetProperty="ScaleY"
+                                                    From="0.3" To="1.8" Duration="0:0:0.4"
+                                                    AutoReverse="True" RepeatBehavior="Forever"
+                                                    BeginTime="0:0:0.17"/>
+                                                <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                    From="0" To="0.9" Duration="0:0:0.4"
+                                                    AutoReverse="True" RepeatBehavior="Forever"
+                                                    BeginTime="0:0:0.17"/>
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </EventTrigger>
+                                </Ellipse.Triggers>
+                            </Ellipse>
+
+                            <!-- Blip 2: ~120° -->
+                            <Ellipse Width="3" Height="3"
+                                     Canvas.Left="46" Canvas.Top="11"
+                                     Fill="#3DD6A8"
+                                     Opacity="0"
+                                     RenderTransformOrigin="0.5,0.5">
+                                <Ellipse.RenderTransform>
+                                    <ScaleTransform x:Name="Blip2Scale" ScaleX="0.3" ScaleY="0.3"/>
+                                </Ellipse.RenderTransform>
+                                <Ellipse.Triggers>
+                                    <EventTrigger RoutedEvent="FrameworkElement.Loaded">
+                                        <BeginStoryboard>
+                                            <Storyboard>
+                                                <DoubleAnimation Storyboard.TargetName="Blip2Scale"
+                                                    Storyboard.TargetProperty="ScaleX"
+                                                    From="0.3" To="1.6" Duration="0:0:0.35"
+                                                    AutoReverse="True" RepeatBehavior="Forever"
+                                                    BeginTime="0:0:0.67"/>
+                                                <DoubleAnimation Storyboard.TargetName="Blip2Scale"
+                                                    Storyboard.TargetProperty="ScaleY"
+                                                    From="0.3" To="1.6" Duration="0:0:0.35"
+                                                    AutoReverse="True" RepeatBehavior="Forever"
+                                                    BeginTime="0:0:0.67"/>
+                                                <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                    From="0" To="0.8" Duration="0:0:0.35"
+                                                    AutoReverse="True" RepeatBehavior="Forever"
+                                                    BeginTime="0:0:0.67"/>
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </EventTrigger>
+                                </Ellipse.Triggers>
+                            </Ellipse>
+
+                            <!-- Blip 3: ~220° -->
+                            <Ellipse Width="3" Height="3"
+                                     Canvas.Left="18" Canvas.Top="104"
+                                     Fill="#5FAFE0"
+                                     Opacity="0"
+                                     RenderTransformOrigin="0.5,0.5">
+                                <Ellipse.RenderTransform>
+                                    <ScaleTransform x:Name="Blip3Scale" ScaleX="0.3" ScaleY="0.3"/>
+                                </Ellipse.RenderTransform>
+                                <Ellipse.Triggers>
+                                    <EventTrigger RoutedEvent="FrameworkElement.Loaded">
+                                        <BeginStoryboard>
+                                            <Storyboard>
+                                                <DoubleAnimation Storyboard.TargetName="Blip3Scale"
+                                                    Storyboard.TargetProperty="ScaleX"
+                                                    From="0.3" To="1.7" Duration="0:0:0.4"
+                                                    AutoReverse="True" RepeatBehavior="Forever"
+                                                    BeginTime="0:0:1.22"/>
+                                                <DoubleAnimation Storyboard.TargetName="Blip3Scale"
+                                                    Storyboard.TargetProperty="ScaleY"
+                                                    From="0.3" To="1.7" Duration="0:0:0.4"
+                                                    AutoReverse="True" RepeatBehavior="Forever"
+                                                    BeginTime="0:0:1.22"/>
+                                                <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                    From="0" To="0.85" Duration="0:0:0.4"
+                                                    AutoReverse="True" RepeatBehavior="Forever"
+                                                    BeginTime="0:0:1.22"/>
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </EventTrigger>
+                                </Ellipse.Triggers>
+                            </Ellipse>
+
+                            <!-- Blip 4: ~300° -->
+                            <Ellipse Width="3" Height="3"
+                                     Canvas.Left="104" Canvas.Top="122"
+                                     Fill="#3DD6A8"
+                                     Opacity="0"
+                                     RenderTransformOrigin="0.5,0.5">
+                                <Ellipse.RenderTransform>
+                                    <ScaleTransform x:Name="Blip4Scale" ScaleX="0.3" ScaleY="0.3"/>
+                                </Ellipse.RenderTransform>
+                                <Ellipse.Triggers>
+                                    <EventTrigger RoutedEvent="FrameworkElement.Loaded">
+                                        <BeginStoryboard>
+                                            <Storyboard>
+                                                <DoubleAnimation Storyboard.TargetName="Blip4Scale"
+                                                    Storyboard.TargetProperty="ScaleX"
+                                                    From="0.3" To="1.5" Duration="0:0:0.35"
+                                                    AutoReverse="True" RepeatBehavior="Forever"
+                                                    BeginTime="0:0:1.67"/>
+                                                <DoubleAnimation Storyboard.TargetName="Blip4Scale"
+                                                    Storyboard.TargetProperty="ScaleY"
+                                                    From="0.3" To="1.5" Duration="0:0:0.35"
+                                                    AutoReverse="True" RepeatBehavior="Forever"
+                                                    BeginTime="0:0:1.67"/>
+                                                <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                                                    From="0" To="0.75" Duration="0:0:0.35"
+                                                    AutoReverse="True" RepeatBehavior="Forever"
+                                                    BeginTime="0:0:1.67"/>
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </EventTrigger>
+                                </Ellipse.Triggers>
+                            </Ellipse>
+                        </Canvas>
+
+                        <!-- ════════════════════════════════════════════════════════════════
+                             ЦЕНТРАЛЬНИЙ EMITTER — glow + pulse
+                        ════════════════════════════════════════════════════════════════ -->
+
+                        <!-- Outer glow halo -->
+                        <Ellipse Width="16" Height="16"
+                                 Fill="#103DD6A8"
+                                 HorizontalAlignment="Center"
+                                 VerticalAlignment="Center"
+                                 RenderTransformOrigin="0.5,0.5"
+                                 Opacity="0.3">
+                            <Ellipse.RenderTransform>
+                                <ScaleTransform x:Name="CenterGlowOuter" ScaleX="1" ScaleY="1"/>
+                            </Ellipse.RenderTransform>
+                            <Ellipse.Triggers>
+                                <EventTrigger RoutedEvent="FrameworkElement.Loaded">
+                                    <BeginStoryboard>
+                                        <Storyboard>
+                                            <DoubleAnimation Storyboard.TargetName="CenterGlowOuter"
+                                                Storyboard.TargetProperty="ScaleX"
+                                                From="0.8" To="1.8" Duration="0:0:1.5"
+                                                AutoReverse="True" RepeatBehavior="Forever"/>
+                                            <DoubleAnimation Storyboard.TargetName="CenterGlowOuter"
+                                                Storyboard.TargetProperty="ScaleY"
+                                                From="0.8" To="1.8" Duration="0:0:1.5"
+                                                AutoReverse="True" RepeatBehavior="Forever"/>
+                                        </Storyboard>
+                                    </BeginStoryboard>
+                                </EventTrigger>
+                            </Ellipse.Triggers>
+                        </Ellipse>
+
+                        <!-- Mid glow -->
+                        <Ellipse Width="8" Height="8"
+                                 HorizontalAlignment="Center"
+                                 VerticalAlignment="Center"
+                                 RenderTransformOrigin="0.5,0.5">
+                            <Ellipse.Fill>
+                                <RadialGradientBrush Center="0.5,0.5" RadiusX="0.5" RadiusY="0.5">
+                                    <GradientStop Offset="0.0" Color="#AA3DD6A8"/>
+                                    <GradientStop Offset="0.6" Color="#553DD6A8"/>
                                     <GradientStop Offset="1.0" Color="#003DD6A8"/>
                                 </RadialGradientBrush>
-                            </Path.Fill>
-                            <Path.RenderTransform>
-                                <RotateTransform x:Name="SweepRotate" Angle="0" CenterX="70" CenterY="70"/>
-                            </Path.RenderTransform>
-                            <Path.Triggers>
-                                <EventTrigger RoutedEvent="FrameworkElement.Loaded">
-                                    <BeginStoryboard>
-                                        <Storyboard>
-                                            <DoubleAnimation
-                                                Storyboard.TargetName="SweepRotate"
-                                                Storyboard.TargetProperty="Angle"
-                                                From="0" To="360"
-                                                Duration="0:0:2"
-                                                RepeatBehavior="Forever"/>
-                                        </Storyboard>
-                                    </BeginStoryboard>
-                                </EventTrigger>
-                            </Path.Triggers>
-                        </Path>
-
-                        <!-- Яскрава передня грань (leading edge) з центру до краю -->
-                        <Line x:Name="SweepLeadingEdge"
-                              X1="70" Y1="70" X2="138" Y2="70"
-                              Stroke="#9FFFE0"
-                              StrokeThickness="1.2"
-                              Opacity="0.8">
-                            <Line.RenderTransform>
-                                <RotateTransform x:Name="SweepLineRotate" Angle="0" CenterX="70" CenterY="70"/>
-                            </Line.RenderTransform>
-                            <Line.Triggers>
-                                <EventTrigger RoutedEvent="FrameworkElement.Loaded">
-                                    <BeginStoryboard>
-                                        <Storyboard>
-                                            <DoubleAnimation
-                                                Storyboard.TargetName="SweepLineRotate"
-                                                Storyboard.TargetProperty="Angle"
-                                                From="0" To="360"
-                                                Duration="0:0:2"
-                                                RepeatBehavior="Forever"/>
-                                        </Storyboard>
-                                    </BeginStoryboard>
-                                </EventTrigger>
-                            </Line.Triggers>
-                        </Line>
-
-                        <!-- Echo blips: з'являються синхронно з проходженням sweep -->
-                        <!-- Blip 1: ~30° позиція -->
-                        <Ellipse Width="3" Height="3"
-                                 Canvas.Left="115" Canvas.Top="39"
-                                 Fill="#3DD6A8"
-                                 Opacity="0"
-                                 RenderTransformOrigin="0.5,0.5">
+                            </Ellipse.Fill>
                             <Ellipse.RenderTransform>
-                                <ScaleTransform x:Name="Blip1Scale" ScaleX="0.3" ScaleY="0.3"/>
+                                <ScaleTransform x:Name="CenterGlowMid" ScaleX="1" ScaleY="1"/>
                             </Ellipse.RenderTransform>
                             <Ellipse.Triggers>
                                 <EventTrigger RoutedEvent="FrameworkElement.Loaded">
                                     <BeginStoryboard>
                                         <Storyboard>
-                                            <DoubleAnimation Storyboard.TargetName="Blip1Scale"
+                                            <DoubleAnimation Storyboard.TargetName="CenterGlowMid"
                                                 Storyboard.TargetProperty="ScaleX"
-                                                From="0.3" To="1.8" Duration="0:0:0.4"
-                                                AutoReverse="True" RepeatBehavior="Forever"
-                                                BeginTime="0:0:0.17"/>
-                                            <DoubleAnimation Storyboard.TargetName="Blip1Scale"
+                                                From="0.9" To="1.4" Duration="0:0:1.2"
+                                                AutoReverse="True" RepeatBehavior="Forever"/>
+                                            <DoubleAnimation Storyboard.TargetName="CenterGlowMid"
                                                 Storyboard.TargetProperty="ScaleY"
-                                                From="0.3" To="1.8" Duration="0:0:0.4"
-                                                AutoReverse="True" RepeatBehavior="Forever"
-                                                BeginTime="0:0:0.17"/>
-                                            <DoubleAnimation Storyboard.TargetProperty="Opacity"
-                                                From="0" To="0.9" Duration="0:0:0.4"
-                                                AutoReverse="True" RepeatBehavior="Forever"
-                                                BeginTime="0:0:0.17"/>
+                                                From="0.9" To="1.4" Duration="0:0:1.2"
+                                                AutoReverse="True" RepeatBehavior="Forever"/>
                                         </Storyboard>
                                     </BeginStoryboard>
                                 </EventTrigger>
                             </Ellipse.Triggers>
                         </Ellipse>
 
-                        <!-- Blip 2: ~120° позиція -->
-                        <Ellipse Width="3" Height="3"
-                                 Canvas.Left="46" Canvas.Top="11"
-                                 Fill="#3DD6A8"
-                                 Opacity="0"
+                        <!-- Inner core (яскравий) -->
+                        <Ellipse Width="4" Height="4"
+                                 Fill="#CFFFE8"
+                                 HorizontalAlignment="Center"
+                                 VerticalAlignment="Center"
                                  RenderTransformOrigin="0.5,0.5">
                             <Ellipse.RenderTransform>
-                                <ScaleTransform x:Name="Blip2Scale" ScaleX="0.3" ScaleY="0.3"/>
+                                <ScaleTransform x:Name="CenterCore" ScaleX="1" ScaleY="1"/>
                             </Ellipse.RenderTransform>
                             <Ellipse.Triggers>
                                 <EventTrigger RoutedEvent="FrameworkElement.Loaded">
                                     <BeginStoryboard>
                                         <Storyboard>
-                                            <DoubleAnimation Storyboard.TargetName="Blip2Scale"
+                                            <DoubleAnimation Storyboard.TargetName="CenterCore"
                                                 Storyboard.TargetProperty="ScaleX"
-                                                From="0.3" To="1.6" Duration="0:0:0.35"
-                                                AutoReverse="True" RepeatBehavior="Forever"
-                                                BeginTime="0:0:0.67"/>
-                                            <DoubleAnimation Storyboard.TargetName="Blip2Scale"
+                                                From="0.7" To="1.3" Duration="0:0:1.0"
+                                                AutoReverse="True" RepeatBehavior="Forever"/>
+                                            <DoubleAnimation Storyboard.TargetName="CenterCore"
                                                 Storyboard.TargetProperty="ScaleY"
-                                                From="0.3" To="1.6" Duration="0:0:0.35"
-                                                AutoReverse="True" RepeatBehavior="Forever"
-                                                BeginTime="0:0:0.67"/>
-                                            <DoubleAnimation Storyboard.TargetProperty="Opacity"
-                                                From="0" To="0.8" Duration="0:0:0.35"
-                                                AutoReverse="True" RepeatBehavior="Forever"
-                                                BeginTime="0:0:0.67"/>
+                                                From="0.7" To="1.3" Duration="0:0:1.0"
+                                                AutoReverse="True" RepeatBehavior="Forever"/>
                                         </Storyboard>
                                     </BeginStoryboard>
                                 </EventTrigger>
                             </Ellipse.Triggers>
                         </Ellipse>
+                    </Grid>
 
-                        <!-- Blip 3: ~220° позиція -->
-                        <Ellipse Width="3" Height="3"
-                                 Canvas.Left="18" Canvas.Top="104"
-                                 Fill="#5FAFE0"
-                                 Opacity="0"
-                                 RenderTransformOrigin="0.5,0.5">
-                            <Ellipse.RenderTransform>
-                                <ScaleTransform x:Name="Blip3Scale" ScaleX="0.3" ScaleY="0.3"/>
-                            </Ellipse.RenderTransform>
-                            <Ellipse.Triggers>
-                                <EventTrigger RoutedEvent="FrameworkElement.Loaded">
-                                    <BeginStoryboard>
-                                        <Storyboard>
-                                            <DoubleAnimation Storyboard.TargetName="Blip3Scale"
-                                                Storyboard.TargetProperty="ScaleX"
-                                                From="0.3" To="1.7" Duration="0:0:0.4"
-                                                AutoReverse="True" RepeatBehavior="Forever"
-                                                BeginTime="0:0:1.22"/>
-                                            <DoubleAnimation Storyboard.TargetName="Blip3Scale"
-                                                Storyboard.TargetProperty="ScaleY"
-                                                From="0.3" To="1.7" Duration="0:0:0.4"
-                                                AutoReverse="True" RepeatBehavior="Forever"
-                                                BeginTime="0:0:1.22"/>
-                                            <DoubleAnimation Storyboard.TargetProperty="Opacity"
-                                                From="0" To="0.85" Duration="0:0:0.4"
-                                                AutoReverse="True" RepeatBehavior="Forever"
-                                                BeginTime="0:0:1.22"/>
-                                        </Storyboard>
-                                    </BeginStoryboard>
-                                </EventTrigger>
-                            </Ellipse.Triggers>
-                        </Ellipse>
-
-                        <!-- Blip 4: ~300° позиція -->
-                        <Ellipse Width="3" Height="3"
-                                 Canvas.Left="104" Canvas.Top="122"
-                                 Fill="#3DD6A8"
-                                 Opacity="0"
-                                 RenderTransformOrigin="0.5,0.5">
-                            <Ellipse.RenderTransform>
-                                <ScaleTransform x:Name="Blip4Scale" ScaleX="0.3" ScaleY="0.3"/>
-                            </Ellipse.RenderTransform>
-                            <Ellipse.Triggers>
-                                <EventTrigger RoutedEvent="FrameworkElement.Loaded">
-                                    <BeginStoryboard>
-                                        <Storyboard>
-                                            <DoubleAnimation Storyboard.TargetName="Blip4Scale"
-                                                Storyboard.TargetProperty="ScaleX"
-                                                From="0.3" To="1.5" Duration="0:0:0.35"
-                                                AutoReverse="True" RepeatBehavior="Forever"
-                                                BeginTime="0:0:1.67"/>
-                                            <DoubleAnimation Storyboard.TargetName="Blip4Scale"
-                                                Storyboard.TargetProperty="ScaleY"
-                                                From="0.3" To="1.5" Duration="0:0:0.35"
-                                                AutoReverse="True" RepeatBehavior="Forever"
-                                                BeginTime="0:0:1.67"/>
-                                            <DoubleAnimation Storyboard.TargetProperty="Opacity"
-                                                From="0" To="0.75" Duration="0:0:0.35"
-                                                AutoReverse="True" RepeatBehavior="Forever"
-                                                BeginTime="0:0:1.67"/>
-                                        </Storyboard>
-                                    </BeginStoryboard>
-                                </EventTrigger>
-                            </Ellipse.Triggers>
-                        </Ellipse>
-                    </Canvas>
-
-                    <!-- ════════════════════════════════════════════════════════════════
-                         ЦЕНТРАЛЬНИЙ EMITTER — яскравий, з glow і pulse
-                         Шари (знизу вверх):
-                         1. Outer glow halo (великий, дуже прозорий, pulse)
-                         2. Mid glow (середній, напівпрозорий, pulse)
-                         3. Inner core (малий, яскравий, pulse)
-                    ════════════════════════════════════════════════════════════════ -->
-
-                    <!-- Outer glow halo -->
-                    <Ellipse Width="16" Height="16"
-                             Fill="#103DD6A8"
-                             HorizontalAlignment="Center"
-                             VerticalAlignment="Center"
-                             RenderTransformOrigin="0.5,0.5"
-                             Opacity="0.3">
-                        <Ellipse.RenderTransform>
-                            <ScaleTransform x:Name="CenterGlowOuter" ScaleX="1" ScaleY="1"/>
-                        </Ellipse.RenderTransform>
-                        <Ellipse.Triggers>
-                            <EventTrigger RoutedEvent="FrameworkElement.Loaded">
-                                <BeginStoryboard>
-                                    <Storyboard>
-                                        <DoubleAnimation Storyboard.TargetName="CenterGlowOuter"
-                                            Storyboard.TargetProperty="ScaleX"
-                                            From="0.8" To="1.8" Duration="0:0:1.5"
-                                            AutoReverse="True" RepeatBehavior="Forever"/>
-                                        <DoubleAnimation Storyboard.TargetName="CenterGlowOuter"
-                                            Storyboard.TargetProperty="ScaleY"
-                                            From="0.8" To="1.8" Duration="0:0:1.5"
-                                            AutoReverse="True" RepeatBehavior="Forever"/>
-                                    </Storyboard>
-                                </BeginStoryboard>
-                            </EventTrigger>
-                        </Ellipse.Triggers>
-                    </Ellipse>
-
-                    <!-- Mid glow -->
-                    <Ellipse Width="8" Height="8"
-                             HorizontalAlignment="Center"
-                             VerticalAlignment="Center"
-                             RenderTransformOrigin="0.5,0.5">
-                        <Ellipse.Fill>
-                            <RadialGradientBrush Center="0.5,0.5" RadiusX="0.5" RadiusY="0.5">
-                                <GradientStop Offset="0.0" Color="#AA3DD6A8"/>
-                                <GradientStop Offset="0.6" Color="#553DD6A8"/>
-                                <GradientStop Offset="1.0" Color="#003DD6A8"/>
-                            </RadialGradientBrush>
-                        </Ellipse.Fill>
-                        <Ellipse.RenderTransform>
-                            <ScaleTransform x:Name="CenterGlowMid" ScaleX="1" ScaleY="1"/>
-                        </Ellipse.RenderTransform>
-                        <Ellipse.Triggers>
-                            <EventTrigger RoutedEvent="FrameworkElement.Loaded">
-                                <BeginStoryboard>
-                                    <Storyboard>
-                                        <DoubleAnimation Storyboard.TargetName="CenterGlowMid"
-                                            Storyboard.TargetProperty="ScaleX"
-                                            From="0.9" To="1.4" Duration="0:0:1.2"
-                                            AutoReverse="True" RepeatBehavior="Forever"/>
-                                        <DoubleAnimation Storyboard.TargetName="CenterGlowMid"
-                                            Storyboard.TargetProperty="ScaleY"
-                                            From="0.9" To="1.4" Duration="0:0:1.2"
-                                            AutoReverse="True" RepeatBehavior="Forever"/>
-                                    </Storyboard>
-                                </BeginStoryboard>
-                            </EventTrigger>
-                        </Ellipse.Triggers>
-                    </Ellipse>
-
-                    <!-- Inner core (яскравий) -->
-                    <Ellipse Width="4" Height="4"
-                             Fill="#CFFFE8"
-                             HorizontalAlignment="Center"
-                             VerticalAlignment="Center"
-                             RenderTransformOrigin="0.5,0.5">
-                        <Ellipse.RenderTransform>
-                            <ScaleTransform x:Name="CenterCore" ScaleX="1" ScaleY="1"/>
-                        </Ellipse.RenderTransform>
-                        <Ellipse.Triggers>
-                            <EventTrigger RoutedEvent="FrameworkElement.Loaded">
-                                <BeginStoryboard>
-                                    <Storyboard>
-                                        <DoubleAnimation Storyboard.TargetName="CenterCore"
-                                            Storyboard.TargetProperty="ScaleX"
-                                            From="0.7" To="1.3" Duration="0:0:1.0"
-                                            AutoReverse="True" RepeatBehavior="Forever"/>
-                                        <DoubleAnimation Storyboard.TargetName="CenterCore"
-                                            Storyboard.TargetProperty="ScaleY"
-                                            From="0.7" To="1.3" Duration="0:0:1.0"
-                                            AutoReverse="True" RepeatBehavior="Forever"/>
-                                    </Storyboard>
-                                </BeginStoryboard>
-                            </EventTrigger>
-                        </Ellipse.Triggers>
-                    </Ellipse>
-                </Grid>
-
-                <!-- ── Текст: єдиний нетехнічний рядок ── -->
-                <TextBlock x:Name="ScanningLabel"
+                    <!-- ── Текст: єдиний нетехнічний рядок ── -->
+                    <TextBlock x:Name="ScanningLabel"
                            Text="Пошук сигнатур..."
                            FontFamily="Segoe UI Semibold"
                            FontSize="10"
@@ -545,33 +486,42 @@
                            HorizontalAlignment="Center"
                            Margin="0,4,0,2"
                            Opacity="0.8">
-                    <TextBlock.Triggers>
-                        <EventTrigger RoutedEvent="FrameworkElement.Loaded">
-                            <BeginStoryboard>
-                                <Storyboard>
-                                    <DoubleAnimation Storyboard.TargetProperty="Opacity"
+                        <TextBlock.Triggers>
+                            <EventTrigger RoutedEvent="FrameworkElement.Loaded">
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetProperty="Opacity"
                                         From="0.3" To="0.9" Duration="0:0:1.5"
                                         AutoReverse="True" RepeatBehavior="Forever"/>
-                                </Storyboard>
-                            </BeginStoryboard>
-                        </EventTrigger>
-                    </TextBlock.Triggers>
-                </TextBlock>
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </EventTrigger>
+                        </TextBlock.Triggers>
+                    </TextBlock>
 
-            </StackPanel>
+                </StackPanel>
 
-            <!-- ════════════════════════════════════════════════════════════════
+                <!-- ════════════════════════════════════════════════════════════════
                  БЛОК A: Single-candidate (Material, рідкість, зірки, метрики)
                  Visible коли AllCandidates.Count == 1 (або Lost — "Сигнал втрачено").
                  При колізії (Count > 1) приховується, замінюється Блоком B.
                  При скануванні (Count == 0, не Lost) приховується, замінюється Блоком S.
             ════════════════════════════════════════════════════════════════ -->
-            <StackPanel x:Name="SingleCandidatePanel"
+                <StackPanel x:Name="SingleCandidatePanel"
                         Orientation="Vertical"
                         Visibility="Collapsed">
 
-                <!-- ── Ідентифікація: назва ресурсу (кольорова за рідкістю) ── -->
-                <TextBlock x:Name="MaterialName"
+                    <!-- ── Заокруглена картка Single-candidate ── -->
+                    <Border Background="#14203040"
+                        CornerRadius="8"
+                        Padding="2,4"
+                        BorderBrush="#1A3A5A"
+                        BorderThickness="0.5"
+                        Margin="0,0,0,0">
+                        <StackPanel Orientation="Vertical">
+
+                            <!-- ── Ідентифікація: назва ресурсу (кольорова за рідкістю) ── -->
+                            <TextBlock x:Name="MaterialName"
                            Text="Сигнал..."
                            FontFamily="Segoe UI Semibold"
                            FontSize="15"
@@ -579,30 +529,27 @@
                            HorizontalAlignment="Left"
                            Margin="0,0,0,6"/>
 
-                <!--
+                            <!--
                     Підпис рідкості (напр. «Рідкість: Epic»).
                     Розщеплено на два Run, щоб фарбувати лише значення:
                       «Рідкість:» — завжди білий (#E8F3FF)
                       «Epic»      — колір рідкісності (з code-behind)
                 -->
-                <TextBlock FontFamily="Segoe UI"
+                            <TextBlock FontFamily="Segoe UI"
                            FontSize="10"
                            HorizontalAlignment="Left"
-                           Margin="0,0,0,5">
-                    <Run x:Name="RarityLabelPrefix"
+                           Margin="0,0,0,5"><Run x:Name="RarityLabelPrefix"
                          Text="Рідкість: "
-                         Foreground="#E8F3FF"/>
-                    <Run x:Name="RarityLabelValue"
+                         Foreground="#E8F3FF"/><Run Text=" "/><Run x:Name="RarityLabelValue"
                          Text="—"
-                         Foreground="#A7C6E7"/>
-                </TextBlock>
+                         Foreground="#A7C6E7"/></TextBlock>
 
-                <!--
+                            <!--
                     Рейтинг зірок (★★★★☆).
                     Колір ЗАВЖДИ яскраво-золотистий (#FFD700), незалежно від рідкісності
                     ресурсу. Code-behind не змінює Foreground — лише Text.
                 -->
-                <TextBlock x:Name="StarsLabel"
+                            <TextBlock x:Name="StarsLabel"
                            Text="☆☆☆☆☆"
                            FontFamily="Segoe UI Symbol"
                            FontSize="11"
@@ -610,31 +557,31 @@
                            HorizontalAlignment="Left"
                            Margin="0,0,0,12"/>
 
-                <!-- ── Роздільник між ідентифікацією та метриками ── -->
-                <Border Height="1"
+                            <!-- ── Роздільник між ідентифікацією та метриками ── -->
+                            <Border Height="1"
                         Background="#2A5A78"
                         Margin="0,0,0,10"/>
 
-                <!-- ── Метрики: Кластер / Сигнатура (вирівняно через Grid) ── -->
-                <Grid HorizontalAlignment="Left"
+                            <!-- ── Метрики: Кластер / Сигнатура (вирівняно через Grid) ── -->
+                            <Grid HorizontalAlignment="Left"
                       Margin="0,0,0,8">
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="Auto"/>
-                        <ColumnDefinition Width="Auto"/>
-                    </Grid.ColumnDefinitions>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="Auto"/>
-                    </Grid.RowDefinitions>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
 
-                    <!-- Кластер -->
-                    <TextBlock Grid.Row="0" Grid.Column="0"
+                                <!-- Кластер -->
+                                <TextBlock Grid.Row="0" Grid.Column="0"
                                Text="Кластер:"
                                FontFamily="Segoe UI"
                                FontSize="10"
                                Foreground="#5F7E8A"
                                Margin="0,0,8,4"/>
-                    <TextBlock Grid.Row="0" Grid.Column="1"
+                                <TextBlock Grid.Row="0" Grid.Column="1"
                                x:Name="ClusterInfo"
                                Text="—"
                                FontFamily="Segoe UI Semibold"
@@ -642,63 +589,84 @@
                                Foreground="#E8F3FF"
                                Margin="0,0,0,4"/>
 
-                    <!-- Сигнатура -->
-                    <TextBlock Grid.Row="1" Grid.Column="0"
+                                <!-- Сигнатура -->
+                                <TextBlock Grid.Row="1" Grid.Column="0"
                                Text="Сигнатура:"
                                FontFamily="Segoe UI"
                                FontSize="10"
                                Foreground="#5F7E8A"
                                Margin="0,0,8,4"/>
-                    <TextBlock Grid.Row="1" Grid.Column="1"
+                                <TextBlock Grid.Row="1" Grid.Column="1"
                                x:Name="SignatureLabel"
                                Text="—"
                                FontFamily="Consolas"
                                FontSize="10"
                                Foreground="#A7C6E7"
                                 Margin="0,0,0,4"/>
-                </Grid>
+                            </Grid>
 
-                <!-- ── Роздільник перед блоком сканування ── -->
-                <Border Height="1"
+                            <!-- ── Роздільник перед блоком сканування ── -->
+                            <Border Height="1"
                         Background="#2A5A78"
                         Margin="0,0,0,8"/>
 
-                <!-- ── Блок сканування ── -->
-                <StackPanel Orientation="Horizontal"
+                            <!-- ── Блок сканування ── -->
+                            <StackPanel Orientation="Horizontal"
                             Margin="0,0,0,4">
-                    <TextBlock Text="Сигнал:"
+                                <TextBlock Text="Сигнал:"
                                FontFamily="Segoe UI"
                                FontSize="10"
                                Foreground="#5F7E8A"
                                VerticalAlignment="Center"
                                Margin="0,0,8,0"/>
-                    <TextBlock x:Name="ScanBar"
-                               Text="░░░░░░░░░"
-                               FontFamily="Consolas"
-                               FontSize="11"
-                               Foreground="#3DD6A8"
-                               VerticalAlignment="Center"
-                               Margin="0,0,12,0"/>
-                    <TextBlock x:Name="ScanPercent"
+                                <Border x:Name="ScanBarTrack"
+                                       Width="60" Height="10"
+                                       Background="#0E3D5560"
+                                       CornerRadius="2"
+                                       BorderBrush="#1A3A5A"
+                                       BorderThickness="0.5"
+                                       ClipToBounds="True"
+                                       VerticalAlignment="Center"
+                                       Margin="0,0,8,0">
+                                    <Rectangle x:Name="ScanBarFill"
+                                               Width="0"
+                                               Height="10"
+                                               HorizontalAlignment="Left"
+                                               Fill="#3DD6A8"/>
+                                </Border>
+                                <TextBlock x:Name="ScanPercent"
                                Text="0%"
                                FontFamily="Segoe UI Semibold"
                                FontSize="11"
                                Foreground="#A7C6E7"
-                               VerticalAlignment="Center"/>
-                </StackPanel>
-            </StackPanel>
+                                VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                    <!-- /Single-candidate картка -->
 
-            <!-- ════════════════════════════════════════════════════════════════
+                </StackPanel>
+
+                <!-- ════════════════════════════════════════════════════════════════
                  БЛОК B: Multi-candidate (колізія ROC/FPS/Salvage)
                  Visible коли AllCandidates.Count > 1.
                  Показує сигнатуру + список усіх кандидатів + progress bar.
             ════════════════════════════════════════════════════════════════ -->
-            <StackPanel x:Name="MultiCandidatePanel"
+                <StackPanel x:Name="MultiCandidatePanel"
                         Orientation="Vertical"
                         Visibility="Collapsed">
 
-                <!-- Сигнатура як заголовок (великий, моноширинний) -->
-                <TextBlock x:Name="MultiSignatureLabel"
+                    <!-- ── Заокруглена картка Multi-candidate ── -->
+                    <Border Background="#14203040"
+                        CornerRadius="8"
+                        Padding="2,4"
+                        BorderBrush="#1A3A5A"
+                        BorderThickness="0.5"
+                        Margin="0,0,0,0">
+                        <StackPanel Orientation="Vertical">
+
+                            <!-- Сигнатура як заголовок (великий, моноширинний) -->
+                            <TextBlock x:Name="MultiSignatureLabel"
                            Text="—"
                            FontFamily="Consolas"
                            FontSize="15"
@@ -706,8 +674,8 @@
                            HorizontalAlignment="Left"
                            Margin="0,0,0,1"/>
 
-                <!-- Підзаголовок: кількість кандидатів -->
-                <TextBlock x:Name="MultiCountLabel"
+                            <!-- Підзаголовок: кількість кандидатів -->
+                            <TextBlock x:Name="MultiCountLabel"
                            Text="—"
                            FontFamily="Segoe UI"
                            FontSize="9"
@@ -715,79 +683,92 @@
                            HorizontalAlignment="Left"
                            Margin="0,0,0,4"/>
 
-                <!-- Роздільник перед списком кандидатів -->
-                <Border Height="1"
+                            <!-- Роздільник перед списком кандидатів -->
+                            <Border Height="1"
                         Background="#2A5A78"
                         Margin="0,0,0,4"/>
 
-                <!-- Список кандидатів (кожен рядок: → Name   Cluster/Tier) -->
-                <ItemsControl x:Name="CandidatesList">
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate>
-                            <Grid Margin="0,0,0,2">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="Auto"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-                                <!-- Стрілка-маркер -->
-                                <TextBlock Grid.Column="0"
+                            <!-- Список кандидатів (кожен рядок: → Name   Cluster/Tier) -->
+                            <ItemsControl x:Name="CandidatesList">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid Margin="0,0,0,2">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                                <ColumnDefinition Width="*"/>
+                                            </Grid.ColumnDefinitions>
+                                            <!-- Стрілка-маркер -->
+                                            <TextBlock Grid.Column="0"
                                            Text="→"
                                            FontFamily="Segoe UI"
                                            FontSize="10"
                                            Foreground="#5F7E8A"
                                            Margin="0,0,6,0"
                                            VerticalAlignment="Center"/>
-                                <!-- Назва (моноширинна, біла) -->
-                                <TextBlock Grid.Column="1"
+                                            <!-- Назва (моноширинна, біла) -->
+                                            <TextBlock Grid.Column="1"
                                            Text="{Binding Name}"
                                            FontFamily="Segoe UI Semibold"
                                            FontSize="10"
                                            Foreground="#E8F3FF"
                                            Margin="0,0,8,0"
                                            VerticalAlignment="Center"/>
-                                <!-- Cluster/Tier (моноширинний, приглушений) -->
-                                <TextBlock Grid.Column="2"
+                                            <!-- Cluster/Tier (моноширинний, приглушений) -->
+                                            <TextBlock Grid.Column="2"
                                            Text="{Binding ClusterFormat}"
                                            FontFamily="Consolas"
                                            FontSize="10"
                                            Foreground="#A7C6E7"
                                            VerticalAlignment="Center"/>
-                            </Grid>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
 
-                <!-- Роздільник після списку кандидатів -->
-                <Border Height="1"
+                            <!-- Роздільник після списку кандидатів -->
+                            <Border Height="1"
                         Background="#2A5A78"
                         Margin="0,4,0,6"/>
 
-                <!-- Сигнал (progress bar + %) — спільне для всіх кандидатів -->
-                <StackPanel Orientation="Horizontal"
+                            <!-- Сигнал (progress bar + %) — спільне для всіх кандидатів -->
+                            <StackPanel Orientation="Horizontal"
                             Margin="0,0,0,0">
-                    <TextBlock Text="Сигнал:"
+                                <TextBlock Text="Сигнал:"
                                FontFamily="Segoe UI"
                                FontSize="10"
                                Foreground="#5F7E8A"
                                VerticalAlignment="Center"
                                Margin="0,0,8,0"/>
-                    <TextBlock x:Name="MultiScanBar"
-                               Text="░░░░░░░░░"
-                               FontFamily="Consolas"
-                               FontSize="10"
-                               Foreground="#3DD6A8"
-                               VerticalAlignment="Center"
-                               Margin="0,0,8,0"/>
-                    <TextBlock x:Name="MultiScanPercent"
+                                <Border x:Name="MultiScanBarTrack"
+                                       Width="60" Height="10"
+                                       Background="#0E3D5560"
+                                       CornerRadius="2"
+                                       BorderBrush="#1A3A5A"
+                                       BorderThickness="0.5"
+                                       ClipToBounds="True"
+                                       VerticalAlignment="Center"
+                                       Margin="0,0,8,0">
+                                    <Rectangle x:Name="MultiScanBarFill"
+                                               Width="0"
+                                               Height="10"
+                                               HorizontalAlignment="Left"
+                                               Fill="#3DD6A8"/>
+                                </Border>
+                                <TextBlock x:Name="MultiScanPercent"
                                Text="0%"
                                FontFamily="Segoe UI Semibold"
-                               FontSize="10"
+                               FontSize="11"
                                Foreground="#A7C6E7"
-                               VerticalAlignment="Center"/>
-                </StackPanel>
-            </StackPanel>
+                                VerticalAlignment="Center"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+                    <!-- /Multi-candidate картка -->
 
+                </StackPanel>
+
+            </Grid>
             <!-- ── Діагностика (низький, лише для дебагу) ── -->
             <TextBlock x:Name="Confidence"
                         Text="—"

@@ -24,6 +24,7 @@ namespace SCLOCVerse.Controls
         private const int GwlExStyle = -20;
         private const int WsExLayered = 0x80000;
         private const int WsExTransparent = 0x20;
+        private const double ScanBarTrackWidth = 60;
 
         [DllImport("user32.dll", EntryPoint = "GetWindowLong")]
         private static extern int GetWindowLong32(IntPtr hWnd, int nIndex);
@@ -514,8 +515,9 @@ namespace SCLOCVerse.Controls
         }
 
         /// <summary>
-        /// Перетворити confidence (0..1) на 10-сегментний progress bar + відсотки.
-        /// 1.0 → «██████████ 100%», 0.85 → «████████░░ 85%».
+        /// Оновити графічний progress bar + відсотки на основі confidence (0..1).
+        /// Графічний бар замість текстового — усуває артефакти рендерингу
+        /// Unicode-блоків (█░) на Layered Window (AllowsTransparency).
         ///
         /// <para>Оновлює ОБИДВА progress bar-и (Single + Multi candidate),
         /// бо активний лише один з них (Visibility), а другий просто не видний.</para>
@@ -523,27 +525,22 @@ namespace SCLOCVerse.Controls
         private void UpdateScanProgress(double confidence)
         {
             var pct = (int)Math.Round(Math.Clamp(confidence, 0.0, 1.0) * 100);
-
-            // 9 символів замість 10: остання позиція не малюється впритул до відсотка.
-            var filled = (int)Math.Round(confidence * 9);
-            if (filled < 0) filled = 0;
-            if (filled > 9) filled = 9;
-
-            var barText = new string('█', filled) + new string('░', 9 - filled);
             var pctText = $"{pct}%";
 
-            // Підфарбовування бару за рівнем довіри (green ≥0.9, cyan інакше).
+            var clamped = Math.Clamp(confidence, 0.0, 1.0);
+            var fillWidth = clamped * ScanBarTrackWidth;
+
             var barColor = confidence >= 0.9 ? "#3DD6A8" : "#5F9FE0";
             var barBrush = BrushFromHex(barColor);
 
             // Single-candidate bar.
-            ScanBar.Text = barText;
-            ScanBar.Foreground = barBrush;
+            ScanBarFill.Width = fillWidth;
+            ScanBarFill.Fill = barBrush;
             ScanPercent.Text = pctText;
 
             // Multi-candidate bar.
-            MultiScanBar.Text = barText;
-            MultiScanBar.Foreground = barBrush;
+            MultiScanBarFill.Width = fillWidth;
+            MultiScanBarFill.Fill = barBrush;
             MultiScanPercent.Text = pctText;
         }
     }

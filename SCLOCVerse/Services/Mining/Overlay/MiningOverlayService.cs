@@ -201,11 +201,12 @@ namespace SCLOCVerse.Services.Mining.Overlay
 
         private void OnPositionChanged(object? sender, Rect pos)
         {
-            // Зберегти позицію/розмір/прозорість у Settings.
+            // Зберегти лише позицію та прозорість.
+            // Width/Height НЕ зберігаємо — SizeToContent="Height" + ResizeMode="NoResize"
+            // означають що розмір визначається XAML, а не користувачем.
+            // Збереження Width/Height призводило до перезапису XAML-ширини при рестарті.
             _preferences.SetMiningOverlayX(pos.X);
             _preferences.SetMiningOverlayY(pos.Y);
-            _preferences.SetMiningOverlayWidth(pos.Width);
-            _preferences.SetMiningOverlayHeight(pos.Height);
             if (_window is not null)
             {
                 _preferences.SetMiningOverlayOpacity(_window.SavedOpacity);
@@ -218,16 +219,15 @@ namespace SCLOCVerse.Services.Mining.Overlay
 
             var x = _preferences.GetMiningOverlayX();
             var y = _preferences.GetMiningOverlayY();
-            var w = _preferences.GetMiningOverlayWidth();
-            var h = _preferences.GetMiningOverlayHeight();
             var opacity = _preferences.GetMiningOverlayOpacity();
 
-            if (w > 0 && h > 0)
+            // Лише позиція та прозорість. Width визначається XAML (SizeToContent="Height").
+            // Height не відновлюємо — SizeToContent підганяє під контент автоматично.
+            // Раніше відновлення w/h перезаписувало XAML-Width і ламало Layout.
+            if (x > 0 || y > 0)
             {
                 _window.Left = x;
                 _window.Top = y;
-                _window.Width = w;
-                _window.Height = h;
             }
 
             _window.SavedOpacity = opacity > 0 ? opacity : 0.9;
