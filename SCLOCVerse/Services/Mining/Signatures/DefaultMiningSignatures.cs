@@ -18,12 +18,12 @@ namespace SCLOCVerse.Services.Mining.Signatures
         /// Базові сигнатури (1 камінь) для 26 матеріалів.
         /// (Назва, Категорія, Base signature).
         /// Відсортовано за base DESCENDING — щоб уникнути колізій
-        /// (напр. 19200 = Astatine×5, а не Savrilium×6).
+        /// (напр. 19200 = Aslarite×5, а не Savrilium×6).
         /// </summary>
         public static readonly (string Name, string Category, int Base)[] Materials =
         {
             ("Ice",           "Mineral", 4300),
-            ("Aluminium",     "Metal",   4285),
+            ("Aluminum",       "Metal",   4285),
             ("Iron",          "Metal",   4270),
             ("Silicon",       "Mineral", 4255),
             ("Copper",        "Metal",   4240),
@@ -35,7 +35,7 @@ namespace SCLOCVerse.Services.Mining.Signatures
             ("Agricium",      "Metal",   3885),
             ("Tungsten",      "Metal",   3870),
             ("Titanium",      "Metal",   3855),
-            ("Astatine",      "Gas",     3840),
+            ("Aslarite",      "Mineral", 3840),
             ("Laranite",      "Metal",   3825),
             ("Bexalite",      "Mineral", 3600),
             ("Gold",          "Metal",   3585),
@@ -44,7 +44,7 @@ namespace SCLOCVerse.Services.Mining.Signatures
             ("Beryl",         "Mineral", 3540),
             ("Lindinium",     "Mineral", 3400),
             ("Riccite",       "Mineral", 3385),
-            ("Uratite",       "Mineral", 3370),
+            ("Ouratite",      "Mineral", 3370),
             ("Savrilium",     "Mineral", 3200),
             ("Stileron",      "Mineral", 3185),
             ("Quantainium",   "Mineral", 3170),

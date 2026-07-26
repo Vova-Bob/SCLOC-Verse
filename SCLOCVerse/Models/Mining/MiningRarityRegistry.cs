@@ -142,10 +142,10 @@ namespace SCLOCVerse.Models.Mining
         /// Мапа «Назва матеріалу → RarityInfo». Офіційна таблиця Star Citizen (26 матеріалів).
         /// Порядок = рідкість. Незмінна після ініціалізації.
         ///
-        /// Дубльовані ключі (Uratite/Ouratite, Astatine/Aslarite) додані тому, що
+        /// Дубльовані ключі (Ouratite) додані тому, що
         /// <see cref="Services.Mining.Signatures.DefaultMiningSignatures"/> використовує
-        /// варіант «Uratite»/«Astatine», тоді як у грі/документації іноді трапляється
-        /// «Ouratite»/«Aslarite». Покриває обидва варіанти, щоб забарвлення точно спрацювало.
+        /// варіант «Ouratite», тоді як у грі/документації іноді трапляється
+        /// інше написання. Покриває обидва варіанти, щоб забарвлення точно спрацювало.
         /// </summary>
         private static readonly Dictionary<string, RarityInfo> ByName = new()
         {
@@ -156,7 +156,6 @@ namespace SCLOCVerse.Models.Mining
 
             // 🟣 Epic (макс. 3×)
             ["Ouratite"] = InfoEpic,
-            ["Uratite"]  = InfoEpic, // варіант назви в DefaultMiningSignatures
             ["Riccite"]  = InfoEpic,
             ["Lindinium"] = InfoEpic,
 
@@ -170,7 +169,6 @@ namespace SCLOCVerse.Models.Mining
             // 🟢 Uncommon (макс. 5×)
             ["Laranite"]  = InfoUncommon,
             ["Aslarite"]  = InfoUncommon,
-            ["Astatine"]  = InfoUncommon, // варіант назви в DefaultMiningSignatures
             ["Titanium"]  = InfoUncommon,
             ["Tungsten"]  = InfoUncommon,
             ["Agricium"]  = InfoUncommon,
@@ -184,7 +182,7 @@ namespace SCLOCVerse.Models.Mining
             ["Copper"]        = InfoCommon,
             ["Silicon"]       = InfoCommon,
             ["Iron"]          = InfoCommon,
-            ["Aluminium"]     = InfoCommon,
+            ["Aluminum"]      = InfoCommon,
             ["Ice"]           = InfoCommon
         };
 

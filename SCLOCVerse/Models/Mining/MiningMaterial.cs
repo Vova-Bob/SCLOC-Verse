@@ -10,7 +10,7 @@ namespace SCLOCVerse.Models.Mining
         /// Code зберігається як внутрішній ідентифікатор (raw number).</summary>
         public required string Code { get; init; }
 
-        /// <summary>Локалізоване ім'я матеріалу (напр. "Aluminium").</summary>
+        /// <summary>Локалізоване ім'я матеріалу (напр. "Aluminum").</summary>
         public required string Name { get; init; }
 
         /// <summary>Категорія (Metal, Mineral, Gas, Refined, etc.)</summary>

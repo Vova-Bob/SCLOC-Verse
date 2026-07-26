@@ -92,7 +92,7 @@ namespace SCLOCVerse.Tests.OcrPlatform
                 ("Quantainium",   3170, 2),
                 ("Stileron",      3185, 2),
                 ("Savrilium",     3200, 2),
-                ("Uratite",       3370, 3),
+                ("Ouratite",       3370, 3),
                 ("Riccite",       3385, 3),
                 ("Lindinium",     3400, 3),
                 ("Beryl",         3540, 4),
@@ -101,7 +101,7 @@ namespace SCLOCVerse.Tests.OcrPlatform
                 ("Gold",          3585, 4),
                 ("Bexalite",      3600, 4),
                 ("Laranite",      3825, 5),
-                ("Astatine",      3840, 5),
+                ("Aslarite",      3840, 5),
                 ("Titanium",      3855, 5),
                 ("Tungsten",      3870, 5),
                 ("Agricium",      3885, 5),
@@ -113,7 +113,7 @@ namespace SCLOCVerse.Tests.OcrPlatform
                 ("Copper",        4240, 6),
                 ("Silicon",       4255, 6),
                 ("Iron",          4270, 6),
-                ("Aluminium",     4285, 6),
+                ("Aluminum",      4285, 6),
                 ("Ice",           4300, 6),
             };
 

@@ -22,7 +22,7 @@ namespace SCLOCVerse.Interfaces
         ///
         /// <para>Щоб отримати всіх кандидатів при колізії, використовуйте <see cref="LookupAll"/>.</para>
         /// </summary>
-        /// <param name="code">Код (напр. "21425" = Aluminium).</param>
+        /// <param name="code">Код (напр. "21425" = Aluminum).</param>
         /// <returns>Material якщо знайдено; null — невідомий код.</returns>
         MiningMaterial? Lookup(string code);
 
